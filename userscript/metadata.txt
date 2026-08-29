@@ -1,0 +1,9 @@
+// ==UserScript==
+// @name         PokePixel Idle Better UI
+// @namespace    pokepixel-better-ui
+// @version      0.1.0
+// @description  Vanilla+ QoL enhancements for PokePixel Idle.
+// @match        https://pokepixel.nietore.com/*
+// @grant        none
+// @run-at       document-idle
+// ==/UserScript==
