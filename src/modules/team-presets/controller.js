@@ -1,6 +1,6 @@
 import { teamPresetsConfig as config } from "./config.js";
 import { applyTeamPreset, captureTeamPresetSnapshot, openTeamPresetManagement } from "./actions.js";
-import { currentTeamSnapshot, teamPresetsText } from "./dom.js";
+import { currentTeamSnapshot, teamPresetHudMemberVisual, teamPresetsText } from "./dom.js";
 import { mountTeamPresetManager } from "./manager.js";
 import { createTeamPresetStorage } from "./storage.js";
 
@@ -91,25 +91,29 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   }
 
   function liveHudVisual(member) {
-    const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
-    const creature = Array.isArray(runtime?._creatures) ? runtime._creatures.find(entry => String(entry?.id ?? "") === member.id) : null;
-    const card = [...root.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === member.id);
-    if (!creature && !card) return null;
-    const sprite = String(card?.querySelector("img[src]")?.src || member.sprite || "").trim();
-    const levelText = String(card?.querySelector(".pokeidle-team-card__compact-level, .pokeidle-team-card__level")?.textContent || (Number.isFinite(Number(creature?.level ?? member.level)) ? `Lv.${creature?.level ?? member.level}` : "")).trim();
+    const visual = teamPresetHudMemberVisual(root, member), creature = visual.creature, card = visual.card;
+    if (!creature && !card && !visual.sprite) return null;
+    const levelText = String(card?.querySelector(".pokeidle-team-card__compact-level, .pokeidle-team-card__level")?.textContent || (visual.level !== null ? `Lv.${visual.level}` : "")).trim();
     const hp = Number(creature?.hp), maximum = Number(creature?.max_hp);
     const hpPercent = Number.isFinite(hp) && Number.isFinite(maximum) && maximum > 0 ? clampPercent((hp / maximum) * 100) : null;
     const exp = Number(creature?.exp), from = Number(creature?.exp_current_level), to = Number(creature?.exp_next_level);
     const xpPercent = [exp, from, to].every(Number.isFinite) && to > from ? clampPercent(((exp - from) / (to - from)) * 100) : null;
     const fainted = card?.classList.contains("is-fainted") || (Number.isFinite(hp) && hp <= 0);
-    return { sprite, levelText, hpPercent, xpPercent, fainted: Boolean(fainted) };
+    return { sprite: visual.sprite, levelText, hpPercent, xpPercent, fainted: Boolean(fainted) };
   }
 
   function paintHudVisual(item, member) {
     const live = liveHudVisual(member), level = item.querySelector("[data-ppbui-team-presets-member-level]"), bars = item.querySelector("[data-ppbui-team-presets-member-bars]");
-    const image = item.querySelector("img"), nextLevel = live?.levelText || (Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "");
+    let image = item.querySelector("img"); const nextLevel = live?.levelText || (Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "");
     if (level && level.textContent !== nextLevel) level.textContent = nextLevel;
-    if (image && live?.sprite && image.src !== live.sprite) image.src = live.sprite;
+    if (live?.sprite) {
+      if (!image) {
+        image = doc.createElement("img"); image.alt = member.name;
+        const fallback = item.querySelector("[data-ppbui-team-presets-member-fallback]");
+        fallback ? fallback.replaceWith(image) : item.prepend(image);
+      }
+      if (image.src !== live.sprite) image.src = live.sprite;
+    }
     const fainted = live?.fainted ? "true" : "false"; if (item.dataset.fainted !== fainted) item.dataset.fainted = fainted;
     const hasBars = Boolean(live && (live.hpPercent !== null || live.xpPercent !== null));
     if (bars && bars.hidden === hasBars) bars.hidden = !hasBars;
