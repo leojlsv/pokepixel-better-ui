@@ -27,21 +27,28 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-card-head] > input { flex:1 1 auto; min-width:0; min-height:24px; padding:3px 6px; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-card-actions] { display:flex; flex:0 0 auto; gap:2px; }
     .ppbui-team-preset-icon { flex:0 0 24px; width:24px; min-width:24px; min-height:22px; padding:2px 4px; color:#d8d3ca!important; font:inherit; }
+    [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon { opacity:.58; transition:opacity .12s linear,color .12s linear; }
+    [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:hover,
+    [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:focus-visible { opacity:1; }
     [data-ppbui-team-preset-card-meta] { justify-content:space-between; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-preset-active-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:center; min-width:0; }
-    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:36px 13px; place-items:center; min-width:0; min-height:58px; overflow:hidden; padding:3px 1px 2px; border:1px solid rgba(241,214,129,.12); background:rgba(20,20,22,.58); color:#d8d3ca; }
-    [data-ppbui-team-preset-member][data-active="true"] { border-color:var(--ui-gold-light,#f1d681); box-shadow:inset 0 0 0 1px rgba(241,214,129,.12); }
-    [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:1px; right:2px; color:var(--ui-gold-light,#f1d681); font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member] img { display:block; max-width:36px; max-height:36px; image-rendering:pixelated; }
-    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:36px; color:#d8d3ca; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:40px 13px; place-items:center; min-width:0; min-height:60px; overflow:hidden; padding:2px 1px 1px; border:1px solid #33343a; background:#1d1d20; color:#d8d3ca; }
+    [data-ppbui-team-preset-member][data-active="true"] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
+    [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:1px; right:2px; color:#8fca7a; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-preset-member] img { display:block; max-width:38px; max-height:38px; image-rendering:pixelated; }
+    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:38px; color:#d8d3ca; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; width:100%; opacity:.38; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-member-level] { position:absolute; z-index:2; right:1px; bottom:14px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:#050506; color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; width:100%; opacity:.52; transition:opacity .12s linear; }
     [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { opacity:1; }
     [data-ppbui-team-preset-member-controls] > button { flex:1 1 0; min-width:0; min-height:0; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:12px; }
     [data-ppbui-team-preset-member-controls] > button[data-active-control="true"] { color:var(--ui-gold-light,#f1d681)!important; }
     [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:4px; border-top:1px solid rgba(241,214,129,.12); }
-    [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:last-child { color:var(--ui-gold-light,#f1d681)!important; }
+    [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon { opacity:.68; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:hover,
+    [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:focus-visible { opacity:1; }
+    [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:last-child { color:var(--ui-gold-light,#f1d681)!important; opacity:.9; }
     [data-ppbui-team-preset-review] { margin:0; color:#d18b82; font-size:9px; font-weight:700; }
     [data-ppbui-team-preset-manager-status] { margin:6px 0 0; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-preset-manager-status]:empty { display:none; }
@@ -75,10 +82,13 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   }
 
   function memberCell(preset, member, index, copy) {
-    const cell = doc.createElement("div"); cell.dataset.ppbuiTeamPresetMember = ""; cell.dataset.active = String(preset.activeId === member.id); cell.title = `${index + 1}. ${member.name}${preset.activeId === member.id ? ` · ${copy.active}` : ""}`;
+    const levelText = Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "";
+    const label = `${index + 1}. ${member.name}${levelText ? ` · ${levelText}` : ""}${preset.activeId === member.id ? ` · ${copy.active}` : ""}`;
+    const cell = doc.createElement("div"); cell.dataset.ppbuiTeamPresetMember = ""; cell.dataset.active = String(preset.activeId === member.id); cell.title = label; cell.setAttribute("aria-label", label);
     const position = doc.createElement("span"); position.dataset.ppbuiTeamPresetMemberPosition = ""; position.textContent = String(index + 1);
     if (member.sprite) { const img = doc.createElement("img"); img.src = member.sprite; img.alt = member.name; cell.append(position, img); }
     else { const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetMemberFallback = ""; fallback.textContent = member.name; cell.append(position, fallback); }
+    const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetMemberLevel = ""; level.textContent = levelText; cell.append(level);
     const controls = doc.createElement("div"); controls.dataset.ppbuiTeamPresetMemberControls = "";
     const left = iconButton(doc, "←", copy.moveLeft); left.disabled = index === 0;
     const active = iconButton(doc, "★", copy.setActive); active.dataset.activeControl = "true"; active.disabled = preset.activeId === member.id;
