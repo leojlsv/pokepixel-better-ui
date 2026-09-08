@@ -8,7 +8,7 @@ All notable project changes are recorded in this file.
 
 - Recorded the user's final in-game validation and approval of Team, including compact profile actions, collapsed comparison, equipped-Pokémon information flow and Add Pokémon name/element/rarity filters; no validation remains pending for this scope.
 - Recorded the user's final in-game validation and approval of Hunts (Map), including locate/reset focus, Johto level correction, compact effectiveness badges and valued Drops; no validation remains pending for the implemented scope.
-- Recorded the user's final validation and approval of Chat, including native tab management, fixed header actions, keyboard adjustments and the horizontal-scroll/window-growth fix; no validation remains pending for the implemented scope.
+- Recorded the user's final validation and approval of Chat, including native tab management, fixed header actions, keyboard adjustments and the horizontal-scroll/window-growth fix; no validation remains pending for this scope.
 - Mapped the Custom UI persistent Chat implementation and proposed native-preserving reuse for Better UI, including fixed-channel visibility, private-tab handling and privacy constraints; no Chat runtime changes yet.
 - Recorded the user's final validation and approval of the Inventory module, including all three views, two-row controls, scroll preservation, sorting and item/Pokémon prices; no remaining validation pending for this scope.
 - Collected inventory/backpack UX references and native Inventory evidence for scope refinement; no Inventory runtime changes implemented.
@@ -19,6 +19,7 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Refined Team presets UI after functional approval and UI/UX rejection: fixed HUD collapse visibility, restored readable dark-theme text hierarchy, reused the established gold/gray native palette, compacted secondary actions to icon buttons, and aligned Team manager cards with the visual density used by Team, Hunts and Chat. In-game visual validation remains pending.
 - Team presets now preserve official `team.member_ids[]` Battle order separately from the active/Hunt Pokémon, apply native Battle order controls sequentially, migrate v1 presets as unverified, keep HUD access collapsed by default, and add a native Team manager with 260x124 minimum cards for rename/reorder/update/apply/delete maintenance. In-game validation remains pending.
 - Fully removed the abandoned Team HUD wallet enhancement and its remaining test fixture and obsolete documentation; the game owns the wallet entirely, with no Better UI controls or deferred wallet features.
 - Added `assets/better-ui-icon.png` as an editable local copy of the native Settings icon currently cloned by the Better UI module control; runtime behavior remains unchanged.

@@ -9,27 +9,37 @@ function errorMessage(copy, result, preset) {
   return copy.errors[result?.reason] || result?.reason || copy.errors["final-state-mismatch"];
 }
 
+const iconButton = (doc, icon, title) => {
+  const button = doc.createElement("button"); button.type = "button"; button.className = "pokeidle-btn ppbui-team-preset-icon"; button.textContent = icon;
+  if (title) { button.title = title; button.setAttribute("aria-label", title); }
+  return button;
+};
+
 export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, runExclusive, onChange } = {}) {
   const doc = root.ownerDocument, win = doc.defaultView;
   const style = doc.createElement("style"); style.dataset.ppbuiModule = `${config.id}-manager`;
   style.textContent = `
-    [data-ppbui-team-preset-manager] { margin-top:10px; }
-    [data-ppbui-team-preset-manager] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font-weight:700; }
+    [data-ppbui-team-preset-manager] { margin-top:10px; color:#d8d3ca; font:inherit; }
+    [data-ppbui-team-preset-manager] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-manager-grid] { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px; margin-top:8px; }
-    [data-ppbui-team-preset-card] { box-sizing:border-box; min-width:260px; min-height:124px; display:grid; grid-template-rows:auto 1fr auto; gap:6px; padding:8px; }
+    [data-ppbui-team-preset-card] { box-sizing:border-box; min-width:260px; min-height:124px; display:grid; grid-template-rows:auto 1fr auto; gap:6px; padding:8px; color:#d8d3ca; }
     [data-ppbui-team-preset-card-head], [data-ppbui-team-preset-card-foot] { display:flex; align-items:center; gap:4px; min-width:0; }
     [data-ppbui-team-preset-card-head] > input { flex:1 1 auto; min-width:0; }
-    [data-ppbui-team-preset-card-head] > button, [data-ppbui-team-preset-card-foot] > button { flex:0 0 auto; min-height:0; padding:4px 6px; }
+    .ppbui-team-preset-icon { flex:0 0 25px; width:25px; min-width:25px; min-height:22px; padding:2px 4px; color:#d8d3ca!important; font:inherit; }
     [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:center; min-width:0; }
-    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:34px 14px; place-items:center; min-width:0; min-height:54px; padding:2px 1px; border:1px solid rgba(255,255,255,.12); }
+    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:34px 14px; place-items:center; min-width:0; min-height:56px; padding:3px 1px 2px; border:1px solid rgba(241,214,129,.14); background:#141416ed; color:#d8d3ca; }
     [data-ppbui-team-preset-member][data-active="true"] { border-color:var(--ui-gold-light,#f1d681); }
+    [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:0; right:2px; color:var(--ui-gold-light,#f1d681); font-size:8px; line-height:1; }
     [data-ppbui-team-preset-member] img { display:block; max-width:34px; max-height:34px; image-rendering:pixelated; }
-    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:34px; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; font-size:8px; opacity:.75; }
+    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:34px; color:#d8d3ca; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; }
     [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; }
-    [data-ppbui-team-preset-member-controls] > button { min-width:0; min-height:0; padding:0 3px; font-size:9px; line-height:13px; }
-    [data-ppbui-team-preset-review] { margin:0; font-size:9px; font-weight:700; }
-    [data-ppbui-team-preset-manager-status] { margin:6px 0 0; font-size:9px; }
+    [data-ppbui-team-preset-member-controls] > button { min-width:0; min-height:0; padding:0 3px; color:#d8d3ca!important; font-size:9px; line-height:13px; }
+    [data-ppbui-team-preset-member-controls] > button[data-active-control="true"] { color:var(--ui-gold-light,#f1d681)!important; }
+    [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:2px; border-top:1px solid rgba(241,214,129,.12); }
+    [data-ppbui-team-preset-review] { margin:0; color:#d18b82; font-size:9px; font-weight:700; }
+    [data-ppbui-team-preset-manager-status] { margin:6px 0 0; color:#aaa7a1; font-size:9px; }
+    [data-ppbui-team-preset-manager-status][data-error="true"] { color:#d18b82; font-weight:700; }
   `;
 
   const details = doc.createElement("details"); details.className = "team-section"; details.dataset.ppbuiModule = config.id; details.dataset.ppbuiTeamPresetManager = "";
@@ -49,7 +59,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     if (status.textContent !== message) status.textContent = message;
     const value = error ? "true" : "false"; if (status.dataset.error !== value) status.dataset.error = value;
   }
-  function changed() { signature = ""; onChange?.(); render(); }
+  function changed() { signature = ""; onChange?.(); render(); syncSummary(); }
 
   async function execute(preset, task) {
     const copy = text(); setStatus(copy.applying);
@@ -64,9 +74,9 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     if (member.sprite) { const img = doc.createElement("img"); img.src = member.sprite; img.alt = member.name; cell.append(position, img); }
     else { const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetMemberFallback = ""; fallback.textContent = member.name; cell.append(position, fallback); }
     const controls = doc.createElement("div"); controls.dataset.ppbuiTeamPresetMemberControls = "";
-    const left = doc.createElement("button"); left.type = "button"; left.className = "pokeidle-btn"; left.textContent = "←"; left.title = copy.moveLeft; left.disabled = index === 0;
-    const active = doc.createElement("button"); active.type = "button"; active.className = "pokeidle-btn"; active.textContent = "A"; active.title = copy.setActive; active.disabled = preset.activeId === member.id;
-    const right = doc.createElement("button"); right.type = "button"; right.className = "pokeidle-btn"; right.textContent = "→"; right.title = copy.moveRight; right.disabled = index === preset.members.length - 1;
+    const left = iconButton(doc, "←", copy.moveLeft); left.disabled = index === 0;
+    const active = iconButton(doc, "★", copy.setActive); active.dataset.activeControl = "true"; active.disabled = preset.activeId === member.id;
+    const right = iconButton(doc, "→", copy.moveRight); right.disabled = index === preset.members.length - 1;
     left.addEventListener("click", () => { if (store.moveMember(preset.id, member.id, -1)) changed(); });
     right.addEventListener("click", () => { if (store.moveMember(preset.id, member.id, 1)) changed(); });
     active.addEventListener("click", () => { if (store.setActive(preset.id, member.id)) changed(); });
@@ -77,14 +87,14 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     const presets = store.list(), nextSignature = JSON.stringify(presets);
     if (signature === nextSignature) return; signature = nextSignature;
     const copy = text(); grid.replaceChildren();
-    if (!presets.length) { const empty = doc.createElement("p"); empty.textContent = copy.empty; grid.append(empty); return; }
+    if (!presets.length) { const empty = doc.createElement("p"); empty.textContent = copy.empty; empty.style.color = "#aaa7a1"; grid.append(empty); return; }
     presets.forEach((preset, presetIndex) => {
       const card = doc.createElement("section"); card.className = "team-section"; card.dataset.ppbuiTeamPresetCard = "";
       const head = doc.createElement("div"); head.dataset.ppbuiTeamPresetCardHead = "";
       const rename = doc.createElement("input"); rename.type = "text"; rename.maxLength = 40; rename.className = "game-window__search"; rename.value = preset.name; rename.setAttribute("aria-label", copy.presetName);
-      const up = doc.createElement("button"); up.type = "button"; up.className = "pokeidle-btn"; up.textContent = "↑"; up.title = copy.moveUp; up.disabled = presetIndex === 0;
-      const down = doc.createElement("button"); down.type = "button"; down.className = "pokeidle-btn"; down.textContent = "↓"; down.title = copy.moveDown; down.disabled = presetIndex === presets.length - 1;
-      const remove = doc.createElement("button"); remove.type = "button"; remove.className = "pokeidle-btn"; remove.textContent = "×"; remove.title = copy.remove;
+      const up = iconButton(doc, "↑", copy.moveUp); up.disabled = presetIndex === 0;
+      const down = iconButton(doc, "↓", copy.moveDown); down.disabled = presetIndex === presets.length - 1;
+      const remove = iconButton(doc, "×", copy.remove); remove.setAttribute("aria-label", `${copy.remove}: ${preset.name}`);
       rename.addEventListener("change", () => { if (!store.rename(preset.id, rename.value)) rename.value = preset.name; else changed(); });
       up.addEventListener("click", () => { if (store.movePreset(preset.id, -1)) changed(); }); down.addEventListener("click", () => { if (store.movePreset(preset.id, 1)) changed(); });
       remove.addEventListener("click", () => { if (win?.confirm && !win.confirm(copy.deleteConfirm)) return; if (store.remove(preset.id)) changed(); });
@@ -92,19 +102,19 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
 
       const members = doc.createElement("div"); members.dataset.ppbuiTeamPresetMembers = ""; preset.members.forEach((member, index) => members.append(memberCell(preset, member, index, copy)));
       const foot = doc.createElement("div"); foot.dataset.ppbuiTeamPresetCardFoot = "";
-      const applyButton = doc.createElement("button"); applyButton.type = "button"; applyButton.className = "pokeidle-btn"; applyButton.textContent = copy.apply; applyButton.disabled = preset.orderVerified === false;
-      const update = doc.createElement("button"); update.type = "button"; update.className = "pokeidle-btn"; update.textContent = copy.update;
+      const applyButton = iconButton(doc, "▶", `${copy.apply}: ${preset.name}`); applyButton.disabled = preset.orderVerified === false;
+      const update = iconButton(doc, "↻", `${copy.update}: ${preset.name}`);
       applyButton.addEventListener("click", () => execute(preset, () => apply(doc, preset)));
       update.addEventListener("click", async () => {
         const result = await runExclusive(() => capture(doc, hudRoot));
         if (!result?.ok) return setStatus(errorMessage(copy, result, preset), true);
         if (store.replaceSnapshot(preset.id, result.snapshot)) { setStatus(copy.updated); changed(); }
       });
-      foot.append(applyButton, update);
+      foot.append(update, applyButton);
       card.append(head, members);
       if (preset.orderVerified === false) {
         const review = doc.createElement("p"); review.dataset.ppbuiTeamPresetReview = ""; review.textContent = copy.orderReview;
-        const confirm = doc.createElement("button"); confirm.type = "button"; confirm.className = "pokeidle-btn"; confirm.textContent = copy.confirmOrder;
+        const confirm = iconButton(doc, "✓", copy.confirmOrder);
         confirm.addEventListener("click", () => { if (store.confirmOrder(preset.id)) { setStatus(copy.updated); changed(); } });
         card.append(review); foot.prepend(confirm);
       }
@@ -112,10 +122,12 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     });
   }
 
-  function sync() {
-    ensureMounted();
-    const copy = text(); if (summary.textContent !== copy.savedTeams) summary.textContent = copy.savedTeams; render();
+  function syncSummary() {
+    const copy = text(), count = store.list().length, label = `${copy.savedTeams}${count ? ` (${count})` : ""}`;
+    if (summary.textContent !== label) summary.textContent = label;
   }
+
+  function sync() { ensureMounted(); syncSummary(); render(); }
 
   sync();
   return {
