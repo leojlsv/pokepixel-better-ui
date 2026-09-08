@@ -1,0 +1,18 @@
+export const teamHudConfig = {
+  id: "team-hud",
+  selectors: {
+    root: ".pokeidle-team-hud",
+    list: ".pokeidle-team-hud__list",
+    card: ".pokeidle-team-card:not(.pokeidle-team-card--empty)",
+    name: ".pokeidle-team-card__name",
+    level: ".pokeidle-team-card__level, .pokeidle-team-card__compact-level",
+    hp: ".pokeidle-team-card__bar-text:not(.pokeidle-team-card__bar-text--xp)",
+    cardXpBar: ".pokeidle-team-card__xp-bar",
+    activeXpBar: ".pokeidle-team-hud__active > .pokeidle-team-hud__active-info .pokeidle-team-hud__active-bar--xp, .pokeidle-team-hud__active > .pokeidle-team-hud__active-bar--xp",
+    cardHpBar: ".pokeidle-team-card__hp-bar",
+    activeHpBar: ".pokeidle-team-hud__active > .pokeidle-team-hud__active-info .pokeidle-team-hud__active-bar--hp, .pokeidle-team-hud__active > .pokeidle-team-hud__active-bar--hp",
+    trainerXpBar: ".pokeidle-trainer-hud__xp-bar",
+    trainerStaminaBar: ".pokeidle-trainer-hud__stamina-bar",
+    interactive: "button, input, select, textarea, a[href]",
+  },
+};

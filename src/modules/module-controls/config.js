@@ -1,0 +1,23 @@
+export const moduleControlsConfig = {
+  id: "module-controls",
+  selectors: {
+    toolbar: ".pokeidle-top-toolbar",
+    settings: 'button[data-menu-id="settings"]:not([aria-haspopup])',
+    icon: ".pokeidle-top-toolbar__icon, .pokeidle-menu-vector-icon",
+    nativeGroup: ".pokeidle-top-toolbar__group",
+    trigger: ':scope > button[aria-haspopup="menu"]',
+  },
+  classes: {
+    group: "pokeidle-top-toolbar__group",
+    button: "pokeidle-top-toolbar__btn",
+    label: "pokeidle-top-toolbar__label",
+    panel: "pokeidle-top-toolbar__dropdown",
+    item: "pokeidle-top-toolbar__dropdown-btn",
+  },
+  text: {
+    pt: { title: "Módulos Better UI", on: "Ativado", off: "Desativado", close: "Fechar", saved: "Preferências salvas neste navegador.", unsaved: "Não foi possível salvar. As escolhas valem apenas nesta sessão.", name: "Menu bar", description: "Reorganiza os menus. Desativar restaura a barra original." },
+    en: { title: "Better UI modules", on: "Enabled", off: "Disabled", close: "Close", saved: "Preferences saved in this browser.", unsaved: "Could not save. Choices apply only to this session.", name: "Menu bar", description: "Organizes menus. Disabling restores the original toolbar." },
+    es: { title: "Módulos Better UI", on: "Activado", off: "Desactivado", close: "Cerrar", saved: "Preferencias guardadas en este navegador.", unsaved: "No se pudo guardar. Los cambios solo se aplican a esta sesión.", name: "Menu bar", description: "Organiza los menús. Desactivar restaura la barra original." },
+    zh: { title: "Better UI 模块", on: "已启用", off: "已禁用", close: "关闭", saved: "偏好设置已保存在此浏览器中。", unsaved: "无法保存。选择仅在本次会话中生效。", name: "菜单栏", description: "整理菜单。禁用后恢复原始菜单栏。" },
+  },
+};

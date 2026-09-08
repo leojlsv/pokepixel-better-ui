@@ -1,12 +1,11 @@
 export function createDomObserver(onChange) {
-  let scheduled = false;
+  let frameId = null;
 
   const schedule = () => {
-    if (scheduled) return;
-    scheduled = true;
+    if (frameId !== null) return;
 
-    requestAnimationFrame(() => {
-      scheduled = false;
+    frameId = requestAnimationFrame(() => {
+      frameId = null;
       onChange();
     });
   };
@@ -19,12 +18,16 @@ export function createDomObserver(onChange) {
       observer.observe(root, {
         childList: true,
         subtree: true,
+        attributes: true,
+        attributeFilter: ["hidden", "disabled", "aria-hidden", "aria-disabled", "lang"],
       });
+      if (document.documentElement) observer.observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
     },
 
     stop() {
       observer.disconnect();
-      scheduled = false;
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      frameId = null;
     },
   };
 }

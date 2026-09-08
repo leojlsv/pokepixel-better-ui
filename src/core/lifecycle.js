@@ -19,9 +19,15 @@ export function createLifecycle() {
     },
 
     destroy() {
+      const errors = [];
       for (const id of [...cleanups.keys()]) {
-        this.unmount(id);
+        try {
+          this.unmount(id);
+        } catch (error) {
+          errors.push(error);
+        }
       }
+      if (errors.length) throw errors[0];
     },
   };
 }

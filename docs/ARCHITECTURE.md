@@ -36,6 +36,14 @@ every individual DOM mutation.
 
 Tracks cleanup functions and guarantees safe teardown.
 
+### preferences
+
+Stores explicitly registered optional-module choices in `ppbui:modules:v1`.
+Bootstrap checks these preferences before mounting and subscribes while running;
+disabling a module invokes its existing cleanup. Stopping unsubscribes before
+teardown. Unknown preference IDs never configure infrastructure modules.
+The module-controls UI is independent of menu-bar and cannot disable itself.
+
 ### logger
 
 Provides namespaced development diagnostics.
@@ -73,6 +81,19 @@ DOM.
 ## Reconciliation
 
 Reconciliation must be idempotent.
+
+A module may expose `getMountKey()` to identify the DOM nodes it enhances.
+The key must stay stable while those nodes remain valid. When it changes, the
+core runs cleanup before mounting again. This handles SPA replacements even
+when `shouldMount()` stays true; modules without this optional method retain
+the boolean lifecycle.
+
+A mounted module may also expose `reconcile()` for idempotent updates that
+do not require teardown, such as native visibility or label changes.
+The central observer watches child-list changes and the filtered attributes
+`hidden`, `disabled`, `aria-hidden`, `aria-disabled`, and `lang`. The same
+observer watches the document language; it does not observe every class/style
+change or create feature-specific observers.
 
 Repeated DOM mutations must not:
 

@@ -1,0 +1,20 @@
+export const teamConfig = {
+  id: "team",
+  selectors: {
+    root: ".pokeidle-team-panel",
+    body: ".pokeidle-panel__body",
+    roster: ".team-section--roster",
+    slots: ".team-slots",
+    slot: ".team-slot",
+    profile: ".team-section--profile",
+    active: ".team-active-state",
+    vitals: ".team-section--vitals",
+    attributes: ".team-section--attributes",
+    actions: ".team-actions",
+    picker: ".team-equip-picker",
+    pickerBody: ".pokeidle-panel__body",
+    pickerIntro: ".team-equip-picker__intro",
+    pickerGrid: ".team-equip-picker__grid",
+    pickerCard: ".team-equip-card",
+  },
+};
