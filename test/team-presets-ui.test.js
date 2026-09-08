@@ -119,6 +119,7 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
 
 test("Team preset manager keeps 260x124 minimum cards and prioritizes composition over maintenance controls", t => {
   const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"></section></div></div>`);
+  dom.window.document.documentElement.lang = "pt-BR";
   const root = dom.window.document.body.firstChild;
   const manager = mountTeamPresetManager(root, { store: store(), hudRoot: null, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }), runExclusive: task => task(), onChange: () => {} });
   t.after(() => { manager.cleanup(); dom.window.close(); });
@@ -156,4 +157,31 @@ test("Team preset manager recovers sprite and current level from Team HUD when s
   assert.equal(first.querySelector("img").src, "https://example.test/a.png");
   assert.equal(first.querySelector("[data-ppbui-team-preset-member-level]").textContent, "Lv.45");
   assert.doesNotMatch(first.textContent, /^A$/, "live HUD visual should replace the text-only fallback for the current member");
+});
+
+test("manager geometry fits six slots and their controls in a 260x124 card", t => {
+  const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"></div></div>`);
+  const root = dom.window.document.body.firstChild;
+  const manager = mountTeamPresetManager(root, { store: store(), hudRoot: null });
+  t.after(() => { manager.cleanup(); dom.window.close(); });
+  const card = root.querySelector("[data-ppbui-team-preset-card]");
+  const style = node => dom.window.getComputedStyle(node);
+  const cardStyle = style(card), members = card.querySelector("[data-ppbui-team-preset-members]");
+  const member = members.firstChild, visual = member.firstChild, controls = member.lastChild;
+  const cardPadding = parseFloat(cardStyle.padding) * 2, border = 2;
+  const slotWidth = (260 - cardPadding - border - 5 * parseFloat(style(members).gap)) / 6;
+  assert.equal(style(controls).display, "grid");
+  assert.equal(style(controls).gridTemplateColumns, "repeat(3,minmax(0,1fr))");
+  for (const button of controls.children) {
+    assert.equal(style(button).width, "100%", "must override native 24px icon width");
+    assert.equal(parseFloat(style(button).minWidth), 0);
+    assert.equal(style(button).boxSizing, "border-box");
+  }
+  assert.ok((slotWidth - 2 * parseFloat(style(controls).gap)) / 3 >= 10, "three controls fit the slot");
+  const memberHeight = parseFloat(style(visual).height) + parseFloat(style(controls).height) + parseFloat(style(member).gap);
+  const [head, meta] = cardStyle.gridTemplateRows.split(" ").map(parseFloat);
+  assert.ok(head + meta + memberHeight + 2 * parseFloat(cardStyle.gap) + cardPadding + border <= 124);
+  assert.equal(style(visual).boxSizing, "border-box");
+  assert.equal(style(card.querySelector("[data-ppbui-team-preset-card-foot]")).gridRow, "2");
+  assert.equal(style(controls).visibility, "visible", "opacity hides controls while leaving them keyboard-focusable");
 });

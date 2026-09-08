@@ -1,5 +1,5 @@
 import { teamPresetsConfig as config } from "./config.js";
-import { teamPresetHudMemberVisual, teamPresetsText } from "./dom.js";
+import { teamPresetVisualReader, teamPresetsText } from "./dom.js";
 
 function errorMessage(copy, result, preset) {
   if (result?.reason === "member-unavailable" && result.missingIds?.length) {
@@ -22,35 +22,36 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-manager] { margin-top:10px; color:#d8d3ca; font:inherit; }
     [data-ppbui-team-preset-manager] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-manager-grid] { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px; margin-top:8px; }
-    [data-ppbui-team-preset-card] { box-sizing:border-box; min-width:260px; min-height:124px; display:grid; grid-template-rows:auto auto 1fr auto; gap:5px; padding:7px; color:#d8d3ca; }
+    [data-ppbui-team-preset-card] { box-sizing:border-box; min-width:260px; min-height:124px; display:grid; grid-template-columns:minmax(0,1fr) auto; grid-template-rows:24px 22px auto; gap:4px; padding:6px; color:#d8d3ca; }
     [data-ppbui-team-preset-card-head], [data-ppbui-team-preset-card-foot], [data-ppbui-team-preset-card-meta] { display:flex; align-items:center; gap:4px; min-width:0; }
-    [data-ppbui-team-preset-card-head] > input { flex:1 1 auto; min-width:0; min-height:24px; padding:3px 6px; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
+    [data-ppbui-team-preset-card-head] { grid-column:1 / -1; }
+    [data-ppbui-team-preset-card-head] > input { box-sizing:border-box; flex:1 1 auto; min-width:0; height:24px; min-height:0; padding:3px 6px; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-card-actions] { display:flex; flex:0 0 auto; gap:2px; }
     .ppbui-team-preset-icon { flex:0 0 24px; width:24px; min-width:24px; min-height:22px; padding:2px 4px; color:#d8d3ca!important; font:inherit; }
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon { opacity:.58; transition:opacity .12s linear,color .12s linear; }
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:hover,
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:focus-visible { opacity:1; }
-    [data-ppbui-team-preset-card-meta] { justify-content:space-between; color:#aaa7a1; font-size:9px; }
+    [data-ppbui-team-preset-card-meta] { grid-column:1; grid-row:2; justify-content:space-between; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-preset-active-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:start; min-width:0; }
-    [data-ppbui-team-preset-member] { display:grid; grid-template-rows:58px 13px; gap:2px; min-width:0; color:#d8d3ca; }
-    [data-ppbui-team-preset-member-visual] { position:relative; display:grid; place-items:center; min-width:0; height:58px; overflow:hidden; padding:2px 1px 1px; border:1px solid #33343a; background:#1d1d20; }
+    [data-ppbui-team-preset-members] { grid-column:1 / -1; grid-row:3; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:start; min-width:0; }
+    [data-ppbui-team-preset-member] { display:grid; grid-template-rows:40px 13px; gap:2px; min-width:0; color:#d8d3ca; }
+    [data-ppbui-team-preset-member-visual] { position:relative; display:grid; place-items:center; box-sizing:border-box; min-width:0; height:40px; overflow:hidden; padding:0 1px 10px; border:1px solid #33343a; background:#1d1d20; }
     [data-ppbui-team-preset-member][data-active="true"] [data-ppbui-team-preset-member-visual] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
     [data-ppbui-team-preset-member][data-active="true"] [data-ppbui-team-preset-member-visual]::after { content:"★"; position:absolute; top:1px; right:2px; color:#8fca7a; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member-visual] img { display:block; max-width:40px; max-height:40px; image-rendering:pixelated; }
-    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:42px; color:#aaa7a1; font-size:8px; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-preset-member-visual] img { display:block; min-width:0; min-height:0; max-width:100%; max-height:28px; width:auto; height:auto; object-fit:contain; image-rendering:pixelated; }
+    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:100%; color:#aaa7a1; font-size:8px; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
     [data-ppbui-team-preset-member-level] { position:absolute; z-index:2; right:1px; bottom:2px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:#050506; color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; width:100%; height:13px; visibility:hidden; opacity:0; pointer-events:none; transition:opacity .12s linear; }
-    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { visibility:visible; opacity:1; pointer-events:auto; }
-    [data-ppbui-team-preset-member-controls] > button { flex:1 1 0; min-width:0; min-height:13px; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:11px; }
+    [data-ppbui-team-preset-member-controls] { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; width:100%; height:13px; opacity:0; pointer-events:none; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { opacity:1; pointer-events:auto; }
+    [data-ppbui-team-preset-member-controls] > button { box-sizing:border-box; width:100%; min-width:0; height:13px; min-height:0; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:11px; }
     [data-ppbui-team-preset-member-controls] > button[data-active-control="true"] { color:var(--ui-gold-light,#f1d681)!important; }
-    [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:4px; border-top:1px solid rgba(241,214,129,.12); }
+    [data-ppbui-team-preset-card-foot] { grid-column:2; grid-row:2; justify-content:flex-end; padding:0; }
     [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon { opacity:.68; transition:opacity .12s linear; }
     [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:hover,
     [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:focus-visible { opacity:1; }
     [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:last-child { color:var(--ui-gold-light,#f1d681)!important; opacity:.9; }
-    [data-ppbui-team-preset-review] { margin:0; color:#d18b82; font-size:9px; font-weight:700; }
+    [data-ppbui-team-preset-review] { grid-column:1 / -1; margin:0; color:#d18b82; font-size:9px; font-weight:700; }
     [data-ppbui-team-preset-manager-status] { margin:6px 0 0; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-preset-manager-status]:empty { display:none; }
     [data-ppbui-team-preset-manager-status][data-error="true"] { color:#d18b82; font-weight:700; }
@@ -60,7 +61,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   const summary = doc.createElement("summary"), grid = doc.createElement("div"), status = doc.createElement("p");
   grid.dataset.ppbuiTeamPresetManagerGrid = ""; status.dataset.ppbuiTeamPresetManagerStatus = ""; status.setAttribute("aria-live", "polite");
   details.append(summary, grid, status); root.append(style);
-  let signature = "";
+  let renderedPresets = null, renderedLevels = [], readVisual;
 
   function ensureMounted() {
     if (details.isConnected && root.contains(details)) return;
@@ -73,7 +74,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     if (status.textContent !== message) status.textContent = message;
     const value = error ? "true" : "false"; if (status.dataset.error !== value) status.dataset.error = value;
   }
-  function changed() { signature = ""; onChange?.(); render(); syncSummary(); }
+  function changed() { renderedPresets = null; onChange?.(); render(true); syncSummary(); }
 
   async function execute(preset, task) {
     const copy = text(); setStatus(copy.applying);
@@ -82,21 +83,18 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     sync(); return result;
   }
 
-  function liveMemberVisual(member) {
-    return teamPresetHudMemberVisual(hudRoot, member);
-  }
-
-  function liveVisualSignature() {
-    const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
-    if (!Array.isArray(runtime?._creatures)) return "";
-    return runtime._creatures.map(creature => {
-      const id = String(creature?.id ?? ""), visual = teamPresetHudMemberVisual(hudRoot, { id });
-      return [id, visual.level, visual.sprite];
+  function samePresets(next) {
+    const equalFields = (left, right, fields) => fields.every(key => left[key] === right[key]);
+    return renderedPresets?.length === next.length && next.every((preset, index) => {
+      const previous = renderedPresets[index];
+      return equalFields(preset, previous, ["id", "name", "activeId", "orderVerified", "updatedAt"])
+        && preset.members.length === previous.members.length
+        && preset.members.every((member, i) => equalFields(member, previous.members[i], ["id", "name", "level", "sprite"]));
     });
   }
 
   function memberCell(preset, member, index, copy) {
-    const visual = liveMemberVisual(member), levelText = visual.level !== null ? `Lv.${visual.level}` : "";
+    const visual = readVisual(member), levelText = visual.level !== null ? `Lv.${visual.level}` : "";
     const label = `${index + 1}. ${member.name}${levelText ? ` · ${levelText}` : ""}${preset.activeId === member.id ? ` · ${copy.active}` : ""}`;
     const cell = doc.createElement("div"); cell.dataset.ppbuiTeamPresetMember = ""; cell.dataset.active = String(preset.activeId === member.id); cell.title = label; cell.setAttribute("aria-label", label);
     const visualBox = doc.createElement("div"); visualBox.dataset.ppbuiTeamPresetMemberVisual = "";
@@ -115,9 +113,12 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     controls.append(left, active, right); cell.append(visualBox, controls); return cell;
   }
 
-  function render() {
-    const presets = store.list(), nextSignature = JSON.stringify([presets, liveVisualSignature()]);
-    if (signature === nextSignature) return; signature = nextSignature;
+  function render(resolveSprites = false, retryMissing = false) {
+    const presets = store.list(), creatures = win?.PokeIdle?.PersistentHud?._teamHud?._creatures;
+    const levels = (Array.isArray(creatures) ? creatures : []).flatMap(creature => [String(creature?.id ?? ""), creature?.level]);
+    if (!resolveSprites && samePresets(presets) && levels.length === renderedLevels.length && levels.every((value, i) => Object.is(value, renderedLevels[i]))) return;
+    renderedPresets = presets; renderedLevels = levels;
+    readVisual = teamPresetVisualReader(hudRoot, { resolveSprites, retryMissing });
     const copy = text(); grid.replaceChildren();
     if (!presets.length) { const empty = doc.createElement("p"); empty.textContent = copy.empty; empty.style.color = "#aaa7a1"; grid.append(empty); return; }
     presets.forEach((preset, presetIndex) => {
@@ -168,10 +169,12 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
 
   function sync() { ensureMounted(); syncSummary(); render(); }
 
-  sync();
+  function onToggle() { if (details.open) render(true, true); }
+  details.addEventListener("toggle", onToggle);
+  ensureMounted(); syncSummary(); render(true);
   return {
     sync,
     open() { ensureMounted(); details.open = true; details.scrollIntoView?.({ block: "nearest" }); },
-    cleanup() { details.remove(); style.remove(); },
+    cleanup() { details.removeEventListener("toggle", onToggle); details.remove(); style.remove(); },
   };
 }

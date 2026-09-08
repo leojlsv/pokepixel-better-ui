@@ -114,7 +114,7 @@ function spriteFromCard(card) {
     try { const data = canvas.toDataURL?.("image/png"); if (data?.startsWith("data:image/")) return data; } catch { /* tainted/native canvas: continue */ }
   }
   const descendants = [...card.querySelectorAll("*")], preferred = descendants.filter(node => /sprite|pokemon|creature|portrait|icon/i.test(String(node.className || "")));
-  for (const node of [...preferred, ...descendants]) {
+  for (const node of new Set([...preferred, ...descendants])) {
     const inline = cssUrl(node.style?.backgroundImage) || cssUrl(node.style?.content);
     if (inline) return inline;
     try {
@@ -126,13 +126,39 @@ function spriteFromCard(card) {
   return "";
 }
 
-export function teamPresetHudMemberVisual(root, member) {
+// Cache misses too: animated canvases and unavailable assets must not be polled.
+const spriteCaches = new WeakMap();
+
+export function teamPresetVisualReader(root, { resolveSprites = false, retryMissing = false } = {}) {
   const runtime = root?.ownerDocument?.defaultView?.PokeIdle?.PersistentHud?._teamHud;
-  const creature = Array.isArray(runtime?._creatures) ? runtime._creatures.find(entry => String(entry?.id ?? "") === String(member?.id ?? "")) : null;
-  const card = root ? [...root.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === String(member?.id ?? "")) : null;
-  const sprite = spriteFromCard(card) || spriteFromObject(creature) || assetString(member?.sprite) || spriteFromObject(member);
-  const level = Number(creature?.level ?? member?.level);
-  return { card, creature, sprite, level: Number.isFinite(level) ? level : null };
+  const creatures = new Map((Array.isArray(runtime?._creatures) ? runtime._creatures : []).map(creature => [String(creature?.id ?? ""), creature]));
+  const cards = new Map(Array.from(root?.querySelectorAll(config.selectors.hudCard) || [], card => [card.dataset.creatureId, card]));
+  let cache = root && spriteCaches.get(root);
+  if (root && !cache) { cache = new WeakMap(); spriteCaches.set(root, cache); }
+  const attempted = new WeakSet();
+  return member => {
+    const id = String(member?.id ?? ""), card = cards.get(id), creature = creatures.get(id), source = card || creature;
+    let sprite = member?.sprite || "";
+    if (!sprite && source) {
+      let cached = cache.get(source);
+      if (resolveSprites && (cached?.id !== id || (retryMissing && !cached.sprite && !attempted.has(source)))) {
+        cached = { id, sprite: spriteFromCard(card) || spriteFromObject(creature) };
+        cache.set(source, cached); attempted.add(source);
+      }
+      sprite = cached?.id === id ? cached.sprite : "";
+    }
+    const level = Number(creature?.level ?? member?.level);
+    return { card, creature, sprite, level: Number.isFinite(level) ? level : null };
+  };
+}
+
+export function teamPresetHudMemberVisual(root, member) {
+  return teamPresetVisualReader(root, { resolveSprites: true })(member);
+}
+
+export function canCaptureTeamPreset(root) {
+  const runtime = root?.ownerDocument?.defaultView?.PokeIdle?.PersistentHud?._teamHud;
+  return Boolean(runtime && runtime.el === root && Array.isArray(runtime._creatures) && runtime._creatures.some(creature => String(creature?.id ?? "")));
 }
 
 function spriteFor(card, creature) {

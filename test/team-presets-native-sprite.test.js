@@ -65,7 +65,7 @@ test("Team preset manager keeps maintenance controls in a separate row below the
   assert.equal(visual.querySelector("[data-ppbui-team-preset-member-level]").textContent, "Lv.47");
 
   const css = teamRoot.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent;
-  assert.match(css, /grid-template-rows:58px 13px/);
-  assert.match(css, /visibility:hidden; opacity:0; pointer-events:none/);
+  assert.match(css, /grid-template-rows:40px 13px/);
+  assert.match(css, /opacity:0; pointer-events:none/);
   assert.doesNotMatch(css.match(/\[data-ppbui-team-preset-member-controls\] \{[^}]+\}/)?.[0] || "", /position:absolute/);
 });

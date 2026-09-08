@@ -19,6 +19,10 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Fixed the critical Team Presets sync performance regression: Save availability no longer captures a snapshot; live preview sync indexes HUD cards once and reads cached/persisted sprites without computed styles, canvas exports or descendant sprite scans; collapsed previews skip the index entirely. Saved-team change detection compares fields directly without serializing sprite payloads. Unchanged sync produces no DOM mutations, including relative sprite URLs.
+- Native sprite extraction remains in capture/update and bounded render/open fallback, with shared weak caches for successful and missing sources. Explicitly reopening retries missing assets, and new snapshots take priority over cached visuals. Apply, Battle Order and storage semantics are unchanged.
+- Fitted six Pokémon and their separate maintenance rows inside the Team > Saved teams 260x124 card by constraining slot/button sizing and placing Update/Apply beside metadata. Keyboard focus reveals member controls. Added repeated-sync and layout regressions; real in-game FPS and native visual validation remain pending.
+
 - Fixed Team preset sprite sourcing and member maintenance layout after in-game rejection: HUD/manager previews now resolve the native sprite from `<img>`, canvas, CSS `background-image`/`content`, or loaded runtime fields and persist the resolved sprite on new snapshots; per-Pokémon `← ★ →` controls now occupy a dedicated row below the visual tile instead of overlaying sprite/level content.
 - Corrected the Team > Saved teams manager after in-game visual rejection: member cards now recover sprite/current level from the live Team HUD when older saved metadata is incomplete, keep composition as the dominant visual, and hide `← ★ →` maintenance controls until hover/focus while preserving keyboard access and all existing actions.
 - Refined the Team preset manager to mirror the approved Team HUD member language with solid slots, visible Battle-order position and `Lv.X`, green active-state treatment, and more subordinate preset/member maintenance controls; functional preset behavior remains unchanged.

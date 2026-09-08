@@ -1,12 +1,12 @@
 import { teamPresetsConfig as config } from "./config.js";
 import { applyTeamPreset, captureTeamPresetSnapshot, openTeamPresetManagement } from "./actions.js";
-import { currentTeamSnapshot, teamPresetHudMemberVisual, teamPresetsText } from "./dom.js";
+import { canCaptureTeamPreset, teamPresetVisualReader, teamPresetsText } from "./dom.js";
 import { mountTeamPresetManager } from "./manager.js";
 import { createTeamPresetStorage } from "./storage.js";
 
 export function mountTeamPresets(root, { store = createTeamPresetStorage(), apply = applyTeamPreset, capture = captureTeamPresetSnapshot } = {}) {
   const doc = root.ownerDocument, win = doc.defaultView;
-  let busy = false, manager = null, managerRoot = null;
+  let busy = false, manager = null, managerRoot = null, readVisual;
 
   const style = doc.createElement("style"); style.dataset.ppbuiModule = config.id;
   style.textContent = `
@@ -91,7 +91,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   }
 
   function liveHudVisual(member) {
-    const visual = teamPresetHudMemberVisual(root, member), creature = visual.creature, card = visual.card;
+    const visual = readVisual(member), creature = visual.creature, card = visual.card;
     if (!creature && !card && !visual.sprite) return null;
     const levelText = String(card?.querySelector(".pokeidle-team-card__compact-level, .pokeidle-team-card__level")?.textContent || (visual.level !== null ? `Lv.${visual.level}` : "")).trim();
     const hp = Number(creature?.hp), maximum = Number(creature?.max_hp);
@@ -112,7 +112,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
         const fallback = item.querySelector("[data-ppbui-team-presets-member-fallback]");
         fallback ? fallback.replaceWith(image) : item.prepend(image);
       }
-      if (image.src !== live.sprite) image.src = live.sprite;
+      if (image.getAttribute("src") !== live.sprite) image.src = live.sprite;
     }
     const fainted = live?.fainted ? "true" : "false"; if (item.dataset.fainted !== fainted) item.dataset.fainted = fainted;
     const hasBars = Boolean(live && (live.hpPercent !== null || live.xpPercent !== null));
@@ -149,6 +149,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   }
 
   function renderList() {
+    readVisual = teamPresetVisualReader(root, { resolveSprites: true });
     const copy = text(), presets = store.list(); list.replaceChildren();
     if (!presets.length) { const empty = doc.createElement("p"); empty.dataset.ppbuiTeamPresetsStatus = ""; empty.textContent = copy.empty; list.append(empty); return; }
     for (const preset of presets) {
@@ -176,7 +177,9 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     }
   }
 
-  function syncPreviewVisuals() {
+  function syncPreviewVisuals(options) {
+    if (panel.hidden) return;
+    readVisual = teamPresetVisualReader(root, options);
     const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];
     rows.forEach((row, presetIndex) => {
       const preset = presets[presetIndex]; if (!preset) return;
@@ -220,7 +223,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   function sync() {
     syncLabels(); syncManager(); syncPreviewVisuals();
     if (busy) return;
-    setDisabled(toggle, false); setDisabled(manage, false); setDisabled(name, false); setDisabled(save, !currentTeamSnapshot(root));
+    setDisabled(toggle, false); setDisabled(manage, false); setDisabled(name, false); setDisabled(save, !canCaptureTeamPreset(root));
     const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];
     rows.forEach((row, index) => {
       const buttons = [...row.querySelectorAll("[data-ppbui-team-presets-row-actions] button")];
@@ -229,7 +232,13 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     });
   }
 
-  function onToggle() { setExpanded(panel.hidden); syncLabels(); if (!panel.hidden) name.focus({ preventScroll: true }); }
+  function onToggle() {
+    setExpanded(panel.hidden); syncLabels();
+    if (!panel.hidden) {
+      syncPreviewVisuals({ resolveSprites: true, retryMissing: true });
+      name.focus({ preventScroll: true });
+    }
+  }
   async function onManage() {
     const teamRoot = await openTeamPresetManagement(doc);
     if (!teamRoot) return setStatus(text().errors["team-panel-unavailable"], true);
