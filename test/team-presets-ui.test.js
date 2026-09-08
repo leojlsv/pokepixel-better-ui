@@ -117,17 +117,17 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
   assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets HUD must not introduce prohibited visual styling");
 });
 
-test("Team preset manager keeps 260x124 minimum cards and mirrors approved Team HUD member language", t => {
+test("Team preset manager keeps 260x124 minimum cards and prioritizes composition over maintenance controls", t => {
   const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"></section></div></div>`);
   const root = dom.window.document.body.firstChild;
   const manager = mountTeamPresetManager(root, { store: store(), hudRoot: null, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }), runExclusive: task => task(), onChange: () => {} });
   t.after(() => { manager.cleanup(); dom.window.close(); });
   const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent;
   assert.match(css, /min-width:260px; min-height:124px/);
-  assert.match(css, /opacity:\.52/);
+  assert.match(css, /opacity:0; pointer-events:none/);
+  assert.match(css, /:hover \[data-ppbui-team-preset-member-controls\].*opacity:1; pointer-events:auto/s);
   assert.match(css, /background:#1d1d20/);
   assert.match(css, /border-color:#72cf64/);
-  assert.match(css, /:focus-within/);
   assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets manager must not introduce prohibited visual styling");
 
@@ -143,4 +143,17 @@ test("Team preset manager keeps 260x124 minimum cards and mirrors approved Team 
   const icons = [...card.querySelectorAll("button")].map(button => button.textContent);
   for (const icon of ["↑", "↓", "×", "★", "↻", "▶"]) assert.ok(icons.includes(icon), `missing ${icon}`);
   assert.match(root.querySelector("[data-ppbui-team-preset-manager] > summary").textContent, /· 1$/);
+});
+
+test("Team preset manager recovers sprite and current level from Team HUD when saved metadata is incomplete", t => {
+  const { dom, root: hudRoot } = hudDom();
+  const doc = dom.window.document;
+  const teamRoot = doc.createElement("div"); teamRoot.className = "pokeidle-team-panel"; teamRoot.innerHTML = `<div class="pokeidle-panel__body"><section class="team-section team-section--roster"></section></div>`; doc.body.append(teamRoot);
+  const manager = mountTeamPresetManager(teamRoot, { store: store(), hudRoot, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }), runExclusive: task => task(), onChange: () => {} });
+  t.after(() => { manager.cleanup(); dom.window.close(); });
+
+  const first = teamRoot.querySelector("[data-ppbui-team-preset-member]");
+  assert.equal(first.querySelector("img").src, "https://example.test/a.png");
+  assert.equal(first.querySelector("[data-ppbui-team-preset-member-level]").textContent, "Lv.45");
+  assert.doesNotMatch(first.textContent, /^A$/, "live HUD visual should replace the text-only fallback for the current member");
 });
