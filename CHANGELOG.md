@@ -19,6 +19,7 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Team HUD preset previews now mirror the existing Team HUD card language instead of generic mini-slots: native sprite/level presentation, compact card proportions, live HP/EXP bars for members currently present in the HUD, fainted state and green active border. Native `.pokeidle-team-card` nodes are never cloned, so original Team HUD actions/selectors remain isolated.
 - Refined Team HUD preset cards into a strict two-row hierarchy: team name/count and discreet Manage/Apply controls on the first row, followed by six equal Pokémon slots in official Battle order with level, position and active-state cues on the second row. Functional Team preset behavior remains unchanged; in-game visual validation remains pending.
 - Refined Team presets UI after functional approval and UI/UX rejection: fixed HUD collapse visibility, restored readable dark-theme text hierarchy, reused the established gold/gray native palette, compacted secondary actions to icon buttons, and aligned Team manager cards with the visual density used by Team, Hunts and Chat. In-game visual validation remains pending.
 - Team presets now preserve official `team.member_ids[]` Battle order separately from the active/Hunt Pokémon, apply native Battle order controls sequentially, migrate v1 presets as unverified, keep HUD access collapsed by default, and add a native Team manager with 260x124 minimum cards for rename/reorder/update/apply/delete maintenance. In-game validation remains pending.
