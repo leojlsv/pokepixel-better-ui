@@ -20,7 +20,7 @@ function styleNode(doc) {
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-detail__info { min-width:0; flex:1; }
     .ppbui-team-profile-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:8px; min-width:0; }
     .pokeidle-team-panel .ppbui-team-profile-controls > .team-order-controls { display:flex; align-items:center; gap:4px; flex:0 1 auto; min-width:0; width:auto; margin:0; padding:0; border:0; background:none; box-shadow:none; }
-    .pokeidle-team-panel .ppbui-team-profile-controls .team-order-label { min-width:0; margin:0; font:inherit; font-size:9px; }
+    .pokeidle-team-panel .ppbui-team-profile-controls .team-order-label { min-width:0; margin:0; font:inherit; font-size:10px; font-weight:400; letter-spacing:normal; color:inherit; }
     .pokeidle-team-panel .ppbui-team-profile-controls .team-order-button { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px!important; min-width:26px!important; height:26px!important; min-height:26px!important; padding:0!important; font:inherit; line-height:1; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .ppbui-team-profile-controls > .team-active-state { max-width:100%; margin:0; white-space:normal; }
     [data-ppbui-team-compare], [data-ppbui-team-compare] > summary, .ppbui-team-compare-grid { font:inherit; }

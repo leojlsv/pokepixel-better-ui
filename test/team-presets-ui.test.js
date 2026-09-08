@@ -210,3 +210,27 @@ test("Team minimum width is scoped to the mounted manager and restored on cleanu
   manager.cleanup();
   assert.equal(dom.window.getComputedStyle(root).minWidth, '300px');
 });
+
+test("saved-team deletion uses the native shop dialog and requires confirmed acceptance", async t => {
+  const dom = new JSDOM('<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"></div></div>');
+  const root=dom.window.document.body.firstChild, saved=store(); let calls=0,deleted=0,resolveDialog;
+  saved.remove=()=>{deleted++;return true;};
+  dom.window.confirm=()=>assert.fail('browser confirmation must not be used');
+  dom.window.PokeIdle={Dialog:{confirm:(message,options)=>{calls++; assert.equal(options.danger,true);assert.equal(options.hint,'Gym');assert.equal(options.acceptLabel,'Delete'); return new Promise(resolve=>{resolveDialog=resolve;});}}};
+  const manager=mountTeamPresetManager(root,{store:saved}); t.after(()=>{manager.cleanup();dom.window.close();});
+  const remove=()=>root.querySelector('[data-ppbui-team-preset-card-head] button:last-child');
+  remove().click();remove().click();assert.equal(calls,1);assert.equal(deleted,0);
+  resolveDialog(false);await Promise.resolve();assert.equal(deleted,0);
+  remove().click();resolveDialog(true);await Promise.resolve();assert.equal(deleted,1);
+  remove().click();manager.cleanup();resolveDialog(true);await Promise.resolve();assert.equal(deleted,1);
+});
+
+test("missing or rejected native confirmation cannot delete saved teams", async t=>{
+  const dom=new JSDOM('<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"></div></div>'),root=dom.window.document.body.firstChild,saved=store();
+  saved.remove=()=>assert.fail('must retain preset');
+  const manager=mountTeamPresetManager(root,{store:saved});t.after(()=>{manager.cleanup();dom.window.close();});
+  const remove=root.querySelector('[data-ppbui-team-preset-card-head] button:last-child');remove.click();
+  assert.equal(root.querySelector('[data-ppbui-team-preset-manager-status]').dataset.error,'true');
+  dom.window.PokeIdle={Dialog:{confirm:async()=>{throw new Error('unavailable');}}};remove.click();await Promise.resolve();
+  assert.equal(root.querySelector('[data-ppbui-team-preset-manager-status]').dataset.error,'true');
+});

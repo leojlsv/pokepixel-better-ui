@@ -63,7 +63,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   const summary = doc.createElement("summary"), grid = doc.createElement("div"), status = doc.createElement("p");
   grid.dataset.ppbuiTeamPresetManagerGrid = ""; status.dataset.ppbuiTeamPresetManagerStatus = ""; status.setAttribute("aria-live", "polite");
   details.append(summary, grid, status); root.append(style);
-  let renderedPresets = null, renderedLevels = [], readVisual;
+  let renderedPresets = null, renderedLevels = [], readVisual, confirmingDelete = false, disposed = false;
   const selections = new Map();
 
   function ensureMounted() {
@@ -84,6 +84,22 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     const result = await runExclusive(task);
     setStatus(result?.ok ? copy.applied : errorMessage(copy, result, preset), !result?.ok);
     sync(); return result;
+  }
+
+  async function confirmDelete(preset, trigger) {
+    if (confirmingDelete || disposed) return;
+    const copy = text(), dialog = win?.PokeIdle?.Dialog;
+    if (!dialog?.confirm) return setStatus(copy.errors["confirmation-unavailable"], true);
+    confirmingDelete = true;
+    try {
+      const confirmed = await dialog.confirm(copy.deleteConfirm, { title: copy.remove, hint: preset.name, acceptLabel: copy.remove, danger: true });
+      if (confirmed === true && !disposed && root.isConnected && store.remove(preset.id)) changed();
+    } catch {
+      if (!disposed) setStatus(copy.errors["confirmation-unavailable"], true);
+    } finally {
+      confirmingDelete = false;
+      if (!disposed && trigger.isConnected) trigger.focus({ preventScroll: true });
+    }
   }
 
   function samePresets(next) {
@@ -128,7 +144,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
       const remove = iconButton(doc, "×", copy.remove); remove.setAttribute("aria-label", `${copy.remove}: ${preset.name}`);
       rename.addEventListener("change", () => { if (!store.rename(preset.id, rename.value)) rename.value = preset.name; else changed(); });
       up.addEventListener("click", () => { if (store.movePreset(preset.id, -1)) changed(); }); down.addEventListener("click", () => { if (store.movePreset(preset.id, 1)) changed(); });
-      remove.addEventListener("click", () => { if (win?.confirm && !win.confirm(copy.deleteConfirm)) return; if (store.remove(preset.id)) changed(); });
+      remove.addEventListener("click", () => confirmDelete(preset, remove));
       headActions.append(up, down, remove); head.append(rename, headActions);
 
       const activeMember = preset.members.find(member => member.id === preset.activeId);
@@ -191,6 +207,6 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   return {
     sync,
     open() { ensureMounted(); details.open = true; details.scrollIntoView?.({ block: "nearest" }); },
-    cleanup() { details.removeEventListener("toggle", onToggle); details.remove(); style.remove(); },
+    cleanup() { disposed = true; details.removeEventListener("toggle", onToggle); details.remove(); style.remove(); },
   };
 }

@@ -25,6 +25,9 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Replaced the browser confirmation for saved-team deletion with the same `PokeIdle.Dialog.confirm` API used by Mark’s Shop sales, including the preset name and destructive-action option. Cancellation, unavailable/failed dialogs and module cleanup never delete a preset; concurrent prompts are suppressed.
+- Aligned the native Battle order label with the profile buttons using the same 10px typography, normal weight and spacing instead of the tiny, letter-spaced label.
+
 - Shortened the native active-state profile button to `⚔ Active` (localized) and kept the removal button label concise even when blocked. Full native explanations remain in tooltips and accessible descriptions; disabled rules and handlers remain native. Unified profile controls at 26px height with aligned icons/text and wrapping between controls rather than within their labels. Cleanup restores original text and attributes.
 
 - Grouped all native Pokémon profile actions together: Battle order, Make active, Details and Remove from team now share the compact profile control area. Removed the separate Details/Remove container styling, retained the native destructive treatment and original buttons/handlers, and allowed natural wrapping at narrow widths. Cleanup and SPA refresh preserve original placement and state.

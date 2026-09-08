@@ -1,6 +1,7 @@
 import { teamPresetsConfig as config } from "./config.js";
 
 const sharedErrors = {
+  "confirmation-unavailable": "The game confirmation dialog is unavailable. Please try again.",
   "team-panel-unavailable": "Could not open the Team window.",
   "preset-invalid": "The saved preset is invalid.",
   "order-unverified": "Review the saved battle order before applying this legacy preset.",
