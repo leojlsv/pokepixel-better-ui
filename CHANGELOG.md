@@ -6,6 +6,8 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's approval of native rounding in Team preset cards and tiles.
+
 - Recorded the user's in-game approval of the Team > Saved teams controls in `c6d8e41`, following confirmation that the FPS regression is resolved. No validation remains pending for these two fixes; no runtime changes in this entry.
 
 - Recorded the user's final in-game validation and approval of Team, including compact profile actions, collapsed comparison, equipped-Pokémon information flow and Add Pokémon name/element/rarity filters; no validation remains pending for this scope.
@@ -20,6 +22,8 @@ All notable project changes are recorded in this file.
 - Recorded authorization and implementation of the menu-bar organization plan covering 33 client-defined destinations.
 
 ### Changed
+
+- Grouped all native Pokémon profile actions together: Battle order, Make active, Details and Remove from team now share the compact profile control area. Removed the separate Details/Remove container styling, retained the native destructive treatment and original buttons/handlers, and allowed natural wrapping at narrow widths. Cleanup and SPA refresh preserve original placement and state.
 
 - Restored native rounding to Team preset previews: 4px outer HUD cards and 3px Pokémon tiles, matching the existing HUD rather than imposing square edges. Existing native manager section rounding remains intact.
 - Moved the original Team Battle order label/arrows and active-state action beside the Pokémon profile information in a compact wrapping group. Removed the full-width order box while preserving original nodes, handlers, disabled state, translations and native Apply selectors; cleanup restores their original positions.

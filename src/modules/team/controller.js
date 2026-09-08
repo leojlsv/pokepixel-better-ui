@@ -32,6 +32,8 @@ function styleNode(doc) {
     .ppbui-team-positive { color:#8fca7a; } .ppbui-team-negative { color:#d18b82; }
     .team-actions[data-ppbui-team-actions] { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; margin-top:6px; }
     .team-actions[data-ppbui-team-actions] > .pokeidle-btn { flex:0 0 auto; width:auto; min-height:0; margin:0; padding:5px 8px; font:inherit; }
+    .pokeidle-team-panel .ppbui-team-profile-controls > .team-actions[data-ppbui-team-actions] { flex:0 1 auto; min-width:0; justify-content:flex-start; margin:0; padding:0; border:0; background:none; box-shadow:none; }
+    .pokeidle-team-panel .ppbui-team-profile-controls > .team-actions[data-ppbui-team-actions] > button { max-width:100%; white-space:normal; }
     .ppbui-team-picker-toolbar { display:flex; gap:6px; margin:0 0 8px; }
     .ppbui-team-picker-toolbar > input { min-width:0; flex:1 1 120px; }
     .ppbui-team-picker-toolbar > select { min-width:0; flex:1 1 100px; }
@@ -76,8 +78,8 @@ export function mountTeam(root) {
   }
 
   function compactProfileControls(parts) {
-    const nodes = [parts.orderControls, parts.active].filter(Boolean);
-    if (!parts.profileInfo || !parts.orderControls) { restoreProfileControls(); return; }
+    const nodes = [parts.orderControls, parts.active, parts.actions].filter(Boolean);
+    if (!parts.profileInfo) { restoreProfileControls(); return; }
     if (profileControls?.parentElement === parts.profileInfo && nodes.length === profileMoves.length && nodes.every(node => node.parentElement === profileControls)) return;
     restoreProfileControls();
     profileControls = doc.createElement("div"); profileControls.className = "ppbui-team-profile-controls";
@@ -138,7 +140,7 @@ export function mountTeam(root) {
       });
     });
     comparison.append(summary, grid);
-    (parts.vitals || currentActions || parts.profile).before(comparison);
+    (parts.vitals || parts.profile).before(comparison);
     signature = nextSignature;
   }
 

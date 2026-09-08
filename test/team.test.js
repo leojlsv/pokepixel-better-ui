@@ -35,7 +35,7 @@ test("comparison is contextual and reports active, selected and numeric deltas",
 
 test("native actions move intact, preserve disabled state and return on cleanup", t => {
   const s = setup(t), actions = s.root.querySelector(".team-actions"), details = actions.firstElementChild, profile = s.root.querySelector(".team-section--profile"); let clicks = 0;
-  details.addEventListener("click", () => clicks++); details.click(); assert.equal(clicks, 1); assert.equal(profile.nextElementSibling, actions); assert.equal(profile.querySelector(".team-active-state")?.textContent, "Active"); assert.equal(actions.lastElementChild.disabled, true);
+  details.addEventListener("click", () => clicks++); details.click(); assert.equal(clicks, 1); assert.equal(actions.parentElement, profile.querySelector(".ppbui-team-profile-controls")); assert.equal(profile.querySelector(".team-active-state")?.textContent, "Active"); assert.equal(actions.lastElementChild.disabled, true);
   s.controller.cleanup(); assert.equal(s.root.outerHTML, s.before);
 });
 
@@ -68,6 +68,7 @@ test("native Battle order actions stay in the profile with intact handlers and e
   const active = s.root.querySelector('.team-active-state'), info = s.root.querySelector('.team-detail__info');
   assert.equal(order.parentElement.parentElement, info);
   assert.equal(active.parentElement, order.parentElement);
+  assert.equal(s.root.querySelector(".team-actions").parentElement, order.parentElement);
   let moves = 0; left.onclick = () => moves++;
   left.click(); right.click(); assert.equal(moves, 1); assert.equal(right.disabled, true);
   s.controller.sync(); assert.equal(s.root.querySelector('.team-order-controls'), order);
