@@ -12,18 +12,27 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   style.textContent = `
     [data-ppbui-team-presets] { display:grid; gap:4px; margin-top:6px; padding-top:5px; border-top:1px solid rgba(241,214,129,.18); color:#d8d3ca; font:inherit; }
     [data-ppbui-team-presets-toolbar] { display:flex; align-items:center; gap:4px; min-width:0; }
-    [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-toggle { flex:1 1 auto; min-width:0; justify-content:flex-start; color:var(--ui-gold-light,#f1d681)!important; font:inherit; font-weight:700; text-align:left; }
+    [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-toggle { flex:1 1 auto; min-width:0; min-height:24px; justify-content:flex-start; padding:3px 7px; color:var(--ui-gold-light,#f1d681)!important; font:inherit; font-weight:700; text-align:left; }
     [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-icon { flex:0 0 26px; width:26px; min-width:26px; min-height:24px; padding:3px 5px; color:#d8d3ca!important; font:inherit; }
     [data-ppbui-team-presets-panel] { display:grid; gap:5px; }
     [data-ppbui-team-presets-panel][hidden] { display:none!important; }
     [data-ppbui-team-presets-save] { display:grid; grid-template-columns:minmax(0,1fr) 28px; gap:4px; }
-    [data-ppbui-team-presets-save] > button { min-width:28px; padding:3px 5px; color:#d8d3ca!important; }
-    [data-ppbui-team-presets-list] { display:grid; gap:3px; max-height:160px; overflow:auto; }
-    [data-ppbui-team-presets-row] { display:grid; grid-template-columns:minmax(0,1fr) 28px; gap:2px 4px; align-items:center; padding:3px 4px; border:1px solid rgba(241,214,129,.12); background:#141416ed; }
-    [data-ppbui-team-presets-row] > button { min-width:28px; min-height:22px; padding:2px 4px; color:#d8d3ca!important; }
+    [data-ppbui-team-presets-save] > button { min-width:28px; min-height:24px; padding:3px 5px; color:#d8d3ca!important; }
+    [data-ppbui-team-presets-list] { display:grid; gap:4px; max-height:174px; overflow:auto; }
+    [data-ppbui-team-presets-row] { display:grid; grid-template-columns:minmax(0,1fr) 28px; grid-template-rows:auto auto; gap:3px 5px; align-items:center; min-width:0; padding:4px 5px; border:1px solid rgba(241,214,129,.12); background:rgba(20,20,22,.72); }
+    [data-ppbui-team-presets-row] > button { grid-column:2; grid-row:1/3; align-self:stretch; min-width:28px; min-height:0; padding:2px 4px; color:#d8d3ca!important; }
+    [data-ppbui-team-presets-row-head] { display:flex; align-items:baseline; gap:5px; min-width:0; }
     [data-ppbui-team-presets-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-team-presets-members] { grid-column:1/-1; overflow:hidden; color:#aaa7a1; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-presets-count] { flex:0 0 auto; color:#77746f; font-size:8px; }
+    [data-ppbui-team-presets-members] { grid-column:1; display:grid; grid-template-columns:repeat(6,24px); gap:3px; width:max-content; max-width:100%; overflow:hidden; }
+    [data-ppbui-team-presets-member] { position:relative; display:grid; place-items:center; box-sizing:border-box; width:24px; height:24px; overflow:hidden; border:1px solid rgba(241,214,129,.12); background:rgba(0,0,0,.18); color:#aaa7a1; font-size:8px; }
+    [data-ppbui-team-presets-member][data-active="true"] { border-color:var(--ui-gold-light,#f1d681); box-shadow:inset 0 0 0 1px rgba(241,214,129,.14); }
+    [data-ppbui-team-presets-member][data-active="true"]::after { content:"★"; position:absolute; top:0; right:1px; color:var(--ui-gold-light,#f1d681); font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-presets-member] img { display:block; max-width:22px; max-height:22px; image-rendering:pixelated; }
+    [data-ppbui-team-presets-member-fallback] { max-width:20px; overflow:hidden; text-overflow:clip; white-space:nowrap; }
+    [data-ppbui-team-presets-member-position] { position:absolute; bottom:0; left:1px; color:#aaa7a1; font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
     [data-ppbui-team-presets-status] { margin:0; color:#aaa7a1; font-size:9px; }
+    [data-ppbui-team-presets-status]:empty { display:none; }
     [data-ppbui-team-presets-status][data-error="true"] { color:#d18b82; font-weight:700; }
   `;
 
@@ -64,21 +73,41 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     finally { busy = false; sync(); }
   }
 
+  function presetPreview(preset, copy) {
+    const preview = doc.createElement("div"); preview.dataset.ppbuiTeamPresetsMembers = ""; preview.setAttribute("role", "list");
+    const description = preset.members.map((member, index) => `${index + 1}. ${member.name}${member.id === preset.activeId ? ` · ${copy.active}` : ""}`).join("; ");
+    preview.title = description; preview.setAttribute("aria-label", description);
+    preset.members.forEach((member, index) => {
+      const item = doc.createElement("span"); item.dataset.ppbuiTeamPresetsMember = ""; item.dataset.active = String(member.id === preset.activeId); item.setAttribute("role", "listitem");
+      item.title = `${index + 1}. ${member.name}${member.id === preset.activeId ? ` · ${copy.active}` : ""}`;
+      const position = doc.createElement("span"); position.dataset.ppbuiTeamPresetsMemberPosition = ""; position.textContent = String(index + 1);
+      if (member.sprite) {
+        const image = doc.createElement("img"); image.src = member.sprite; image.alt = member.name; item.append(image, position);
+      } else {
+        const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetsMemberFallback = ""; fallback.textContent = member.name.slice(0, 3).toUpperCase(); item.append(fallback, position);
+      }
+      preview.append(item);
+    });
+    return preview;
+  }
+
   function renderList() {
     const copy = text(), presets = store.list(); list.replaceChildren();
-    if (!presets.length) { const empty = doc.createElement("p"); empty.dataset.ppbuiTeamPresetsMembers = ""; empty.textContent = copy.empty; list.append(empty); return; }
+    if (!presets.length) { const empty = doc.createElement("p"); empty.dataset.ppbuiTeamPresetsStatus = ""; empty.textContent = copy.empty; list.append(empty); return; }
     for (const preset of presets) {
       const row = doc.createElement("div"); row.dataset.ppbuiTeamPresetsRow = "";
+      const head = doc.createElement("div"); head.dataset.ppbuiTeamPresetsRowHead = "";
       const label = doc.createElement("span"); label.dataset.ppbuiTeamPresetsName = ""; label.textContent = preset.name; label.title = preset.name;
+      const count = doc.createElement("span"); count.dataset.ppbuiTeamPresetsCount = ""; count.textContent = `${preset.members.length}/6`;
       const applyButton = doc.createElement("button"); applyButton.type = "button"; applyButton.className = "pokeidle-btn"; applyButton.textContent = "▶"; applyButton.disabled = preset.orderVerified === false;
       applyButton.title = `${copy.apply}: ${preset.name}`; applyButton.setAttribute("aria-label", applyButton.title);
-      const members = doc.createElement("span"); members.dataset.ppbuiTeamPresetsMembers = "";
-      members.textContent = preset.members.map((member, index) => `${index + 1}.${member.name}${member.id === preset.activeId ? "*" : ""}`).join(" · "); members.title = members.textContent;
+      head.append(label, count);
+      const preview = presetPreview(preset, copy);
       applyButton.addEventListener("click", async () => {
         setStatus(copy.applying); const result = await runExclusive(() => apply(doc, preset));
         setStatus(result?.ok ? copy.applied : errorMessage(result, preset), !result?.ok);
       });
-      row.append(label, applyButton, members); list.append(row);
+      row.append(head, applyButton, preview); list.append(row);
     }
   }
 
@@ -103,7 +132,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   function syncLabels() {
     const copy = text(), expanded = !panel.hidden, count = store.list().length;
-    const toggleLabel = `${expanded ? "▾" : "▸"} ${copy.toggle}${count ? ` ${count}` : ""}`;
+    const toggleLabel = `${expanded ? "▾" : "▸"} ${copy.toggle}${count ? ` · ${count}` : ""}`;
     if (toggle.textContent !== toggleLabel) toggle.textContent = toggleLabel;
     if (toggle.getAttribute("aria-expanded") !== String(expanded)) toggle.setAttribute("aria-expanded", String(expanded));
     const manageTitle = copy.manage;

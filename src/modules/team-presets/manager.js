@@ -22,23 +22,29 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-manager] { margin-top:10px; color:#d8d3ca; font:inherit; }
     [data-ppbui-team-preset-manager] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-manager-grid] { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px; margin-top:8px; }
-    [data-ppbui-team-preset-card] { box-sizing:border-box; min-width:260px; min-height:124px; display:grid; grid-template-rows:auto 1fr auto; gap:6px; padding:8px; color:#d8d3ca; }
-    [data-ppbui-team-preset-card-head], [data-ppbui-team-preset-card-foot] { display:flex; align-items:center; gap:4px; min-width:0; }
-    [data-ppbui-team-preset-card-head] > input { flex:1 1 auto; min-width:0; }
-    .ppbui-team-preset-icon { flex:0 0 25px; width:25px; min-width:25px; min-height:22px; padding:2px 4px; color:#d8d3ca!important; font:inherit; }
+    [data-ppbui-team-preset-card] { box-sizing:border-box; min-width:260px; min-height:124px; display:grid; grid-template-rows:auto auto 1fr auto; gap:5px; padding:7px; color:#d8d3ca; }
+    [data-ppbui-team-preset-card-head], [data-ppbui-team-preset-card-foot], [data-ppbui-team-preset-card-meta] { display:flex; align-items:center; gap:4px; min-width:0; }
+    [data-ppbui-team-preset-card-head] > input { flex:1 1 auto; min-width:0; min-height:24px; padding:3px 6px; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
+    [data-ppbui-team-preset-card-actions] { display:flex; flex:0 0 auto; gap:2px; }
+    .ppbui-team-preset-icon { flex:0 0 24px; width:24px; min-width:24px; min-height:22px; padding:2px 4px; color:#d8d3ca!important; font:inherit; }
+    [data-ppbui-team-preset-card-meta] { justify-content:space-between; color:#aaa7a1; font-size:9px; }
+    [data-ppbui-team-preset-active-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:center; min-width:0; }
-    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:34px 14px; place-items:center; min-width:0; min-height:56px; padding:3px 1px 2px; border:1px solid rgba(241,214,129,.14); background:#141416ed; color:#d8d3ca; }
-    [data-ppbui-team-preset-member][data-active="true"] { border-color:var(--ui-gold-light,#f1d681); }
-    [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:0; right:2px; color:var(--ui-gold-light,#f1d681); font-size:8px; line-height:1; }
-    [data-ppbui-team-preset-member] img { display:block; max-width:34px; max-height:34px; image-rendering:pixelated; }
-    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:34px; color:#d8d3ca; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; }
-    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; }
-    [data-ppbui-team-preset-member-controls] > button { min-width:0; min-height:0; padding:0 3px; color:#d8d3ca!important; font-size:9px; line-height:13px; }
+    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:36px 13px; place-items:center; min-width:0; min-height:58px; overflow:hidden; padding:3px 1px 2px; border:1px solid rgba(241,214,129,.12); background:rgba(20,20,22,.58); color:#d8d3ca; }
+    [data-ppbui-team-preset-member][data-active="true"] { border-color:var(--ui-gold-light,#f1d681); box-shadow:inset 0 0 0 1px rgba(241,214,129,.12); }
+    [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:1px; right:2px; color:var(--ui-gold-light,#f1d681); font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-preset-member] img { display:block; max-width:36px; max-height:36px; image-rendering:pixelated; }
+    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:36px; color:#d8d3ca; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; width:100%; opacity:.38; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { opacity:1; }
+    [data-ppbui-team-preset-member-controls] > button { flex:1 1 0; min-width:0; min-height:0; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:12px; }
     [data-ppbui-team-preset-member-controls] > button[data-active-control="true"] { color:var(--ui-gold-light,#f1d681)!important; }
-    [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:2px; border-top:1px solid rgba(241,214,129,.12); }
+    [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:4px; border-top:1px solid rgba(241,214,129,.12); }
+    [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon:last-child { color:var(--ui-gold-light,#f1d681)!important; }
     [data-ppbui-team-preset-review] { margin:0; color:#d18b82; font-size:9px; font-weight:700; }
     [data-ppbui-team-preset-manager-status] { margin:6px 0 0; color:#aaa7a1; font-size:9px; }
+    [data-ppbui-team-preset-manager-status]:empty { display:none; }
     [data-ppbui-team-preset-manager-status][data-error="true"] { color:#d18b82; font-weight:700; }
   `;
 
@@ -92,13 +98,20 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
       const card = doc.createElement("section"); card.className = "team-section"; card.dataset.ppbuiTeamPresetCard = "";
       const head = doc.createElement("div"); head.dataset.ppbuiTeamPresetCardHead = "";
       const rename = doc.createElement("input"); rename.type = "text"; rename.maxLength = 40; rename.className = "game-window__search"; rename.value = preset.name; rename.setAttribute("aria-label", copy.presetName);
+      const headActions = doc.createElement("div"); headActions.dataset.ppbuiTeamPresetCardActions = "";
       const up = iconButton(doc, "↑", copy.moveUp); up.disabled = presetIndex === 0;
       const down = iconButton(doc, "↓", copy.moveDown); down.disabled = presetIndex === presets.length - 1;
       const remove = iconButton(doc, "×", copy.remove); remove.setAttribute("aria-label", `${copy.remove}: ${preset.name}`);
       rename.addEventListener("change", () => { if (!store.rename(preset.id, rename.value)) rename.value = preset.name; else changed(); });
       up.addEventListener("click", () => { if (store.movePreset(preset.id, -1)) changed(); }); down.addEventListener("click", () => { if (store.movePreset(preset.id, 1)) changed(); });
       remove.addEventListener("click", () => { if (win?.confirm && !win.confirm(copy.deleteConfirm)) return; if (store.remove(preset.id)) changed(); });
-      head.append(rename, up, down, remove);
+      headActions.append(up, down, remove); head.append(rename, headActions);
+
+      const activeMember = preset.members.find(member => member.id === preset.activeId);
+      const meta = doc.createElement("div"); meta.dataset.ppbuiTeamPresetCardMeta = "";
+      const count = doc.createElement("span"); count.textContent = `${preset.members.length}/6`;
+      const activeName = doc.createElement("span"); activeName.dataset.ppbuiTeamPresetActiveName = ""; activeName.textContent = `★ ${activeMember?.name || copy.active}`; activeName.title = `${copy.active}: ${activeMember?.name || "—"}`;
+      meta.append(count, activeName);
 
       const members = doc.createElement("div"); members.dataset.ppbuiTeamPresetMembers = ""; preset.members.forEach((member, index) => members.append(memberCell(preset, member, index, copy)));
       const foot = doc.createElement("div"); foot.dataset.ppbuiTeamPresetCardFoot = "";
@@ -111,7 +124,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
         if (store.replaceSnapshot(preset.id, result.snapshot)) { setStatus(copy.updated); changed(); }
       });
       foot.append(update, applyButton);
-      card.append(head, members);
+      card.append(head, meta, members);
       if (preset.orderVerified === false) {
         const review = doc.createElement("p"); review.dataset.ppbuiTeamPresetReview = ""; review.textContent = copy.orderReview;
         const confirm = iconButton(doc, "✓", copy.confirmOrder);
@@ -123,7 +136,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   }
 
   function syncSummary() {
-    const copy = text(), count = store.list().length, label = `${copy.savedTeams}${count ? ` (${count})` : ""}`;
+    const copy = text(), count = store.list().length, label = `${copy.savedTeams}${count ? ` · ${count}` : ""}`;
     if (summary.textContent !== label) summary.textContent = label;
   }
 
