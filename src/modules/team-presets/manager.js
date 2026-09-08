@@ -33,15 +33,16 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-card-meta] { justify-content:space-between; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-preset-active-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:center; min-width:0; }
-    [data-ppbui-team-preset-member] { position:relative; display:grid; grid-template-rows:40px 13px; place-items:center; min-width:0; min-height:60px; overflow:hidden; padding:2px 1px 1px; border:1px solid #33343a; background:#1d1d20; color:#d8d3ca; }
+    [data-ppbui-team-preset-member] { position:relative; display:grid; place-items:center; min-width:0; height:58px; overflow:hidden; padding:2px 1px 1px; border:1px solid #33343a; background:#1d1d20; color:#d8d3ca; }
     [data-ppbui-team-preset-member][data-active="true"] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
     [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:1px; right:2px; color:#8fca7a; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member] img { display:block; max-width:38px; max-height:38px; image-rendering:pixelated; }
-    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:38px; color:#d8d3ca; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-preset-member] img { display:block; max-width:40px; max-height:40px; image-rendering:pixelated; }
+    [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:42px; color:#aaa7a1; font-size:8px; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member-level] { position:absolute; z-index:2; right:1px; bottom:14px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:#050506; color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; width:100%; opacity:.52; transition:opacity .12s linear; }
-    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { opacity:1; }
+    [data-ppbui-team-preset-member-level] { position:absolute; z-index:2; right:1px; bottom:2px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:#050506; color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-member-controls] { position:absolute; z-index:3; right:1px; bottom:1px; left:1px; display:flex; gap:1px; opacity:0; pointer-events:none; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { opacity:1; pointer-events:auto; }
+    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-level], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-level] { opacity:0; }
     [data-ppbui-team-preset-member-controls] > button { flex:1 1 0; min-width:0; min-height:0; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:12px; }
     [data-ppbui-team-preset-member-controls] > button[data-active-control="true"] { color:var(--ui-gold-light,#f1d681)!important; }
     [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:4px; border-top:1px solid rgba(241,214,129,.12); }
@@ -81,12 +82,31 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     sync(); return result;
   }
 
+  function liveMemberVisual(member) {
+    const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
+    const creature = Array.isArray(runtime?._creatures) ? runtime._creatures.find(entry => String(entry?.id ?? "") === member.id) : null;
+    const card = hudRoot ? [...hudRoot.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === member.id) : null;
+    const source = creature || member;
+    const sprite = String(card?.querySelector("img[src]")?.src || member.sprite || source?.sprite_url || source?.sprite || source?.species?.sprite_url || source?.species?.sprite || "").trim();
+    const level = Number(creature?.level ?? member.level);
+    return { sprite, level: Number.isFinite(level) ? level : null };
+  }
+
+  function liveVisualSignature() {
+    const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
+    if (!Array.isArray(runtime?._creatures)) return "";
+    return runtime._creatures.map(creature => {
+      const id = String(creature?.id ?? ""), card = hudRoot ? [...hudRoot.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === id) : null;
+      return [id, creature?.level, card?.querySelector("img[src]")?.src || ""];
+    });
+  }
+
   function memberCell(preset, member, index, copy) {
-    const levelText = Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "";
+    const visual = liveMemberVisual(member), levelText = visual.level !== null ? `Lv.${visual.level}` : "";
     const label = `${index + 1}. ${member.name}${levelText ? ` · ${levelText}` : ""}${preset.activeId === member.id ? ` · ${copy.active}` : ""}`;
     const cell = doc.createElement("div"); cell.dataset.ppbuiTeamPresetMember = ""; cell.dataset.active = String(preset.activeId === member.id); cell.title = label; cell.setAttribute("aria-label", label);
     const position = doc.createElement("span"); position.dataset.ppbuiTeamPresetMemberPosition = ""; position.textContent = String(index + 1);
-    if (member.sprite) { const img = doc.createElement("img"); img.src = member.sprite; img.alt = member.name; cell.append(position, img); }
+    if (visual.sprite) { const img = doc.createElement("img"); img.src = visual.sprite; img.alt = member.name; cell.append(position, img); }
     else { const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetMemberFallback = ""; fallback.textContent = member.name; cell.append(position, fallback); }
     const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetMemberLevel = ""; level.textContent = levelText; cell.append(level);
     const controls = doc.createElement("div"); controls.dataset.ppbuiTeamPresetMemberControls = "";
@@ -100,7 +120,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   }
 
   function render() {
-    const presets = store.list(), nextSignature = JSON.stringify(presets);
+    const presets = store.list(), nextSignature = JSON.stringify([presets, liveVisualSignature()]);
     if (signature === nextSignature) return; signature = nextSignature;
     const copy = text(); grid.replaceChildren();
     if (!presets.length) { const empty = doc.createElement("p"); empty.textContent = copy.empty; empty.style.color = "#aaa7a1"; grid.append(empty); return; }
