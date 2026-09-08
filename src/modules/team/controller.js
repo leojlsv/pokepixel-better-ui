@@ -17,6 +17,12 @@ function styleNode(doc) {
     .team-slot > [data-ppbui-team-slot] { position:absolute; right:3px; bottom:2px; left:3px; overflow:hidden; color:inherit; font-size:9px; line-height:1.2; text-align:center; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 1px #000; pointer-events:none; }
     .team-slot.ppbui-team-fainted > [data-ppbui-team-slot] { color:#c9a6a3; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-active-state { display:block; width:auto; min-height:0; margin:6px 0 0 auto; padding:5px 8px; font:inherit; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] .team-detail__info { min-width:0; flex:1; }
+    .ppbui-team-profile-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:8px; min-width:0; }
+    .pokeidle-team-panel .ppbui-team-profile-controls > .team-order-controls { display:flex; align-items:center; gap:4px; flex:0 1 auto; min-width:0; width:auto; margin:0; padding:0; border:0; background:none; box-shadow:none; }
+    .pokeidle-team-panel .ppbui-team-profile-controls .team-order-label { min-width:0; margin:0; font:inherit; font-size:9px; }
+    .pokeidle-team-panel .ppbui-team-profile-controls .team-order-button { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex:0 0 22px; width:22px!important; min-width:22px!important; height:22px!important; min-height:22px!important; padding:0!important; font:inherit; line-height:1; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] .ppbui-team-profile-controls > .team-active-state { max-width:100%; margin:0; white-space:normal; }
     [data-ppbui-team-compare], [data-ppbui-team-compare] > summary, .ppbui-team-compare-grid { font:inherit; }
     [data-ppbui-team-compare] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font-weight:700; }
     .ppbui-team-compare-grid { display:grid; grid-template-columns:minmax(64px,1fr) repeat(3,minmax(54px,auto)); gap:4px 8px; margin-top:8px; align-items:center; }
@@ -40,6 +46,7 @@ export function mountTeam(root) {
   const doc = root.ownerDocument, style = styleNode(doc);
   root.append(style); root.dataset.ppbuiTeamEnhanced = "";
   let actionAnchor = null, currentActions = null, comparison = null, signature = "", active = true, scene = null;
+  let profileControls = null, profileMoves = [];
   const picker = createTeamPicker(doc, () => scene);
 
   function restoreActions() {
@@ -58,6 +65,27 @@ export function mountTeam(root) {
     currentActions.dataset.ppbuiTeamActions = "";
     currentActions.setAttribute("aria-label", text.actions);
     parts.profile.after(currentActions);
+  }
+
+  function restoreProfileControls() {
+    for (const { node, anchor } of profileMoves) {
+      if (node.isConnected && anchor.isConnected && root.contains(anchor)) anchor.replaceWith(node);
+      anchor.remove();
+    }
+    profileMoves = []; profileControls?.remove(); profileControls = null;
+  }
+
+  function compactProfileControls(parts) {
+    const nodes = [parts.orderControls, parts.active].filter(Boolean);
+    if (!parts.profileInfo || !parts.orderControls) { restoreProfileControls(); return; }
+    if (profileControls?.parentElement === parts.profileInfo && nodes.length === profileMoves.length && nodes.every(node => node.parentElement === profileControls)) return;
+    restoreProfileControls();
+    profileControls = doc.createElement("div"); profileControls.className = "ppbui-team-profile-controls";
+    for (const node of nodes) {
+      const anchor = doc.createComment("ppbui-team-profile-action"); node.before(anchor);
+      profileMoves.push({ node, anchor }); profileControls.append(node);
+    }
+    parts.profileInfo.append(profileControls);
   }
 
   function decorateSlots(parts, scene, text) {
@@ -118,7 +146,7 @@ export function mountTeam(root) {
     if (!active) return;
     const parts = teamParts(root), text = teamText(doc); scene = teamScene(root);
     if (!parts.body || !parts.profile || !scene) { comparison?.remove(); comparison = null; return; }
-    moveActions(parts, text);
+    moveActions(parts, text); compactProfileControls(parts);
     decorateSlots(parts, scene, text);
     renderComparison(parts, scene, text);
     picker.sync(text);
@@ -130,6 +158,6 @@ export function mountTeam(root) {
     root.querySelectorAll("[data-ppbui-team-slot]").forEach(node => node.remove());
     root.querySelectorAll(".ppbui-team-fainted").forEach(node => node.classList.remove("ppbui-team-fainted"));
     root.querySelectorAll(".team-slot[aria-description]").forEach(node => node.removeAttribute("aria-description"));
-    picker.cleanup(); restoreActions(); root.removeAttribute("data-ppbui-team-enhanced"); style.remove();
+    picker.cleanup(); restoreProfileControls(); restoreActions(); root.removeAttribute("data-ppbui-team-enhanced"); style.remove();
   } };
 }

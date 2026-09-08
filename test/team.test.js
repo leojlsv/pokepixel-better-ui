@@ -7,7 +7,7 @@ const members = () => [
   { id: "a", name: "Pikachu", level: 20, power: 120, quality: "rare", hp: 80, max_hp: 100, ivs: { hp: 20, atk: 22 }, atk: 40, def: 30, spa: 50, spd: 35, spe: 60 },
   { id: "b", name: "Marowak", level: 25, power: 160, quality: "epic", hp: 0, max_hp: 120, ivs: { hp: 25, atk: 27 }, atk: 70, def: 65, spa: 25, spd: 45, spe: 30 },
 ];
-const bodyMarkup = () => `<section class="team-section team-section--roster"><div class="team-slots">${Array.from({ length: 6 }, (_, index) => `<button class="team-slot">${index < 2 ? `<span class="team-slot__sprite">${index}</span>` : '<span class="team-slot__empty">+</span>'}</button>`).join("")}</div></section><section class="team-section team-section--profile"><button class="team-active-state">Active</button></section><section class="team-section team-section--vitals">Vitals</section><section class="team-section team-section--attributes">Stats</section><div class="team-actions"><button class="pokeidle-btn">Details</button><button class="pokeidle-btn pokeidle-btn--danger" disabled>Remove</button></div>`;
+const bodyMarkup = () => `<section class="team-section team-section--roster"><div class="team-slots">${Array.from({ length: 6 }, (_, index) => `<button class="team-slot">${index < 2 ? `<span class="team-slot__sprite">${index}</span>` : '<span class="team-slot__empty">+</span>'}</button>`).join("")}</div></section><section class="team-section team-section--profile"><div class="team-detail__hero"><div class="team-detail__info"><h2>Marowak</h2></div></div><button class="team-active-state">Active</button><div class="team-order-controls"><span class="team-order-label">Battle order · position 2</span><button class="pokeidle-btn team-order-button">←</button><button class="pokeidle-btn team-order-button" disabled>→</button></div></section><section class="team-section team-section--vitals">Vitals</section><section class="team-section team-section--attributes">Stats</section><div class="team-actions"><button class="pokeidle-btn">Details</button><button class="pokeidle-btn pokeidle-btn--danger" disabled>Remove</button></div>`;
 
 function setup(t) {
   const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body">${bodyMarkup()}</div></div>`, { url: "https://test.local", pretendToBeVisual: true });
@@ -61,4 +61,19 @@ test("a native full refresh is enhanced once and cleanup never resurrects stale 
   details.addEventListener("click", () => clicks++); s.controller.sync(); s.controller.sync(); details.click(); assert.equal(clicks, 1);
   assert.equal(s.root.querySelectorAll("[data-ppbui-team-compare]").length, 1); assert.equal(s.root.querySelectorAll("[data-ppbui-team-slot]").length, 2); s.controller.cleanup();
   assert.equal(freshActions.parentElement, s.body); assert.equal(staleActions.isConnected, false); assert.equal(s.root.querySelector("[data-ppbui-module]"), null);
+});
+
+test("native Battle order actions stay in the profile with intact handlers and exact cleanup", t => {
+  const s = setup(t), order = s.root.querySelector('.team-order-controls'), left = order.querySelector('button'), right = order.lastElementChild;
+  const active = s.root.querySelector('.team-active-state'), info = s.root.querySelector('.team-detail__info');
+  assert.equal(order.parentElement.parentElement, info);
+  assert.equal(active.parentElement, order.parentElement);
+  let moves = 0; left.onclick = () => moves++;
+  left.click(); right.click(); assert.equal(moves, 1); assert.equal(right.disabled, true);
+  s.controller.sync(); assert.equal(s.root.querySelector('.team-order-controls'), order);
+  s.controller.cleanup();
+  assert.equal(order.parentElement, s.root.querySelector('.team-section--profile'));
+  assert.equal(active.nextElementSibling, order);
+  left.click(); assert.equal(moves, 2);
+  assert.equal(s.root.outerHTML, s.before);
 });

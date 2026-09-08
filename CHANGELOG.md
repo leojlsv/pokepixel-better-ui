@@ -21,6 +21,9 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Restored native rounding to Team preset previews: 4px outer HUD cards and 3px Pokémon tiles, matching the existing HUD rather than imposing square edges. Existing native manager section rounding remains intact.
+- Moved the original Team Battle order label/arrows and active-state action beside the Pokémon profile information in a compact wrapping group. Removed the full-width order box while preserving original nodes, handlers, disabled state, translations and native Apply selectors; cleanup restores their original positions.
+
 - Matched the Team HUD saved-team scrollbar to the native theme, centered owned button icons and exposed preset Up/Down ordering in the HUD using the same saved order as the manager. Replaced preview HP/EXP meters with the native primary-element color, retaining level and fainted state; capture/update stores optional color metadata without changing preset IDs, order, migration or Apply behavior. Older presets use known live colors until updated.
 - Raised only the enhanced Team window minimum width to 340px so 260px Saved teams cards, native section padding and the scrollbar fit without horizontal clipping. Other window dimensions are unchanged.
 

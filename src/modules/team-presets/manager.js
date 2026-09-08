@@ -37,6 +37,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-members] { grid-column:1 / -1; grid-row:3; display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:start; min-width:0; }
     [data-ppbui-team-preset-member] { display:grid; min-width:0; color:#d8d3ca; }
     [data-ppbui-team-preset-member-visual] { position:relative; display:grid; place-items:center; box-sizing:border-box; min-width:0; width:100%!important; min-height:0!important; height:40px!important; margin:0; overflow:hidden; padding:0 1px 10px!important; cursor:pointer; border:1px solid #33343a; background:#1d1d20; }
+    [data-ppbui-team-preset-member-visual] { border-radius:3px; }
     [data-ppbui-team-preset-member][data-active="true"] [data-ppbui-team-preset-member-visual] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
     [data-ppbui-team-preset-member][data-active="true"] [data-ppbui-team-preset-member-visual]::after { content:"★"; position:absolute; top:1px; right:2px; color:#8fca7a; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
     [data-ppbui-team-preset-member-visual] img { display:block; min-width:0; min-height:0; max-width:100%; max-height:28px; width:auto; height:auto; object-fit:contain; image-rendering:pixelated; }

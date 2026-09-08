@@ -8,6 +8,8 @@ export const teamConfig = {
     slot: ".team-slot",
     profile: ".team-section--profile",
     active: ".team-active-state",
+    profileInfo: ".team-detail__info",
+    orderControls: ".team-order-controls",
     vitals: ".team-section--vitals",
     attributes: ".team-section--attributes",
     actions: ".team-actions",

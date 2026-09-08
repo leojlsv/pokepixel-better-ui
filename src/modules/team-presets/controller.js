@@ -24,6 +24,8 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     [data-ppbui-team-presets-list]::-webkit-scrollbar-track { background:var(--ui-navy-deep,#171719); }
     [data-ppbui-team-presets-list]::-webkit-scrollbar-thumb { border:2px solid var(--ui-navy-deep,#171719); background:var(--ui-gold-dark,#74613f); }
     [data-ppbui-team-presets-row] { display:grid; grid-template-rows:auto auto; gap:4px; min-width:0; padding:5px; border:1px solid rgba(241,214,129,.12); background:rgba(20,20,22,.72); }
+    [data-ppbui-team-presets-row] { border-radius:4px; }
+    [data-ppbui-team-presets-member] { border-radius:3px; }
     [data-ppbui-team-presets-row-head] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:6px; min-width:0; }
     [data-ppbui-team-presets-title] { display:flex; align-items:baseline; gap:5px; min-width:0; }
     [data-ppbui-team-presets-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); font-weight:700; text-overflow:ellipsis; white-space:nowrap; }

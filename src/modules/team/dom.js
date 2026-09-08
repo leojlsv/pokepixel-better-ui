@@ -24,6 +24,8 @@ export function teamParts(root) {
     slotNodes: [...root.querySelectorAll(q.slot)],
     profile: root.querySelector(q.profile),
     active: root.querySelector(q.active),
+    profileInfo: root.querySelector(q.profileInfo),
+    orderControls: root.querySelector(q.orderControls),
     vitals: root.querySelector(q.vitals),
     attributes: root.querySelector(q.attributes),
     actions: root.querySelector(`${q.actions}:not([data-ppbui-module])`),

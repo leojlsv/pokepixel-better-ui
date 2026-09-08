@@ -110,10 +110,13 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
   assert.match(css, /opacity:\.58/);
   assert.match(css, /button\[data-primary="true"\]/);
   assert.match(css, /height:50px/);
+  assert.match(css, /border-radius:4px/);
+  assert.match(css, /border-radius:3px/);
   assert.match(css, /scrollbar-color:var\(--ui-gold-dark/);
   assert.match(css, /justify-content:center/);
   assert.match(css, /\[data-ppbui-team-presets-panel\]\[hidden\] \{ display:none!important; \}/);
-  assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets HUD must not introduce prohibited visual styling");
+  assert.ok([...css.matchAll(/border-radius:([^;]+);/g)].every(match => ["3px", "4px"].includes(match[1])), "only approved native radii");
+  assert.doesNotMatch(css, /linear-gradient/i, "Team Presets HUD must not introduce prohibited visual styling");
 });
 
 test("Team preset manager keeps 260x124 minimum cards and prioritizes composition over maintenance controls", t => {
@@ -128,7 +131,8 @@ test("Team preset manager keeps 260x124 minimum cards and prioritizes compositio
   assert.match(css, /background:#1d1d20/);
   assert.match(css, /border-color:#72cf64/);
   assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
-  assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets manager must not introduce prohibited visual styling");
+  assert.ok([...css.matchAll(/border-radius:([^;]+);/g)].every(match => ["3px", "4px"].includes(match[1])), "only approved native radii");
+  assert.doesNotMatch(css, /linear-gradient/i, "Team Presets manager must not introduce prohibited visual styling");
 
   const card = root.querySelector("[data-ppbui-team-preset-card]");
   const members = [...card.querySelectorAll("[data-ppbui-team-preset-member]")];
