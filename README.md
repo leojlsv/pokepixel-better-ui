@@ -99,8 +99,8 @@ It reuses native filters and markers, preserves zoom, and never starts a hunt.
 See `docs/modules/hunts.md` for the native navigation contract and pending
 in-game validation.
 
-Team adds compact level/HP tracking to the six native slots, contextual comparison
-between selected and active Pokémon, and brings the original action block beside
+Team adds compact level/HP tracking to the six native slots
+and brings the original action block beside
 the profile without replacing its controls. See `docs/modules/team.md`.
 
 Team HUD adds compact HP visibility, fainted state and keyboard access to occupied

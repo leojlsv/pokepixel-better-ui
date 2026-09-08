@@ -27,10 +27,20 @@ test("team overview enriches the six original slots without replacing their acti
   assert.match(slots[1].textContent, /Derrotado/); assert.ok(slots[1].classList.contains("ppbui-team-fainted")); assert.equal(slots[2].querySelector("[data-ppbui-team-slot]"), null);
 });
 
-test("comparison is contextual and reports active, selected and numeric deltas", t => {
-  const s = setup(t), compare = s.root.querySelector("[data-ppbui-team-compare]"); assert.equal(compare.open, false); assert.match(compare.textContent, /Comparar com o ativo/);
-  assert.match(compare.textContent, /Poder120160\+40/); assert.match(compare.textContent, /HP80%0%-80/); assert.doesNotMatch(compare.textContent, /recommend|melhor|troque/i);
-  s.scene._selectedId = "a"; s.controller.sync(); assert.equal(s.root.querySelector("[data-ppbui-team-compare]"), null);
+test("comparison is absent and repeated sync never reads comparison stats", t => {
+  const s = setup(t);
+  for (const member of s.scene._creatures) {
+    for (const key of ["power", "quality", "quality_multiplier", "ivs", "atk", "def", "spa", "spd", "spe"]) {
+      Object.defineProperty(member, key, { get() { assert.fail(`unexpected comparison read: ${key}`); } });
+    }
+  }
+  for (const id of ["a", "b", "a", "b"]) {
+    s.scene._selectedId = id; s.controller.sync();
+    assert.equal(s.root.querySelector("[data-ppbui-team-compare]"), null);
+  }
+  assert.doesNotMatch(s.root.querySelector("style").textContent, /compare|positive|negative/);
+  assert.equal(s.root.querySelector(".team-section--vitals").textContent, "Vitals");
+  assert.equal(s.root.querySelector(".team-section--attributes").textContent, "Stats");
 });
 
 test("native actions move intact, preserve disabled state and return on cleanup", t => {
@@ -53,13 +63,13 @@ test("add picker filters loaded native cards and preserves their add actions", t
 test("stable reconciliation has no mutations and live values update", async t => {
   const s = setup(t); let mutations = 0; const observer = new s.dom.window.MutationObserver(records => mutations += records.length);
   observer.observe(s.root, { subtree: true, childList: true, attributes: true, characterData: true }); for (let index = 0; index < 5; index++) s.controller.sync(); await Promise.resolve(); assert.equal(mutations, 0);
-  s.scene._creatures[0].hp = 50; s.controller.sync(); await Promise.resolve(); observer.disconnect(); assert.match(s.root.querySelector(".team-slot").textContent, /50% HP/); assert.match(s.root.querySelector("[data-ppbui-team-compare]").textContent, /HP50%0%-50/);
+  s.scene._creatures[0].hp = 50; s.controller.sync(); await Promise.resolve(); observer.disconnect(); assert.match(s.root.querySelector(".team-slot").textContent, /50% HP/);
 });
 
 test("a native full refresh is enhanced once and cleanup never resurrects stale nodes", t => {
   const s = setup(t), staleActions = s.root.querySelector(".team-actions"); s.body.innerHTML = bodyMarkup(); const freshActions = s.root.querySelector(".team-actions"), details = freshActions.firstElementChild; let clicks = 0;
   details.addEventListener("click", () => clicks++); s.controller.sync(); s.controller.sync(); details.click(); assert.equal(clicks, 1);
-  assert.equal(s.root.querySelectorAll("[data-ppbui-team-compare]").length, 1); assert.equal(s.root.querySelectorAll("[data-ppbui-team-slot]").length, 2); s.controller.cleanup();
+  assert.equal(s.root.querySelectorAll("[data-ppbui-team-compare]").length, 0); assert.equal(s.root.querySelectorAll("[data-ppbui-team-slot]").length, 2); s.controller.cleanup();
   assert.equal(freshActions.parentElement, s.body); assert.equal(staleActions.isConnected, false); assert.equal(s.root.querySelector("[data-ppbui-module]"), null);
 });
 
@@ -100,4 +110,20 @@ test("same-node native state changes update compact button explanations", t => {
   active.classList.remove('is-active'); active.textContent='Make Pokémon active'; remove.disabled=false; s.controller.sync();
   assert.equal(active.textContent,'Make Pokémon active'); assert.equal(remove.title,'Remove from team');
   s.controller.cleanup(); assert.equal(remove.textContent,'Remove from team');
+});
+
+test("compact Position label follows selection and native order with reversible text", t => {
+  const s = setup(t), label = s.root.querySelector(".team-order-label");
+  assert.equal(label.textContent, "Posição 2");
+  s.dom.window.PokeIdle.Localization.get = () => "en"; s.controller.sync();
+  assert.equal(label.textContent, "Position 2");
+  s.scene._team.member_ids = ["b", "a"]; s.controller.sync();
+  assert.equal(label.textContent, "Position 1");
+  s.scene._selectedId = "a"; s.controller.sync();
+  assert.equal(label.textContent, "Position 2");
+  label.textContent = "Battle order · position 2 (native refresh)"; s.controller.sync();
+  assert.equal(label.textContent, "Position 2");
+  s.controller.cleanup();
+  assert.equal(label.textContent, "Battle order · position 2 (native refresh)");
+  assert.equal(label.hasAttribute("title"), false);
 });

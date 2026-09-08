@@ -1,17 +1,18 @@
 import { teamConfig as config } from "./config.js";
 
 const copy = {
-  pt: ["Equipe", "Acompanhar, comparar e montar a equipe", "Comparar com o ativo", "Ativo", "Selecionado", "Poder", "IV", "Qualidade", "HP", "Ações da equipe", "Derrotado", "Buscar", "Elemento", "Todos", "Raridade", "Limpar", "Nenhum Pokémon corresponde aos filtros."],
-  en: ["Team", "Track, compare and manage the team", "Compare with active", "Active", "Selected", "Power", "IV", "Quality", "HP", "Team actions", "Fainted", "Search", "Element", "All", "Rarity", "Clear", "No Pokémon match the filters."],
-  es: ["Equipo", "Seguir, comparar y gestionar el equipo", "Comparar con el activo", "Activo", "Seleccionado", "Poder", "IV", "Calidad", "PS", "Acciones del equipo", "Derrotado", "Buscar", "Elemento", "Todos", "Rareza", "Limpiar", "Ningún Pokémon coincide con los filtros."],
-  zh: ["队伍", "查看、比较和管理队伍", "与当前出战比较", "出战", "已选择", "战力", "个体值", "品质", "生命", "队伍操作", "已倒下", "搜索", "属性", "全部", "稀有度", "清除", "没有符合筛选条件的宝可梦。"],
+  pt: ["Equipe", "Acompanhar e montar a equipe", "Ativo", "Ações da equipe", "Derrotado", "Buscar", "Elemento", "Todos", "Raridade", "Limpar", "Nenhum Pokémon corresponde aos filtros."],
+  en: ["Team", "Track and manage the team", "Active", "Team actions", "Fainted", "Search", "Element", "All", "Rarity", "Clear", "No Pokémon match the filters."],
+  es: ["Equipo", "Seguir y gestionar el equipo", "Activo", "Acciones del equipo", "Derrotado", "Buscar", "Elemento", "Todos", "Rareza", "Limpiar", "Ningún Pokémon coincide con los filtros."],
+  zh: ["队伍", "查看和管理队伍", "出战", "队伍操作", "已倒下", "搜索", "属性", "全部", "稀有度", "清除", "没有符合筛选条件的宝可梦。"],
 };
 
 export function teamText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "pt";
-  const [name, description, compare, active, selected, power, iv, quality, hp, actions, fainted, search, element, all, rarity, clear, noResults] = copy[lang.split(/[-_]/)[0]] || copy.en;
+  const [name, description, active, actions, fainted, search, element, all, rarity, clear, noResults] = copy[lang.split(/[-_]/)[0]] || copy.en;
   const remove = ({ pt: "Remover da equipe", en: "Remove from team", es: "Quitar del equipo", zh: "移出队伍" })[lang.split(/[-_]/)[0]] || "Remove from team";
-  return { remove, name, description, compare, active, selected, power, iv, quality, hp, actions, fainted, search, element, all, rarity, clear, noResults };
+  const position = ({ pt: "Posição", en: "Position", es: "Posición", zh: "位置" })[lang.split(/[-_]/)[0]] || "Position";
+  return { position, remove, name, description, active, actions, fainted, search, element, all, rarity, clear, noResults };
 }
 
 export const findTeam = () => document.querySelector(config.selectors.root);
@@ -28,8 +29,7 @@ export function teamParts(root) {
     remove: root.querySelector(q.remove),
     profileInfo: root.querySelector(q.profileInfo),
     orderControls: root.querySelector(q.orderControls),
-    vitals: root.querySelector(q.vitals),
-    attributes: root.querySelector(q.attributes),
+    orderLabel: root.querySelector(q.orderLabel),
     actions: root.querySelector(`${q.actions}:not([data-ppbui-module])`),
   };
 }
@@ -51,5 +51,4 @@ export function memberName(doc, member) {
     || member?.name || member?.species?.name || member?.species_id || "Pokémon";
 }
 
-export const ivTotal = member => Object.values(member?.ivs || {}).reduce((sum, value) => sum + Number(value || 0), 0);
 export const hpPercent = member => Math.max(0, Math.min(100, Number(member?.max_hp) > 0 ? Math.round(Number(member.hp || 0) / Number(member.max_hp) * 100) : 0));

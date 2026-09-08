@@ -25,6 +25,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Shortened the Team order label to localized `Position X`, preserving native arrow behavior and restoring native text on cleanup. Completely removed Compare with active, including rendering, stat reads, signatures, styles and translations.
+
 - Replaced the browser confirmation for saved-team deletion with the same `PokeIdle.Dialog.confirm` API used by Mark’s Shop sales, including the preset name and destructive-action option. Cancellation, unavailable/failed dialogs and module cleanup never delete a preset; concurrent prompts are suppressed.
 - Aligned the native Battle order label with the profile buttons using the same 10px typography, normal weight and spacing instead of the tiny, letter-spaced label.
 

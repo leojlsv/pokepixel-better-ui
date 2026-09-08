@@ -1,4 +1,4 @@
-# Team — acompanhar, comparar e montar
+# Team — acompanhar e montar
 
 Status: implementação validada e aprovada no jogo em 2026-09-01.
 
@@ -6,9 +6,8 @@ Status: implementação validada e aprovada no jogo em 2026-09-01.
 
 - Mantém os seis slots, a ordem oficial, seleção, Pokémon ativo e todos os handlers nativos.
 - Acrescenta nível e percentual de HP aos slots ocupados; Pokémon com zero HP recebe o estado textual `Derrotado`.
-- Quando selecionado e ativo são diferentes, oferece uma comparação contextual inicialmente recolhida de Poder, IV, Qualidade, HP, ATK, DEF, SpA, SpD e SPE, com diferenças numéricas. Não recomenda escolhas nem executa ações.
 - Move o bloco nativo de ações para junto do perfil, preservando os próprios botões, estados `disabled` e listeners. Slots vazios continuam abrindo o seletor original.
-- Mantém Tornar ativo junto ao perfil e posiciona Detalhes/Remover numa barra compacta imediatamente abaixo dele.
+- Agrupa Position X, setas nativas, Tornar ativo, Detalhes e Remover junto ao perfil. O rótulo da posição acompanha a seleção e a ordem nativa, com tradução e restauração no cleanup.
 - O seletor original para adicionar Pokémon recebe busca por nome, filtro de elemento, raridade e Limpar. Os filtros atuam somente sobre os cards e dados já carregados pelo jogo.
 - Atualizações e recriações da cena são reconciliadas pelo observer central. Desativar o módulo remove informações próprias e restaura a posição original das ações.
 
@@ -20,4 +19,4 @@ Foram consultados a auditoria e o contrato de Team do `pokepixel-custom-ui`, al�
 
 ## Validação
 
-Os testes sintéticos cobrem preservação dos slots e cliques, comparação contextual, atualizações de HP, ações originais, estado desabilitado, filtros do seletor, reconciliação idempotente, recriação completa e cleanup. O usuário validou e aprovou no jogo a disposição das informações, ações compactas, comparação recolhida e busca/filtros para adicionar Pokémon; nenhuma validação permanece pendente neste escopo.
+Os testes sintéticos cobrem preservação dos slots e cliques, atualizações de HP, ações originais, estado desabilitado, filtros do seletor, reconciliação idempotente, recriação completa e cleanup. O usuário validou e aprovou no jogo a disposição das informações, ações compactas e busca/filtros para adicionar Pokémon. O rótulo `Position X` e a remoção completa da comparação aguardam validação visual desta revisão.
