@@ -19,6 +19,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   const doc = root.ownerDocument, win = doc.defaultView;
   const style = doc.createElement("style"); style.dataset.ppbuiModule = `${config.id}-manager`;
   style.textContent = `
+    .pokeidle-team-panel:has([data-ppbui-team-preset-manager]) { min-width:340px!important; }
     [data-ppbui-team-preset-manager] { margin-top:10px; color:#d8d3ca; font:inherit; }
     [data-ppbui-team-preset-manager] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-manager-grid] { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:8px; margin-top:8px; }
@@ -27,7 +28,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-card-head] { grid-column:1 / -1; }
     [data-ppbui-team-preset-card-head] > input { box-sizing:border-box; flex:1 1 auto; min-width:0; height:24px!important; min-height:0!important; padding:2px 6px!important; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
     [data-ppbui-team-preset-card-actions] { display:flex; flex:0 0 auto; gap:2px; }
-    [data-ppbui-team-preset-card] .ppbui-team-preset-icon { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex:0 0 22px; width:22px!important; min-width:22px!important; max-width:22px; height:22px!important; min-height:22px!important; max-height:22px; margin:0; padding:0!important; color:#d8d3ca!important; font:inherit; font-size:11px!important; line-height:1!important; }
+    [data-ppbui-team-preset-card] .ppbui-team-preset-icon { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex:0 0 22px; width:22px!important; min-width:22px!important; max-width:22px; height:22px!important; min-height:22px!important; max-height:22px; margin:0; padding:0!important; color:#d8d3ca!important; font:inherit; font-size:11px!important; line-height:1!important; text-align:center; text-indent:0; letter-spacing:normal; }
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon { opacity:.58; transition:opacity .12s linear,color .12s linear; }
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:hover,
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:focus-visible { opacity:1; }

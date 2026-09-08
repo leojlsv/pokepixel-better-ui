@@ -131,3 +131,15 @@ test("unverified legacy order and missing members abort before changing native T
   let result = await applyTeamPreset(s.doc, preset(["b", "a", "c"], "a", false)); assert.equal(result.ok, false); assert.equal(result.reason, "order-unverified"); assert.deepEqual(s.scene._team.member_ids, before);
   result = await applyTeamPreset(s.doc, preset(["a", "z"], "a")); assert.equal(result.ok, false); assert.equal(result.reason, "member-unavailable"); assert.deepEqual(s.scene._team.member_ids, before); assert.equal(s.scene._team.leader_id, "a");
 });
+
+test("captured element color survives reload as optional visual metadata", t => {
+  const dom = new JSDOM('<div class="pokeidle-team-hud"><div class="pokeidle-team-card" data-creature-id="a" style="--element-color:#68c64a"></div></div>');
+  t.after(() => dom.window.close());
+  const root = dom.window.document.body.firstChild;
+  dom.window.PokeIdle = { PersistentHud: { _teamHud: { el: root, _creatures: [{ id: 'a', name: 'A', elements: ['grass'] }] } } };
+  const captured = currentTeamSnapshot(root), storage = memoryStorage();
+  assert.equal(captured.members[0].elementColor, '#68c64a');
+  const store = createTeamPresetStorage({ storage: () => storage, makeId: () => 'color' });
+  store.upsert('Grass', captured);
+  assert.equal(createTeamPresetStorage({ storage: () => storage }).list()[0].members[0].elementColor, '#68c64a');
+});

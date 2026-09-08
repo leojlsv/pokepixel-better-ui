@@ -21,6 +21,9 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Matched the Team HUD saved-team scrollbar to the native theme, centered owned button icons and exposed preset Up/Down ordering in the HUD using the same saved order as the manager. Replaced preview HP/EXP meters with the native primary-element color, retaining level and fainted state; capture/update stores optional color metadata without changing preset IDs, order, migration or Apply behavior. Older presets use known live colors until updated.
+- Raised only the enhanced Team window minimum width to 340px so 260px Saved teams cards, native section padding and the scrollbar fit without horizontal clipping. Other window dimensions are unchanged.
+
 - User confirmed the Team Presets FPS regression is resolved in-game. Replaced cramped per-slot controls with one selected-member toolbar per card; native sprite buttons select the target, while Update/Apply share the footer and preset controls have explicit compact dimensions. Sprite sync, Apply, Battle Order and storage semantics are unchanged.
 
 - Fixed the critical Team Presets sync performance regression: Save availability no longer captures a snapshot; live preview sync indexes HUD cards once and reads cached/persisted sprites without computed styles, canvas exports or descendant sprite scans; collapsed previews skip the index entirely. Saved-team change detection compares fields directly without serializing sprite payloads. Unchanged sync produces no DOM mutations, including relative sprite URLs.

@@ -128,11 +128,19 @@ function spriteFromCard(card) {
 
 // Cache misses too: animated canvases and unavailable assets must not be polled.
 const spriteCaches = new WeakMap();
+const elementColorCaches = new WeakMap();
 
 export function teamPresetVisualReader(root, { resolveSprites = false, retryMissing = false } = {}) {
   const runtime = root?.ownerDocument?.defaultView?.PokeIdle?.PersistentHud?._teamHud;
   const creatures = new Map((Array.isArray(runtime?._creatures) ? runtime._creatures : []).map(creature => [String(creature?.id ?? ""), creature]));
   const cards = new Map(Array.from(root?.querySelectorAll(config.selectors.hudCard) || [], card => [card.dataset.creatureId, card]));
+  let colors = root && elementColorCaches.get(root);
+  if (root && !colors) { colors = new Map(); elementColorCaches.set(root, colors); }
+  for (const [id, creature] of creatures) {
+    const element = creature?.elements?.[0] || creature?.species?.elements?.[0];
+    const color = cards.get(id)?.style.getPropertyValue("--element-color") || (element && root?.ownerDocument?.defaultView?.PokeIdle?.ElementIcons?.definition?.(element)?.color);
+    if (color) colors?.set(id, color);
+  }
   let cache = root && spriteCaches.get(root);
   if (root && !cache) { cache = new WeakMap(); spriteCaches.set(root, cache); }
   const attempted = new WeakSet();
@@ -148,7 +156,7 @@ export function teamPresetVisualReader(root, { resolveSprites = false, retryMiss
       sprite = cached?.id === id ? cached.sprite : "";
     }
     const level = Number(creature?.level ?? member?.level);
-    return { card, creature, sprite, level: Number.isFinite(level) ? level : null };
+    return { card, creature, sprite, elementColor: colors?.get(id) || member?.elementColor || "", level: Number.isFinite(level) ? level : null };
   };
 }
 
@@ -174,6 +182,9 @@ export function currentTeamSnapshot(root) {
     const card = cards.find(node => node.dataset.creatureId === id);
     const member = { id, name: String(creature?.name || creature?.species?.name || card?.querySelector(config.selectors.hudCardName)?.textContent || id).trim() };
     const sprite = spriteFor(card, creature); if (sprite) member.sprite = sprite;
+    const element = creature?.elements?.[0] || creature?.species?.elements?.[0];
+    const elementColor = card?.style.getPropertyValue("--element-color") || (element && doc.defaultView?.PokeIdle?.ElementIcons?.definition?.(element)?.color);
+    if (elementColor) member.elementColor = elementColor;
     const level = Number(creature?.level); if (Number.isFinite(level)) member.level = level;
     meta.set(id, member);
   }

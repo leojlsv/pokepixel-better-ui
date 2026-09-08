@@ -13,6 +13,7 @@ function styleNode(doc) {
   const style = doc.createElement("style");
   style.dataset.ppbuiModule = "team";
   style.textContent = `
+    .pokeidle-team-panel[data-ppbui-team-enhanced] { min-width:340px!important; }
     .team-slot > [data-ppbui-team-slot] { position:absolute; right:3px; bottom:2px; left:3px; overflow:hidden; color:inherit; font-size:9px; line-height:1.2; text-align:center; text-overflow:ellipsis; white-space:nowrap; text-shadow:0 1px 1px #000; pointer-events:none; }
     .team-slot.ppbui-team-fainted > [data-ppbui-team-slot] { color:#c9a6a3; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-active-state { display:block; width:auto; min-height:0; margin:6px 0 0 auto; padding:5px 8px; font:inherit; }

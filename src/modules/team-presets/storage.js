@@ -10,6 +10,8 @@ function normalizeMember(entry) {
   const member = { id, name: String(entry?.name || id).trim().slice(0, 80) };
   const sprite = String(entry?.sprite || "").trim();
   if (sprite) member.sprite = sprite;
+  const elementColor = String(entry?.elementColor || "").trim();
+  if (/^#[\da-f]{3}(?:[\da-f]{3})?$/i.test(elementColor)) member.elementColor = elementColor;
   const level = Number(entry?.level);
   if (Number.isFinite(level)) member.level = level;
   return member;

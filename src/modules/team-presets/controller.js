@@ -11,21 +11,25 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   const style = doc.createElement("style"); style.dataset.ppbuiModule = config.id;
   style.textContent = `
     [data-ppbui-team-presets] { display:grid; gap:4px; margin-top:6px; padding-top:5px; border-top:1px solid rgba(241,214,129,.18); color:#d8d3ca; font:inherit; }
+    [data-ppbui-team-presets] button { box-sizing:border-box; display:inline-flex!important; align-items:center!important; justify-content:center; line-height:1!important; text-align:center; text-indent:0; letter-spacing:normal; }
     [data-ppbui-team-presets-toolbar] { display:flex; align-items:center; gap:4px; min-width:0; }
-    [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-toggle { flex:1 1 auto; min-width:0; min-height:24px; justify-content:flex-start; padding:3px 7px; color:var(--ui-gold-light,#f1d681)!important; font:inherit; font-weight:700; text-align:left; }
+    [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-toggle { flex:1 1 auto; min-width:0; min-height:24px; justify-content:flex-start!important; padding:3px 7px; color:var(--ui-gold-light,#f1d681)!important; font:inherit; font-weight:700; text-align:left; }
     [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-icon { flex:0 0 26px; width:26px; min-width:26px; min-height:24px; padding:3px 5px; color:#d8d3ca!important; font:inherit; }
     [data-ppbui-team-presets-panel] { display:grid; gap:5px; }
     [data-ppbui-team-presets-panel][hidden] { display:none!important; }
     [data-ppbui-team-presets-save] { display:grid; grid-template-columns:minmax(0,1fr) 28px; gap:4px; }
     [data-ppbui-team-presets-save] > button { min-width:28px; min-height:24px; padding:3px 5px; color:#d8d3ca!important; }
-    [data-ppbui-team-presets-list] { display:grid; gap:5px; max-height:205px; overflow:auto; }
+    [data-ppbui-team-presets-list] { display:grid; gap:5px; max-height:205px; overflow:auto; scrollbar-width:thin; scrollbar-color:var(--ui-gold-dark,#74613f) var(--ui-navy-deep,#171719); scrollbar-gutter:stable; }
+    [data-ppbui-team-presets-list]::-webkit-scrollbar { width:9px; height:9px; }
+    [data-ppbui-team-presets-list]::-webkit-scrollbar-track { background:var(--ui-navy-deep,#171719); }
+    [data-ppbui-team-presets-list]::-webkit-scrollbar-thumb { border:2px solid var(--ui-navy-deep,#171719); background:var(--ui-gold-dark,#74613f); }
     [data-ppbui-team-presets-row] { display:grid; grid-template-rows:auto auto; gap:4px; min-width:0; padding:5px; border:1px solid rgba(241,214,129,.12); background:rgba(20,20,22,.72); }
     [data-ppbui-team-presets-row-head] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:6px; min-width:0; }
     [data-ppbui-team-presets-title] { display:flex; align-items:baseline; gap:5px; min-width:0; }
     [data-ppbui-team-presets-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-presets-count] { flex:0 0 auto; color:#77746f; font-size:8px; }
     [data-ppbui-team-presets-row-actions] { display:flex; align-items:center; gap:2px; }
-    [data-ppbui-team-presets-row-actions] > button { width:22px; min-width:22px; min-height:20px; padding:1px 3px; color:#aaa7a1!important; font:inherit; opacity:.58; transition:opacity .12s linear,color .12s linear; }
+    [data-ppbui-team-presets-row-actions] > button { width:22px!important; min-width:22px!important; height:22px!important; min-height:22px!important; padding:0!important; color:#aaa7a1!important; font:inherit; opacity:.58; transition:opacity .12s linear,color .12s linear; }
     [data-ppbui-team-presets-row-actions] > button:hover,
     [data-ppbui-team-presets-row-actions] > button:focus-visible { color:#d8d3ca!important; opacity:1; }
     [data-ppbui-team-presets-row-actions] > button[data-primary="true"] { color:var(--ui-gold-light,#f1d681)!important; opacity:.78; }
@@ -39,12 +43,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     [data-ppbui-team-presets-member-fallback] { max-width:36px; overflow:hidden; color:#d8d3ca; font-size:8px; text-overflow:clip; white-space:nowrap; }
     [data-ppbui-team-presets-member-position] { position:absolute; z-index:2; top:1px; left:2px; color:#aaa7a1; font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
     [data-ppbui-team-presets-member-level] { position:absolute; z-index:2; right:1px; bottom:6px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:rgba(5,5,6,.88); color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-presets-member-bars] { position:absolute; right:2px; bottom:1px; left:2px; display:grid; gap:1px; pointer-events:none; }
-    [data-ppbui-team-presets-member-bars][hidden] { display:none!important; }
-    [data-ppbui-team-presets-member-hp], [data-ppbui-team-presets-member-xp] { display:block; height:2px; overflow:hidden; background:#08090a; }
-    [data-ppbui-team-presets-member-hp] > i, [data-ppbui-team-presets-member-xp] > i { display:block; height:100%; width:0; }
-    [data-ppbui-team-presets-member-hp] > i { background:#63c95a; }
-    [data-ppbui-team-presets-member-xp] > i { background:#4e91df; }
+    [data-ppbui-team-presets-member-element] { position:absolute; right:2px; bottom:1px; left:2px; height:3px; background:var(--ppbui-element-color,#33343a); pointer-events:none; }
     [data-ppbui-team-presets-status] { margin:0; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-presets-status]:empty { display:none; }
     [data-ppbui-team-presets-status][data-error="true"] { color:#d18b82; font-weight:700; }
@@ -64,7 +63,6 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   const text = () => teamPresetsText(doc);
   const setDisabled = (node, value) => { if (node && node.disabled !== value) node.disabled = value; };
-  const clampPercent = value => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
 
   function setStatus(message = "", error = false) {
     if (status.textContent !== message) status.textContent = message;
@@ -92,18 +90,15 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   function liveHudVisual(member) {
     const visual = readVisual(member), creature = visual.creature, card = visual.card;
-    if (!creature && !card && !visual.sprite) return null;
+    if (!creature && !card && !visual.sprite && !visual.elementColor) return null;
     const levelText = String(card?.querySelector(".pokeidle-team-card__compact-level, .pokeidle-team-card__level")?.textContent || (visual.level !== null ? `Lv.${visual.level}` : "")).trim();
-    const hp = Number(creature?.hp), maximum = Number(creature?.max_hp);
-    const hpPercent = Number.isFinite(hp) && Number.isFinite(maximum) && maximum > 0 ? clampPercent((hp / maximum) * 100) : null;
-    const exp = Number(creature?.exp), from = Number(creature?.exp_current_level), to = Number(creature?.exp_next_level);
-    const xpPercent = [exp, from, to].every(Number.isFinite) && to > from ? clampPercent(((exp - from) / (to - from)) * 100) : null;
+    const hp = Number(creature?.hp);
     const fainted = card?.classList.contains("is-fainted") || (Number.isFinite(hp) && hp <= 0);
-    return { sprite: visual.sprite, levelText, hpPercent, xpPercent, fainted: Boolean(fainted) };
+    return { sprite: visual.sprite, elementColor: visual.elementColor, levelText, fainted: Boolean(fainted) };
   }
 
   function paintHudVisual(item, member) {
-    const live = liveHudVisual(member), level = item.querySelector("[data-ppbui-team-presets-member-level]"), bars = item.querySelector("[data-ppbui-team-presets-member-bars]");
+    const live = liveHudVisual(member), level = item.querySelector("[data-ppbui-team-presets-member-level]"), element = item.querySelector("[data-ppbui-team-presets-member-element]");
     let image = item.querySelector("img"); const nextLevel = live?.levelText || (Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "");
     if (level && level.textContent !== nextLevel) level.textContent = nextLevel;
     if (live?.sprite) {
@@ -115,13 +110,8 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
       if (image.getAttribute("src") !== live.sprite) image.src = live.sprite;
     }
     const fainted = live?.fainted ? "true" : "false"; if (item.dataset.fainted !== fainted) item.dataset.fainted = fainted;
-    const hasBars = Boolean(live && (live.hpPercent !== null || live.xpPercent !== null));
-    if (bars && bars.hidden === hasBars) bars.hidden = !hasBars;
-    if (!bars || !hasBars) return;
-    const hpFill = bars.querySelector("[data-ppbui-team-presets-member-hp] > i"), xpFill = bars.querySelector("[data-ppbui-team-presets-member-xp] > i");
-    const hpWidth = `${live.hpPercent ?? 0}%`, xpWidth = `${live.xpPercent ?? 0}%`;
-    if (hpFill.style.width !== hpWidth) hpFill.style.width = hpWidth;
-    if (xpFill.style.width !== xpWidth) xpFill.style.width = xpWidth;
+    const color = live?.elementColor || "";
+    if (element && element.style.getPropertyValue("--ppbui-element-color") !== color) element.style.setProperty("--ppbui-element-color", color);
   }
 
   function presetPreview(preset, copy) {
@@ -140,10 +130,8 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
         const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetsMemberFallback = ""; fallback.textContent = member.name.slice(0, 3).toUpperCase(); item.append(fallback);
       }
       const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetsMemberLevel = ""; level.textContent = live?.levelText || (Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "");
-      const bars = doc.createElement("span"); bars.dataset.ppbuiTeamPresetsMemberBars = ""; bars.hidden = true; bars.setAttribute("aria-hidden", "true");
-      const hp = doc.createElement("span"); hp.dataset.ppbuiTeamPresetsMemberHp = ""; hp.append(doc.createElement("i"));
-      const xp = doc.createElement("span"); xp.dataset.ppbuiTeamPresetsMemberXp = ""; xp.append(doc.createElement("i"));
-      bars.append(hp, xp); item.append(position, level, bars); paintHudVisual(item, member); preview.append(item);
+      const element = doc.createElement("span"); element.dataset.ppbuiTeamPresetsMemberElement = ""; element.setAttribute("aria-hidden", "true");
+      item.append(position, level, element); paintHudVisual(item, member); preview.append(item);
     });
     return preview;
   }
@@ -152,7 +140,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     readVisual = teamPresetVisualReader(root, { resolveSprites: true });
     const copy = text(), presets = store.list(); list.replaceChildren();
     if (!presets.length) { const empty = doc.createElement("p"); empty.dataset.ppbuiTeamPresetsStatus = ""; empty.textContent = copy.empty; list.append(empty); return; }
-    for (const preset of presets) {
+    for (const [presetIndex, preset] of presets.entries()) {
       const row = doc.createElement("div"); row.dataset.ppbuiTeamPresetsRow = "";
       const head = doc.createElement("div"); head.dataset.ppbuiTeamPresetsRowHead = "";
       const title = doc.createElement("div"); title.dataset.ppbuiTeamPresetsTitle = "";
@@ -170,7 +158,17 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
         setStatus(copy.applying); const result = await runExclusive(() => apply(doc, preset));
         setStatus(result?.ok ? copy.applied : errorMessage(result, preset), !result?.ok);
       });
-      actions.append(editButton, applyButton); head.append(title, actions);
+      const orderButtons = [-1, 1].map(delta => {
+        const button = doc.createElement("button"); button.type = "button"; button.className = "pokeidle-btn"; button.textContent = delta < 0 ? "↑" : "↓";
+        button.dataset.movePreset = String(delta); button.title = `${delta < 0 ? copy.moveUp : copy.moveDown}: ${preset.name}`; button.setAttribute("aria-label", button.title);
+        button.disabled = delta < 0 ? presetIndex === 0 : presetIndex === presets.length - 1;
+        button.addEventListener("click", () => {
+          if (busy || !store.movePreset(preset.id, delta)) return;
+          const scroll = list.scrollTop; notifyChanged(); list.scrollTop = scroll; sync();
+        });
+        return button;
+      });
+      actions.append(...orderButtons, editButton, applyButton); head.append(title, actions);
 
       const preview = presetPreview(preset, copy);
       row.append(head, preview); list.append(row);
@@ -227,8 +225,8 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];
     rows.forEach((row, index) => {
       const buttons = [...row.querySelectorAll("[data-ppbui-team-presets-row-actions] button")];
-      setDisabled(buttons[0], false);
-      setDisabled(buttons[1], presets[index]?.orderVerified === false);
+      setDisabled(buttons[0], index === 0); setDisabled(buttons[1], index === presets.length - 1);
+      setDisabled(buttons[2], false); setDisabled(buttons[3], presets[index]?.orderVerified === false);
     });
   }
 

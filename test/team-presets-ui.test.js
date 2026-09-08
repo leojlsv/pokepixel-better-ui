@@ -29,7 +29,7 @@ function store(list = [preset]) {
 }
 
 function hudDom() {
-  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card is-leader" data-creature-id="a"><img src="https://example.test/a.png" alt="A"><span class="pokeidle-team-card__name">A</span><span class="pokeidle-team-card__compact-level">Lv.45</span><div class="pokeidle-team-card__hp-bar"><span class="pokeidle-team-card__bar-text">50 / 100</span></div><div class="pokeidle-team-card__xp-bar"><span class="pokeidle-team-card__bar-text pokeidle-team-card__bar-text--xp">25%</span></div></div></div></div>`, { pretendToBeVisual: true });
+  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card is-leader" data-creature-id="a" style="--element-color:#68c64a"><img src="https://example.test/a.png" alt="A"><span class="pokeidle-team-card__name">A</span><span class="pokeidle-team-card__compact-level">Lv.45</span><div class="pokeidle-team-card__hp-bar"><span class="pokeidle-team-card__bar-text">50 / 100</span></div><div class="pokeidle-team-card__xp-bar"><span class="pokeidle-team-card__bar-text pokeidle-team-card__bar-text--xp">25%</span></div></div></div></div>`, { pretendToBeVisual: true });
   const root = dom.window.document.body.firstChild;
   dom.window.PokeIdle = { Localization: { get: () => "pt-BR" }, PersistentHud: { _teamHud: { el: root, _creatures: [{ id: "a", is_leader: true, level: 45, hp: 50, max_hp: 100, exp: 125, exp_current_level: 100, exp_next_level: 200 }] } } };
   return { dom, root };
@@ -58,15 +58,15 @@ test("Team HUD preset uses name and controls on first row with six official-orde
 
   assert.equal(head.querySelector("[data-ppbui-team-presets-name]").textContent, "Gym");
   assert.equal(head.querySelector("[data-ppbui-team-presets-count]").textContent, "6/6");
-  assert.deepEqual(actions.map(button => button.textContent), ["⚙", "▶"]);
-  assert.equal(actions[1].dataset.primary, "true");
+  assert.deepEqual(actions.map(button => button.textContent), ["↑", "↓", "⚙", "▶"]);
+  assert.equal(actions[3].dataset.primary, "true");
   assert.equal(members.length, 6);
   assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-presets-member-position]").textContent), ["1", "2", "3", "4", "5", "6"]);
   assert.equal(members[4].dataset.active, "true"); assert.equal(members[0].dataset.active, "false");
   assert.match(preview.getAttribute("aria-label"), /5\. E · Ativo/);
 });
 
-test("Team preset preview mirrors live Team HUD sprite level and HP/EXP bars without cloning native cards", t => {
+test("Team preset preview uses native element color instead of HP/EXP bars without cloning native cards", t => {
   const { dom, root } = hudDom();
   const controller = mountTeamPresets(root, { store: store(), apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }) });
   t.after(() => { controller.cleanup(); dom.window.close(); });
@@ -74,10 +74,9 @@ test("Team preset preview mirrors live Team HUD sprite level and HP/EXP bars wit
   const first = root.querySelector("[data-ppbui-team-presets-member]");
   assert.equal(first.querySelector("img").src, "https://example.test/a.png");
   assert.equal(first.querySelector("[data-ppbui-team-presets-member-level]").textContent, "Lv.45");
-  const bars = first.querySelector("[data-ppbui-team-presets-member-bars]");
-  assert.equal(bars.hidden, false);
-  assert.equal(bars.querySelector("[data-ppbui-team-presets-member-hp] > i").style.width, "50%");
-  assert.equal(bars.querySelector("[data-ppbui-team-presets-member-xp] > i").style.width, "25%");
+  const element = first.querySelector("[data-ppbui-team-presets-member-element]");
+  assert.equal(element.style.getPropertyValue("--ppbui-element-color"), "#68c64a");
+  assert.equal(first.querySelector("[data-ppbui-team-presets-member-bars]"), null);
   assert.equal(root.querySelectorAll(".pokeidle-team-card").length, 1, "preview must not duplicate the native Team HUD card class");
 });
 
@@ -98,8 +97,8 @@ test("Team preset preview sync refreshes live state without rebuilding preview m
   assert.equal(root.querySelector("[data-ppbui-team-presets-member]"), first, "sync must keep the existing preview node");
   assert.equal(first.querySelector("[data-ppbui-team-presets-member-level]").textContent, "Lv.46");
   assert.equal(first.dataset.fainted, "true");
-  assert.equal(first.querySelector("[data-ppbui-team-presets-member-hp] > i").style.width, "0%");
-  assert.equal(first.querySelector("[data-ppbui-team-presets-member-xp] > i").style.width, "80%");
+  assert.equal(first.querySelector("[data-ppbui-team-presets-member-element]").style.getPropertyValue("--ppbui-element-color"), "#68c64a");
+
 });
 
 test("Team HUD preset controls remain visually subordinate while Apply stays identifiable", t => {
@@ -111,8 +110,8 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
   assert.match(css, /opacity:\.58/);
   assert.match(css, /button\[data-primary="true"\]/);
   assert.match(css, /height:50px/);
-  assert.match(css, /background:#63c95a/);
-  assert.match(css, /background:#4e91df/);
+  assert.match(css, /scrollbar-color:var\(--ui-gold-dark/);
+  assert.match(css, /justify-content:center/);
   assert.match(css, /\[data-ppbui-team-presets-panel\]\[hidden\] \{ display:none!important; \}/);
   assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets HUD must not introduce prohibited visual styling");
 });
@@ -178,4 +177,32 @@ test("manager geometry fits six slots and their controls in a 260x124 card", t =
   assert.ok(rows.reduce((sum, row) => sum + row, 0) + 3 * parseFloat(cardStyle.gap) + 2 * parseFloat(cardStyle.padding) + 2 <= 124);
   assert.equal(style(card.querySelector("[data-ppbui-team-preset-card-foot]")).gridRow, "4");
   assert.equal(members.querySelectorAll("button").length, 6, "one selection target per Pokémon");
+});
+
+test("HUD preset ordering updates the manager and keeps member order and active unchanged", t => {
+  const { dom, root } = hudDom();
+  const panel = dom.window.document.createElement("div"); panel.className = "pokeidle-team-panel"; panel.innerHTML = '<div class="pokeidle-panel__body"></div>'; dom.window.document.body.append(panel);
+  const entries = [preset, { ...preset, id: "p2", name: "Second" }];
+  const saved = store(entries);
+  saved.movePreset = (id, delta) => { const i = entries.findIndex(p => p.id === id); [entries[i], entries[i + delta]] = [entries[i + delta], entries[i]]; return true; };
+  const controller = mountTeamPresets(root, { store: saved });
+  t.after(() => { controller.cleanup(); dom.window.close(); });
+  root.querySelector('[data-move-preset="1"]').click();
+  assert.deepEqual([...root.querySelectorAll('[data-ppbui-team-presets-name]')].map(n => n.textContent), ['Second', 'Gym']);
+  assert.deepEqual([...panel.querySelectorAll('[data-ppbui-team-preset-card-head] input')].map(n => n.value), ['Second', 'Gym']);
+  assert.equal(root.querySelector('[data-move-preset="-1"]').disabled, true);
+  const down = root.querySelectorAll('[data-move-preset="1"]'); assert.equal(down[1].disabled, true);
+  assert.equal(entries[1].activeId, "e");
+  assert.deepEqual(entries[1].members.map(m => m.id), ['a','b','c','d','e','f']);
+});
+
+test("Team minimum width is scoped to the mounted manager and restored on cleanup", t => {
+  const dom = new JSDOM('<style>.pokeidle-panel { min-width:300px; }</style><div class="pokeidle-panel pokeidle-team-panel" style="width:300px"><div class="pokeidle-panel__body"></div></div><div id="other" class="pokeidle-panel"></div>');
+  t.after(() => dom.window.close());
+  const root = dom.window.document.querySelector('.pokeidle-team-panel');
+  const manager = mountTeamPresetManager(root, { store: store(), hudRoot: null });
+  assert.equal(dom.window.getComputedStyle(root).minWidth, '340px');
+  assert.equal(dom.window.getComputedStyle(dom.window.document.getElementById('other')).minWidth, '300px');
+  manager.cleanup();
+  assert.equal(dom.window.getComputedStyle(root).minWidth, '300px');
 });
