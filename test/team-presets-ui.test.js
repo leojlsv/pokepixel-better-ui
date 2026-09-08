@@ -29,9 +29,9 @@ function store(list = [preset]) {
 }
 
 function hudDom() {
-  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card" data-creature-id="a"><span class="pokeidle-team-card__name">A</span></div></div></div>`, { pretendToBeVisual: true });
+  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card is-leader" data-creature-id="a"><img src="https://example.test/a.png" alt="A"><span class="pokeidle-team-card__name">A</span><span class="pokeidle-team-card__compact-level">Lv.45</span><div class="pokeidle-team-card__hp-bar"><span class="pokeidle-team-card__bar-text">50 / 100</span></div><div class="pokeidle-team-card__xp-bar"><span class="pokeidle-team-card__bar-text pokeidle-team-card__bar-text--xp">25%</span></div></div></div></div>`, { pretendToBeVisual: true });
   const root = dom.window.document.body.firstChild;
-  dom.window.PokeIdle = { Localization: { get: () => "pt-BR" }, PersistentHud: { _teamHud: { el: root, _creatures: [{ id: "a", is_leader: true }] } } };
+  dom.window.PokeIdle = { Localization: { get: () => "pt-BR" }, PersistentHud: { _teamHud: { el: root, _creatures: [{ id: "a", is_leader: true, level: 45, hp: 50, max_hp: 100, exp: 125, exp_current_level: 100, exp_next_level: 200 }] } } };
   return { dom, root };
 }
 
@@ -62,9 +62,23 @@ test("Team HUD preset uses name and controls on first row with six official-orde
   assert.equal(actions[1].dataset.primary, "true");
   assert.equal(members.length, 6);
   assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-presets-member-position]").textContent), ["1", "2", "3", "4", "5", "6"]);
-  assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-presets-member-level]").textContent), ["Lv.10", "Lv.11", "Lv.12", "Lv.13", "Lv.14", "Lv.15"]);
   assert.equal(members[4].dataset.active, "true"); assert.equal(members[0].dataset.active, "false");
   assert.match(preview.getAttribute("aria-label"), /5\. E · Ativo/);
+});
+
+test("Team preset preview mirrors live Team HUD sprite level and HP/EXP bars without cloning native cards", t => {
+  const { dom, root } = hudDom();
+  const controller = mountTeamPresets(root, { store: store(), apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }) });
+  t.after(() => { controller.cleanup(); dom.window.close(); });
+  root.querySelector(".ppbui-team-presets-toggle").click();
+  const first = root.querySelector("[data-ppbui-team-presets-member]");
+  assert.equal(first.querySelector("img").src, "https://example.test/a.png");
+  assert.equal(first.querySelector("[data-ppbui-team-presets-member-level]").textContent, "Lv.45");
+  const bars = first.querySelector("[data-ppbui-team-presets-member-bars]");
+  assert.equal(bars.hidden, false);
+  assert.equal(bars.querySelector("[data-ppbui-team-presets-member-hp] > i").style.width, "50%");
+  assert.equal(bars.querySelector("[data-ppbui-team-presets-member-xp] > i").style.width, "25%");
+  assert.equal(root.querySelectorAll(".pokeidle-team-card").length, 1, "preview must not duplicate the native Team HUD card class");
 });
 
 test("Team HUD preset controls remain visually subordinate while Apply stays identifiable", t => {
@@ -75,7 +89,9 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
   assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
   assert.match(css, /opacity:\.58/);
   assert.match(css, /button\[data-primary="true"\]/);
-  assert.match(css, /height:43px/);
+  assert.match(css, /height:50px/);
+  assert.match(css, /background:#63c95a/);
+  assert.match(css, /background:#4e91df/);
   assert.match(css, /\[data-ppbui-team-presets-panel\]\[hidden\] \{ display:none!important; \}/);
 });
 
