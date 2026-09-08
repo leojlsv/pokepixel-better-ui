@@ -13,11 +13,12 @@ import { createTeamModule } from "./modules/team/index.js";
 import { teamText } from "./modules/team/dom.js";
 import { createTeamHudModule } from "./modules/team-hud/index.js";
 import { teamHudText } from "./modules/team-hud/dom.js";
+import { createTeamPresetsModule, teamPresetsText } from "./modules/team-presets/index.js";
 
 import { createMarksShopModule } from "./modules/marks-shop/index.js";
 import { shopText } from "./modules/marks-shop/dom.js";
 
-const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "marks-shop": true } });
+const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true } });
 const moduleControls = createModuleControls({
   preferences,
   modules: [
@@ -28,6 +29,7 @@ const moduleControls = createModuleControls({
     { id: "team", name: () => teamText().name, description: () => teamText().description },
     { id: "marks-shop", name: () => shopText().name, description: () => shopText().description },
     { id: "team-hud", name: () => teamHudText().name, description: () => teamHudText().description },
+    { id: "team-presets", name: () => teamPresetsText().name, description: () => teamPresetsText().description },
   ],
 });
 
@@ -42,6 +44,7 @@ const app = createBetterUI({
     createHuntsModule(),
     createTeamModule(),
     createTeamHudModule(),
+    createTeamPresetsModule(),
     createMarksShopModule(),
     moduleControls,
   ],

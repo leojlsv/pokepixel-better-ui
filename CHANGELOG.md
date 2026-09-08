@@ -64,6 +64,7 @@ All notable project changes are recorded in this file.
 
 ### Added
 
+- Added optional Team presets to the persistent Team HUD. Presets store creature instance IDs and leader locally, reuse the native Team window/actions to apply composition changes sequentially, pre-validate unavailable Pokémon before mutation, preserve native disabled rules, and add regression coverage for persistence, idempotent reconciliation, full-team leader replacement and failure-safe validation. In-game validation remains pending.
 - Added optional Mark’s Shop with a native item-purchase list, List/Cards switching, expandable Pokémon species groups, group checkbox selection and a hidden-selection summary. Reuses original controls and native sale batches; no direct requests or automatic sales. Added 12 regression tests and a synthetic native-CSS preview; in-game validation remains pending.
 - Inventory module with native search/category reuse, collapsible explicit sorting, filter reset and result scope/count.
 - Inventory ordering preference, stable ordering during native updates and reversible cleanup; separately configurable in the Better UI panel.
