@@ -32,13 +32,13 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     [data-ppbui-team-presets-row-actions] > button[data-primary="true"]:hover,
     [data-ppbui-team-presets-row-actions] > button[data-primary="true"]:focus-visible { opacity:1; }
     [data-ppbui-team-presets-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; width:100%; min-width:0; }
-    [data-ppbui-team-presets-member] { position:relative; display:grid; place-items:center; box-sizing:border-box; min-width:0; height:50px; overflow:hidden; padding:2px 1px 7px; border:1px solid #33343a; border-radius:2px; background:linear-gradient(180deg,rgba(38,38,42,.95),rgba(19,19,21,.98)); color:#d8d3ca; }
+    [data-ppbui-team-presets-member] { position:relative; display:grid; place-items:center; box-sizing:border-box; min-width:0; height:50px; overflow:hidden; padding:2px 1px 7px; border:1px solid #33343a; background:#1d1d20; color:#d8d3ca; }
     [data-ppbui-team-presets-member][data-active="true"] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
     [data-ppbui-team-presets-member][data-fainted="true"] { opacity:.55; }
     [data-ppbui-team-presets-member] img { display:block; max-width:36px; max-height:36px; image-rendering:pixelated; }
     [data-ppbui-team-presets-member-fallback] { max-width:36px; overflow:hidden; color:#d8d3ca; font-size:8px; text-overflow:clip; white-space:nowrap; }
     [data-ppbui-team-presets-member-position] { position:absolute; z-index:2; top:1px; left:2px; color:#aaa7a1; font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-presets-member-level] { position:absolute; z-index:2; right:1px; bottom:6px; padding:0 2px; border:1px solid rgba(255,255,255,.16); border-radius:2px; background:rgba(5,5,6,.88); color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-presets-member-level] { position:absolute; z-index:2; right:1px; bottom:6px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:rgba(5,5,6,.88); color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
     [data-ppbui-team-presets-member-bars] { position:absolute; right:2px; bottom:1px; left:2px; display:grid; gap:1px; pointer-events:none; }
     [data-ppbui-team-presets-member-bars][hidden] { display:none!important; }
     [data-ppbui-team-presets-member-hp], [data-ppbui-team-presets-member-xp] { display:block; height:2px; overflow:hidden; background:#08090a; }

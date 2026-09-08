@@ -81,6 +81,27 @@ test("Team preset preview mirrors live Team HUD sprite level and HP/EXP bars wit
   assert.equal(root.querySelectorAll(".pokeidle-team-card").length, 1, "preview must not duplicate the native Team HUD card class");
 });
 
+test("Team preset preview sync refreshes live state without rebuilding preview members", t => {
+  const { dom, root } = hudDom();
+  const controller = mountTeamPresets(root, { store: store(), apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }) });
+  t.after(() => { controller.cleanup(); dom.window.close(); });
+  root.querySelector(".ppbui-team-presets-toggle").click();
+  const first = root.querySelector("[data-ppbui-team-presets-member]");
+  const native = root.querySelector(".pokeidle-team-card");
+  const creature = dom.window.PokeIdle.PersistentHud._teamHud._creatures[0];
+
+  native.querySelector(".pokeidle-team-card__compact-level").textContent = "Lv.46";
+  native.classList.add("is-fainted");
+  Object.assign(creature, { level: 46, hp: 0, exp: 180, exp_current_level: 100, exp_next_level: 200 });
+  controller.sync();
+
+  assert.equal(root.querySelector("[data-ppbui-team-presets-member]"), first, "sync must keep the existing preview node");
+  assert.equal(first.querySelector("[data-ppbui-team-presets-member-level]").textContent, "Lv.46");
+  assert.equal(first.dataset.fainted, "true");
+  assert.equal(first.querySelector("[data-ppbui-team-presets-member-hp] > i").style.width, "0%");
+  assert.equal(first.querySelector("[data-ppbui-team-presets-member-xp] > i").style.width, "80%");
+});
+
 test("Team HUD preset controls remain visually subordinate while Apply stays identifiable", t => {
   const { dom, root } = hudDom();
   const controller = mountTeamPresets(root, { store: store(), apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }) });
@@ -93,6 +114,7 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
   assert.match(css, /background:#63c95a/);
   assert.match(css, /background:#4e91df/);
   assert.match(css, /\[data-ppbui-team-presets-panel\]\[hidden\] \{ display:none!important; \}/);
+  assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets HUD must not introduce prohibited visual styling");
 });
 
 test("Team preset manager keeps 260x124 minimum cards with clear meta and subordinate maintenance controls", t => {
@@ -102,6 +124,7 @@ test("Team preset manager keeps 260x124 minimum cards with clear meta and subord
   t.after(() => { manager.cleanup(); dom.window.close(); });
   const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent;
   assert.match(css, /min-width:260px; min-height:124px/); assert.match(css, /opacity:\.38/); assert.match(css, /:focus-within/); assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets manager must not introduce prohibited visual styling");
   const card = root.querySelector("[data-ppbui-team-preset-card]");
   assert.equal(card.querySelectorAll("[data-ppbui-team-preset-member]").length, 6);
   assert.equal(card.querySelector("[data-ppbui-team-preset-card-meta] > span").textContent, "6/6");

@@ -60,6 +60,7 @@ All notable project changes are recorded in this file.
 
 ### Fixed
 
+- Removed non-native `linear-gradient` and `border-radius` styling from Team preset HUD previews to comply with the project's vanilla+ visual rules; added regressions for prohibited CSS and live HP/EXP/level/fainted synchronization without rebuilding preview nodes.
 - Included Pokémon native sell_value (with sell_price fallback) in List prices and shared item/Pokémon price sorting; added creature-ID, precedence, zero-value and missing-value coverage (50 tests total).
 - Preserve Inventory scroll through loot-driven body rebuilds by rejecting stale-grid scroll events and restoring after rendering, using a unique visible slot anchor when possible. Added scroll/reset/anchor/layout regressions (46 tests total) and verified repeated refreshes in a real browser.
 - Keep the Inventory sort select on the stable panel during native body rebuilds and avoid resetting a focused selection; added refresh, keyboard and advanced-sort regressions (39 tests total).
