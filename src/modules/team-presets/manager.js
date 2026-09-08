@@ -1,5 +1,5 @@
 import { teamPresetsConfig as config } from "./config.js";
-import { teamPresetsText } from "./dom.js";
+import { teamPresetHudMemberVisual, teamPresetsText } from "./dom.js";
 
 function errorMessage(copy, result, preset) {
   if (result?.reason === "member-unavailable" && result.missingIds?.length) {
@@ -32,18 +32,18 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-card-actions] > .ppbui-team-preset-icon:focus-visible { opacity:1; }
     [data-ppbui-team-preset-card-meta] { justify-content:space-between; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-preset-active-name] { min-width:0; overflow:hidden; color:var(--ui-gold-light,#f1d681); text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:center; min-width:0; }
-    [data-ppbui-team-preset-member] { position:relative; display:grid; place-items:center; min-width:0; height:58px; overflow:hidden; padding:2px 1px 1px; border:1px solid #33343a; background:#1d1d20; color:#d8d3ca; }
-    [data-ppbui-team-preset-member][data-active="true"] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
-    [data-ppbui-team-preset-member][data-active="true"]::after { content:"★"; position:absolute; top:1px; right:2px; color:#8fca7a; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member] img { display:block; max-width:40px; max-height:40px; image-rendering:pixelated; }
+    [data-ppbui-team-preset-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; align-items:start; min-width:0; }
+    [data-ppbui-team-preset-member] { display:grid; grid-template-rows:58px 13px; gap:2px; min-width:0; color:#d8d3ca; }
+    [data-ppbui-team-preset-member-visual] { position:relative; display:grid; place-items:center; min-width:0; height:58px; overflow:hidden; padding:2px 1px 1px; border:1px solid #33343a; background:#1d1d20; }
+    [data-ppbui-team-preset-member][data-active="true"] [data-ppbui-team-preset-member-visual] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
+    [data-ppbui-team-preset-member][data-active="true"] [data-ppbui-team-preset-member-visual]::after { content:"★"; position:absolute; top:1px; right:2px; color:#8fca7a; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-preset-member-visual] img { display:block; max-width:40px; max-height:40px; image-rendering:pixelated; }
     [data-ppbui-team-preset-member-fallback] { overflow:hidden; max-width:42px; color:#aaa7a1; font-size:8px; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-team-preset-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:8px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-preset-member-level] { position:absolute; z-index:2; right:1px; bottom:2px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:#050506; color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; transition:opacity .12s linear; }
-    [data-ppbui-team-preset-member-controls] { position:absolute; z-index:3; right:1px; bottom:1px; left:1px; display:flex; gap:1px; opacity:0; pointer-events:none; transition:opacity .12s linear; }
-    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { opacity:1; pointer-events:auto; }
-    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-level], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-level] { opacity:0; }
-    [data-ppbui-team-preset-member-controls] > button { flex:1 1 0; min-width:0; min-height:0; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:12px; }
+    [data-ppbui-team-preset-member-level] { position:absolute; z-index:2; right:1px; bottom:2px; padding:0 2px; border:1px solid rgba(255,255,255,.16); background:#050506; color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-preset-member-controls] { display:flex; gap:1px; width:100%; height:13px; visibility:hidden; opacity:0; pointer-events:none; transition:opacity .12s linear; }
+    [data-ppbui-team-preset-member]:hover [data-ppbui-team-preset-member-controls], [data-ppbui-team-preset-member]:focus-within [data-ppbui-team-preset-member-controls] { visibility:visible; opacity:1; pointer-events:auto; }
+    [data-ppbui-team-preset-member-controls] > button { flex:1 1 0; min-width:0; min-height:13px; padding:0 1px; border-width:1px; color:#d8d3ca!important; font-size:8px; line-height:11px; }
     [data-ppbui-team-preset-member-controls] > button[data-active-control="true"] { color:var(--ui-gold-light,#f1d681)!important; }
     [data-ppbui-team-preset-card-foot] { justify-content:flex-end; padding-top:4px; border-top:1px solid rgba(241,214,129,.12); }
     [data-ppbui-team-preset-card-foot] > .ppbui-team-preset-icon { opacity:.68; transition:opacity .12s linear; }
@@ -83,21 +83,15 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   }
 
   function liveMemberVisual(member) {
-    const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
-    const creature = Array.isArray(runtime?._creatures) ? runtime._creatures.find(entry => String(entry?.id ?? "") === member.id) : null;
-    const card = hudRoot ? [...hudRoot.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === member.id) : null;
-    const source = creature || member;
-    const sprite = String(card?.querySelector("img[src]")?.src || member.sprite || source?.sprite_url || source?.sprite || source?.species?.sprite_url || source?.species?.sprite || "").trim();
-    const level = Number(creature?.level ?? member.level);
-    return { sprite, level: Number.isFinite(level) ? level : null };
+    return teamPresetHudMemberVisual(hudRoot, member);
   }
 
   function liveVisualSignature() {
     const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
     if (!Array.isArray(runtime?._creatures)) return "";
     return runtime._creatures.map(creature => {
-      const id = String(creature?.id ?? ""), card = hudRoot ? [...hudRoot.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === id) : null;
-      return [id, creature?.level, card?.querySelector("img[src]")?.src || ""];
+      const id = String(creature?.id ?? ""), visual = teamPresetHudMemberVisual(hudRoot, { id });
+      return [id, visual.level, visual.sprite];
     });
   }
 
@@ -105,10 +99,12 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     const visual = liveMemberVisual(member), levelText = visual.level !== null ? `Lv.${visual.level}` : "";
     const label = `${index + 1}. ${member.name}${levelText ? ` · ${levelText}` : ""}${preset.activeId === member.id ? ` · ${copy.active}` : ""}`;
     const cell = doc.createElement("div"); cell.dataset.ppbuiTeamPresetMember = ""; cell.dataset.active = String(preset.activeId === member.id); cell.title = label; cell.setAttribute("aria-label", label);
+    const visualBox = doc.createElement("div"); visualBox.dataset.ppbuiTeamPresetMemberVisual = "";
     const position = doc.createElement("span"); position.dataset.ppbuiTeamPresetMemberPosition = ""; position.textContent = String(index + 1);
-    if (visual.sprite) { const img = doc.createElement("img"); img.src = visual.sprite; img.alt = member.name; cell.append(position, img); }
-    else { const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetMemberFallback = ""; fallback.textContent = member.name; cell.append(position, fallback); }
-    const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetMemberLevel = ""; level.textContent = levelText; cell.append(level);
+    visualBox.append(position);
+    if (visual.sprite) { const img = doc.createElement("img"); img.src = visual.sprite; img.alt = member.name; visualBox.append(img); }
+    else { const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetMemberFallback = ""; fallback.textContent = member.name; visualBox.append(fallback); }
+    const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetMemberLevel = ""; level.textContent = levelText; visualBox.append(level);
     const controls = doc.createElement("div"); controls.dataset.ppbuiTeamPresetMemberControls = "";
     const left = iconButton(doc, "←", copy.moveLeft); left.disabled = index === 0;
     const active = iconButton(doc, "★", copy.setActive); active.dataset.activeControl = "true"; active.disabled = preset.activeId === member.id;
@@ -116,7 +112,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     left.addEventListener("click", () => { if (store.moveMember(preset.id, member.id, -1)) changed(); });
     right.addEventListener("click", () => { if (store.moveMember(preset.id, member.id, 1)) changed(); });
     active.addEventListener("click", () => { if (store.setActive(preset.id, member.id)) changed(); });
-    controls.append(left, active, right); cell.append(controls); return cell;
+    controls.append(left, active, right); cell.append(visualBox, controls); return cell;
   }
 
   function render() {
