@@ -76,8 +76,67 @@ export function canonicalTeamState(doc, memberIds) {
   return null;
 }
 
+function cssUrl(value) {
+  const match = String(value || "").match(/url\(["']?([^"')]+)["']?\)/i);
+  return match?.[1]?.trim() || "";
+}
+
+function assetString(value) {
+  if (typeof value !== "string") return "";
+  const clean = value.trim();
+  if (!clean) return "";
+  if (/^(?:https?:|data:|blob:|\/|\.\.?\/)/i.test(clean) || /\.(?:png|gif|webp|jpe?g|svg)(?:[?#].*)?$/i.test(clean) || clean.includes("/")) return clean;
+  return "";
+}
+
+function spriteFromObject(source, depth = 0) {
+  if (!source || typeof source !== "object" || depth > 2) return "";
+  for (const key of ["sprite_url", "spriteUrl", "image_url", "imageUrl", "icon_url", "iconUrl", "portrait_url", "portraitUrl", "front_default", "frontDefault", "sprite", "image", "icon", "portrait"]) {
+    const value = source[key], direct = assetString(value);
+    if (direct) return direct;
+    if (value && typeof value === "object") { const nested = spriteFromObject(value, depth + 1); if (nested) return nested; }
+  }
+  for (const key of ["species", "pokemon", "sprites", "appearance", "art"]) {
+    const nested = spriteFromObject(source[key], depth + 1); if (nested) return nested;
+  }
+  return "";
+}
+
+function spriteFromCard(card) {
+  if (!card) return "";
+  for (const image of card.querySelectorAll("img")) {
+    const src = assetString(image.currentSrc) || assetString(image.getAttribute("src")) || assetString(image.getAttribute("data-src")) || assetString(image.getAttribute("data-sprite"));
+    if (src) return src;
+    const content = cssUrl(card.ownerDocument.defaultView?.getComputedStyle?.(image)?.content);
+    if (content) return content;
+  }
+  for (const canvas of card.querySelectorAll("canvas")) {
+    try { const data = canvas.toDataURL?.("image/png"); if (data?.startsWith("data:image/")) return data; } catch { /* tainted/native canvas: continue */ }
+  }
+  const descendants = [...card.querySelectorAll("*")], preferred = descendants.filter(node => /sprite|pokemon|creature|portrait|icon/i.test(String(node.className || "")));
+  for (const node of [...preferred, ...descendants]) {
+    const inline = cssUrl(node.style?.backgroundImage) || cssUrl(node.style?.content);
+    if (inline) return inline;
+    try {
+      const computed = card.ownerDocument.defaultView?.getComputedStyle?.(node);
+      const background = cssUrl(computed?.backgroundImage) || cssUrl(computed?.content);
+      if (background) return background;
+    } catch { /* detached/style edge case */ }
+  }
+  return "";
+}
+
+export function teamPresetHudMemberVisual(root, member) {
+  const runtime = root?.ownerDocument?.defaultView?.PokeIdle?.PersistentHud?._teamHud;
+  const creature = Array.isArray(runtime?._creatures) ? runtime._creatures.find(entry => String(entry?.id ?? "") === String(member?.id ?? "")) : null;
+  const card = root ? [...root.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === String(member?.id ?? "")) : null;
+  const sprite = spriteFromCard(card) || spriteFromObject(creature) || assetString(member?.sprite) || spriteFromObject(member);
+  const level = Number(creature?.level ?? member?.level);
+  return { card, creature, sprite, level: Number.isFinite(level) ? level : null };
+}
+
 function spriteFor(card, creature) {
-  return String(card?.querySelector("img[src]")?.src || creature?.sprite_url || creature?.sprite || creature?.species?.sprite_url || creature?.species?.sprite || "").trim();
+  return spriteFromCard(card) || spriteFromObject(creature);
 }
 
 export function currentTeamSnapshot(root) {
