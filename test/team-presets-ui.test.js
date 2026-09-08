@@ -117,16 +117,27 @@ test("Team HUD preset controls remain visually subordinate while Apply stays ide
   assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets HUD must not introduce prohibited visual styling");
 });
 
-test("Team preset manager keeps 260x124 minimum cards with clear meta and subordinate maintenance controls", t => {
+test("Team preset manager keeps 260x124 minimum cards and mirrors approved Team HUD member language", t => {
   const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"></section></div></div>`);
   const root = dom.window.document.body.firstChild;
   const manager = mountTeamPresetManager(root, { store: store(), hudRoot: null, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }), runExclusive: task => task(), onChange: () => {} });
   t.after(() => { manager.cleanup(); dom.window.close(); });
   const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent;
-  assert.match(css, /min-width:260px; min-height:124px/); assert.match(css, /opacity:\.38/); assert.match(css, /:focus-within/); assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.match(css, /min-width:260px; min-height:124px/);
+  assert.match(css, /opacity:\.52/);
+  assert.match(css, /background:#1d1d20/);
+  assert.match(css, /border-color:#72cf64/);
+  assert.match(css, /:focus-within/);
+  assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(css, /linear-gradient|border-radius/i, "Team Presets manager must not introduce prohibited visual styling");
+
   const card = root.querySelector("[data-ppbui-team-preset-card]");
-  assert.equal(card.querySelectorAll("[data-ppbui-team-preset-member]").length, 6);
+  const members = [...card.querySelectorAll("[data-ppbui-team-preset-member]")];
+  assert.equal(members.length, 6);
+  assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-preset-member-position]").textContent), ["1", "2", "3", "4", "5", "6"]);
+  assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-preset-member-level]").textContent), ["Lv.10", "Lv.11", "Lv.12", "Lv.13", "Lv.14", "Lv.15"]);
+  assert.equal(members[4].dataset.active, "true");
+  assert.match(members[4].getAttribute("aria-label"), /5\. E · Lv\.14 · Ativo/);
   assert.equal(card.querySelector("[data-ppbui-team-preset-card-meta] > span").textContent, "6/6");
   assert.equal(card.querySelector("[data-ppbui-team-preset-active-name]").textContent, "★ E");
   const icons = [...card.querySelectorAll("button")].map(button => button.textContent);
