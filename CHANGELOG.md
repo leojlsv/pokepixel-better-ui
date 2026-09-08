@@ -19,6 +19,7 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Fixed Team preset sprite sourcing and member maintenance layout after in-game rejection: HUD/manager previews now resolve the native sprite from `<img>`, canvas, CSS `background-image`/`content`, or loaded runtime fields and persist the resolved sprite on new snapshots; per-Pokémon `← ★ →` controls now occupy a dedicated row below the visual tile instead of overlaying sprite/level content.
 - Corrected the Team > Saved teams manager after in-game visual rejection: member cards now recover sprite/current level from the live Team HUD when older saved metadata is incomplete, keep composition as the dominant visual, and hide `← ★ →` maintenance controls until hover/focus while preserving keyboard access and all existing actions.
 - Refined the Team preset manager to mirror the approved Team HUD member language with solid slots, visible Battle-order position and `Lv.X`, green active-state treatment, and more subordinate preset/member maintenance controls; functional preset behavior remains unchanged.
 - Team HUD preset previews now mirror the existing Team HUD card language instead of generic mini-slots: native sprite/level presentation, compact card proportions, live HP/EXP bars for members currently present in the HUD, fainted state and green active border. Native `.pokeidle-team-card` nodes are never cloned, so original Team HUD actions/selectors remain isolated.
