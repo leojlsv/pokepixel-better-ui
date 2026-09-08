@@ -45,27 +45,38 @@ test("Team HUD preset disclosure really leaves layout when collapsed and restore
   toggle.click(); assert.equal(panel.hidden, true); assert.equal(panel.style.display, "none"); assert.equal(toggle.getAttribute("aria-expanded"), "false");
 });
 
-test("Team HUD uses a visual six-slot preview in official order instead of dense member text", t => {
+test("Team HUD preset uses name and controls on first row with six official-order Pokémon below", t => {
   const { dom, root } = hudDom();
   const controller = mountTeamPresets(root, { store: store(), apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }) });
   t.after(() => { controller.cleanup(); dom.window.close(); });
   root.querySelector(".ppbui-team-presets-toggle").click();
-  const row = root.querySelector("[data-ppbui-team-presets-row]"), preview = row.querySelector("[data-ppbui-team-presets-members]"), members = [...preview.querySelectorAll("[data-ppbui-team-presets-member]")];
-  assert.equal(members.length, 6); assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-presets-member-position]").textContent), ["1", "2", "3", "4", "5", "6"]);
+  const row = root.querySelector("[data-ppbui-team-presets-row]");
+  const head = row.querySelector("[data-ppbui-team-presets-row-head]");
+  const actions = [...head.querySelectorAll("[data-ppbui-team-presets-row-actions] button")];
+  const preview = row.querySelector("[data-ppbui-team-presets-members]");
+  const members = [...preview.querySelectorAll("[data-ppbui-team-presets-member]")];
+
+  assert.equal(head.querySelector("[data-ppbui-team-presets-name]").textContent, "Gym");
+  assert.equal(head.querySelector("[data-ppbui-team-presets-count]").textContent, "6/6");
+  assert.deepEqual(actions.map(button => button.textContent), ["⚙", "▶"]);
+  assert.equal(actions[1].dataset.primary, "true");
+  assert.equal(members.length, 6);
+  assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-presets-member-position]").textContent), ["1", "2", "3", "4", "5", "6"]);
+  assert.deepEqual(members.map(node => node.querySelector("[data-ppbui-team-presets-member-level]").textContent), ["Lv.10", "Lv.11", "Lv.12", "Lv.13", "Lv.14", "Lv.15"]);
   assert.equal(members[4].dataset.active, "true"); assert.equal(members[0].dataset.active, "false");
   assert.match(preview.getAttribute("aria-label"), /5\. E · Ativo/);
-  assert.equal(row.querySelector("[data-ppbui-team-presets-count]").textContent, "6/6");
-  assert.equal(row.querySelector("button").textContent, "▶");
 });
 
-test("Team HUD preset styling follows existing dark/gold hierarchy and keeps compact icon actions", t => {
+test("Team HUD preset controls remain visually subordinate while Apply stays identifiable", t => {
   const { dom, root } = hudDom();
   const controller = mountTeamPresets(root, { store: store(), apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: preset }) });
   t.after(() => { controller.cleanup(); dom.window.close(); });
   const css = root.querySelector('style[data-ppbui-module="team-presets"]').textContent;
-  assert.match(css, /var\(--ui-gold-light,#f1d681\)/); assert.match(css, /\[data-ppbui-team-presets-panel\]\[hidden\] \{ display:none!important; \}/);
-  assert.match(css, /grid-template-columns:repeat\(6,24px\)/); assert.match(css, /\[data-ppbui-team-presets-status\]:empty \{ display:none; \}/);
-  assert.equal(root.querySelector(".ppbui-team-presets-icon").textContent, "⚙");
+  assert.match(css, /grid-template-columns:repeat\(6,minmax\(0,1fr\)\)/);
+  assert.match(css, /opacity:\.58/);
+  assert.match(css, /button\[data-primary="true"\]/);
+  assert.match(css, /height:43px/);
+  assert.match(css, /\[data-ppbui-team-presets-panel\]\[hidden\] \{ display:none!important; \}/);
 });
 
 test("Team preset manager keeps 260x124 minimum cards with clear meta and subordinate maintenance controls", t => {

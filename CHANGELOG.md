@@ -19,6 +19,7 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Refined Team HUD preset cards into a strict two-row hierarchy: team name/count and discreet Manage/Apply controls on the first row, followed by six equal Pokémon slots in official Battle order with level, position and active-state cues on the second row. Functional Team preset behavior remains unchanged; in-game visual validation remains pending.
 - Refined Team presets UI after functional approval and UI/UX rejection: fixed HUD collapse visibility, restored readable dark-theme text hierarchy, reused the established gold/gray native palette, compacted secondary actions to icon buttons, and aligned Team manager cards with the visual density used by Team, Hunts and Chat. In-game visual validation remains pending.
 - Team presets now preserve official `team.member_ids[]` Battle order separately from the active/Hunt Pokémon, apply native Battle order controls sequentially, migrate v1 presets as unverified, keep HUD access collapsed by default, and add a native Team manager with 260x124 minimum cards for rename/reorder/update/apply/delete maintenance. In-game validation remains pending.
 - Fully removed the abandoned Team HUD wallet enhancement and its remaining test fixture and obsolete documentation; the game owns the wallet entirely, with no Better UI controls or deferred wallet features.
@@ -47,7 +48,7 @@ All notable project changes are recorded in this file.
 - Organized Inventory into two rows: Search/category/Clear Filters and Sort/Re-Sort/view buttons; retained native styles and keyboard order. Verified the compact-window horizontal overflow without introducing breakpoints or changing window size.
 - Shortened the Inventory placeholder to Search and removed the redundant Sort/Category summary; retained actionable warnings only.
 - Added optional List and Category-block views alongside the original grid, reusing native slot nodes, buttons and grid styles; exposed available item/Pokémon facts without loading data or triggering actions. Added view, grouping, refresh and cleanup coverage (43 tests total).
-- Increased Inventory search width by 10%, reduced the category's share of flexible space by about 10%, and exposed Re-Sort/Clear Filters as native buttons directly below the sorting row; preserved keyboard navigation and stable Sort during refreshes.
+- Increased Inventory search width by 10%, reduced the category's share of flexible space by about 10%, and exposed Re-Sort/Clear Filters as native buttons directly below the sorting row; preserved keyboard order.
 - Recorded user validation of the initial Inventory module; placed Sort beside the native category and reduced native search width to 96px as requested.
 - Added Pokémon Highest IV and Highest Quality sorting from already-loaded native creature data, with unavailable-value feedback and no API requests.
 - Applied the approved Trainer, City, Goals, Events, Social, Tools and Shop organization, with Inventory, Hunts, Mailbox and Settings direct.
