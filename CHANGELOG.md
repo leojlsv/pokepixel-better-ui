@@ -25,6 +25,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Refined the Team HUD disclosure into one line: localized Team formations on the left and a subdued saved count on the right, preserving native expansion and management controls.
+
 - Shortened the Team order label to localized `Position X`, preserving native arrow behavior and restoring native text on cleanup. Completely removed Compare with active, including rendering, stat reads, signatures, styles and translations.
 
 - Replaced the browser confirmation for saved-team deletion with the same `PokeIdle.Dialog.confirm` API used by Mark’s Shop sales, including the preset name and destructive-action option. Cancellation, unavailable/failed dialogs and module cleanup never delete a preset; concurrent prompts are suppressed.

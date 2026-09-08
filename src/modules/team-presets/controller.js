@@ -14,6 +14,9 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     [data-ppbui-team-presets] button { box-sizing:border-box; display:inline-flex!important; align-items:center!important; justify-content:center; line-height:1!important; text-align:center; text-indent:0; letter-spacing:normal; }
     [data-ppbui-team-presets-toolbar] { display:flex; align-items:center; gap:4px; min-width:0; }
     [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-toggle { flex:1 1 auto; min-width:0; min-height:24px; justify-content:flex-start!important; padding:3px 7px; color:var(--ui-gold-light,#f1d681)!important; font:inherit; font-weight:700; text-align:left; }
+    .ppbui-team-presets-toggle { gap:8px; white-space:nowrap; }
+    .ppbui-team-presets-toggle-label { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+    .ppbui-team-presets-toggle-count { flex:0 0 auto; margin-left:auto; color:#aaa7a1; font-weight:400; }
     [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-icon { flex:0 0 26px; width:26px; min-width:26px; min-height:24px; padding:3px 5px; color:#d8d3ca!important; font:inherit; }
     [data-ppbui-team-presets-panel] { display:grid; gap:5px; }
     [data-ppbui-team-presets-panel][hidden] { display:none!important; }
@@ -54,6 +57,9 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   const host = doc.createElement("div"); host.dataset.ppbuiTeamPresets = ""; host.dataset.ppbuiModule = config.id;
   const toolbar = doc.createElement("div"); toolbar.dataset.ppbuiTeamPresetsToolbar = "";
   const toggle = doc.createElement("button"); toggle.type = "button"; toggle.className = "pokeidle-btn ppbui-team-presets-toggle";
+  const toggleLabelNode = doc.createElement("span"); toggleLabelNode.className = "ppbui-team-presets-toggle-label";
+  const toggleCount = doc.createElement("span"); toggleCount.className = "ppbui-team-presets-toggle-count";
+  toggle.append(toggleLabelNode, doc.createTextNode(" "), toggleCount);
   const manage = doc.createElement("button"); manage.type = "button"; manage.className = "pokeidle-btn ppbui-team-presets-icon"; manage.textContent = "⚙";
   const panel = doc.createElement("div"); panel.dataset.ppbuiTeamPresetsPanel = ""; panel.hidden = true; panel.style.display = "none";
   const saveRow = doc.createElement("div"); saveRow.dataset.ppbuiTeamPresetsSave = "";
@@ -209,8 +215,10 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   function syncLabels() {
     const copy = text(), expanded = !panel.hidden, count = store.list().length;
-    const toggleLabel = `${expanded ? "▾" : "▸"} ${copy.toggle}${count ? ` · ${count}` : ""}`;
-    if (toggle.textContent !== toggleLabel) toggle.textContent = toggleLabel;
+    const toggleLabel = `${expanded ? "▾" : "▸"} ${copy.toggle}`;
+    if (toggleLabelNode.textContent !== toggleLabel) toggleLabelNode.textContent = toggleLabel;
+    const countLabel = copy.savedCount(count);
+    if (toggleCount.textContent !== countLabel) toggleCount.textContent = countLabel;
     if (toggle.getAttribute("aria-expanded") !== String(expanded)) toggle.setAttribute("aria-expanded", String(expanded));
     const manageTitle = copy.manage;
     if (manage.title !== manageTitle) { manage.title = manageTitle; manage.setAttribute("aria-label", manageTitle); }
