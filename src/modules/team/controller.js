@@ -21,7 +21,7 @@ function styleNode(doc) {
     .ppbui-team-profile-controls { display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:8px; min-width:0; }
     .pokeidle-team-panel .ppbui-team-profile-controls > .team-order-controls { display:flex; align-items:center; gap:4px; flex:0 1 auto; min-width:0; width:auto; margin:0; padding:0; border:0; background:none; box-shadow:none; }
     .pokeidle-team-panel .ppbui-team-profile-controls .team-order-label { min-width:0; margin:0; font:inherit; font-size:9px; }
-    .pokeidle-team-panel .ppbui-team-profile-controls .team-order-button { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex:0 0 22px; width:22px!important; min-width:22px!important; height:22px!important; min-height:22px!important; padding:0!important; font:inherit; line-height:1; }
+    .pokeidle-team-panel .ppbui-team-profile-controls .team-order-button { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; flex:0 0 26px; width:26px!important; min-width:26px!important; height:26px!important; min-height:26px!important; padding:0!important; font:inherit; line-height:1; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .ppbui-team-profile-controls > .team-active-state { max-width:100%; margin:0; white-space:normal; }
     [data-ppbui-team-compare], [data-ppbui-team-compare] > summary, .ppbui-team-compare-grid { font:inherit; }
     [data-ppbui-team-compare] > summary { cursor:pointer; color:var(--ui-gold-light,#f1d681); font-weight:700; }
@@ -34,6 +34,8 @@ function styleNode(doc) {
     .team-actions[data-ppbui-team-actions] > .pokeidle-btn { flex:0 0 auto; width:auto; min-height:0; margin:0; padding:5px 8px; font:inherit; }
     .pokeidle-team-panel .ppbui-team-profile-controls > .team-actions[data-ppbui-team-actions] { flex:0 1 auto; min-width:0; justify-content:flex-start; margin:0; padding:0; border:0; background:none; box-shadow:none; }
     .pokeidle-team-panel .ppbui-team-profile-controls > .team-actions[data-ppbui-team-actions] > button { max-width:100%; white-space:normal; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] .ppbui-team-profile-controls button { box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; height:26px!important; min-height:26px!important; padding:0 8px!important; font:inherit!important; font-size:10px!important; line-height:1!important; white-space:nowrap!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] .ppbui-team-profile-controls .team-order-button { padding:0!important; }
     .ppbui-team-picker-toolbar { display:flex; gap:6px; margin:0 0 8px; }
     .ppbui-team-picker-toolbar > input { min-width:0; flex:1 1 120px; }
     .ppbui-team-picker-toolbar > select { min-width:0; flex:1 1 100px; }
@@ -49,6 +51,7 @@ export function mountTeam(root) {
   root.append(style); root.dataset.ppbuiTeamEnhanced = "";
   let actionAnchor = null, currentActions = null, comparison = null, signature = "", active = true, scene = null;
   let profileControls = null, profileMoves = [];
+  const buttonLabels = new Map();
   const picker = createTeamPicker(doc, () => scene);
 
   function restoreActions() {
@@ -88,6 +91,36 @@ export function mountTeam(root) {
       profileMoves.push({ node, anchor }); profileControls.append(node);
     }
     parts.profileInfo.append(profileControls);
+  }
+
+  function restoreButtonLabel(button, record) {
+    if (button.textContent === record.label) button.textContent = record.text;
+    for (const [attribute, original] of [["title", record.title], ["aria-description", record.description]]) {
+      if (button.getAttribute(attribute) === record.text) {
+        if (original === null) button.removeAttribute(attribute); else button.setAttribute(attribute, original);
+      }
+    }
+    buttonLabels.delete(button);
+  }
+
+  function compactButtonLabels(parts, text) {
+    const labels = new Map([[parts.active, parts.active?.classList.contains("is-active") ? `⚔ ${text.active}` : null], [parts.remove, text.remove]]);
+    for (const [button, record] of buttonLabels) {
+      if (!button.isConnected) buttonLabels.delete(button);
+      else if (!labels.get(button)) restoreButtonLabel(button, record);
+    }
+    for (const [button, label] of labels) {
+      if (!button || !label) continue;
+      let record = buttonLabels.get(button);
+      if (!record) {
+        record = { text: button.textContent, title: button.getAttribute("title"), description: button.getAttribute("aria-description") };
+        buttonLabels.set(button, record);
+      } else if (button.textContent !== record.label || button.disabled !== record.disabled) record.text = button.textContent;
+      record.disabled = button.disabled; record.label = label;
+      if (button.textContent !== label) button.textContent = label;
+      if (button.title !== record.text) button.title = record.text;
+      if (button.getAttribute("aria-description") !== record.text) button.setAttribute("aria-description", record.text);
+    }
   }
 
   function decorateSlots(parts, scene, text) {
@@ -148,7 +181,7 @@ export function mountTeam(root) {
     if (!active) return;
     const parts = teamParts(root), text = teamText(doc); scene = teamScene(root);
     if (!parts.body || !parts.profile || !scene) { comparison?.remove(); comparison = null; return; }
-    moveActions(parts, text); compactProfileControls(parts);
+    moveActions(parts, text); compactProfileControls(parts); compactButtonLabels(parts, text);
     decorateSlots(parts, scene, text);
     renderComparison(parts, scene, text);
     picker.sync(text);
@@ -160,6 +193,7 @@ export function mountTeam(root) {
     root.querySelectorAll("[data-ppbui-team-slot]").forEach(node => node.remove());
     root.querySelectorAll(".ppbui-team-fainted").forEach(node => node.classList.remove("ppbui-team-fainted"));
     root.querySelectorAll(".team-slot[aria-description]").forEach(node => node.removeAttribute("aria-description"));
+    for (const [button, record] of buttonLabels) restoreButtonLabel(button, record);
     picker.cleanup(); restoreProfileControls(); restoreActions(); root.removeAttribute("data-ppbui-team-enhanced"); style.remove();
   } };
 }

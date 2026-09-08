@@ -78,3 +78,26 @@ test("native Battle order actions stay in the profile with intact handlers and e
   left.click(); assert.equal(moves, 2);
   assert.equal(s.root.outerHTML, s.before);
 });
+
+test("compact active/removal labels preserve explanations, native state and cleanup", t => {
+  const s = setup(t); s.dom.window.PokeIdle.Localization.get = () => 'en';
+  const active = s.root.querySelector('.team-active-state'), remove = s.root.querySelector('.pokeidle-btn--danger');
+  const activeText = '⚔ Active — this is the Pokémon that hunts', blockedText = 'Choose another Pokémon so you can remove this one';
+  active.classList.add('is-active'); active.disabled = true; active.textContent = activeText; remove.textContent = blockedText;
+  s.controller.sync();
+  assert.equal(active.textContent, '⚔ Active'); assert.equal(remove.textContent, 'Remove from team');
+  assert.equal(remove.disabled, true); assert.equal(remove.title, blockedText); assert.equal(remove.getAttribute('aria-description'), blockedText);
+  const observer = new s.dom.window.MutationObserver(() => {}); observer.observe(s.root, {subtree:true,attributes:true,childList:true,characterData:true});
+  for(let i=0;i<10;i++) s.controller.sync(); assert.equal(observer.takeRecords().length,0); observer.disconnect();
+  s.controller.cleanup(); assert.equal(active.textContent, activeText); assert.equal(remove.textContent, blockedText);
+  assert.equal(active.hasAttribute('title'),false); assert.equal(remove.hasAttribute('aria-description'),false);
+});
+
+test("same-node native state changes update compact button explanations", t => {
+  const s = setup(t); s.dom.window.PokeIdle.Localization.get = () => 'en';
+  const active=s.root.querySelector('.team-active-state'),remove=s.root.querySelector('.pokeidle-btn--danger');
+  active.classList.add('is-active'); active.textContent='Active long explanation'; remove.textContent='Choose another Pokémon'; s.controller.sync();
+  active.classList.remove('is-active'); active.textContent='Make Pokémon active'; remove.disabled=false; s.controller.sync();
+  assert.equal(active.textContent,'Make Pokémon active'); assert.equal(remove.title,'Remove from team');
+  s.controller.cleanup(); assert.equal(remove.textContent,'Remove from team');
+});

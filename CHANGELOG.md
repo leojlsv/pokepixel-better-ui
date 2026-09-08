@@ -23,6 +23,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Shortened the native active-state profile button to `⚔ Active` (localized) and kept the removal button label concise even when blocked. Full native explanations remain in tooltips and accessible descriptions; disabled rules and handlers remain native. Unified profile controls at 26px height with aligned icons/text and wrapping between controls rather than within their labels. Cleanup restores original text and attributes.
+
 - Grouped all native Pokémon profile actions together: Battle order, Make active, Details and Remove from team now share the compact profile control area. Removed the separate Details/Remove container styling, retained the native destructive treatment and original buttons/handlers, and allowed natural wrapping at narrow widths. Cleanup and SPA refresh preserve original placement and state.
 
 - Restored native rounding to Team preset previews: 4px outer HUD cards and 3px Pokémon tiles, matching the existing HUD rather than imposing square edges. Existing native manager section rounding remains intact.

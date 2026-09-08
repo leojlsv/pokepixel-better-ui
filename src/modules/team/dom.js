@@ -10,7 +10,8 @@ const copy = {
 export function teamText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "pt";
   const [name, description, compare, active, selected, power, iv, quality, hp, actions, fainted, search, element, all, rarity, clear, noResults] = copy[lang.split(/[-_]/)[0]] || copy.en;
-  return { name, description, compare, active, selected, power, iv, quality, hp, actions, fainted, search, element, all, rarity, clear, noResults };
+  const remove = ({ pt: "Remover da equipe", en: "Remove from team", es: "Quitar del equipo", zh: "移出队伍" })[lang.split(/[-_]/)[0]] || "Remove from team";
+  return { remove, name, description, compare, active, selected, power, iv, quality, hp, actions, fainted, search, element, all, rarity, clear, noResults };
 }
 
 export const findTeam = () => document.querySelector(config.selectors.root);
@@ -24,6 +25,7 @@ export function teamParts(root) {
     slotNodes: [...root.querySelectorAll(q.slot)],
     profile: root.querySelector(q.profile),
     active: root.querySelector(q.active),
+    remove: root.querySelector(q.remove),
     profileInfo: root.querySelector(q.profileInfo),
     orderControls: root.querySelector(q.orderControls),
     vitals: root.querySelector(q.vitals),

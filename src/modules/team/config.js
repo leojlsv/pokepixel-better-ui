@@ -8,6 +8,7 @@ export const teamConfig = {
     slot: ".team-slot",
     profile: ".team-section--profile",
     active: ".team-active-state",
+    remove: ".team-actions .pokeidle-btn--danger",
     profileInfo: ".team-detail__info",
     orderControls: ".team-order-controls",
     vitals: ".team-section--vitals",
