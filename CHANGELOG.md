@@ -6,6 +6,8 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's in-game approval of the compact Team profile labels and uniform button sizing in `4ff2f4c`. Validation is complete for this refinement, including active and non-active Pokémon states.
+
 - Recorded the user's approval of native rounding in Team preset cards and tiles.
 
 - Recorded the user's in-game approval of the Team > Saved teams controls in `c6d8e41`, following confirmation that the FPS regression is resolved. No validation remains pending for these two fixes; no runtime changes in this entry.
