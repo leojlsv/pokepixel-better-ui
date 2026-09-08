@@ -4,100 +4,123 @@ import { JSDOM } from "jsdom";
 import { applyTeamPreset } from "../src/modules/team-presets/actions.js";
 import { mountTeamPresets } from "../src/modules/team-presets/controller.js";
 import { currentTeamSnapshot } from "../src/modules/team-presets/dom.js";
+import { mountTeamPresetManager } from "../src/modules/team-presets/manager.js";
 import { createTeamPresetStorage } from "../src/modules/team-presets/storage.js";
 
-function memoryStorage(initial = null) {
-  const values = new Map(initial ? [["ppbui:team-presets:v1", initial]] : []);
-  return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
+function memoryStorage(initial = {}) {
+  const values = new Map(Object.entries(initial));
+  return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), values };
 }
 
-test("preset storage upserts by name, renames and removes without losing instance ids", () => {
-  const storage = memoryStorage(); let clock = 100;
-  const store = createTeamPresetStorage({ storage: () => storage, now: () => ++clock, makeId: () => "preset-1" });
-  const first = store.upsert("Hunt", { members: [{ id: "a", name: "Pikachu" }, { id: "b", name: "Gastly" }], leaderId: "a" });
-  assert.equal(first.created, true); assert.equal(store.list()[0].leaderId, "a");
-  const updated = store.upsert("hunt", { members: [{ id: "c", name: "Bulbasaur" }], leaderId: "c" });
-  assert.equal(updated.created, false); assert.equal(store.list().length, 1); assert.deepEqual(store.list()[0].members.map(member => member.id), ["c"]);
-  assert.equal(store.rename("preset-1", "Boss"), true); assert.equal(store.list()[0].name, "Boss");
-  assert.equal(store.remove("preset-1"), true); assert.deepEqual(store.list(), []);
+const snapshot = (ids, activeId = ids[0]) => ({ members: ids.map(id => ({ id, name: id.toUpperCase() })), activeId, orderVerified: true });
+const preset = (ids, activeId = ids[0], orderVerified = true) => ({ id: "preset", name: "Preset", ...snapshot(ids, activeId), orderVerified });
+
+test("storage migrates v1 presets as unverified and only explicit confirmation unlocks their order", () => {
+  const legacy = JSON.stringify([{ id: "preset-1", name: "Hunt", members: [{ id: "a", name: "A" }, { id: "b", name: "B" }], leaderId: "a", createdAt: 1, updatedAt: 1 }]);
+  const storage = memoryStorage({ "ppbui:team-presets:v1": legacy }); let clock = 10;
+  const store = createTeamPresetStorage({ storage: () => storage, now: () => ++clock, makeId: () => "new" });
+  assert.equal(store.list()[0].activeId, "a"); assert.equal(store.list()[0].orderVerified, false); assert.ok(storage.getItem("ppbui:team-presets:v2"));
+  assert.equal(store.moveMember("preset-1", "b", -1), true); assert.deepEqual(store.list()[0].members.map(member => member.id), ["b", "a"]); assert.equal(store.list()[0].orderVerified, false);
+  assert.equal(store.confirmOrder("preset-1"), true); assert.equal(store.list()[0].orderVerified, true);
 });
 
-test("HUD snapshot keeps creature instance ids and current leader", () => {
-  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card" data-creature-id="a"><span class="pokeidle-team-card__name">Pikachu</span></div><div class="pokeidle-team-card" data-creature-id="b"><span class="pokeidle-team-card__name">Gastly</span></div></div></div>`);
-  const root = dom.window.document.body.firstChild;
-  dom.window.PokeIdle = { PersistentHud: { _teamHud: { el: root, _creatures: [{ id: "a" }, { id: "b", is_leader: true }] } } };
-  assert.deepEqual(currentTeamSnapshot(root), { members: [{ id: "a", name: "Pikachu" }, { id: "b", name: "Gastly" }], leaderId: "b" });
+test("storage keeps official order, active id and preset ordering independently", () => {
+  const storage = memoryStorage(); let clock = 100, id = 0;
+  const store = createTeamPresetStorage({ storage: () => storage, now: () => ++clock, makeId: () => `p${++id}` });
+  store.upsert("Gym", snapshot(["b", "c", "a"], "a")); store.upsert("PvP", snapshot(["d", "e"], "e"));
+  assert.deepEqual(store.list()[0].members.map(member => member.id), ["b", "c", "a"]); assert.equal(store.list()[0].activeId, "a");
+  assert.equal(store.movePreset("p2", -1), true); assert.equal(store.list()[0].name, "PvP"); assert.equal(store.setActive("p2", "d"), true); assert.equal(store.list()[0].activeId, "d");
+});
+
+test("HUD snapshot uses linked Team member_ids instead of HUD order or a stale cached scene", () => {
+  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card" data-creature-id="a"><span class="pokeidle-team-card__name">Exeggutor</span></div><div class="pokeidle-team-card" data-creature-id="b"><span class="pokeidle-team-card__name">Gyarados</span></div><div class="pokeidle-team-card" data-creature-id="c"><span class="pokeidle-team-card__name">Gengar</span></div><div class="pokeidle-team-card" data-creature-id="d"><span class="pokeidle-team-card__name">Raichu</span></div><div class="pokeidle-team-card" data-creature-id="e"><span class="pokeidle-team-card__name">Primeape</span></div><div class="pokeidle-team-card" data-creature-id="f"><span class="pokeidle-team-card__name">Arcanine</span></div></div></div><div class="pokeidle-team-panel"><div class="pokeidle-panel__body"></div></div>`);
+  const root = dom.window.document.querySelector(".pokeidle-team-hud"), body = dom.window.document.querySelector(".pokeidle-panel__body");
+  const stale = { _team: { member_ids: ["a", "b", "c", "d", "e", "f"], leader_id: "a" } }, live = { _panel: { body }, _team: { member_ids: ["e", "b", "c", "d", "a", "f"], leader_id: "a" } };
+  dom.window.PokeIdle = { PersistentHud: { _teamHud: { el: root, _creatures: [{ id: "a", is_leader: true }, { id: "b" }, { id: "c" }, { id: "d" }, { id: "e" }, { id: "f" }] } }, ReactiveWindows: { cached: () => [stale, live] } };
+  const result = currentTeamSnapshot(root);
+  assert.deepEqual(result.members.map(member => member.id), ["e", "b", "c", "d", "a", "f"]); assert.equal(result.activeId, "a"); assert.equal(result.orderVerified, true);
   dom.window.close();
 });
 
-test("stable Team preset reconciliation is mutation-free", async t => {
-  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card" data-creature-id="a"><span class="pokeidle-team-card__name">Pikachu</span></div></div></div>`, { pretendToBeVisual: true });
+test("Team HUD Teams panel is collapsed by default and stable reconciliation is mutation-free", async t => {
+  const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card" data-creature-id="a"><span class="pokeidle-team-card__name">A</span></div></div></div>`, { pretendToBeVisual: true });
   const root = dom.window.document.body.firstChild; dom.window.PokeIdle = { Localization: { get: () => "pt-BR" }, PersistentHud: { _teamHud: { el: root, _creatures: [{ id: "a", is_leader: true }] } } };
-  const store = { list: () => [], reload: () => [], upsert: () => null, rename: () => false, remove: () => false, isPersistent: () => true };
-  const controller = mountTeamPresets(root, { store, apply: async () => ({ ok: true }) }); t.after(() => { controller.cleanup(); dom.window.close(); });
+  const store = { list: () => [], reload: () => [], upsert: () => null, replaceSnapshot: () => false, rename: () => false, remove: () => false, movePreset: () => false, moveMember: () => false, setActive: () => false, confirmOrder: () => false, isPersistent: () => true };
+  const controller = mountTeamPresets(root, { store, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: snapshot(["a"]) }) }); t.after(() => { controller.cleanup(); dom.window.close(); });
+  const panel = root.querySelector("[data-ppbui-team-presets-panel]"), toggle = root.querySelector("[data-ppbui-team-presets-toolbar] button"); assert.equal(panel.hidden, true); toggle.click(); assert.equal(panel.hidden, false);
   const seen = []; const observer = new dom.window.MutationObserver(records => seen.push(...records)); observer.observe(root, { subtree: true, childList: true, attributes: true, characterData: true });
-  for (let index = 0; index < 5; index++) controller.sync(); await Promise.resolve(); observer.disconnect();
-  assert.equal(seen.length, 0, seen.map(record => `${record.type}:${record.attributeName || record.target.nodeName}`).join(","));
+  for (let index = 0; index < 5; index++) controller.sync(); await Promise.resolve(); observer.disconnect(); assert.equal(seen.length, 0);
 });
 
-function setupTeam({ current = ["a", "b", "c"], leader = "a", available = ["d", "e"] } = {}) {
+test("Team manager renders native-like preset cards at minimum 260x124 and supports manual order maintenance", t => {
+  const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"></section></div></div>`);
+  const root = dom.window.document.body.firstChild, storage = memoryStorage(), store = createTeamPresetStorage({ storage: () => storage, makeId: () => "p1" });
+  store.upsert("Gym", snapshot(["a", "b", "c", "d", "e", "f"], "e"));
+  const manager = mountTeamPresetManager(root, { store, hudRoot: null, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: snapshot(["a"]) }), runExclusive: task => task(), onChange: () => {} });
+  t.after(() => { manager.cleanup(); dom.window.close(); });
+  const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent; assert.match(css, /min-width:260px; min-height:124px/); assert.equal(root.querySelectorAll("[data-ppbui-team-preset-member]").length, 6);
+  const secondLeft = root.querySelectorAll("[data-ppbui-team-preset-member]")[1].querySelector("button"); secondLeft.click(); assert.deepEqual(store.list()[0].members.slice(0, 2).map(member => member.id), ["b", "a"]);
+});
+
+function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", "e"] } = {}) {
   const slots = Array.from({ length: 6 }, (_, index) => `<button class="team-slot"><span>${index + 1}</span></button>`).join("");
-  const dom = new JSDOM(`<button data-menu-id="team">Team</button><div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><div class="team-slots">${slots}</div><button class="team-active-state">Active</button><div class="team-actions"><button class="pokeidle-btn pokeidle-btn--danger">Remove</button></div></div></div>`, { pretendToBeVisual: true });
+  const dom = new JSDOM(`<button data-menu-id="team">Team</button><div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"><div class="team-slots">${slots}</div></section><section class="team-section team-section--profile"><div class="team-battle-order"><span>Battle order</span><button class="pokeidle-btn order-left">←</button><button class="pokeidle-btn order-right">→</button></div><button class="team-active-state">Active</button></section><div data-ppbui-module="team-presets"><button class="pokeidle-btn rogue-left">←</button></div><div class="team-actions"><button class="pokeidle-btn pokeidle-btn--danger">Remove</button></div></div></div>`, { pretendToBeVisual: true });
   const doc = dom.window.document, root = doc.querySelector(".pokeidle-team-panel"), body = root.querySelector(".pokeidle-panel__body");
   const createMember = id => ({ id, name: id.toUpperCase(), hp: 100, max_hp: 100 });
-  const scene = {
-    _panel: { body }, _creatures: current.map(createMember), _available: available.map(createMember),
-    _team: { member_ids: [...current], leader_id: leader }, _selectedId: current[0],
-  };
-  const active = root.querySelector(".team-active-state"), remove = root.querySelector(".pokeidle-btn--danger");
+  const scene = { _panel: { body }, _creatures: current.map(createMember), _available: available.map(createMember), _team: { member_ids: [...current], leader_id: active }, _selectedId: current[0] };
+  const activeButton = root.querySelector(".team-active-state"), remove = root.querySelector(".pokeidle-btn--danger"), left = root.querySelector(".order-left"), right = root.querySelector(".order-right"), rogue = root.querySelector(".rogue-left"); let rogueClicks = 0;
+  rogue.addEventListener("click", () => rogueClicks++);
   const syncButtons = () => {
-    const member = scene._creatures.find(entry => entry.id === scene._selectedId);
-    active.disabled = !member || member.id === scene._team.leader_id || member.hp <= 0;
-    remove.disabled = !member || member.id === scene._team.leader_id || scene._creatures.length <= 1;
+    const member = scene._creatures.find(entry => entry.id === scene._selectedId), position = scene._team.member_ids.indexOf(scene._selectedId);
+    activeButton.disabled = !member || member.id === scene._team.leader_id || member.hp <= 0; remove.disabled = !member || member.id === scene._team.leader_id || scene._creatures.length <= 1;
+    left.disabled = position <= 0; right.disabled = position < 0 || position >= scene._team.member_ids.length - 1;
   };
-  root.querySelectorAll(".team-slot").forEach((slot, index) => slot.addEventListener("click", () => { scene._selectedId = scene._creatures[index]?.id || null; syncButtons(); }));
-  active.addEventListener("click", () => { if (!active.disabled) scene._team.leader_id = scene._selectedId; syncButtons(); });
+  root.querySelectorAll(".team-slot").forEach((slot, index) => slot.addEventListener("click", () => { scene._selectedId = scene._team.member_ids[index] || null; syncButtons(); }));
+  activeButton.addEventListener("click", () => { if (!activeButton.disabled) scene._team.leader_id = scene._selectedId; syncButtons(); });
   remove.addEventListener("click", () => {
-    if (remove.disabled) return;
-    const index = scene._creatures.findIndex(member => member.id === scene._selectedId);
-    if (index < 0) return;
-    const [member] = scene._creatures.splice(index, 1); scene._available.push(member); scene._team.member_ids = scene._creatures.map(entry => entry.id); scene._selectedId = scene._creatures[0]?.id || null; syncButtons();
+    if (remove.disabled) return; const index = scene._creatures.findIndex(member => member.id === scene._selectedId); if (index < 0) return;
+    const [member] = scene._creatures.splice(index, 1); scene._available.push(member); scene._team.member_ids = scene._team.member_ids.filter(id => id !== member.id); scene._selectedId = scene._team.member_ids[0] || null; syncButtons();
   });
+  const move = direction => {
+    const index = scene._team.member_ids.indexOf(scene._selectedId), target = index + direction; if (index < 0 || target < 0 || target >= scene._team.member_ids.length) return;
+    [scene._team.member_ids[index], scene._team.member_ids[target]] = [scene._team.member_ids[target], scene._team.member_ids[index]]; syncButtons();
+  };
+  left.addEventListener("click", () => { if (!left.disabled) move(-1); }); right.addEventListener("click", () => { if (!right.disabled) move(1); });
   scene.requestEquipPicker = () => {
-    doc.querySelector(".team-equip-picker")?.remove();
-    const picker = doc.createElement("div"); picker.className = "team-equip-picker";
-    const snapshot = [...scene._available];
-    for (const member of snapshot) {
+    doc.querySelector(".team-equip-picker")?.remove(); const picker = doc.createElement("div"); picker.className = "team-equip-picker"; const candidates = [...scene._available];
+    for (const member of candidates) {
       const card = doc.createElement("button"); card.className = "team-equip-card"; card.textContent = member.name;
       card.addEventListener("click", () => {
-        const index = scene._available.findIndex(entry => entry.id === member.id);
-        if (index < 0 || scene._creatures.length >= 6) return;
-        const [added] = scene._available.splice(index, 1); scene._creatures.push(added); scene._team.member_ids = scene._creatures.map(entry => entry.id); picker.remove(); syncButtons();
-      });
-      picker.append(card);
+        const index = scene._available.findIndex(entry => entry.id === member.id); if (index < 0 || scene._creatures.length >= 6) return;
+        const [added] = scene._available.splice(index, 1); scene._creatures.push(added); scene._team.member_ids.push(added.id); picker.remove(); syncButtons();
+      }); picker.append(card);
     }
     doc.body.append(picker);
   };
   dom.window.PokeIdle = { ReactiveWindows: { cached: () => [scene] } }; dom.window.SceneManager = { _scene: scene }; syncButtons();
-  return { dom, doc, scene };
+  return { dom, doc, scene, rogueClicks: () => rogueClicks };
 }
 
-const preset = (ids, leader) => ({ name: "Preset", members: ids.map(id => ({ id, name: id.toUpperCase() })), leaderId: leader });
-
-test("apply preset uses native Team actions sequentially and reaches exact membership and leader", async t => {
+test("apply reproduces exact composition, active Pokémon and official battle order using only native profile arrows", async t => {
   const s = setupTeam(); t.after(() => s.dom.window.close());
-  const result = await applyTeamPreset(s.doc, preset(["b", "d", "e"], "d"));
-  assert.equal(result.ok, true); assert.deepEqual(new Set(s.scene._creatures.map(member => member.id)), new Set(["b", "d", "e"])); assert.equal(s.scene._team.leader_id, "d");
+  const result = await applyTeamPreset(s.doc, preset(["e", "b", "d"], "d"));
+  assert.equal(result.ok, true); assert.deepEqual(s.scene._team.member_ids, ["e", "b", "d"]); assert.equal(s.scene._team.leader_id, "d"); assert.equal(s.rogueClicks(), 0);
 });
 
-test("full Team can replace its current leader through a temporary retained leader", async t => {
-  const s = setupTeam({ current: ["a", "b", "c", "d", "e", "f"], leader: "a", available: ["g"] }); t.after(() => s.dom.window.close());
-  const result = await applyTeamPreset(s.doc, preset(["b", "c", "d", "e", "f", "g"], "g"));
-  assert.equal(result.ok, true); assert.deepEqual(new Set(s.scene._creatures.map(member => member.id)), new Set(["b", "c", "d", "e", "f", "g"])); assert.equal(s.scene._team.leader_id, "g");
+test("apply can reorder an unchanged team without confusing active Pokémon with position 1", async t => {
+  const s = setupTeam({ current: ["a", "b", "c"], active: "a", available: [] }); t.after(() => s.dom.window.close());
+  const result = await applyTeamPreset(s.doc, preset(["c", "a", "b"], "a"));
+  assert.equal(result.ok, true); assert.deepEqual(s.scene._team.member_ids, ["c", "a", "b"]); assert.equal(s.scene._team.leader_id, "a");
 });
 
-test("missing preset member aborts before changing native Team state", async t => {
-  const s = setupTeam(); t.after(() => s.dom.window.close()); const before = s.scene._creatures.map(member => member.id);
-  const result = await applyTeamPreset(s.doc, preset(["a", "z"], "a"));
-  assert.equal(result.ok, false); assert.equal(result.reason, "member-unavailable"); assert.deepEqual(s.scene._creatures.map(member => member.id), before); assert.equal(s.scene._team.leader_id, "a");
+test("full Team can replace its active Pokémon and then restore exact target order", async t => {
+  const s = setupTeam({ current: ["a", "b", "c", "d", "e", "f"], active: "a", available: ["g"] }); t.after(() => s.dom.window.close());
+  const result = await applyTeamPreset(s.doc, preset(["g", "b", "c", "d", "e", "f"], "g"));
+  assert.equal(result.ok, true); assert.deepEqual(s.scene._team.member_ids, ["g", "b", "c", "d", "e", "f"]); assert.equal(s.scene._team.leader_id, "g");
+});
+
+test("unverified legacy order and missing members abort before changing native Team state", async t => {
+  const s = setupTeam(); t.after(() => s.dom.window.close()); const before = [...s.scene._team.member_ids];
+  let result = await applyTeamPreset(s.doc, preset(["b", "a", "c"], "a", false)); assert.equal(result.ok, false); assert.equal(result.reason, "order-unverified"); assert.deepEqual(s.scene._team.member_ids, before);
+  result = await applyTeamPreset(s.doc, preset(["a", "z"], "a")); assert.equal(result.ok, false); assert.equal(result.reason, "member-unavailable"); assert.deepEqual(s.scene._team.member_ids, before); assert.equal(s.scene._team.leader_id, "a");
 });

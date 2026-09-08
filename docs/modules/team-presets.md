@@ -1,73 +1,118 @@
 # Team presets
 
-Status: implementation branch; requires build/tests and in-game validation before merge.
+Status: implementation branch; requires local build/tests and in-game validation before merge.
 
 ## Goal
 
-Add manually triggered saved Team compositions to the persistent Team HUD without replacing the native Team window or introducing direct network calls.
+Save and restore a Team as three independent pieces of state:
 
-## Behavior
+1. member composition;
+2. official Battle order (`team.member_ids[]`);
+3. active/Hunt Pokémon (`team.leader_id`).
 
-- `Times/Teams` is an independent optional module attached to `.pokeidle-team-hud`.
-- `Salvar atual/Save current` snapshots the currently loaded HUD team using creature instance `id`, display name and current leader.
-- Saving the same preset name updates that preset instead of creating a duplicate.
-- Presets can be renamed inline and deleted.
-- Applying a preset first validates every saved creature against the current Team plus the native Team scene `_available` collection.
-- If any creature is no longer available, no composition change is started.
-- The native Team window is opened through its existing `button[data-menu-id="team"]` action when necessary.
-- Removal, active-member changes and additions reuse the existing Team slots/actions, `requestEquipPicker()` and native `.team-equip-card` nodes.
-- Actions are executed sequentially and each step must be reflected by the original Team scene before the next step starts.
-- A full team where the current leader must leave uses a retained living target member as a temporary leader when required.
-- The final member set and leader are verified before success is reported.
+The persistent Team HUD is only the quick-access surface. Full maintenance lives inside the native Team window.
 
-## Persistence
+## Canonical state
 
-Presets are stored in `localStorage` under `ppbui:team-presets:v1`.
+The compact HUD is **not** the source of truth for order. Its creature list may present the active Pokémon first even when that Pokémon occupies another official battle position.
 
-The stored model is deliberately small:
+A saved snapshot therefore:
 
-```json
-{
-  "id": "...",
-  "name": "Hunt",
-  "members": [{ "id": "creature-instance-id", "name": "Pikachu" }],
-  "leaderId": "creature-instance-id",
-  "createdAt": 0,
-  "updatedAt": 0
-}
-```
+- reads current creature instance IDs from the HUD;
+- resolves the same set against a native Team scene/runtime;
+- stores members in `team.member_ids[]` order;
+- stores the active Pokémon separately as `activeId`;
+- stores presentation metadata (`name`, optional `sprite`, optional `level`) only for preview.
 
-`name` is presentation metadata. Creature instance `id` is the identity used for validation/application.
+If canonical order is not already available, `Save current` opens/reuses the native Team window before saving so an unverified HUD order is never persisted as official.
 
-If browser storage is unavailable, the module remains usable in memory for the current page session and exposes a warning.
+## Persistence and migration
+
+Current storage key: `ppbui:team-presets:v2`.
+
+Version 1 (`ppbui:team-presets:v1`) is migrated automatically. Because v1 used HUD order, migrated presets are marked `orderVerified: false` and Apply is blocked until the user either:
+
+- reviews/reorders the six members and presses **Confirm order**; or
+- presses **Update current**, which captures the current canonical Team order.
+
+## HUD quick access
+
+The Team HUD exposes a compact, collapsed-by-default `Teams` section:
+
+- expand/collapse;
+- Save current;
+- quick Apply for verified presets;
+- Manage, which opens the native Team window and expands the preset manager.
+
+The HUD list shows the saved official positions (`1..6`) and marks the saved active Pokémon with `*`. Rename/delete/reorder maintenance is intentionally not duplicated here.
+
+## Team manager
+
+The native Team window receives an independent Better UI section after the roster. It follows existing native styling and does not resize the window.
+
+Each preset card has a minimum footprint of `260x124` and displays up to six Pokémon side by side in saved Battle order.
+
+Management actions:
+
+- rename preset;
+- move preset up/down in the saved list;
+- move a Pokémon left/right in saved Battle order;
+- choose the saved active Pokémon independently from position;
+- confirm migrated legacy order;
+- Update current;
+- Apply;
+- Delete.
+
+## Apply contract
+
+Apply is manually triggered only. Better UI performs no direct HTTP/WebSocket request.
+
+Sequence:
+
+1. validate preset and verified order;
+2. open/reuse the native Team window;
+3. validate all saved creature instance IDs against current Team + native Add Pokémon candidates;
+4. reconcile composition through native Remove/Add controls;
+5. preserve the existing full-Team active-transition safeguard when the current active member must leave;
+6. reproduce Battle order by selecting a member and clicking the native `←` Battle order control one step at a time;
+7. wait for `team.member_ids[]` to confirm every move;
+8. set/confirm the saved active Pokémon independently;
+9. validate exact final composition, order and active ID.
+
+A failure stops the sequence at the first unconfirmed native action. Because the original client does not expose an atomic whole-Team transaction, a native failure after confirmed steps may still leave a partially changed Team.
 
 ## Intentional limits
 
-- Preset application is only started by an explicit user click. There is no scheduled, hunt-driven, combat-driven or background team switching.
-- No HTTP/WebSocket endpoint is called or intercepted by Better UI.
-- Native disabled states remain authoritative. A fainted target leader or blocked remove/active action stops the operation.
-- Team order is not forced. The original Team client does not expose a reorder action, so a preset guarantees member composition plus leader, not slot ordering.
-- A native failure after some confirmed steps can leave a partially changed Team. The module pre-validates availability and stops at the first failure, but the original client does not expose an atomic whole-Team transaction.
-- The Team window is intentionally left open after Apply so the user can inspect the authoritative final state or recover from a blocked step.
+- No scheduled, hunt-driven, combat-driven or background team switching.
+- No network interception or custom Team endpoint.
+- Native disabled rules remain authoritative.
+- Creature instance ID is the only identity used for Apply; species name is never used as a substitute.
+- Legacy order is never trusted silently.
+- The Team window remains open after Apply/Manage so the authoritative result is visible.
 
 ## Regression scope
 
 `test/team-presets.test.js` covers:
 
-- local persistence and instance-ID preservation;
-- HUD snapshot and leader capture;
-- sequential native apply;
-- full-team current-leader replacement;
-- pre-validation that aborts before mutation when a saved creature is unavailable.
+- v1 -> v2 migration and order verification;
+- official order and active ID persistence;
+- the reported case where HUD active order differs from `member_ids[]`;
+- collapsed HUD and mutation-free stable reconciliation;
+- manager `260x124` minimum card and manual saved-order editing;
+- exact composition + Battle order + active Apply;
+- order-only Apply with active Pokémon outside position 1;
+- full 6/6 active replacement followed by order restoration;
+- zero-mutation abort for legacy/unavailable presets.
 
 ## Required in-game validation
 
-1. Save a partial and a full team from the HUD.
-2. Reload and confirm persistence.
-3. Apply with Team closed and confirm the native Team window opens.
-4. Apply a full 6/6 preset with a different active Pokémon.
-5. Apply a preset where the current active Pokémon is not in the target team.
-6. Confirm a sold/unavailable Pokémon blocks Apply before any member changes.
-7. Confirm a fainted target leader is blocked by the native rule.
-8. Rename/delete presets and verify no Team action fires.
-9. Disable the module in Better UI and confirm the Team HUD returns to its native/Team-HUD-enhanced state without leftover nodes.
+1. With active Pokémon outside position 1, Save current and verify the manager preview follows the Team Battle order rather than HUD order.
+2. Reload and verify persistence.
+3. Apply a preset that changes only Battle order.
+4. Apply a preset that changes composition, Battle order and active Pokémon.
+5. Apply a full 6/6 preset whose current active Pokémon must leave.
+6. Confirm each native Battle order arrow click advances exactly one position.
+7. Confirm a sold/unavailable Pokémon blocks Apply before mutation.
+8. Confirm a migrated v1 preset is blocked until Confirm order or Update current.
+9. Verify Team manager cards remain at least `260x124` without changing native Team window dimensions.
+10. Disable Team presets and confirm both HUD and Team manager nodes clean up completely.

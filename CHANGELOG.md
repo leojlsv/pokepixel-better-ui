@@ -19,6 +19,7 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Team presets now preserve official `team.member_ids[]` Battle order separately from the active/Hunt Pokémon, apply native Battle order controls sequentially, migrate v1 presets as unverified, keep HUD access collapsed by default, and add a native Team manager with 260x124 minimum cards for rename/reorder/update/apply/delete maintenance. In-game validation remains pending.
 - Fully removed the abandoned Team HUD wallet enhancement and its remaining test fixture and obsolete documentation; the game owns the wallet entirely, with no Better UI controls or deferred wallet features.
 - Added `assets/better-ui-icon.png` as an editable local copy of the native Settings icon currently cloned by the Better UI module control; runtime behavior remains unchanged.
 - Integrated the approved custom `assets/better-ui-logo.png` into the Better UI module button as an embedded PNG data URL, keeping the userscript self-contained and the native toolbar icon geometry.
