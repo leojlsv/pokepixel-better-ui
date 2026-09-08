@@ -18,7 +18,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     [data-ppbui-team-presets-panel][hidden] { display:none!important; }
     [data-ppbui-team-presets-save] { display:grid; grid-template-columns:minmax(0,1fr) 28px; gap:4px; }
     [data-ppbui-team-presets-save] > button { min-width:28px; min-height:24px; padding:3px 5px; color:#d8d3ca!important; }
-    [data-ppbui-team-presets-list] { display:grid; gap:5px; max-height:190px; overflow:auto; }
+    [data-ppbui-team-presets-list] { display:grid; gap:5px; max-height:205px; overflow:auto; }
     [data-ppbui-team-presets-row] { display:grid; grid-template-rows:auto auto; gap:4px; min-width:0; padding:5px; border:1px solid rgba(241,214,129,.12); background:rgba(20,20,22,.72); }
     [data-ppbui-team-presets-row-head] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:6px; min-width:0; }
     [data-ppbui-team-presets-title] { display:flex; align-items:baseline; gap:5px; min-width:0; }
@@ -32,13 +32,19 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     [data-ppbui-team-presets-row-actions] > button[data-primary="true"]:hover,
     [data-ppbui-team-presets-row-actions] > button[data-primary="true"]:focus-visible { opacity:1; }
     [data-ppbui-team-presets-members] { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:3px; width:100%; min-width:0; }
-    [data-ppbui-team-presets-member] { position:relative; display:grid; grid-template-rows:minmax(30px,1fr) 9px; place-items:center; box-sizing:border-box; min-width:0; height:43px; overflow:hidden; padding:2px 1px 1px; border:1px solid rgba(241,214,129,.13); background:rgba(0,0,0,.20); color:#aaa7a1; font-size:8px; }
-    [data-ppbui-team-presets-member][data-active="true"] { border-color:var(--ui-gold-light,#f1d681); box-shadow:inset 0 0 0 1px rgba(241,214,129,.12); }
-    [data-ppbui-team-presets-member][data-active="true"]::after { content:"★"; position:absolute; top:1px; right:2px; color:var(--ui-gold-light,#f1d681); font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-presets-member] img { display:block; max-width:30px; max-height:30px; image-rendering:pixelated; }
-    [data-ppbui-team-presets-member-fallback] { max-width:32px; overflow:hidden; color:#d8d3ca; font-size:8px; text-overflow:clip; white-space:nowrap; }
-    [data-ppbui-team-presets-member-position] { position:absolute; top:1px; left:2px; color:#aaa7a1; font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
-    [data-ppbui-team-presets-member-level] { align-self:end; overflow:hidden; max-width:100%; color:#aaa7a1; font-size:7px; line-height:9px; text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-team-presets-member] { position:relative; display:grid; place-items:center; box-sizing:border-box; min-width:0; height:50px; overflow:hidden; padding:2px 1px 7px; border:1px solid #33343a; border-radius:2px; background:linear-gradient(180deg,rgba(38,38,42,.95),rgba(19,19,21,.98)); color:#d8d3ca; }
+    [data-ppbui-team-presets-member][data-active="true"] { border-color:#72cf64; box-shadow:inset 0 0 0 1px rgba(114,207,100,.24),0 0 3px rgba(114,207,100,.22); }
+    [data-ppbui-team-presets-member][data-fainted="true"] { opacity:.55; }
+    [data-ppbui-team-presets-member] img { display:block; max-width:36px; max-height:36px; image-rendering:pixelated; }
+    [data-ppbui-team-presets-member-fallback] { max-width:36px; overflow:hidden; color:#d8d3ca; font-size:8px; text-overflow:clip; white-space:nowrap; }
+    [data-ppbui-team-presets-member-position] { position:absolute; z-index:2; top:1px; left:2px; color:#aaa7a1; font-size:7px; line-height:1; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-presets-member-level] { position:absolute; z-index:2; right:1px; bottom:6px; padding:0 2px; border:1px solid rgba(255,255,255,.16); border-radius:2px; background:rgba(5,5,6,.88); color:#f0eee9; font-size:7px; font-weight:700; line-height:9px; white-space:nowrap; text-shadow:0 1px 1px #000; }
+    [data-ppbui-team-presets-member-bars] { position:absolute; right:2px; bottom:1px; left:2px; display:grid; gap:1px; pointer-events:none; }
+    [data-ppbui-team-presets-member-bars][hidden] { display:none!important; }
+    [data-ppbui-team-presets-member-hp], [data-ppbui-team-presets-member-xp] { display:block; height:2px; overflow:hidden; background:#08090a; }
+    [data-ppbui-team-presets-member-hp] > i, [data-ppbui-team-presets-member-xp] > i { display:block; height:100%; width:0; }
+    [data-ppbui-team-presets-member-hp] > i { background:#63c95a; }
+    [data-ppbui-team-presets-member-xp] > i { background:#4e91df; }
     [data-ppbui-team-presets-status] { margin:0; color:#aaa7a1; font-size:9px; }
     [data-ppbui-team-presets-status]:empty { display:none; }
     [data-ppbui-team-presets-status][data-error="true"] { color:#d18b82; font-weight:700; }
@@ -58,10 +64,13 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   const text = () => teamPresetsText(doc);
   const setDisabled = (node, value) => { if (node && node.disabled !== value) node.disabled = value; };
+  const clampPercent = value => Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
+
   function setStatus(message = "", error = false) {
     if (status.textContent !== message) status.textContent = message;
     const nextError = error ? "true" : "false"; if (status.dataset.error !== nextError) status.dataset.error = nextError;
   }
+
   function errorMessage(result, preset) {
     const copy = text();
     if (result?.reason === "member-unavailable" && result.missingIds?.length) {
@@ -81,21 +90,56 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     finally { busy = false; sync(); }
   }
 
+  function liveHudVisual(member) {
+    const runtime = win?.PokeIdle?.PersistentHud?._teamHud;
+    const creature = Array.isArray(runtime?._creatures) ? runtime._creatures.find(entry => String(entry?.id ?? "") === member.id) : null;
+    const card = [...root.querySelectorAll(config.selectors.hudCard)].find(node => node.dataset.creatureId === member.id);
+    if (!creature && !card) return null;
+    const sprite = String(card?.querySelector("img[src]")?.src || member.sprite || "").trim();
+    const levelText = String(card?.querySelector(".pokeidle-team-card__compact-level, .pokeidle-team-card__level")?.textContent || (Number.isFinite(Number(creature?.level ?? member.level)) ? `Lv.${creature?.level ?? member.level}` : "")).trim();
+    const hp = Number(creature?.hp), maximum = Number(creature?.max_hp);
+    const hpPercent = Number.isFinite(hp) && Number.isFinite(maximum) && maximum > 0 ? clampPercent((hp / maximum) * 100) : null;
+    const exp = Number(creature?.exp), from = Number(creature?.exp_current_level), to = Number(creature?.exp_next_level);
+    const xpPercent = [exp, from, to].every(Number.isFinite) && to > from ? clampPercent(((exp - from) / (to - from)) * 100) : null;
+    const fainted = card?.classList.contains("is-fainted") || (Number.isFinite(hp) && hp <= 0);
+    return { sprite, levelText, hpPercent, xpPercent, fainted: Boolean(fainted) };
+  }
+
+  function paintHudVisual(item, member) {
+    const live = liveHudVisual(member), level = item.querySelector("[data-ppbui-team-presets-member-level]"), bars = item.querySelector("[data-ppbui-team-presets-member-bars]");
+    const image = item.querySelector("img"), nextLevel = live?.levelText || (Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "");
+    if (level && level.textContent !== nextLevel) level.textContent = nextLevel;
+    if (image && live?.sprite && image.src !== live.sprite) image.src = live.sprite;
+    const fainted = live?.fainted ? "true" : "false"; if (item.dataset.fainted !== fainted) item.dataset.fainted = fainted;
+    const hasBars = Boolean(live && (live.hpPercent !== null || live.xpPercent !== null));
+    if (bars && bars.hidden === hasBars) bars.hidden = !hasBars;
+    if (!bars || !hasBars) return;
+    const hpFill = bars.querySelector("[data-ppbui-team-presets-member-hp] > i"), xpFill = bars.querySelector("[data-ppbui-team-presets-member-xp] > i");
+    const hpWidth = `${live.hpPercent ?? 0}%`, xpWidth = `${live.xpPercent ?? 0}%`;
+    if (hpFill.style.width !== hpWidth) hpFill.style.width = hpWidth;
+    if (xpFill.style.width !== xpWidth) xpFill.style.width = xpWidth;
+  }
+
   function presetPreview(preset, copy) {
     const preview = doc.createElement("div"); preview.dataset.ppbuiTeamPresetsMembers = ""; preview.setAttribute("role", "list");
     const description = preset.members.map((member, index) => `${index + 1}. ${member.name}${member.id === preset.activeId ? ` · ${copy.active}` : ""}`).join("; ");
     preview.title = description; preview.setAttribute("aria-label", description);
     preset.members.forEach((member, index) => {
-      const item = doc.createElement("span"); item.dataset.ppbuiTeamPresetsMember = ""; item.dataset.active = String(member.id === preset.activeId); item.setAttribute("role", "listitem");
+      const live = liveHudVisual(member), item = doc.createElement("span");
+      item.dataset.ppbuiTeamPresetsMember = ""; item.dataset.memberId = member.id; item.dataset.active = String(member.id === preset.activeId); item.setAttribute("role", "listitem");
       item.title = `${index + 1}. ${member.name}${member.level ? ` · Lv.${member.level}` : ""}${member.id === preset.activeId ? ` · ${copy.active}` : ""}`;
       const position = doc.createElement("span"); position.dataset.ppbuiTeamPresetsMemberPosition = ""; position.textContent = String(index + 1);
-      if (member.sprite) {
-        const image = doc.createElement("img"); image.src = member.sprite; image.alt = member.name; item.append(image);
+      const sprite = live?.sprite || member.sprite;
+      if (sprite) {
+        const image = doc.createElement("img"); image.src = sprite; image.alt = member.name; item.append(image);
       } else {
         const fallback = doc.createElement("span"); fallback.dataset.ppbuiTeamPresetsMemberFallback = ""; fallback.textContent = member.name.slice(0, 3).toUpperCase(); item.append(fallback);
       }
-      const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetsMemberLevel = ""; level.textContent = Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "";
-      item.append(position, level); preview.append(item);
+      const level = doc.createElement("span"); level.dataset.ppbuiTeamPresetsMemberLevel = ""; level.textContent = live?.levelText || (Number.isFinite(Number(member.level)) ? `Lv.${member.level}` : "");
+      const bars = doc.createElement("span"); bars.dataset.ppbuiTeamPresetsMemberBars = ""; bars.hidden = true; bars.setAttribute("aria-hidden", "true");
+      const hp = doc.createElement("span"); hp.dataset.ppbuiTeamPresetsMemberHp = ""; hp.append(doc.createElement("i"));
+      const xp = doc.createElement("span"); xp.dataset.ppbuiTeamPresetsMemberXp = ""; xp.append(doc.createElement("i"));
+      bars.append(hp, xp); item.append(position, level, bars); paintHudVisual(item, member); preview.append(item);
     });
     return preview;
   }
@@ -126,6 +170,15 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
       const preview = presetPreview(preset, copy);
       row.append(head, preview); list.append(row);
     }
+  }
+
+  function syncPreviewVisuals() {
+    const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];
+    rows.forEach((row, presetIndex) => {
+      const preset = presets[presetIndex]; if (!preset) return;
+      const items = [...row.querySelectorAll("[data-ppbui-team-presets-member]")];
+      items.forEach((item, memberIndex) => { const member = preset.members[memberIndex]; if (member) paintHudVisual(item, member); });
+    });
   }
 
   function mountManager(nextRoot) {
@@ -161,7 +214,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   }
 
   function sync() {
-    syncLabels(); syncManager();
+    syncLabels(); syncManager(); syncPreviewVisuals();
     if (busy) return;
     setDisabled(toggle, false); setDisabled(manage, false); setDisabled(name, false); setDisabled(save, !currentTeamSnapshot(root));
     const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];
