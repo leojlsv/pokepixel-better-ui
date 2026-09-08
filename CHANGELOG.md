@@ -6,6 +6,8 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's in-game approval of the Team > Saved teams controls in `c6d8e41`, following confirmation that the FPS regression is resolved. No validation remains pending for these two fixes; no runtime changes in this entry.
+
 - Recorded the user's final in-game validation and approval of Team, including compact profile actions, collapsed comparison, equipped-Pokémon information flow and Add Pokémon name/element/rarity filters; no validation remains pending for this scope.
 - Recorded the user's final in-game validation and approval of Hunts (Map), including locate/reset focus, Johto level correction, compact effectiveness badges and valued Drops; no validation remains pending for the implemented scope.
 - Recorded the user's final validation and approval of Chat, including native tab management, fixed header actions, keyboard adjustments and the horizontal-scroll/window-growth fix; no validation remains pending for this scope.
