@@ -58,14 +58,15 @@ test("Team preset manager keeps maintenance controls in a separate row below the
 
   const member = teamRoot.querySelector("[data-ppbui-team-preset-member]");
   const visual = member.querySelector("[data-ppbui-team-preset-member-visual]");
-  const controls = member.querySelector("[data-ppbui-team-preset-member-controls]");
+  const controls = teamRoot.querySelector("[data-ppbui-team-preset-member-controls]");
   assert.equal(member.children[0], visual);
-  assert.equal(member.children[1], controls);
+  assert.equal(member.contains(controls), false);
+  assert.equal(controls.parentElement.dataset.ppbuiTeamPresetCardFoot, "");
   assert.equal(visual.querySelector("img")?.src, spriteUrl);
   assert.equal(visual.querySelector("[data-ppbui-team-preset-member-level]").textContent, "Lv.47");
 
   const css = teamRoot.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent;
-  assert.match(css, /grid-template-rows:40px 13px/);
-  assert.match(css, /opacity:0; pointer-events:none/);
+  assert.match(css, /grid-template-rows:24px 12px 40px 22px/);
+  assert.equal(controls.querySelectorAll("button").length, 3);
   assert.doesNotMatch(css.match(/\[data-ppbui-team-preset-member-controls\] \{[^}]+\}/)?.[0] || "", /position:absolute/);
 });

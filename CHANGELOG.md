@@ -19,6 +19,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- User confirmed the Team Presets FPS regression is resolved in-game. Replaced cramped per-slot controls with one selected-member toolbar per card; native sprite buttons select the target, while Update/Apply share the footer and preset controls have explicit compact dimensions. Sprite sync, Apply, Battle Order and storage semantics are unchanged.
+
 - Fixed the critical Team Presets sync performance regression: Save availability no longer captures a snapshot; live preview sync indexes HUD cards once and reads cached/persisted sprites without computed styles, canvas exports or descendant sprite scans; collapsed previews skip the index entirely. Saved-team change detection compares fields directly without serializing sprite payloads. Unchanged sync produces no DOM mutations, including relative sprite URLs.
 - Native sprite extraction remains in capture/update and bounded render/open fallback, with shared weak caches for successful and missing sources. Explicitly reopening retries missing assets, and new snapshots take priority over cached visuals. Apply, Battle Order and storage semantics are unchanged.
 - Fitted six Pokémon and their separate maintenance rows inside the Team > Saved teams 260x124 card by constraining slot/button sizing and placing Update/Apply beside metadata. Keyboard focus reveals member controls. Added repeated-sync and layout regressions; real in-game FPS and native visual validation remain pending.

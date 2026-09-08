@@ -59,7 +59,14 @@ test("Team manager renders native-like preset cards at minimum 260x124 and suppo
   const manager = mountTeamPresetManager(root, { store, hudRoot: null, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: snapshot(["a"]) }), runExclusive: task => task(), onChange: () => {} });
   t.after(() => { manager.cleanup(); dom.window.close(); });
   const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent; assert.match(css, /min-width:260px; min-height:124px/); assert.equal(root.querySelectorAll("[data-ppbui-team-preset-member]").length, 6);
-  const secondLeft = root.querySelectorAll("[data-ppbui-team-preset-member]")[1].querySelector("button"); secondLeft.click(); assert.deepEqual(store.list()[0].members.slice(0, 2).map(member => member.id), ["b", "a"]);
+  const secondLeft = root.querySelectorAll("[data-ppbui-team-preset-member]")[1].querySelector("button"); secondLeft.click();
+  assert.deepEqual(store.list()[0].members.map(member => member.id), ["a", "b", "c", "d", "e", "f"], "selection is presentation-only");
+  root.querySelector("[data-ppbui-team-preset-member-controls] button").click(); assert.deepEqual(store.list()[0].members.slice(0, 2).map(member => member.id), ["b", "a"]);
+  assert.equal(root.querySelector('[data-ppbui-team-preset-member-visual][aria-pressed="true"]').parentElement, root.querySelector('[data-ppbui-team-preset-member]'));
+  root.querySelector('[data-active-control="true"]').click();
+  assert.equal(store.list()[0].activeId, "b");
+  assert.deepEqual(store.list()[0].members.map(member => member.id), ["b", "a", "c", "d", "e", "f"]);
+  assert.equal(root.querySelector('[data-active-control="true"]').disabled, true);
 });
 
 function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", "e"] } = {}) {
