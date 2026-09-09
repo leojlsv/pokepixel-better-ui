@@ -65,18 +65,18 @@ Management actions:
 
 ## Apply contract
 
-Apply is manually triggered only. Better UI performs no direct HTTP/WebSocket request.
+Apply is manually triggered only. It uses the existing `PokeIdle.Api` methods and `team.updated` event payloads used by PokemonCardHost Equip/Unequip. It creates no custom HTTP/WebSocket client and requires no Team window or scene.
 
 Sequence:
 
 1. validate preset and verified order;
-2. open/reuse the native Team window;
+2. load Team and inventory through the native API without opening any window;
 3. validate all saved creature instance IDs against current Team + native Add Pokémon candidates;
-4. await native `removeMember` / `equipFromInventory` methods and verify their resulting state;
+4. await native `removeTeamMember` / `addTeamMember`, emit the native card events and reload confirmed state;
 5. preserve the existing full-Team active-transition safeguard when the current active member must leave;
-6. await native `persistOrder` once with the complete target order;
+6. await native `setTeamOrder` once with the complete target order;
 7. verify `team.member_ids[]` after persistence finishes, including rollback on failure;
-8. await native `setLeader` and confirm the saved active Pokémon independently;
+8. await native `setTeamLeader` and confirm the saved active Pokémon independently;
 9. validate exact final composition, order and active ID.
 
 A failure stops the sequence at the first unconfirmed native action. Because the original client does not expose an atomic whole-Team transaction, a native failure after confirmed steps may still leave a partially changed Team.

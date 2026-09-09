@@ -131,7 +131,17 @@ function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", 
     scene._creatures.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
     scene._orderBusy = false; syncButtons();
   };
-  dom.window.PokeIdle = { ReactiveWindows: { cached: () => [scene] } }; dom.window.SceneManager = { _scene: scene }; syncButtons();
+  dom.window.PokeIdle = {
+    ReactiveWindows: { cached: () => [scene] }, Bus: { emit() {} },
+    Api: {
+      async getTeam() { await scene.load(); return { team: structuredClone(scene._team) }; },
+      async getCreatures(location) { return { data: structuredClone(location === "team" ? scene._creatures : scene._available) }; },
+      async setTeamLeader(id) { await scene.setLeader(scene._creatures.find(member => member.id === id)); return {}; },
+      async removeTeamMember(id) { await scene.removeMember(scene._creatures.find(member => member.id === id)); return {}; },
+      async addTeamMember(id) { await scene.equipFromInventory(scene._available.find(member => member.id === id), doc.createElement("button")); return {}; },
+      async setTeamOrder(ids) { await scene.persistOrder(ids); return {}; },
+    },
+  }; dom.window.SceneManager = { _scene: scene }; syncButtons();
   return { dom, doc, scene, rogueClicks: () => rogueClicks };
 }
 
@@ -186,9 +196,9 @@ test("different-sized presets wait for inventory/order reload and confirmed orde
 test("preflight reloads native inventory before reporting a backpack member missing", async t => {
   const s = setupTeam({ available: [] }); t.after(() => s.dom.window.close());
   let loads = 0;
-  s.scene.load = async () => { loads++; s.scene._available = [{ id: "d", name: "D", hp: 100 }]; };
+  s.scene.load = async () => { loads++; if (loads === 1) s.scene._available = [{ id: "d", name: "D", hp: 100 }]; };
   const result = await applyTeamPreset(s.doc, preset(["d", "a"], "d"));
-  assert.equal(result.ok, true, result.reason); assert.equal(loads, 1);
+  assert.equal(result.ok, true, result.reason); assert.ok(loads >= 1);
   assert.deepEqual(s.scene._team.member_ids, ["d", "a"]);
 });
 
@@ -213,4 +223,21 @@ test("native rejected equip or optimistic order rollback cannot report success",
   };
   result = await applyTeamPreset(s.doc, preset(["c", "b", "a"], "a"));
   assert.equal(result.ok, false); assert.equal(result.reason, "order-final-state-mismatch");
+});
+
+test("HUD-only apply uses PokemonCard API flow without a Team scene or window", async t => {
+  const s = setupTeam(); t.after(() => s.dom.window.close());
+  s.doc.body.replaceChildren(); s.dom.window.SceneManager = {};
+  s.dom.window.PokeIdle.ReactiveWindows.cached = () => [];
+  const events = []; s.dom.window.PokeIdle.Bus.emit = (event, payload) => events.push({event, payload});
+  s.dom.window.HTMLElement.prototype.click = () => assert.fail("must not open Team");
+  const result = await applyTeamPreset(s.doc, preset(["e", "b", "d"], "d"));
+  assert.equal(result.ok, true, result.reason);
+  assert.deepEqual(s.scene._team.member_ids, ["e", "b", "d"]);
+  assert.equal(s.scene._team.leader_id, "d");
+  assert.equal(s.doc.body.children.length, 0);
+  assert.ok(events.some(({payload}) => payload.added_creature?.id === "d" && payload.added_creature.equipped));
+  assert.ok(events.some(({payload}) => payload.removed_creature?.id === "a" && payload.removed_creature.location === "inventory"));
+  assert.ok(events.some(({payload}) => payload.leader_id === "d"));
+  assert.ok(events.some(({payload}) => payload.member_ids?.join() === "e,b,d"));
 });
