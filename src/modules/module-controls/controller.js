@@ -44,12 +44,21 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     copy.append(name, description); row.append(button, copy);
     return { module, row, button, name, description };
   });
+  let disclosureState = {}, disclosurePersistent = true;
+  try {
+    const saved = JSON.parse(document.defaultView.localStorage.getItem(config.disclosureStorageKey) || "{}");
+    if (saved && typeof saved === "object" && !Array.isArray(saved)) disclosureState = saved;
+  } catch { disclosurePersistent = false; }
   const groups = config.groups.map(({ id, modules: ids }) => {
-    const fieldset = create("fieldset", "ppbui-module-section"), legend = create("legend");
+    const fieldset = create("details", "ppbui-module-section"), legend = create("summary");
+    const heading = create("span"), count = create("span", "ppbui-module-group-count");
+    legend.append(heading, document.createTextNode(" · "), count);
+    fieldset.open = typeof disclosureState[id] === "boolean" ? disclosureState[id] : true;
+    fieldset.dataset.ppbuiTheme = id;
     const members = rows.filter(row => ids.includes(row.module.id) || (id === "interface" && !config.groups.some(group => group.modules.includes(row.module.id))));
     fieldset.append(legend, ...members.map(row => row.row));
     fieldset.hidden = !members.length;
-    return { id, fieldset, legend };
+    return { id, fieldset, legend, heading, count, members };
   });
   const close = create("button", "pokeidle-btn ppbui-module-close"); close.type = "button";
   const list = create("div", "ppbui-module-list");
@@ -65,7 +74,9 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     .ppbui-module-list::-webkit-scrollbar-thumb { border:2px solid var(--ui-navy-deep,#171719); background:var(--ui-gold-dark,#74613f); border-radius:4px; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
     .ppbui-module-panel .ppbui-module-section { min-width:0; margin:4px 0; padding:0; border:0; text-align:left; }
-    .ppbui-module-section > legend { padding:4px 0; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
+    .ppbui-module-section > summary { cursor:pointer; padding:6px 0; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }
+    .ppbui-module-group-count { color:var(--ui-muted,#9b9994); font-size:10px; font-weight:400; white-space:nowrap; }
+    .ppbui-module-section > summary:focus-visible { outline:1px solid var(--ui-gold-light,#f1d681); outline-offset:2px; }
     .ppbui-module-panel .ppbui-module-row { display:flex; align-items:flex-start; gap:8px; padding:6px 4px; cursor:pointer; text-align:left; }
     .ppbui-module-row:hover { background:rgba(255,255,255,.04); }
     .ppbui-module-row:focus-within { outline:1px solid var(--ui-gold-light,#f1d681); outline-offset:-1px; }
@@ -86,7 +97,8 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     trigger.setAttribute("aria-expanded", String(open));
     if (open) {
       closeNativeGroups(toolbar, group);
-      (rows[0]?.button || close).focus();
+      const first = groups.find(group => !group.fieldset.hidden);
+      (first ? (first.fieldset.open ? first.members[0].button : first.legend) : close).focus();
     } else if (restoreFocus) trigger.focus();
   };
   const sync = () => {
@@ -94,8 +106,11 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     const content = (node, value) => { if (node.textContent !== value) node.textContent = value; };
     content(title, text.title);
     content(close, text.close);
-    content(status, preferences.isPersistent() ? text.saved : text.unsaved);
-    for (const group of groups) content(group.legend, text.groups[group.id]);
+    content(status, preferences.isPersistent() && disclosurePersistent ? text.saved : text.unsaved);
+    for (const group of groups) {
+      content(group.heading, text.groups[group.id]);
+      content(group.count, `${group.members.filter(row => preferences.isEnabled(row.module.id)).length}/${group.members.length} ${text.activeCount}`);
+    }
     for (const { module, button, name: nameNode, description } of rows) {
       const enabled = preferences.isEnabled(module.id);
       const name = module.name(text);
@@ -112,6 +127,15 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
   };
   listen(trigger, "click", event => { event.stopPropagation(); setOpen(!open); });
   listen(close, "click", () => setOpen(false, true));
+  for (const { id, fieldset } of groups) listen(fieldset, "toggle", () => {
+    if (!fieldset.isConnected || disclosureState[id] === fieldset.open) return;
+    disclosureState[id] = fieldset.open;
+    try {
+      document.defaultView.localStorage.setItem(config.disclosureStorageKey, JSON.stringify(disclosureState));
+      disclosurePersistent = true;
+    } catch { disclosurePersistent = false; }
+    sync();
+  });
   for (const { module, button } of rows) listen(button, "change", event => {
     event.stopPropagation();
     preferences.setEnabled(module.id, button.checked);

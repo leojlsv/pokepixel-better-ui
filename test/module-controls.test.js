@@ -129,3 +129,24 @@ test("panel keyboard, outside dismissal, locale and toolbar replacement", async 
   trigger().click(); toggle().click();
   assert.equal(doc.querySelector('[data-ppbui-group="shop"]'), null);
 });
+
+test("theme disclosure persists independently and counts track module settings", async t => {
+  const { app, doc, window, trigger, toggle, preferences } = setup(t);
+  app.start(); trigger().click();
+  const theme = doc.querySelector('[data-ppbui-theme="interface"]');
+  assert.equal(theme.open, true);
+  assert.match(theme.querySelector('summary').textContent, /1\/1 ativos/);
+  theme.open = false;
+  await new Promise(resolve => window.setTimeout(resolve, 20));
+  assert.equal(preferences.isEnabled('menu-bar'), true);
+  assert.equal(JSON.parse(window.localStorage.getItem('ppbui:module-groups:v1')).interface, false);
+  preferences.setEnabled('menu-bar', false);
+  assert.match(theme.querySelector('summary').textContent, /0\/1 ativos/);
+  assert.equal(theme.open, false);
+  app.stop(); app.start(); trigger().click();
+  const restored = doc.querySelector('[data-ppbui-theme="interface"]');
+  assert.equal(restored.open, false);
+  assert.equal(doc.activeElement, restored.querySelector('summary'));
+  restored.open = true; toggle().click();
+  assert.equal(preferences.isEnabled('menu-bar'), true);
+});

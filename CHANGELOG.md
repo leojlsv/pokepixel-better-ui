@@ -29,6 +29,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Made module themes independently collapsible using native disclosures. Headers show enabled/total counts even when closed, and each theme remembers its expansion state in separate browser storage. Module enablement, bounded scrolling and fixed footer remain unchanged.
+
 - Bounded the module preferences panel to 480px or the available viewport height. Only the grouped checkbox list scrolls, with native gold/graphite scrollbar styling; title, persistence status and Close remain visible as modules are added.
 
 - Replaced oversized module toggle tiles with compact labeled checkboxes grouped into Interface, Team, and Activities & items. Preserved preference persistence, keyboard focus, dismissal and live reconciliation; descriptions remain visible beside each checkbox.
