@@ -6,6 +6,8 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's in-game validation of Auto Helper in `38b41a7`, including grouped settings, save/close/reopen behavior, consumable selection and per-quality destinations. No in-game validation remains pending for this delivery.
+
 - Recorded the user's in-game validation of `01fbda9`: independently collapsible module themes, enabled/total counters and persisted expansion state. No validation remains pending for this refinement.
 
 - Recorded the user's in-game validation of `a1dafef`: minimizing Team HUD hides the preset section and restoring it preserves its previous disclosure state. No validation remains pending for this fix.

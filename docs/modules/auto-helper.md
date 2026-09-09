@@ -1,6 +1,6 @@
 # Auto Helper
 
-Status: implemented; in-game validation pending.
+Status: implemented and validated in game by the user on 2026-09-09 (`38b41a7`).
 
 ## Scope
 
@@ -30,3 +30,5 @@ Automated coverage: serialized saves, pending text on close, error/retry, exclus
 Local preview uses the native AutoHelper script with mock settings and inventory, including a narrow view. No real hunt settings were changed during development.
 
 In-game checks: change a consumable and threshold; edit species then immediately close/reopen; choose Sell/Extract/Keep without changing the master toggles; verify unavailable/license states; refresh inventory; disable/re-enable the Better UI module. Confirm selections persist and existing automation behavior remains native.
+
+The user validated this delivery in game on 2026-09-09. No in-game validation remains pending for this scope.
