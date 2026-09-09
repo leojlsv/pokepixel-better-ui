@@ -33,6 +33,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Replaced Auto Helper destination dropdowns with a compact Keep/Sell/Extract radio matrix. Rarity labels reuse native quality colors, paused states appear in column headers, and explanations stay in How it works. Exclusive assignments, license locks and saving behavior are preserved.
+
 - Aligned Auto Helper Battle Support into function, consumable and condition rows. Combined Sell/Extraction toggles, license time and per-quality destinations in one native section, with collapsed explanations and explicit paused labels when a master is disabled. Assignments and saving semantics are unchanged; in-game visual validation is pending.
 
 - Reworked Auto Helper visuals after the user rejected the consumable tile layout: compact native selects show resource names and quantities with a selected-item icon; function states share the checkbox row, and redundant Selected lines are removed. Saving and destination semantics are unchanged. Visual approval is pending.

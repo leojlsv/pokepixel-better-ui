@@ -4,7 +4,7 @@ import { helperParts } from "./dom.js";
 export function mountAutoHelper(root, session) {
   const doc = root.ownerDocument, pi = doc.defaultView.PokeIdle, parts = helperParts(root);
   let alive = true, ready = false, refreshing = false, inventory = [], choices = [], pickers = [], destinations = [], stockMessage = "", loadError = "", stock = new Map();
-  const moves = [], replacements = [], owned = [], listeners = [], badges = [], hiddenNodes = [];
+  const moves = [], replacements = [], owned = [], listeners = [], badges = [], destinationHeaders = [], hiddenNodes = [];
   const hide = el => { if (el) { hiddenNodes.push({el,hidden:el.hidden}); el.hidden=true; el.classList.add("ppbui-auto-original"); } };
   const node = (tag, cls, text) => { const el = doc.createElement(tag); if (cls) el.className = cls; if (text) el.textContent = text; return el; };
   const flag = (el, key, value) => { if (el[key] !== value) el[key] = value; };
@@ -61,7 +61,12 @@ export function mountAutoHelper(root, session) {
     .auto-helper-panel[data-ppbui-auto-helper] .auto-helper-note { line-height:1.4; }
     .ppbui-auto-destinations { width:100%; border-collapse:collapse; color:var(--ui-ink); }
     .ppbui-auto-destinations th,.ppbui-auto-destinations td { padding:6px 4px; text-align:left; border-bottom:1px solid var(--ui-gold-dark); }
-    .ppbui-auto-destinations select { width:100%; padding:5px; background:var(--ui-navy-deep,#151517); color:var(--ui-ink); border:1px solid var(--ui-gold-dark); }
+    .ppbui-auto-destinations { width:min(100%,480px); }
+    .ppbui-auto-destinations td,.ppbui-auto-destinations thead th:not(:first-child) { text-align:center; }
+    .ppbui-auto-destination-choice { display:grid; place-items:center; min-height:28px; cursor:pointer; }
+    .ppbui-auto-destination-choice input { margin:0; accent-color:var(--ui-gold-light); }
+    .ppbui-auto-destination-choice:has(input:disabled) { cursor:default; opacity:.5; }
+    .ppbui-auto-destinations small { display:block; font-weight:400; color:var(--ui-muted); }
     .ppbui-auto-original[hidden] { display:none!important; }
     @media(max-width:760px) { .ppbui-auto-group-body { grid-template-columns:1fr; } .ppbui-auto-support-head { display:none; } .ppbui-auto-support-part { grid-template-columns:minmax(100px,1fr) minmax(0,2fr); } .ppbui-auto-support-condition { grid-column:2; grid-row:2; } }
   `;
@@ -189,17 +194,20 @@ export function mountAutoHelper(root, session) {
       content(el, stateText);
       flag(el,"hidden", input === parts.potion || input === parts.revive ? stateText === text.enabled || stateText === text.disabled : false);
     });
-    destinations.forEach(({select, quality, sell, extract}) => {
+    destinationHeaders.forEach(({value, status}) => {
+      const master = value === "sell" ? parts.sellCheck : parts.extractCheck;
+      content(status, !master.checked || master.disabled ? text.paused : "");
+    });
+    destinations.forEach(({radios, quality, sell, extract}) => {
       const sellLocked = sell.disabled || parts.sellCheck.disabled, extractLocked = !extract || extract.disabled || parts.extractCheck.disabled;
-      flag(select, "disabled", sellLocked && extractLocked);
-      flag(select.options[1], "disabled", sellLocked);
-      if (extract) flag(select.options[2], "disabled", extractLocked);
-      content(select.options[1], `${text.sell}${!parts.sellCheck.checked || sellLocked ? ` — ${text.paused}` : ""}`);
-      if (extract) content(select.options[2], `${text.extract}${!parts.extractCheck.checked || extractLocked ? ` — ${text.paused}` : ""}`);
-      const value = sell.checked ? "sell" : extract?.checked ? "extract" : "keep";
-      if (select.value !== value) select.value = value;
-      const label = `${text.destination}: ${quality}`;
-      if (select.getAttribute("aria-label") !== label) select.setAttribute("aria-label", label);
+      const selected = sell.checked ? "sell" : extract?.checked ? "extract" : "keep";
+      radios.forEach(radio => {
+        flag(radio, "disabled", radio.value === "keep" ? sellLocked && extractLocked : radio.value === "sell" ? sellLocked : extractLocked);
+        flag(radio, "checked", radio.value === selected);
+        const master = radio.value === "sell" ? parts.sellCheck : radio.value === "extract" ? parts.extractCheck : null;
+        const label = `${quality}: ${text[radio.value]}${master && (!master.checked || master.disabled) ? ` — ${text.paused}` : ""}`;
+        if (radio.getAttribute("aria-label") !== label) radio.setAttribute("aria-label", label);
+      });
     });
   }
   async function refreshInventory() {
@@ -233,20 +241,32 @@ export function mountAutoHelper(root, session) {
       for (const input of [parts.sellCheck, parts.extractCheck].filter(Boolean)) { const el = node("small", "ppbui-auto-status"); input.parentElement.append(el); owned.push(el); badges.push({el,input}); }
       const text = autoHelperText(doc), destinationGroup = groups.find(group => group.key === "destination");
       const tableSection = node("section", "auto-helper-section is-wide"), table = node("table", "ppbui-auto-destinations"), head = node("tr"), tbody = node("tbody");
-      head.append(node("th", "", text.quality), node("th", "", text.destination)); const thead = node("thead"); thead.append(head); table.append(thead,tbody);
+      head.append(node("th", "", text.quality));
+      for (const value of ["keep","sell",...(parts.extract ? ["extract"] : [])]) {
+        const heading = node("th", "", text[value]); heading.scope = "col";
+        if (value !== "keep") { const status = node("small"); heading.append(status); destinationHeaders.push({value,status}); }
+        head.append(heading);
+      } const thead = node("thead"); thead.append(head); table.append(thead,tbody);
       const destinationControls = node("div", "ppbui-auto-destination-controls"), help = node("details", "ppbui-auto-destination-help");
       help.append(node("summary","",text.details));
-      tableSection.append(destinationControls,help,node("p", "auto-helper-note", text.destinationNote), table); destinationGroup.body.append(tableSection); owned.push(tableSection);
+      help.append(node("p", "auto-helper-note", text.destinationNote));
+      tableSection.append(destinationControls,help,table); destinationGroup.body.append(tableSection); owned.push(tableSection);
       move(parts.sell,destinationControls); if(parts.extract) move(parts.extract,destinationControls);
       if(parts.licenseTime) move(parts.licenseTime,destinationControls);
       hide(parts.sellHeading); hide(parts.extractHeading);
       for(const note of [...parts.sellNotes,...parts.extractNotes]) move(note,help);
       parts.sellQualities.forEach(sell => {
         const extract = parts.extractQualities.find(input => input.value === sell.value), quality = sell.parentElement.textContent;
-        const tr = node("tr"), label = node("th", "", quality), td = node("td"), select = node("select"); label.scope = "row";
-        for (const value of ["keep", "sell", ...(extract ? ["extract"] : [])]) { const option = node("option", "", text[value]); option.value = value; select.append(option); }
-        td.append(select); tr.append(label,td); tbody.append(tr); destinations.push({select,quality,sell,extract});
-        listen(select, "change", () => { sell.checked = select.value === "sell"; if (extract) extract.checked = select.value === "extract"; queue(true); });
+        const tr = node("tr"), label = node("th", "", quality), radios = []; label.scope = "row";
+        if (["weak","common","uncommon","rare","epic","legendary","mythical"].includes(sell.value)) label.style.color = `var(--quality-${sell.value})`;
+        tr.append(label);
+        for (const value of ["keep", "sell", ...(extract ? ["extract"] : [])]) {
+          const td = node("td"), choice = node("label", "ppbui-auto-destination-choice"), radio = node("input");
+          radio.type = "radio"; radio.name = `ppbui-auto-destination-${sell.value}`; radio.value = value;
+          choice.append(radio); td.append(choice); tr.append(td); radios.push(radio);
+          listen(radio, "change", () => { if (!radio.checked) return; sell.checked = value === "sell"; if (extract) extract.checked = value === "extract"; queue(true); });
+        }
+        tbody.append(tr); destinations.push({radios,quality,sell,extract});
       });
       for (const original of [parts.sellGrid, parts.extractGrid].filter(Boolean)) { const placeholder = node("span"); placeholder.hidden = true; replace(original, placeholder); }
       const nativeInputs = [parts.potion,parts.revive,parts.hp,parts.common,parts.shinyCheck,parts.sellCheck,parts.extractCheck,parts.names].filter(Boolean);
@@ -259,12 +279,12 @@ export function mountAutoHelper(root, session) {
       parts.body.scrollTop = session.scroll || 0;
       const target = session.focus?.kind === "input" ? nativeInputs[session.focus.index]
         : session.focus?.kind === "picker" ? pickers[session.focus.index]?.select
-        : session.focus?.kind === "destination" ? destinations[session.focus.index]?.select : null;
+        : session.focus?.kind === "destination" ? destinations[session.focus.index]?.radios.find(radio => radio.value === session.focus.value) : null;
       target?.focus({preventScroll:true});
       if (target === parts.names && session.selection) target.setSelectionRange(...session.selection);
       listen(root, "focusin", () => {
-        const active = doc.activeElement, inputIndex = nativeInputs.indexOf(active), pickerIndex = pickers.findIndex(picker => picker.grid.contains(active)), destinationIndex = destinations.findIndex(item => item.select === active);
-        session.focus = inputIndex >= 0 ? {kind:"input",index:inputIndex} : pickerIndex >= 0 ? {kind:"picker",index:pickerIndex,id:active.dataset.ppbuiItem} : destinationIndex >= 0 ? {kind:"destination",index:destinationIndex} : null;
+        const active = doc.activeElement, inputIndex = nativeInputs.indexOf(active), pickerIndex = pickers.findIndex(picker => picker.grid.contains(active)), destinationIndex = destinations.findIndex(item => item.radios.includes(active));
+        session.focus = inputIndex >= 0 ? {kind:"input",index:inputIndex} : pickerIndex >= 0 ? {kind:"picker",index:pickerIndex,id:active.dataset.ppbuiItem} : destinationIndex >= 0 ? {kind:"destination",index:destinationIndex,value:active.value} : null;
       });
       listen(parts.names, "keyup", () => { session.selection = [parts.names.selectionStart,parts.names.selectionEnd]; });
     } catch (error) { if (alive) { parts.body.inert = wasInert; loadError = error.message; sync(); } }

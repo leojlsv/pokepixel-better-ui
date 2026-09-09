@@ -1,6 +1,6 @@
 # Auto Helper
 
-Status: functionality and compact consumable selectors validated in game; support-row alignment and the combined destination section await in-game approval.
+Status: functionality and compact consumable selectors validated in game; the destination radio matrix and rarity colors await in-game approval.
 
 ## Scope
 
@@ -8,7 +8,7 @@ Enhance the native Auto Helper settings editor, without running gameplay actions
 
 The editor uses existing native styles and window geometry. Selected consumables use compact native selects with names, quantities, a selected-item icon and keyboard focus. Support uses aligned function, consumable and condition rows without redundant enabled/disabled labels. Exceptional states remain visible beside their toggles. Stock refreshes on the native inventory.updated event or explicit Refresh resources; idle reconciliation makes no requests. Enabled, disabled, missing stock and blocked states are distinguished locally.
 
-One destination per quality replaces the duplicated sell/extract quality grids. Keep means neither list includes that quality. Sell and Extract only operate when their native master toggle and entitlement allow them; changing a destination does not enable either function. Disabled masters add a paused label to their destination choices without clearing assignments. Master toggles and license time share the table section; explanations use a native disclosure. Genetic extraction remains absent on unsupported servers.
+A compact native radio matrix provides Keep/Sell/Extract columns with one destination per quality. Rarity labels use the game’s --quality-* tokens. Keep means neither list includes that quality. Sell and Extract only operate when their native master toggle and entitlement allow them; changing a destination does not enable either function. Disabled masters show paused in their column header and accessible control labels without clearing assignments. Master toggles and license time share the table section; explanations use a native disclosure. Genetic extraction remains absent on unsupported servers.
 
 ## Saving contract
 

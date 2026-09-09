@@ -51,10 +51,10 @@ test("native controls remain intact while destination choices serialize exclusiv
   assert.equal(s.root.querySelectorAll('.ppbui-auto-group').length,3);
   const input=s.root.querySelector('input[type=checkbox]');input.click();await s.session.saver.flush();
   assert.equal(s.nativeChanges(),0);assert.equal(s.calls.at(-1)[1].enabled,true);
-  const destination=s.root.querySelector('.ppbui-auto-destinations select');
-  destination.value='sell';destination.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));await s.session.saver.flush();
+  const destination=s.root.querySelector('.ppbui-auto-destinations tbody tr');
+  destination.querySelector('[value=sell]').click();await s.session.saver.flush();
   assert.deepEqual(s.calls.at(-1)[3].qualities,['common']);assert.deepEqual(s.calls.at(-1)[4].qualities,[]);
-  destination.value='extract';destination.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));await s.session.saver.flush();
+  destination.querySelector('[value=extract]').click();await s.session.saver.flush();
   assert.deepEqual(s.calls.at(-1)[3].qualities,[]);assert.deepEqual(s.calls.at(-1)[4].qualities,['common']);
 });
 test("item selection preserves focus and resource refresh reports missing stock without changing settings",async t=>{
@@ -82,7 +82,7 @@ test("locked destinations and expiry stay disabled without mutations or settings
   const [sell,extract]=s.root.querySelectorAll('.ppbui-auto-destination-controls input');
   shiny.disabled=true; sell.disabled=true;extract.disabled=true;
   s.mounted.sync();assert.match(s.root.textContent,/Unavailable/);assert.equal(s.calls.length,0);
-  assert.ok([...s.root.querySelectorAll(".ppbui-auto-destinations select")].every(select=>select.disabled));
+  assert.ok([...s.root.querySelectorAll(".ppbui-auto-destinations input")].every(select=>select.disabled));
   const observer=new s.dom.window.MutationObserver(()=>{});observer.observe(s.root,{subtree:true,attributes:true,childList:true});
   for(let i=0;i<5;i++)s.mounted.sync();assert.equal(observer.takeRecords().length,0);observer.disconnect();
 });
@@ -114,11 +114,28 @@ test("module reconciles its own rearranged DOM without remounting and unmounts o
 
 test("paused destinations explain disabled master toggles without changing assignments",async t=>{
   const s=setup(t);await tick();
-  const select=s.root.querySelector('.ppbui-auto-destinations select');
-  select.value='extract';select.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));await s.session.saver.flush();
-  assert.equal(select.selectedOptions[0].textContent,'Extract — paused');
+  const select=s.root.querySelector('.ppbui-auto-destinations [value=extract]');
+  select.click();await s.session.saver.flush();
+  assert.equal(select.getAttribute('aria-label'),'Common: Extract — paused');
   assert.equal(s.calls.at(-1)[4].enabled,false);assert.deepEqual(s.calls.at(-1)[4].qualities,['common']);
   const extract=s.root.querySelectorAll('.ppbui-auto-destination-controls input')[1];extract.click();await s.session.saver.flush();
-  assert.equal(select.selectedOptions[0].textContent,'Extract');assert.deepEqual(s.calls.at(-1)[4].qualities,['common']);
+  assert.equal(select.getAttribute('aria-label'),'Common: Extract');assert.deepEqual(s.calls.at(-1)[4].qualities,['common']);
   assert.equal(s.root.querySelectorAll('.ppbui-auto-support-resource').length,2);
+});
+
+ test("destination matrix uses rarity tokens and one selected native radio per row",async t=>{
+  const s=setup(t);await tick();
+  const rows=[...s.root.querySelectorAll('.ppbui-auto-destinations tbody tr')];
+  assert.equal(rows.length,2);
+  for(const row of rows) {
+    assert.equal(row.querySelectorAll('input:checked').length,1);
+    const sell=row.querySelector('[value=sell]');sell.click();await s.session.saver.flush();
+    assert.equal(row.querySelectorAll('input:checked').length,1);
+    row.querySelector('[value=keep]').click();await s.session.saver.flush();
+    assert.equal(row.querySelector('[value=keep]').checked,true);
+  }
+  assert.deepEqual(s.calls.at(-1)[3].qualities,[]);
+  assert.equal(rows[0].querySelector('th').style.color,'var(--quality-common)');
+  assert.equal(rows[1].querySelector('th').style.color,'var(--quality-rare)');
+  assert.equal(s.root.querySelector('.ppbui-auto-destinations select'),null);
 });
