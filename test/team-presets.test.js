@@ -111,11 +111,31 @@ function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", 
     }
     doc.body.append(picker);
   };
+  const settle = () => new Promise(resolve => dom.window.setTimeout(resolve, delayed ? 90 : 0));
+  scene.load = async () => {};
+  scene.setLeader = async member => { await settle(); scene._team.leader_id = member.id; syncButtons(); };
+  scene.removeMember = async member => {
+    scene._creatures = scene._creatures.filter(entry => entry.id !== member.id);
+    await settle(); scene._available.push(member);
+    scene._team.member_ids = scene._team.member_ids.filter(id => id !== member.id); syncButtons();
+  };
+  scene.equipFromInventory = async (member, button) => {
+    assert.equal(button.disabled, false); button.disabled = true;
+    scene._creatures.push(member); await settle();
+    scene._available = scene._available.filter(entry => entry.id !== member.id);
+    scene._team.member_ids.push(member.id); syncButtons();
+  };
+  scene.persistOrder = async ids => {
+    assert.equal(Boolean(scene._orderBusy), false);
+    scene._orderBusy = true; scene._team.member_ids = [...ids]; await settle();
+    scene._creatures.sort((a, b) => ids.indexOf(a.id) - ids.indexOf(b.id));
+    scene._orderBusy = false; syncButtons();
+  };
   dom.window.PokeIdle = { ReactiveWindows: { cached: () => [scene] } }; dom.window.SceneManager = { _scene: scene }; syncButtons();
   return { dom, doc, scene, rogueClicks: () => rogueClicks };
 }
 
-test("apply reproduces exact composition, active Pokémon and official battle order using only native profile arrows", async t => {
+test("apply reproduces exact composition, active Pokémon and official battle order using awaited native methods", async t => {
   const s = setupTeam(); t.after(() => s.dom.window.close());
   const result = await applyTeamPreset(s.doc, preset(["e", "b", "d"], "d"));
   assert.equal(result.ok, true); assert.deepEqual(s.scene._team.member_ids, ["e", "b", "d"]); assert.equal(s.scene._team.leader_id, "d"); assert.equal(s.rogueClicks(), 0);
@@ -170,4 +190,27 @@ test("preflight reloads native inventory before reporting a backpack member miss
   const result = await applyTeamPreset(s.doc, preset(["d", "a"], "d"));
   assert.equal(result.ok, true, result.reason); assert.equal(loads, 1);
   assert.deepEqual(s.scene._team.member_ids, ["d", "a"]);
+});
+
+test("direct apply never clicks slots, profile buttons or opens the backpack picker", async t => {
+  const s = setupTeam({ delayed: true }); t.after(() => s.dom.window.close());
+  s.dom.window.HTMLElement.prototype.click = () => assert.fail("unexpected simulated click");
+  s.scene.requestEquipPicker = () => assert.fail("unexpected picker");
+  const result = await applyTeamPreset(s.doc, preset(["e", "b", "d"], "d"));
+  assert.equal(result.ok, true, result.reason);
+  assert.deepEqual(s.scene._team.member_ids, ["e", "b", "d"]);
+});
+
+test("native rejected equip or optimistic order rollback cannot report success", async t => {
+  const s = setupTeam(); t.after(() => s.dom.window.close());
+  s.scene.equipFromInventory = async () => {};
+  let result = await applyTeamPreset(s.doc, preset(["d", "a"], "d"));
+  assert.equal(result.ok, false); assert.deepEqual(s.scene._team.member_ids, ["a", "b", "c"]);
+  s.scene.persistOrder = async ids => {
+    const previous = s.scene._team.member_ids; s.scene._orderBusy = true; s.scene._team.member_ids = ids;
+    await new Promise(resolve => setTimeout(resolve, 20));
+    s.scene._team.member_ids = previous; s.scene._orderBusy = false;
+  };
+  result = await applyTeamPreset(s.doc, preset(["c", "b", "a"], "a"));
+  assert.equal(result.ok, false); assert.equal(result.reason, "order-final-state-mismatch");
 });

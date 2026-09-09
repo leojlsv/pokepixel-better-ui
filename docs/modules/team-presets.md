@@ -72,11 +72,11 @@ Sequence:
 1. validate preset and verified order;
 2. open/reuse the native Team window;
 3. validate all saved creature instance IDs against current Team + native Add Pokémon candidates;
-4. reconcile composition through native Remove/Add controls;
+4. await native `removeMember` / `equipFromInventory` methods and verify their resulting state;
 5. preserve the existing full-Team active-transition safeguard when the current active member must leave;
-6. reproduce Battle order by selecting a member and clicking the native `←` Battle order control one step at a time;
-7. wait for `team.member_ids[]` to confirm every move;
-8. set/confirm the saved active Pokémon independently;
+6. await native `persistOrder` once with the complete target order;
+7. verify `team.member_ids[]` after persistence finishes, including rollback on failure;
+8. await native `setLeader` and confirm the saved active Pokémon independently;
 9. validate exact final composition, order and active ID.
 
 A failure stops the sequence at the first unconfirmed native action. Because the original client does not expose an atomic whole-Team transaction, a native failure after confirmed steps may still leave a partially changed Team.
@@ -85,7 +85,7 @@ A failure stops the sequence at the first unconfirmed native action. Because the
 
 - No scheduled, hunt-driven, combat-driven or background team switching.
 - No network interception or custom Team endpoint.
-- Native disabled rules remain authoritative.
+- Native action/server restrictions remain authoritative; preflight preserves capacity, active-removal and fainted-leader safeguards.
 - Creature instance ID is the only identity used for Apply; species name is never used as a substitute.
 - Legacy order is never trusted silently.
 - The Team window remains open after Apply/Manage so the authoritative result is visible.
@@ -111,7 +111,7 @@ A failure stops the sequence at the first unconfirmed native action. Because the
 3. Apply a preset that changes only Battle order.
 4. Apply a preset that changes composition, Battle order and active Pokémon.
 5. Apply a full 6/6 preset whose current active Pokémon must leave.
-6. Confirm each native Battle order arrow click advances exactly one position.
+6. Confirm Apply restores exact order without opening the equip picker or selecting profile controls.
 7. Confirm a sold/unavailable Pokémon blocks Apply before mutation.
 8. Confirm a migrated v1 preset is blocked until Confirm order or Update current.
 9. Verify Team manager cards remain at least `260x124` without changing native Team window dimensions.

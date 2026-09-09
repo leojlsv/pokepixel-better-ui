@@ -25,6 +25,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Replaced simulated Apply clicks with awaited native Team methods for equip, removal, active selection and complete order persistence. No backpack picker or profile control rendering is required. Verify final state even when native handlers swallow errors; reject unsupported runtimes before changing composition. Added no-click and native-rejection/rollback regressions.
+
 - Fixed preset application across different team sizes: refresh native inventory before preflight, select slots by displayed creature order, wait for membership/order/inventory agreement after equip/remove, and wait for native order persistence to finish instead of accepting optimistic order. Increased action confirmation timeout to eight seconds. Added delayed-update and stale-backpack regressions; saved preset storage is unchanged.
 
 - Refined the Team HUD disclosure into one line: localized Team formations on the left and a subdued saved count on the right, preserving native expansion and management controls.

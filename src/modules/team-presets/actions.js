@@ -49,115 +49,46 @@ async function openTeamPanel(doc) {
   });
 }
 
-function refresh(root) {
+async function nativeAction(root, method, args, check, reason) {
   const scene = sceneForRoot(root);
-  return scene ? { root, scene } : null;
-}
-
-async function selectMember(doc, root, id) {
-  const context = refresh(root), index = memberIds(context?.scene).indexOf(id);
-  if (!context || index < 0) return { ok: false, reason: "team-slot-unavailable" };
-  const slot = root.querySelectorAll(config.selectors.teamSlot)[index];
-  if (!slot || slot.disabled) return { ok: false, reason: "team-slot-unavailable" };
-  slot.click();
-  const selected = await waitFor(doc, () => String(sceneForRoot(root)?._selectedId ?? "") === id);
-  return selected ? { ok: true } : { ok: false, reason: "team-slot-unavailable" };
+  if (typeof scene?.[method] !== "function") return { ok: false, reason };
+  try {
+    await scene[method](...args);
+    // Native handlers can catch server errors themselves; verify the resulting state.
+    return check(sceneForRoot(root)) ? { ok: true } : { ok: false, reason };
+  } catch (error) {
+    return { ok: false, reason, detail: error?.message };
+  }
 }
 
 async function setActive(doc, root, id) {
-  const selected = await selectMember(doc, root, id);
-  if (!selected.ok) return selected;
-  const button = await waitFor(doc, () => {
-    const next = root.querySelector(config.selectors.teamActiveAction);
-    return next && !next.disabled ? next : null;
-  });
-  if (!button) return { ok: false, reason: "leader-action-unavailable" };
-  button.click();
-  const confirmed = await waitFor(doc, () => activeId(sceneForRoot(root)) === id);
-  return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
+  const scene = sceneForRoot(root), member = memberById(scene, id);
+  if (!member || !memberIds(scene).includes(id) || !canLead(member)) return { ok: false, reason: "leader-action-unavailable" };
+  return nativeAction(root, "setLeader", [member], next => activeId(next) === id, "leader-action-unavailable");
 }
 
 async function removeMember(doc, root, id) {
-  const selected = await selectMember(doc, root, id);
-  if (!selected.ok) return selected;
-  const button = await waitFor(doc, () => {
-    const next = root.querySelector(config.selectors.teamRemoveAction);
-    return next && !next.disabled ? next : null;
-  });
-  if (!button) return { ok: false, reason: "remove-action-unavailable" };
-  button.click();
-  const confirmed = await waitFor(doc, () => {
-    const scene = sceneForRoot(root);
-    return scene && !memberIds(scene).includes(id) && !officialIds(scene).includes(id)
-      && available(scene).some(member => String(member.id) === id) && !scene._orderBusy;
-  });
-  return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
-}
-
-async function openPicker(doc, root) {
-  const scene = sceneForRoot(root);
-  if (!scene) return null;
-  if (typeof scene.requestEquipPicker === "function") scene.requestEquipPicker.call(scene);
-  else {
-    const empty = [...root.querySelectorAll(config.selectors.teamSlot)].find(slot => !slot.disabled && slot.querySelector(".team-slot__empty"));
-    if (!empty) return null;
-    empty.click();
-  }
-  return waitFor(doc, () => [...doc.querySelectorAll(config.selectors.picker)].find(node => !node.closest("[hidden]")) || null);
+  const scene = sceneForRoot(root), member = memberById(scene, id);
+  if (!member || activeId(scene) === id || memberIds(scene).length <= 1) return { ok: false, reason: "remove-action-unavailable" };
+  return nativeAction(root, "removeMember", [member], next => next && !memberIds(next).includes(id)
+    && !officialIds(next).includes(id), "remove-action-unavailable");
 }
 
 async function addMember(doc, root, id) {
-  const picker = await openPicker(doc, root);
-  if (!picker) return { ok: false, reason: "equip-picker-unavailable" };
-  const scene = sceneForRoot(root), index = available(scene).findIndex(member => String(member?.id ?? "") === id);
-  const card = index >= 0 ? picker.querySelectorAll(config.selectors.pickerCard)[index] : null;
-  if (!card || card.disabled) return { ok: false, reason: "picker-member-unavailable" };
-  card.click();
-  const confirmed = await waitFor(doc, () => {
-    const next = sceneForRoot(root);
-    return next && memberIds(next).includes(id) && officialIds(next).includes(id)
-      && !available(next).some(member => String(member.id) === id) && !next._orderBusy;
-  });
-  return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
-}
-
-function orderDirection(button) {
-  const label = [button.textContent, button.getAttribute("aria-label"), button.title].filter(Boolean).join(" ").trim().toLowerCase();
-  if (/[←⟵‹]/.test(label) || /\b(left|esquerda|izquierda)\b/.test(label)) return -1;
-  if (/[→⟶›]/.test(label) || /\b(right|direita|derecha)\b/.test(label)) return 1;
-  return 0;
-}
-
-async function moveOrder(doc, root, id, direction) {
-  const scene = sceneForRoot(root), before = officialIds(scene), index = before.indexOf(id), target = index + direction;
-  if (index < 0 || target < 0 || target >= before.length) return { ok: false, reason: "order-action-unavailable" };
-  const selected = await selectMember(doc, root, id); if (!selected.ok) return selected;
-  const button = await waitFor(doc, () => {
-    const profile = root.querySelector(config.selectors.teamProfile);
-    return profile ? [...profile.querySelectorAll(config.selectors.teamOrderButton)].find(node => !node.disabled && orderDirection(node) === direction) || null : null;
-  });
-  if (!button) return { ok: false, reason: "order-action-unavailable" };
-  const expected = [...before]; [expected[index], expected[target]] = [expected[target], expected[index]];
-  button.click();
-  const confirmed = await waitFor(doc, () => {
-    const next = sceneForRoot(root);
-    return next && !next._orderBusy && sameOrder(officialIds(next), expected);
-  });
-  return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
+  const scene = sceneForRoot(root), member = available(scene).find(entry => String(entry.id) === id);
+  if (!member || memberIds(scene).length >= 6) return { ok: false, reason: "picker-member-unavailable" };
+  // The native handler expects a button only to guard/restore its disabled state.
+  const guard = doc.createElement("button");
+  return nativeAction(root, "equipFromInventory", [member, guard], next => next && memberIds(next).includes(id)
+    && officialIds(next).includes(id) && !available(next).some(entry => String(entry.id) === id), "picker-member-unavailable");
 }
 
 async function syncBattleOrder(doc, root, targetIds) {
-  for (let targetIndex = 0; targetIndex < targetIds.length; targetIndex++) {
-    const id = targetIds[targetIndex];
-    while (true) {
-      const order = officialIds(sceneForRoot(root)), currentIndex = order.indexOf(id);
-      if (currentIndex === targetIndex) break;
-      if (currentIndex < targetIndex || currentIndex < 0) return { ok: false, reason: "order-final-state-mismatch" };
-      const result = await moveOrder(doc, root, id, -1);
-      if (!result.ok) return result;
-    }
-  }
-  return sameOrder(officialIds(sceneForRoot(root)), targetIds) ? { ok: true } : { ok: false, reason: "order-final-state-mismatch" };
+  const scene = sceneForRoot(root);
+  if (!sameMembers(memberIds(scene), targetIds) || scene?._orderBusy) return { ok: false, reason: "order-action-unavailable" };
+  if (sameOrder(officialIds(scene), targetIds)) return { ok: true };
+  return nativeAction(root, "persistOrder", [[...targetIds]], next => next && !next._orderBusy
+    && sameOrder(officialIds(next), targetIds), "order-final-state-mismatch");
 }
 
 export async function captureTeamPresetSnapshot(doc, hudRoot) {
@@ -187,6 +118,9 @@ export async function applyTeamPreset(doc, preset) {
   const opened = await openTeamPanel(doc);
   if (!opened) return { ok: false, reason: "team-panel-unavailable" };
   const root = opened.root;
+  if (!["load", "setLeader", "removeMember", "equipFromInventory", "persistOrder"].every(method => typeof opened.scene[method] === "function")) {
+    return { ok: false, reason: "team-panel-unavailable" };
+  }
   // A cached Team window can still contain inventory from before the last equip/remove.
   if (typeof opened.scene.load === "function") await opened.scene.load(false);
   const ready = await waitFor(doc, () => {
