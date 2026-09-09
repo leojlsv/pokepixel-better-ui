@@ -69,7 +69,7 @@ test("Team manager renders native-like preset cards at minimum 260x124 and suppo
   assert.equal(root.querySelector('[data-active-control="true"]').disabled, true);
 });
 
-function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", "e"] } = {}) {
+function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", "e"], delayed = false } = {}) {
   const slots = Array.from({ length: 6 }, (_, index) => `<button class="team-slot"><span>${index + 1}</span></button>`).join("");
   const dom = new JSDOM(`<button data-menu-id="team">Team</button><div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"><div class="team-slots">${slots}</div></section><section class="team-section team-section--profile"><div class="team-battle-order"><span>Battle order</span><button class="pokeidle-btn order-left">←</button><button class="pokeidle-btn order-right">→</button></div><button class="team-active-state">Active</button></section><div data-ppbui-module="team-presets"><button class="pokeidle-btn rogue-left">←</button></div><div class="team-actions"><button class="pokeidle-btn pokeidle-btn--danger">Remove</button></div></div></div>`, { pretendToBeVisual: true });
   const doc = dom.window.document, root = doc.querySelector(".pokeidle-team-panel"), body = root.querySelector(".pokeidle-panel__body");
@@ -82,15 +82,20 @@ function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", 
     activeButton.disabled = !member || member.id === scene._team.leader_id || member.hp <= 0; remove.disabled = !member || member.id === scene._team.leader_id || scene._creatures.length <= 1;
     left.disabled = position <= 0; right.disabled = position < 0 || position >= scene._team.member_ids.length - 1;
   };
-  root.querySelectorAll(".team-slot").forEach((slot, index) => slot.addEventListener("click", () => { scene._selectedId = scene._team.member_ids[index] || null; syncButtons(); }));
+  root.querySelectorAll(".team-slot").forEach((slot, index) => slot.addEventListener("click", () => { scene._selectedId = scene._creatures[index]?.id || null; syncButtons(); }));
   activeButton.addEventListener("click", () => { if (!activeButton.disabled) scene._team.leader_id = scene._selectedId; syncButtons(); });
   remove.addEventListener("click", () => {
     if (remove.disabled) return; const index = scene._creatures.findIndex(member => member.id === scene._selectedId); if (index < 0) return;
-    const [member] = scene._creatures.splice(index, 1); scene._available.push(member); scene._team.member_ids = scene._team.member_ids.filter(id => id !== member.id); scene._selectedId = scene._team.member_ids[0] || null; syncButtons();
+    const [member] = scene._creatures.splice(index, 1);
+    const finish = () => { scene._available.push(member); scene._team.member_ids = scene._team.member_ids.filter(id => id !== member.id); scene._selectedId = scene._team.member_ids[0] || null; syncButtons(); };
+    if (delayed) dom.window.setTimeout(finish, 90); else finish();
   });
   const move = direction => {
     const index = scene._team.member_ids.indexOf(scene._selectedId), target = index + direction; if (index < 0 || target < 0 || target >= scene._team.member_ids.length) return;
-    [scene._team.member_ids[index], scene._team.member_ids[target]] = [scene._team.member_ids[target], scene._team.member_ids[index]]; syncButtons();
+    [scene._team.member_ids[index], scene._team.member_ids[target]] = [scene._team.member_ids[target], scene._team.member_ids[index]];
+    scene._creatures.sort((a, b) => scene._team.member_ids.indexOf(a.id) - scene._team.member_ids.indexOf(b.id));
+    if (delayed) { scene._orderBusy = true; dom.window.setTimeout(() => { scene._orderBusy = false; syncButtons(); }, 90); }
+    syncButtons();
   };
   left.addEventListener("click", () => { if (!left.disabled) move(-1); }); right.addEventListener("click", () => { if (!right.disabled) move(1); });
   scene.requestEquipPicker = () => {
@@ -99,7 +104,9 @@ function setupTeam({ current = ["a", "b", "c"], active = "a", available = ["d", 
       const card = doc.createElement("button"); card.className = "team-equip-card"; card.textContent = member.name;
       card.addEventListener("click", () => {
         const index = scene._available.findIndex(entry => entry.id === member.id); if (index < 0 || scene._creatures.length >= 6) return;
-        const [added] = scene._available.splice(index, 1); scene._creatures.push(added); scene._team.member_ids.push(added.id); picker.remove(); syncButtons();
+        const added = scene._available[index]; scene._creatures.push(added); picker.remove();
+        const finish = () => { scene._available = scene._available.filter(entry => entry.id !== added.id); scene._team.member_ids.push(added.id); syncButtons(); };
+        if (delayed) dom.window.setTimeout(finish, 90); else finish();
       }); picker.append(card);
     }
     doc.body.append(picker);
@@ -142,4 +149,25 @@ test("captured element color survives reload as optional visual metadata", t => 
   const store = createTeamPresetStorage({ storage: () => storage, makeId: () => 'color' });
   store.upsert('Grass', captured);
   assert.equal(createTeamPresetStorage({ storage: () => storage }).list()[0].members[0].elementColor, '#68c64a');
+});
+
+test("different-sized presets wait for inventory/order reload and confirmed order persistence", async t => {
+  const s = setupTeam({ delayed: true }); t.after(() => s.dom.window.close());
+  for (const [ids, leader] of [[["e", "b", "d", "a", "c"], "d"], [["b", "e", "a"], "e"], [["c", "a", "d", "b"], "d"]]) {
+    const result = await applyTeamPreset(s.doc, preset(ids, leader));
+    assert.equal(result.ok, true, result.reason);
+    assert.deepEqual(s.scene._team.member_ids, ids);
+    assert.equal(s.scene._team.leader_id, leader);
+    assert.equal(Boolean(s.scene._orderBusy), false, "optimistic order is not confirmation");
+    assert.equal(s.scene._available.some(member => ids.includes(member.id)), false);
+  }
+});
+
+test("preflight reloads native inventory before reporting a backpack member missing", async t => {
+  const s = setupTeam({ available: [] }); t.after(() => s.dom.window.close());
+  let loads = 0;
+  s.scene.load = async () => { loads++; s.scene._available = [{ id: "d", name: "D", hp: 100 }]; };
+  const result = await applyTeamPreset(s.doc, preset(["d", "a"], "d"));
+  assert.equal(result.ok, true, result.reason); assert.equal(loads, 1);
+  assert.deepEqual(s.scene._team.member_ids, ["d", "a"]);
 });

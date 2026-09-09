@@ -55,11 +55,13 @@ function refresh(root) {
 }
 
 async function selectMember(doc, root, id) {
-  const context = refresh(root), index = officialIds(context?.scene).indexOf(id);
+  const context = refresh(root), index = memberIds(context?.scene).indexOf(id);
   if (!context || index < 0) return { ok: false, reason: "team-slot-unavailable" };
   const slot = root.querySelectorAll(config.selectors.teamSlot)[index];
   if (!slot || slot.disabled) return { ok: false, reason: "team-slot-unavailable" };
-  slot.click(); await sleep(doc, 0); return { ok: true };
+  slot.click();
+  const selected = await waitFor(doc, () => String(sceneForRoot(root)?._selectedId ?? "") === id);
+  return selected ? { ok: true } : { ok: false, reason: "team-slot-unavailable" };
 }
 
 async function setActive(doc, root, id) {
@@ -86,7 +88,8 @@ async function removeMember(doc, root, id) {
   button.click();
   const confirmed = await waitFor(doc, () => {
     const scene = sceneForRoot(root);
-    return scene && !memberIds(scene).includes(id);
+    return scene && !memberIds(scene).includes(id) && !officialIds(scene).includes(id)
+      && available(scene).some(member => String(member.id) === id) && !scene._orderBusy;
   });
   return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
 }
@@ -112,7 +115,8 @@ async function addMember(doc, root, id) {
   card.click();
   const confirmed = await waitFor(doc, () => {
     const next = sceneForRoot(root);
-    return next && memberIds(next).includes(id);
+    return next && memberIds(next).includes(id) && officialIds(next).includes(id)
+      && !available(next).some(member => String(member.id) === id) && !next._orderBusy;
   });
   return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
 }
@@ -135,7 +139,10 @@ async function moveOrder(doc, root, id, direction) {
   if (!button) return { ok: false, reason: "order-action-unavailable" };
   const expected = [...before]; [expected[index], expected[target]] = [expected[target], expected[index]];
   button.click();
-  const confirmed = await waitFor(doc, () => sameOrder(officialIds(sceneForRoot(root)), expected));
+  const confirmed = await waitFor(doc, () => {
+    const next = sceneForRoot(root);
+    return next && !next._orderBusy && sameOrder(officialIds(next), expected);
+  });
   return confirmed ? { ok: true } : { ok: false, reason: "action-timeout" };
 }
 
@@ -180,6 +187,13 @@ export async function applyTeamPreset(doc, preset) {
   const opened = await openTeamPanel(doc);
   if (!opened) return { ok: false, reason: "team-panel-unavailable" };
   const root = opened.root;
+  // A cached Team window can still contain inventory from before the last equip/remove.
+  if (typeof opened.scene.load === "function") await opened.scene.load(false);
+  const ready = await waitFor(doc, () => {
+    const next = sceneForRoot(root);
+    return next && !next._orderBusy && sameMembers(memberIds(next), officialIds(next)) ? next : null;
+  });
+  if (!ready) return { ok: false, reason: "action-timeout" };
   let scene = sceneForRoot(root), current = memberIds(scene);
   const maxMembers = root.querySelectorAll(config.selectors.teamSlot).length || 6;
   if (targetIds.length > maxMembers) return { ok: false, reason: "preset-invalid" };

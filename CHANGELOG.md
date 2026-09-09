@@ -25,6 +25,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Fixed preset application across different team sizes: refresh native inventory before preflight, select slots by displayed creature order, wait for membership/order/inventory agreement after equip/remove, and wait for native order persistence to finish instead of accepting optimistic order. Increased action confirmation timeout to eight seconds. Added delayed-update and stale-backpack regressions; saved preset storage is unchanged.
+
 - Refined the Team HUD disclosure into one line: localized Team formations on the left and a subdued saved count on the right, preserving native expansion and management controls.
 
 - Shortened the Team order label to localized `Position X`, preserving native arrow behavior and restoring native text on cleanup. Completely removed Compare with active, including rendering, stat reads, signatures, styles and translations.
