@@ -29,6 +29,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Replaced oversized module toggle tiles with compact labeled checkboxes grouped into Interface, Team, and Activities & items. Preserved preference persistence, keyboard focus, dismissal and live reconciliation; descriptions remain visible beside each checkbox.
+
 - Hide the complete Team presets section when the native desktop Team HUD is minimized, using its existing collapsed state and mobile exception. Restoring the HUD preserves the preset disclosure state.
 
 - Decoupled Apply from the Team window/scene. Reused the native PokemonCardHost Equip/Unequip API and event flow, with authoritative Team/inventory reloads and native leader/order operations. Added a regression running Apply with no Team DOM or scene and checking equip/remove/leader/order event payloads.

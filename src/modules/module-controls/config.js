@@ -1,5 +1,10 @@
 export const moduleControlsConfig = {
   id: "module-controls",
+  groups: [
+    { id: "interface", modules: ["menu-bar", "chat"] },
+    { id: "team", modules: ["team", "team-hud", "team-presets"] },
+    { id: "activities", modules: ["inventory", "hunts", "marks-shop"] },
+  ],
   selectors: {
     toolbar: ".pokeidle-top-toolbar",
     settings: 'button[data-menu-id="settings"]:not([aria-haspopup])',
@@ -15,9 +20,9 @@ export const moduleControlsConfig = {
     item: "pokeidle-top-toolbar__dropdown-btn",
   },
   text: {
-    pt: { title: "Módulos Better UI", on: "Ativado", off: "Desativado", close: "Fechar", saved: "Preferências salvas neste navegador.", unsaved: "Não foi possível salvar. As escolhas valem apenas nesta sessão.", name: "Menu bar", description: "Reorganiza os menus. Desativar restaura a barra original." },
-    en: { title: "Better UI modules", on: "Enabled", off: "Disabled", close: "Close", saved: "Preferences saved in this browser.", unsaved: "Could not save. Choices apply only to this session.", name: "Menu bar", description: "Organizes menus. Disabling restores the original toolbar." },
-    es: { title: "Módulos Better UI", on: "Activado", off: "Desactivado", close: "Cerrar", saved: "Preferencias guardadas en este navegador.", unsaved: "No se pudo guardar. Los cambios solo se aplican a esta sesión.", name: "Menu bar", description: "Organiza los menús. Desactivar restaura la barra original." },
-    zh: { title: "Better UI 模块", on: "已启用", off: "已禁用", close: "关闭", saved: "偏好设置已保存在此浏览器中。", unsaved: "无法保存。选择仅在本次会话中生效。", name: "菜单栏", description: "整理菜单。禁用后恢复原始菜单栏。" },
+    pt: { groups: {"interface": "Interface", "team": "Equipe", "activities": "Atividades e itens"}, title: "Módulos Better UI", on: "Ativado", off: "Desativado", close: "Fechar", saved: "Preferências salvas neste navegador.", unsaved: "Não foi possível salvar. As escolhas valem apenas nesta sessão.", name: "Menu bar", description: "Reorganiza os menus. Desativar restaura a barra original." },
+    en: { groups: {"interface": "Interface", "team": "Team", "activities": "Activities & items"}, title: "Better UI modules", on: "Enabled", off: "Disabled", close: "Close", saved: "Preferences saved in this browser.", unsaved: "Could not save. Choices apply only to this session.", name: "Menu bar", description: "Organizes menus. Disabling restores the original toolbar." },
+    es: { groups: {"interface": "Interfaz", "team": "Equipo", "activities": "Actividades y objetos"}, title: "Módulos Better UI", on: "Activado", off: "Desactivado", close: "Cerrar", saved: "Preferencias guardadas en este navegador.", unsaved: "No se pudo guardar. Los cambios solo se aplican a esta sesión.", name: "Menu bar", description: "Organiza los menús. Desactivar restaura la barra original." },
+    zh: { groups: {"interface": "界面", "team": "队伍", "activities": "活动与物品"}, title: "Better UI 模块", on: "已启用", off: "已禁用", close: "关闭", saved: "偏好设置已保存在此浏览器中。", unsaved: "无法保存。选择仅在本次会话中生效。", name: "菜单栏", description: "整理菜单。禁用后恢复原始菜单栏。" },
   },
 };

@@ -35,7 +35,7 @@ function setup(t, stored, fail = false) {
   });
   return { app, doc, window, preferences, options,
     trigger: () => doc.querySelector('[aria-controls="ppbui-module-panel"]'),
-    toggle: () => doc.querySelector('#ppbui-module-panel [aria-pressed]'),
+    toggle: () => doc.querySelector('#ppbui-module-panel input[type="checkbox"]'),
   };
 }
 
@@ -58,7 +58,7 @@ test("controls survive disabling every optional module and preserve native actio
   assert.equal(trigger().getAttribute('aria-expanded'), 'true');
   assert.equal(doc.activeElement, toggle());
   assert.equal(actions, 0);
-  assert.equal(doc.querySelectorAll('[aria-pressed]').length, 1);
+  assert.equal(doc.querySelectorAll('#ppbui-module-panel input[type=checkbox]').length, 1);
   assert.equal(preferences.isEnabled('module-controls'), true);
   for (let i=0;i<6;i++) toggle().click();
   assert.equal(pack.parentElement, toolbar);
@@ -121,7 +121,8 @@ test("panel keyboard, outside dismissal, locale and toolbar replacement", async 
   assert.equal(trigger().getAttribute('aria-expanded'), 'false');
   doc.documentElement.lang = 'en';
   await new Promise(resolve => window.setTimeout(resolve, 60));
-  assert.equal(toggle().textContent, 'Menu bar: Enabled');
+  assert.equal(toggle().checked, true);
+  assert.equal(toggle().parentElement.querySelector('strong').textContent, 'Menu bar');
   doc.querySelector('.pokeidle-top-toolbar').outerHTML = fixture;
   await new Promise(resolve => window.setTimeout(resolve, 60));
   assert.equal(doc.querySelectorAll('[data-ppbui-module="module-controls"]').length, 1);
