@@ -4,7 +4,8 @@ import { helperParts } from "./dom.js";
 export function mountAutoHelper(root, session) {
   const doc = root.ownerDocument, pi = doc.defaultView.PokeIdle, parts = helperParts(root);
   let alive = true, ready = false, refreshing = false, inventory = [], choices = [], pickers = [], destinations = [], stockMessage = "", loadError = "", stock = new Map();
-  const moves = [], replacements = [], owned = [], listeners = [], badges = [];
+  const moves = [], replacements = [], owned = [], listeners = [], badges = [], hiddenNodes = [];
+  const hide = el => { if (el) { hiddenNodes.push({el,hidden:el.hidden}); el.hidden=true; el.classList.add("ppbui-auto-original"); } };
   const node = (tag, cls, text) => { const el = doc.createElement(tag); if (cls) el.className = cls; if (text) el.textContent = text; return el; };
   const flag = (el, key, value) => { if (el[key] !== value) el[key] = value; };
   const content = (el, text) => { if (el.textContent !== text) el.textContent = text; };
@@ -29,10 +30,28 @@ export function mountAutoHelper(root, session) {
     .ppbui-auto-group-body { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .ppbui-auto-group-body > .auto-helper-section { margin:0; background:var(--ui-panel-soft,#1f1f21); border-color:var(--ui-gold-dark); }
     .ppbui-auto-group-body > .auto-helper-section.is-wide { grid-column:1/-1; }
-    .ppbui-auto-support { grid-column:1/-1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .ppbui-auto-support { grid-column:1/-1; }
     .ppbui-auto-support > h3 { grid-column:1/-1; }
-    .ppbui-auto-support-part { min-width:0; }
+    .ppbui-auto-support-part,.ppbui-auto-support-head { display:grid; grid-template-columns:minmax(120px,1fr) minmax(0,2fr) minmax(140px,1fr); align-items:center; gap:6px 12px; min-width:0; }
+    .ppbui-auto-support-head { color:var(--ui-muted); font-size:10px; padding:4px 0; }
+    .ppbui-auto-support-part { padding:8px 0; }
+    .ppbui-auto-support-part + .ppbui-auto-support-part { border-top:1px solid var(--ui-gold-dark); }
+    .ppbui-auto-support-part > .auto-helper-row { margin:0; }
+    .ppbui-auto-support-part > .auto-helper-row:first-of-type { grid-column:1; grid-row:1; }
+    .ppbui-auto-support-resource { grid-column:2; grid-row:1; min-width:0; }
+    .ppbui-auto-support-resource > .ppbui-auto-picker { margin:0; }
+    .ppbui-auto-support-condition { grid-column:3; grid-row:1; min-width:0; }
+    .ppbui-auto-support-part .ppbui-auto-support-condition > span { min-width:0; white-space:nowrap; }
+    .ppbui-auto-support-part > .auto-helper-note { grid-column:2/-1; }
+    .ppbui-auto-destination-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px 20px; }
+    .ppbui-auto-destination-controls > .auto-helper-section { display:contents; }
+    .ppbui-auto-destination-controls .auto-helper-row { margin:0; }
+    .ppbui-auto-destination-controls > .auto-sell-time { margin-left:auto; font-size:11px; }
+    .ppbui-auto-destination-help { margin:8px 0; color:var(--ui-muted); }
+    .ppbui-auto-destination-help > summary { cursor:pointer; }
+    .ppbui-auto-destination-help .auto-helper-note { margin:6px 0; }
     .auto-helper-panel[data-ppbui-auto-helper] .auto-capture-lock { position:static; display:inline-block; margin-bottom:6px; }
+    .ppbui-auto-status[hidden] { display:none !important; }
     .ppbui-auto-status { display:block; margin:6px 0; color:var(--ui-muted,#9b9994); }
     .ppbui-auto-picker { display:flex; align-items:center; gap:8px; margin:6px 0; }
     .ppbui-auto-item-icon { display:grid; place-items:center; flex:0 0 32px; height:32px; color:var(--ui-gold-light); font-size:24px; }
@@ -44,7 +63,7 @@ export function mountAutoHelper(root, session) {
     .ppbui-auto-destinations th,.ppbui-auto-destinations td { padding:6px 4px; text-align:left; border-bottom:1px solid var(--ui-gold-dark); }
     .ppbui-auto-destinations select { width:100%; padding:5px; background:var(--ui-navy-deep,#151517); color:var(--ui-ink); border:1px solid var(--ui-gold-dark); }
     .ppbui-auto-original[hidden] { display:none!important; }
-    @media(max-width:760px) { .ppbui-auto-group-body,.ppbui-auto-support { grid-template-columns:1fr; } }
+    @media(max-width:760px) { .ppbui-auto-group-body { grid-template-columns:1fr; } .ppbui-auto-support-head { display:none; } .ppbui-auto-support-part { grid-template-columns:minmax(100px,1fr) minmax(0,2fr); } .ppbui-auto-support-condition { grid-column:2; grid-row:2; } }
   `;
   root.append(style); owned.push(style); root.dataset.ppbuiAutoHelper = "";
   const wasInert = parts.body.inert; parts.body.inert = true;
@@ -64,6 +83,15 @@ export function mountAutoHelper(root, session) {
   parts.support.classList.add("ppbui-auto-support"); parts.support.append(potionPart, revivePart); owned.push(potionPart,revivePart);
   let reviveSide = false;
   for (const el of supportChildren) { if (el === parts.revive.parentElement) reviveSide = true; move(el, reviveSide ? revivePart : potionPart); }
+  const supportHead = node("div", "ppbui-auto-support-head");
+  const labels = autoHelperText(doc); supportHead.append(...[labels.function,labels.resource,labels.condition].map(text=>node("span","",text)));
+  potionPart.before(supportHead); owned.push(supportHead);
+  for (const [index, part] of [potionPart,revivePart].entries()) {
+    const resource = node("div", "ppbui-auto-support-resource"); part.append(resource); owned.push(resource); move(parts.pickers[index],resource);
+  }
+  const hpRow = parts.hp.parentElement === potionPart ? parts.hp : parts.hp.parentElement;
+  hpRow.classList.add("ppbui-auto-support-condition");
+  const noCondition = node("span", "ppbui-auto-support-condition", "—"); revivePart.append(noCondition); owned.push(noCondition);
   parts.body.prepend(saveState); owned.push(saveState);
   const nativeStatus = parts.status;
   const hiddenWarnings = parts.warnings.map(el => ({el, hidden:el.hidden}));
@@ -159,12 +187,15 @@ export function mountAutoHelper(root, session) {
       if (!input.disabled && input.checked && index !== undefined && (!items(types[index]).length || (choices[index] && !items(types[index]).some(item => ids(item) === choices[index])))) stateText = text.empty;
       if (input.disabled) stateText += ` · ${pi.t(input === parts.shinyCheck ? "auto_helper.premium_badge" : "auto_helper.auto_sell_license_required")}`;
       content(el, stateText);
+      flag(el,"hidden", input === parts.potion || input === parts.revive ? stateText === text.enabled || stateText === text.disabled : false);
     });
     destinations.forEach(({select, quality, sell, extract}) => {
       const sellLocked = sell.disabled || parts.sellCheck.disabled, extractLocked = !extract || extract.disabled || parts.extractCheck.disabled;
       flag(select, "disabled", sellLocked && extractLocked);
       flag(select.options[1], "disabled", sellLocked);
       if (extract) flag(select.options[2], "disabled", extractLocked);
+      content(select.options[1], `${text.sell}${!parts.sellCheck.checked || sellLocked ? ` — ${text.paused}` : ""}`);
+      if (extract) content(select.options[2], `${text.extract}${!parts.extractCheck.checked || extractLocked ? ` — ${text.paused}` : ""}`);
       const value = sell.checked ? "sell" : extract?.checked ? "extract" : "keep";
       if (select.value !== value) select.value = value;
       const label = `${text.destination}: ${quality}`;
@@ -203,7 +234,13 @@ export function mountAutoHelper(root, session) {
       const text = autoHelperText(doc), destinationGroup = groups.find(group => group.key === "destination");
       const tableSection = node("section", "auto-helper-section is-wide"), table = node("table", "ppbui-auto-destinations"), head = node("tr"), tbody = node("tbody");
       head.append(node("th", "", text.quality), node("th", "", text.destination)); const thead = node("thead"); thead.append(head); table.append(thead,tbody);
-      tableSection.append(node("p", "auto-helper-note", text.destinationNote), table); destinationGroup.body.append(tableSection); owned.push(tableSection);
+      const destinationControls = node("div", "ppbui-auto-destination-controls"), help = node("details", "ppbui-auto-destination-help");
+      help.append(node("summary","",text.details));
+      tableSection.append(destinationControls,help,node("p", "auto-helper-note", text.destinationNote), table); destinationGroup.body.append(tableSection); owned.push(tableSection);
+      move(parts.sell,destinationControls); if(parts.extract) move(parts.extract,destinationControls);
+      if(parts.licenseTime) move(parts.licenseTime,destinationControls);
+      hide(parts.sellHeading); hide(parts.extractHeading);
+      for(const note of [...parts.sellNotes,...parts.extractNotes]) move(note,help);
       parts.sellQualities.forEach(sell => {
         const extract = parts.extractQualities.find(input => input.value === sell.value), quality = sell.parentElement.textContent;
         const tr = node("tr"), label = node("th", "", quality), td = node("td"), select = node("select"); label.scope = "row";
@@ -241,6 +278,8 @@ export function mountAutoHelper(root, session) {
     owned.forEach(el => el.remove());
     hiddenWarnings.forEach(({el,hidden}) => {el.hidden=hidden;el.classList.remove("ppbui-auto-original");});
     if (nativeStatus) { nativeStatus.hidden = false; nativeStatus.classList.remove("ppbui-auto-original"); }
+    hiddenNodes.forEach(({el,hidden})=>{el.hidden=hidden;el.classList.remove("ppbui-auto-original");});
+    hpRow.classList.remove("ppbui-auto-support-condition");
     parts.support.classList.remove("ppbui-auto-support"); parts.body.inert = wasInert; root.removeAttribute("data-ppbui-auto-helper");
   } };
 }

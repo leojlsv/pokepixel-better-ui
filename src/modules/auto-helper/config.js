@@ -2,7 +2,7 @@ export const autoHelperConfig = {
   id: "auto-helper",
   selectors: {
     root: ".auto-helper-panel", body: ".pokeidle-panel__body", grid: ".auto-helper-grid",
-    section: ":scope > .auto-helper-section", check: 'input[type="checkbox"]',
+    section: ":scope > .auto-helper-section", heading: ":scope > h3", notes: ":scope > .auto-helper-note", check: 'input[type="checkbox"]',
     select: "select", names: 'input[type="text"]', picker: ".auto-capsule-grid",
     quality: '.auto-sell-qualities input', qualityGrid: ".auto-sell-qualities",
     status: ":scope > .auto-helper-save-state", time: ".auto-sell-time", lock: ".auto-capture-lock",
@@ -17,5 +17,11 @@ const copy = {
 export function autoHelperText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "en";
   const keys = ["name", "description", "support", "capture", "destination", "saved", "pending", "saving", "error", "retry", "refresh", "enabled", "disabled", "unavailable", "empty", "selected", "quality", "keep", "sell", "extract", "destinationNote", "missing", "refreshed", "refreshError"];
-  return Object.fromEntries(keys.map((key, index) => [key, (copy[lang.split(/[-_]/)[0]] || copy.en)[index]]));
+  const extra = {
+    pt: {function:"Função", resource:"Consumível", condition:"Condição", paused:"pausado", details:"Como funciona"},
+    en: {function:"Function", resource:"Consumable", condition:"Condition", paused:"paused", details:"How it works"},
+    es: {function:"Función", resource:"Consumible", condition:"Condición", paused:"en pausa", details:"Cómo funciona"},
+    zh: {function:"功能", resource:"消耗品", condition:"条件", paused:"已暂停", details:"说明"},
+  };
+  return {...(extra[lang.split(/[-_]/)[0]] || extra.en), ...Object.fromEntries(keys.map((key, index) => [key, (copy[lang.split(/[-_]/)[0]] || copy.en)[index]]))};
 }

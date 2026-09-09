@@ -78,7 +78,8 @@ test("idle reconciliation is mutation-free and cleanup flushes text edits",async
 test("locked destinations and expiry stay disabled without mutations or settings writes", async t => {
   const s=setup(t);await tick();
   const sections=s.root.querySelectorAll('.ppbui-auto-group-body > section');
-  const shiny=sections[2].querySelector('input'),sell=sections[4].querySelector('input'),extract=sections[5].querySelector('input');
+  const shiny=sections[2].querySelector('input');
+  const [sell,extract]=s.root.querySelectorAll('.ppbui-auto-destination-controls input');
   shiny.disabled=true; sell.disabled=true;extract.disabled=true;
   s.mounted.sync();assert.match(s.root.textContent,/Unavailable/);assert.equal(s.calls.length,0);
   assert.ok([...s.root.querySelectorAll(".ppbui-auto-destinations select")].every(select=>select.disabled));
@@ -109,4 +110,15 @@ test("module reconciles its own rearranged DOM without remounting and unmounts o
   for(let i=0;i<5;i++){assert.equal(module.shouldMount(),true);assert.equal(module.getMountKey(),key);module.reconcile();}
   assert.equal(s.root.querySelectorAll('.ppbui-auto-save').length,1);
   s.root.remove();assert.equal(module.shouldMount(),false);cleanup();
+});
+
+test("paused destinations explain disabled master toggles without changing assignments",async t=>{
+  const s=setup(t);await tick();
+  const select=s.root.querySelector('.ppbui-auto-destinations select');
+  select.value='extract';select.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));await s.session.saver.flush();
+  assert.equal(select.selectedOptions[0].textContent,'Extract — paused');
+  assert.equal(s.calls.at(-1)[4].enabled,false);assert.deepEqual(s.calls.at(-1)[4].qualities,['common']);
+  const extract=s.root.querySelectorAll('.ppbui-auto-destination-controls input')[1];extract.click();await s.session.saver.flush();
+  assert.equal(select.selectedOptions[0].textContent,'Extract');assert.deepEqual(s.calls.at(-1)[4].qualities,['common']);
+  assert.equal(s.root.querySelectorAll('.ppbui-auto-support-resource').length,2);
 });
