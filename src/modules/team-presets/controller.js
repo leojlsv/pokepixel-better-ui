@@ -11,6 +11,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   const style = doc.createElement("style"); style.dataset.ppbuiModule = config.id;
   style.textContent = `
     [data-ppbui-team-presets] { display:grid; gap:4px; margin-top:6px; padding-top:5px; border-top:1px solid rgba(241,214,129,.18); color:#d8d3ca; font:inherit; }
+    body:not(.pokeidle-mobile-portrait) .pokeidle-team-hud.is-collapsed > [data-ppbui-team-presets] { display:none; }
     [data-ppbui-team-presets] button { box-sizing:border-box; display:inline-flex!important; align-items:center!important; justify-content:center; line-height:1!important; text-align:center; text-indent:0; letter-spacing:normal; }
     [data-ppbui-team-presets-toolbar] { display:flex; align-items:center; gap:4px; min-width:0; }
     [data-ppbui-team-presets-toolbar] > .ppbui-team-presets-toggle { flex:1 1 auto; min-width:0; min-height:24px; justify-content:flex-start!important; padding:3px 7px; color:var(--ui-gold-light,#f1d681)!important; font:inherit; font-weight:700; text-align:left; }

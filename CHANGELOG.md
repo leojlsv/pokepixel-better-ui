@@ -27,6 +27,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Hide the complete Team presets section when the native desktop Team HUD is minimized, using its existing collapsed state and mobile exception. Restoring the HUD preserves the preset disclosure state.
+
 - Decoupled Apply from the Team window/scene. Reused the native PokemonCardHost Equip/Unequip API and event flow, with authoritative Team/inventory reloads and native leader/order operations. Added a regression running Apply with no Team DOM or scene and checking equip/remove/leader/order event payloads.
 
 - Replaced simulated Apply clicks with awaited native Team methods for equip, removal, active selection and complete order persistence. No backpack picker or profile control rendering is required. Verify final state even when native handlers swallow errors; reject unsupported runtimes before changing composition. Added no-click and native-rejection/rollback regressions.
