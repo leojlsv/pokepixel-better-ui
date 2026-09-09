@@ -6,6 +6,8 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's in-game validation of `a97f199`: applying presets from the HUD without opening Team, including composition, order, active Pokémon and backpack updates. No in-game validation remains pending for this fix.
+
 - Recorded the user's in-game approval of the compact Team profile labels and uniform button sizing in `4ff2f4c`. Validation is complete for this refinement, including active and non-active Pokémon states.
 
 - Recorded the user's approval of native rounding in Team preset cards and tiles.
