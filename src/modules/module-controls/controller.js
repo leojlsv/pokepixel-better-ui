@@ -67,6 +67,8 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
   const style = create("style");
   style.dataset.ppbuiStyle = config.id;
   style.textContent = `
+    .pokeidle-top-toolbar:has(> [data-ppbui-module="module-controls"].is-open) { z-index:2147483647 !important; }
+    [data-ppbui-module="module-controls"].is-open { z-index:2147483647; }
     [data-ppbui-module="module-controls"] > .ppbui-module-panel { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; font:11px var(--ui-font-body,Arial,sans-serif); color:var(--ui-ink,#e2e0dc); }
     .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--ui-gold-dark,#74613f) var(--ui-navy-deep,#171719); scrollbar-gutter:stable; }
     .ppbui-module-list::-webkit-scrollbar { width:9px; }

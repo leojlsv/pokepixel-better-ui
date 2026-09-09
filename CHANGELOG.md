@@ -33,6 +33,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Raised the toolbar stacking context to the maximum layer while the Better UI menu is open, keeping its preferences above game windows and restoring native stacking when closed.
+
 - Replaced Auto Helper destination dropdowns with a compact Keep/Sell/Extract radio matrix. Rarity labels reuse native quality colors, paused states appear in column headers, and explanations stay in How it works. Exclusive assignments, license locks and saving behavior are preserved.
 
 - Aligned Auto Helper Battle Support into function, consumable and condition rows. Combined Sell/Extraction toggles, license time and per-quality destinations in one native section, with collapsed explanations and explicit paused labels when a master is disabled. Assignments and saving semantics are unchanged; in-game visual validation is pending.
