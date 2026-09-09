@@ -52,11 +52,17 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     return { id, fieldset, legend };
   });
   const close = create("button", "pokeidle-btn ppbui-module-close"); close.type = "button";
-  panel.append(title, ...groups.map(group => group.fieldset), status, close);
+  const list = create("div", "ppbui-module-list");
+  list.append(...groups.map(group => group.fieldset));
+  panel.append(title, list, status, close);
   const style = create("style");
   style.dataset.ppbuiStyle = config.id;
   style.textContent = `
-    [data-ppbui-module="module-controls"] > .ppbui-module-panel { grid-template-columns:minmax(0,1fr); font:11px var(--ui-font-body,Arial,sans-serif); color:var(--ui-ink,#e2e0dc); }
+    [data-ppbui-module="module-controls"] > .ppbui-module-panel { grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; font:11px var(--ui-font-body,Arial,sans-serif); color:var(--ui-ink,#e2e0dc); }
+    .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--ui-gold-dark,#74613f) var(--ui-navy-deep,#171719); scrollbar-gutter:stable; }
+    .ppbui-module-list::-webkit-scrollbar { width:9px; }
+    .ppbui-module-list::-webkit-scrollbar-track { background:var(--ui-navy-deep,#171719); }
+    .ppbui-module-list::-webkit-scrollbar-thumb { border:2px solid var(--ui-navy-deep,#171719); background:var(--ui-gold-dark,#74613f); border-radius:4px; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
     .ppbui-module-panel .ppbui-module-section { min-width:0; margin:4px 0; padding:0; border:0; text-align:left; }
     .ppbui-module-section > legend { padding:4px 0; color:var(--ui-gold-light,#f1d681); font:inherit; font-weight:700; }

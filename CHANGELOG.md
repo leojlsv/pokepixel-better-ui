@@ -29,6 +29,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Bounded the module preferences panel to 480px or the available viewport height. Only the grouped checkbox list scrolls, with native gold/graphite scrollbar styling; title, persistence status and Close remain visible as modules are added.
+
 - Replaced oversized module toggle tiles with compact labeled checkboxes grouped into Interface, Team, and Activities & items. Preserved preference persistence, keyboard focus, dismissal and live reconciliation; descriptions remain visible beside each checkbox.
 
 - Hide the complete Team presets section when the native desktop Team HUD is minimized, using its existing collapsed state and mobile exception. Restoring the HUD preserves the preset disclosure state.
