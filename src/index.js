@@ -1,3 +1,4 @@
+import { createAutoHelperModule, autoHelperText } from "./modules/auto-helper/index.js";
 import { createBetterUI } from "./core/bootstrap.js";
 import { exampleModule } from "./modules/example/index.js";
 import { menuBarModule } from "./modules/menu-bar/index.js";
@@ -18,7 +19,7 @@ import { createTeamPresetsModule, teamPresetsText } from "./modules/team-presets
 import { createMarksShopModule } from "./modules/marks-shop/index.js";
 import { shopText } from "./modules/marks-shop/dom.js";
 
-const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true } });
+const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true, "auto-helper": true } });
 const moduleControls = createModuleControls({
   preferences,
   modules: [
@@ -29,6 +30,7 @@ const moduleControls = createModuleControls({
     { id: "team", name: () => teamText().name, description: () => teamText().description },
     { id: "marks-shop", name: () => shopText().name, description: () => shopText().description },
     { id: "team-hud", name: () => teamHudText().name, description: () => teamHudText().description },
+    { id: "auto-helper", name: () => autoHelperText().name, description: () => autoHelperText().description },
     { id: "team-presets", name: () => teamPresetsText().name, description: () => teamPresetsText().description },
   ],
 });
@@ -46,6 +48,7 @@ const app = createBetterUI({
     createTeamHudModule(),
     createTeamPresetsModule(),
     createMarksShopModule(),
+    createAutoHelperModule(),
     moduleControls,
   ],
 });

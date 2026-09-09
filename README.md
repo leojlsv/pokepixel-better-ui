@@ -110,3 +110,5 @@ Mark’s Shop adds List/Cards for item purchases and expandable species groups f
 Pokémon sales, preserving native checkboxes, purchase controls and sale confirmation.
 Group selection reports partial state and selections outside native filters.
 See `docs/modules/marks-shop.md` for scope and pending in-game validation.
+
+Auto Helper groups the native settings editor into Support, Capture and Pokémon destination, with visible save/retry state, resource availability and one destination per quality. See `docs/modules/auto-helper.md`.

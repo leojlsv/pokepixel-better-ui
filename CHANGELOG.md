@@ -31,6 +31,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Added the optional Auto Helper UI module: grouped native controls, visible save status with serialized saves/retry and close flushing, exclusive per-quality sell/extract destinations, full consumable names and selected states, event/manual inventory refresh, and pending-draft/context restoration across native panel recreation. No gameplay actions are added; in-game validation is pending.
+
 - Made module themes independently collapsible using native disclosures. Headers show enabled/total counts even when closed, and each theme remembers its expansion state in separate browser storage. Module enablement, bounded scrolling and fixed footer remain unchanged.
 
 - Bounded the module preferences panel to 480px or the available viewport height. Only the grouped checkbox list scrolls, with native gold/graphite scrollbar styling; title, persistence status and Close remain visible as modules are added.
