@@ -59,8 +59,8 @@ test("native controls remain intact while destination choices serialize exclusiv
 });
 test("item selection preserves focus and resource refresh reports missing stock without changing settings",async t=>{
   const s=setup(t);await tick();
-  const button=s.root.querySelector('[data-ppbui-item="b"]');button.focus();button.click();await s.session.saver.flush();
-  assert.equal(s.doc.activeElement,button);assert.equal(button.getAttribute('aria-pressed'),'true');
+  const select=s.root.querySelector('[data-ppbui-picker="2"]');select.focus();select.value="b";select.dispatchEvent(new s.dom.window.Event("change",{bubbles:true}));await s.session.saver.flush();
+  assert.equal(s.doc.activeElement,select);assert.equal(select.value,"b");
   const capture=s.root.querySelectorAll('input[type=checkbox]')[2];capture.click();await s.session.saver.flush();const count=s.calls.length;
   s.setInventory([]);s.handlers.get('inventory.updated')();await tick();
   assert.equal(s.calls.length,count);assert.match(s.root.textContent,/No compatible resource/);

@@ -18,7 +18,7 @@ export function mountAutoHelper(root, session) {
   const style = node("style"); style.dataset.ppbuiModule = "auto-helper";
   style.textContent = `
     .auto-helper-panel[data-ppbui-auto-helper] .pokeidle-panel__body { background:var(--ui-panel,#1c1c1e)!important; color:var(--ui-ink,#e2e0dc); }
-    .ppbui-auto-save { position:sticky; top:0; z-index:3; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px; border:1px solid var(--ui-gold-dark); background:var(--ui-panel-raised,#242426); font:inherit; }
+    .ppbui-auto-save { position:sticky; top:0; z-index:3; display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:6px 8px; border-bottom:1px solid var(--ui-gold-dark); background:var(--ui-panel-raised,#242426); font:inherit; }
     .ppbui-auto-save > span { flex:1; min-width:120px; }
     .ppbui-auto-stock { flex-basis:100%; color:var(--ui-muted); }
     .ppbui-auto-stock:empty { display:none; }
@@ -34,13 +34,12 @@ export function mountAutoHelper(root, session) {
     .ppbui-auto-support-part { min-width:0; }
     .auto-helper-panel[data-ppbui-auto-helper] .auto-capture-lock { position:static; display:inline-block; margin-bottom:6px; }
     .ppbui-auto-status { display:block; margin:6px 0; color:var(--ui-muted,#9b9994); }
-    .ppbui-auto-selected { grid-column:1/-1; min-width:0; color:var(--ui-gold-light,#eccf94); font-size:10px; overflow-wrap:anywhere; }
-    .auto-helper-panel[data-ppbui-auto-helper] .auto-capsule small { font-size:10px; white-space:normal; overflow-wrap:anywhere; }
-    .auto-helper-panel[data-ppbui-auto-helper] .auto-capsule em { font-size:10px; }
-    .auto-helper-panel[data-ppbui-auto-helper] .auto-capsule { background:var(--ui-panel,#1c1c1e); border-color:var(--ui-gold-dark); color:var(--ui-ink,#e2e0dc); box-shadow:none; }
-    .auto-helper-panel[data-ppbui-auto-helper] .auto-capsule[aria-pressed="true"] { border-color:var(--ui-gold-light); box-shadow:inset 0 0 0 1px var(--ui-gold); }
-    .auto-helper-panel[data-ppbui-auto-helper] .auto-capsule:hover { background:var(--ui-panel-raised,#242426); }
-    .auto-helper-panel[data-ppbui-auto-helper] .auto-capsule:focus-visible { outline:2px solid var(--ui-gold-light); outline-offset:1px; }
+    .ppbui-auto-picker { display:flex; align-items:center; gap:8px; margin:6px 0; }
+    .ppbui-auto-item-icon { display:grid; place-items:center; flex:0 0 32px; height:32px; color:var(--ui-gold-light); font-size:24px; }
+    .ppbui-auto-picker > select { box-sizing:border-box; flex:1; width:100%; min-width:0; height:32px; padding:4px 8px; border:1px solid var(--ui-gold-dark); border-radius:4px; background:var(--ui-navy-deep,#151517); color:var(--ui-ink,#e2e0dc); font:inherit; }
+    .ppbui-auto-picker > select:focus-visible { outline:1px solid var(--ui-gold-light); outline-offset:1px; }
+    .auto-helper-panel[data-ppbui-auto-helper] .auto-helper-row > .ppbui-auto-status { margin:0 0 0 auto; max-width:50%; text-align:right; font-size:9px; font-weight:400; }
+    .auto-helper-panel[data-ppbui-auto-helper] .auto-helper-note { line-height:1.4; }
     .ppbui-auto-destinations { width:100%; border-collapse:collapse; color:var(--ui-ink); }
     .ppbui-auto-destinations th,.ppbui-auto-destinations td { padding:6px 4px; text-align:left; border-bottom:1px solid var(--ui-gold-dark); }
     .ppbui-auto-destinations select { width:100%; padding:5px; background:var(--ui-navy-deep,#151517); color:var(--ui-ink); border:1px solid var(--ui-gold-dark); }
@@ -84,37 +83,39 @@ export function mountAutoHelper(root, session) {
   const controls = [parts.potion, parts.revive, parts.common, parts.shinyCheck];
   const types = ["potion", "revive", "capsule", "capsule"];
   function drawPickers() {
-    pickers.forEach(({ grid }, index) => {
-      const focused = grid.contains(doc.activeElement) ? doc.activeElement.dataset.ppbuiItem : null;
-      grid.replaceChildren();
-      const summary = node("div", "ppbui-auto-selected"); grid.append(summary); pickers[index].summary = summary;
-      const candidates = [{ id: "", name: pi.t("auto_helper.any_available") }, ...items(types[index])];
-      for (const item of candidates) {
-        const id = ids(item), button = node("button", "auto-capsule"); button.type = "button"; button.dataset.ppbuiItem = id;
-        button.setAttribute("aria-pressed", String(id === choices[index])); button.disabled = controls[index].disabled;
-        const label = item.name || item.item?.name || id; button.title = label;
-        if (id) {
-          const icon = node("i", "rmmz-icon"), value = Number(item.icon_index || item.item?.icon_index || 0);
-          icon.style.backgroundImage = 'url("img/system/IconSet.png?v=20260717-reference-iconset-1")';
-          icon.style.backgroundPosition = `-${(value % 16) * 32}px -${Math.floor(value / 16) * 32}px`; icon.setAttribute("aria-hidden", "true"); button.append(icon);
-        } else button.append(node("span", "auto-capsule__any-icon", "◎"));
-        button.append(node("small", "", label), node("em", "", id ? `×${qty(item)}` : pi.t("auto_helper.automatic")));
-        button.addEventListener("click", () => { choices[index] = id; updatePickers(); queue(true); });
-        grid.append(button);
+    pickers.forEach((picker, index) => {
+      if (!picker.select) {
+        picker.icon = node("span", "ppbui-auto-item-icon"); picker.icon.setAttribute("aria-hidden", "true");
+        picker.select = node("select"); picker.select.dataset.ppbuiPicker = String(index);
+        picker.select.setAttribute("aria-label", controls[index].parentElement.querySelector("b")?.textContent || types[index]);
+        picker.grid.append(picker.icon, picker.select);
+        picker.select.addEventListener("change", () => { choices[index] = picker.select.value; updatePickers(); queue(true); });
       }
-      if (focused !== null) [...grid.children].find(child => child.dataset.ppbuiItem === focused)?.focus({ preventScroll: true });
+      const options = [node("option", "", pi.t("auto_helper.any_available"))]; options[0].value = "";
+      for (const item of items(types[index])) {
+        const option = node("option", "", `${item.name || item.item?.name || ids(item)} · ×${qty(item)}`); option.value = ids(item); options.push(option);
+      }
+      if (choices[index] && !options.some(option => option.value === choices[index])) {
+        const option = node("option", "", choiceName(index, autoHelperText(doc))); option.value = choices[index]; options.push(option);
+      }
+      picker.select.replaceChildren(...options);
     });
     updatePickers();
   }
   function updatePickers() {
-    const text = autoHelperText(doc);
-    pickers.forEach(({grid, summary}, index) => {
-      content(summary, `${text.selected}: ${choiceName(index, text)}`);
-      for (const button of grid.children) if (button.tagName === "BUTTON") {
-        const selected = button.dataset.ppbuiItem === choices[index];
-        if (button.getAttribute("aria-pressed") !== String(selected)) button.setAttribute("aria-pressed", String(selected));
-        if (button.disabled !== controls[index].disabled) button.disabled = controls[index].disabled;
+    pickers.forEach(({select,icon}, index) => {
+      if (!select) return;
+      const item = inventory.find(item => ids(item) === choices[index]);
+      const iconKey = item ? String(item.icon_index || item.item?.icon_index || 0) : "any";
+      if (icon.dataset.ppbuiIcon !== iconKey) {
+        icon.dataset.ppbuiIcon = iconKey; content(icon, item ? "" : "◎");
+        icon.style.backgroundImage = item ? 'url("img/system/IconSet.png?v=20260717-reference-iconset-1")' : "none";
+        if (item) { const value = Number(iconKey); icon.style.backgroundPosition = `-${(value % 16) * 32}px -${Math.floor(value / 16) * 32}px`; }
       }
+      if (select.value !== choices[index]) select.value = choices[index];
+      flag(select, "disabled", controls[index].disabled);
+      const title = select.selectedOptions[0]?.textContent || "";
+      if (select.title !== title) select.title = title;
     });
   }
   function payload() {
@@ -196,9 +197,9 @@ export function mountAutoHelper(root, session) {
       choices = [potion.potion_item_id || ids(items("potion")[0] || {}) || "", potion.revive_item_id || ids(items("revive")[0] || {}) || "", capture.common_capsule_item_id || capture.capsule_item_id || "", capture.shiny_capsule_item_id || capture.capsule_item_id || ""];
       const latest = session.saver.state();
       if (latest.draft && (latest.pending || beforeLoad.pending || latest.revision !== beforeLoad.revision)) applyDraft(latest.draft);
-      pickers = parts.pickers.map(original => { const grid = node("div", "auto-capsule-grid"); replace(original, grid); return {grid}; });
-      for (const [index, input] of controls.entries()) { const el = node("small", "ppbui-auto-status"); input.parentElement.after(el); owned.push(el); badges.push({el,input,index}); }
-      for (const input of [parts.sellCheck, parts.extractCheck].filter(Boolean)) { const el = node("small", "ppbui-auto-status"); input.parentElement.after(el); owned.push(el); badges.push({el,input}); }
+      pickers = parts.pickers.map(original => { const grid = node("div", "ppbui-auto-picker"); replace(original, grid); return {grid}; });
+      for (const [index, input] of controls.entries()) { const el = node("small", "ppbui-auto-status"); input.parentElement.append(el); owned.push(el); badges.push({el,input,index}); }
+      for (const input of [parts.sellCheck, parts.extractCheck].filter(Boolean)) { const el = node("small", "ppbui-auto-status"); input.parentElement.append(el); owned.push(el); badges.push({el,input}); }
       const text = autoHelperText(doc), destinationGroup = groups.find(group => group.key === "destination");
       const tableSection = node("section", "auto-helper-section is-wide"), table = node("table", "ppbui-auto-destinations"), head = node("tr"), tbody = node("tbody");
       head.append(node("th", "", text.quality), node("th", "", text.destination)); const thead = node("thead"); thead.append(head); table.append(thead,tbody);
@@ -220,7 +221,7 @@ export function mountAutoHelper(root, session) {
       parts.body.inert = wasInert; ready = true; drawPickers(); sync();
       parts.body.scrollTop = session.scroll || 0;
       const target = session.focus?.kind === "input" ? nativeInputs[session.focus.index]
-        : session.focus?.kind === "picker" ? [...(pickers[session.focus.index]?.grid.children || [])].find(el => el.dataset.ppbuiItem === session.focus.id)
+        : session.focus?.kind === "picker" ? pickers[session.focus.index]?.select
         : session.focus?.kind === "destination" ? destinations[session.focus.index]?.select : null;
       target?.focus({preventScroll:true});
       if (target === parts.names && session.selection) target.setSelectionRange(...session.selection);

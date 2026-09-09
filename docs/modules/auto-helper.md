@@ -1,12 +1,12 @@
 # Auto Helper
 
-Status: implemented and validated in game by the user on 2026-09-09 (`38b41a7`).
+Status: functionality validated in game; visual refinement after user rejection of the consumable tile layout awaits in-game approval.
 
 ## Scope
 
 Enhance the native Auto Helper settings editor, without running gameplay actions. Support, Capture and Pokémon destination are independent native disclosures. The existing potion/revive, capture, license, threshold and species controls are moved with their nodes intact. The species filter stays next to capture.
 
-The editor uses existing native styles and window geometry. Selected consumables show full names, quantities, keyboard focus and pressed state. Stock refreshes on the native inventory.updated event or explicit Refresh resources; idle reconciliation makes no requests. Enabled, disabled, missing stock and blocked states are distinguished locally.
+The editor uses existing native styles and window geometry. Selected consumables use compact native selects with names, quantities, a selected-item icon and keyboard focus. States sit beside their toggles. Stock refreshes on the native inventory.updated event or explicit Refresh resources; idle reconciliation makes no requests. Enabled, disabled, missing stock and blocked states are distinguished locally.
 
 One destination per quality replaces the duplicated sell/extract quality grids. Keep means neither list includes that quality. Sell and Extract only operate when their native master toggle and entitlement allow them; changing a destination does not enable either function. Genetic extraction remains absent on unsupported servers.
 
@@ -31,4 +31,4 @@ Local preview uses the native AutoHelper script with mock settings and inventory
 
 In-game checks: change a consumable and threshold; edit species then immediately close/reopen; choose Sell/Extract/Keep without changing the master toggles; verify unavailable/license states; refresh inventory; disable/re-enable the Better UI module. Confirm selections persist and existing automation behavior remains native.
 
-The user validated this delivery in game on 2026-09-09. No in-game validation remains pending for this scope.
+The earlier functional validation remains recorded. The user subsequently rejected the visual layout; the compact selector revision requires visual approval.
