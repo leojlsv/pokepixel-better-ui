@@ -1,6 +1,6 @@
 # Storage
 
-Status: implemented on feature/storage; awaiting in-game validation.
+Status: validated in game by the user, including the refinements in 8a4097a. No in-game validation remains pending for this delivery.
 
 ## Scope
 

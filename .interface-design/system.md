@@ -15,4 +15,4 @@ Two independent columns: Backpack and Pokémon Center. Order: identity/capacity,
 - Existing native surfaces and borders define depth. Use --ui-ink, --ui-muted and --ui-gold-dark; no new palette, fonts, shadows or gradients.
 - Controls use native sizes; filter gaps 5–6px, content padding 8px 10px. Footer 48px with border-box sizing and a single native separator.
 
-Approved by user for implementation. Visual validation in game remains separate from automated tests.
+Approved for implementation and subsequently validated in game by the user through 8a4097a.
