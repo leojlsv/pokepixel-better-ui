@@ -35,6 +35,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Replaced custom/multiple Pokémon tags with the ten fixed named, colored symbols requested by the user, one per Pokémon. Alt + left click opens assignment/removal without triggering native slot actions. Removed tag editor fields; Tag now lives beside Gender inside More Filters. Added non-destructive v1 migration and interaction regressions; dist was not regenerated.
+
 - Added personal Pokémon tags shared by Backpack, Storage and Trade using trainer-scoped local persistence and individual creature IDs. Added native-looking tag editing, single slot markers/list labels, tag filters and Pokémon-specific rarity/element/advanced filters. Preserved native Trade eligibility and offer contents, Storage transfers and Backpack item filters. In-game validation pending; dist was not regenerated.
 
 - Recorded the approved Storage design direction. Added stable selection footers, separate result/capacity counters, distinct empty/filter states, pagination selection clearing and focus/scroll restoration. Removed the redundant management banner and enriched the existing bulk confirmation with quantity, destination and unfiltered scope.

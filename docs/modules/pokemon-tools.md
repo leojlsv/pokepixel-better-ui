@@ -1,31 +1,40 @@
 # Pokémon tags and filters
 
-Status: implemented on feature/pokemon-tags; awaiting in-game validation. No production userscript build was regenerated.
+Status: fixed-tag refinement implemented on feature/pokemon-tags; awaiting in-game validation. dist was not regenerated.
 
-## Scope
+## Fixed tags
 
-Backpack Pokémon category, each Storage column and the player's available Trade list use a common local tag service. Pokémon retain their labels when moving between Backpack and Storage because assignments use the individual creature ID, not species/name or slot position. Items are outside this scope.
+One tag per individual Pokémon, shared across Backpack, Storage and the player's Trade cards/offers:
 
-Tags have a custom name (32 characters maximum) and one of six familiar game symbols. Up to 40 definitions are supported. The Edit tags disclosure offers an explicit Pokémon selector, assignments, creation, renaming/symbol changes and native confirmation for deletion. Multiple assignments are allowed. The slot shows one small marker plus + when needed; its title/accessible marker names list the tags. Backpack list view also shows tag names. Native slot events remain intact.
+| ID | Name | Symbol | Color |
+|---|---|---|---|
+| leveling | Leveling | ^ | blue |
+| pvp | PvP | ! | red |
+| pve | PvE | + | green |
+| boss | Boss | # | purple |
+| dungeons | Dungeons | > | dark purple |
+| gyms | Gyms | = | orange |
+| farm | Farm | $ | yellow |
+| build | Build | ~ | gray |
+| keep | Keep | @ | gold |
+| sell | Sell | % | light orange |
 
-The same tag definitions and assignments are shared across the three panels and same-origin tabs. Persistence is localStorage under ppbui:pokemon-tags:v1:<trainer-id>. The identity comes from the native WorldPresence.getSelfTrainerId/Auth.getTrainerSummary contracts. Unknown identity disables editing until identified. Data is not sent to the server or other trade participant. No automatic cross-device synchronization. A denied write keeps session state with an explicit persistence warning. Tags are not protection against sale, release or trade.
+Alt + left click opens a compact native-styled modal with the Pokémon name, current tag and ten options in two columns. Selecting replaces the existing tag; Remove clears it. Close/Escape cancels. The handler captures mouse/pointer events before native slot actions and suppresses a chained double-click, so tagging does not equip, transfer or add an offer. Normal clicks and right clicks retain native behavior. Only decorated own-Pokémon nodes are eligible in Trade.
+
+Slots show a single colored symbol without changing the rarity border; the title and Backpack list include the tag name. Dark purple and gray use legible values against the native dark background. The modal is bounded by the viewport and scrolls internally.
 
 ## Filters
 
-Rarity and element are offered in Backpack's Pokémon context and Trade. Storage retains its native rarity/element controls independently per column. Tag filters support any selected tag (OR), including Untagged. Distinct filter types combine with AND.
+Only More Filters remains as the added disclosure. Tag is directly after Gender and offers All, Untagged and the ten fixed tags. Rarity/element are inside that disclosure in Backpack and Trade; Storage retains its native independent controls. Existing level, IV, quality multiplier and status filters remain. Different filter types combine with AND. Native eligibility and offer payloads are untouched.
 
-More filters contains inclusive level bounds, total IV minimum, quality multiplier minimum, shiny, locked and team states. Nature/gender options appear only when loaded strings are available. Missing numeric data does not count as zero. IV summation requires six complete values. These filters never reveal native-ineligible Trade candidates. Trade filters do not remove offered creatures or alter offer/confirmation payloads.
+## Persistence and migration
 
-The native Backpack Clear filters and Storage Clear controls reset the corresponding Pokémon tools. Trade has a local reset. Search, native eligibility and sorting remain in force. Advanced disclosures show active counts and retain expansion while editing. Selecting items/all in Backpack leaves general inventory filtering unchanged.
+The v2 key is ppbui:pokemon-tags:v2:<trainer-id>. Assignments remain arrays for storage compatibility but contain exactly one catalog ID. Trainer identity uses native WorldPresence/Auth getters; unknown identity disables assignment. No server writes or cross-device synchronization. Same-origin tabs receive storage updates; denied writes retain session state and show a warning.
 
-## Architecture and limits
+On first v2 load, exact case-insensitive trimmed matches from v1 custom names are mapped to fixed IDs. Only unambiguous single matches are imported. Multiple conflicting matches and unmatched names are not guessed. The v1 key is never overwritten or deleted, preserving recovery data. A v2 snapshot prevents removed tags from being re-imported on reload.
 
-Shared model/UI live under src/modules/pokemon-tools; no feature code was added to core. Inventory and Storage own their integrations. A separately toggleable Trade module wraps only its local rendering methods. The reversible scene adapters do not patch global API/network methods, issue gameplay requests, change offers or clone actionable nodes.
+## Integration and verification
 
-Tag changes notify active panels; idle reconciliation does not serialize tags or rebuild tag controls. The persistent service listens for same-origin storage updates. Native internal render contracts remain an integration dependency; Trade decoration/filtering requires a matching candidate/card count and preserves the native list on mismatch.
+Inventory and Storage own their integrations; Trade has a separately toggleable module. Scene adapters remain reversible and no global game/network APIs are patched. Tag edits never modify offer contents or transfer behavior.
 
-The first version uses game-familiar text symbols, not uploaded bitmap icons. New copy has Portuguese and English localization, with English fallback for other languages. Existing native filter options retain game translations.
-
-## Validation
-
-Tests cover per-owner persistence, invalid/denied storage, assignment cleanup, AND/OR/untagged semantics, missing stats, native slot handlers, inventory scope and Trade offer preservation. Local previews use mock data with the native Backpack and Storage renderer. In-game checks remain necessary for three-view Backpack layout, cross-panel editing, cross-tab refresh, and Trade hover/offer states.
+Tests cover per-owner persistence, catalog enforcement, migration, missing data, filter scope, native handlers, Alt-click isolation, replacement/removal/cancel and owner changes during an open dialog. Local previews cover the modal and More Filters. In-game validation remains required across all three screens. Tags are organizational labels, not protection against sale or trade.

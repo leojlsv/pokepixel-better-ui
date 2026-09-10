@@ -23,7 +23,7 @@ export function mountTradePokemon(root,scene){
     if(!list.querySelector(toolsSelectors.tradeCard)){const empty=root.ownerDocument.createElement("p");empty.className="ppbui-pokemon-empty";empty.textContent=pokemonToolsText(root.ownerDocument).none;list.append(empty);}
   });
   adapter.wrap("inventoryPanel",original=>function(){const panel=original.call(this);if(this._inventoryTab==="pokemon")panel.querySelector(toolsSelectors.tradeList)?.before(tools.render());return panel;});
-  adapter.wrap("renderSlots",original=>function(offer,own){const grid=original.call(this,offer,own);if(own){const entries=this.offerEntries(offer);[...grid.children].forEach((slot,index)=>{const entry=entries[index];if(entry?.offer_kind==="creature")tools.decorate(slot,{id:entry.creature_id||entry.id});});}return grid;});
+  adapter.wrap("renderSlots",original=>function(offer,own){const grid=original.call(this,offer,own);if(own){const entries=this.offerEntries(offer);[...grid.children].forEach((slot,index)=>{const entry=entries[index];if(entry?.offer_kind==="creature")tools.decorate(slot,{...entry,id:entry.creature_id||entry.id});});}return grid;});
   scene.render();return {cleanup(){adapter.restore();tools.cleanup();if(root.isConnected && !scene._finished)scene.render();}};
 }
 export function createTradePokemonModule(){let root,scene,mounted;return {id:"trade",shouldMount(){const next=document.querySelector(toolsSelectors.trade),candidate=next&&sceneFor(next);root=next;scene=candidate;return !!root && !!scene && ["pokemonTabPanel","inventoryPanel","renderSlots","render"].every(key=>typeof scene[key]==="function");},getMountKey:()=>scene,mount(){mounted=mountTradePokemon(root,scene);return()=>mounted.cleanup();}};}

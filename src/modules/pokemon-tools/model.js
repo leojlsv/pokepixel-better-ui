@@ -1,4 +1,10 @@
-export const symbols = ["★", "⚔", "↔", "◆", "●", "✦"];
+export const fixedTags = Object.freeze([
+  ["leveling","Leveling","^","#71b7ff"], ["pvp","PvP","!","#f08080"],
+  ["pve","PvE","+","#8fd67c"], ["boss","Boss","#","#b98ae4"],
+  ["dungeons","Dungeons",">","#9474c4"], ["gyms","Gyms","=","#ff8d32"],
+  ["farm","Farm","$","#f0d45c"], ["build","Build","~","#b0b5bb"],
+  ["keep","Keep","@","#eccf94"], ["sell","Sell","%","#ffba78"]
+].map(([id,name,icon,color])=>Object.freeze({id,name,icon,color})));
 export const freshFilters = () => ({tags:[], rarity:"", element:"", minLevel:"", maxLevel:"", iv:"", quality:"", shiny:"", locked:"", team:"", nature:"", gender:""});
 const number=value=>value!==null && value!==undefined && String(value).trim()!=="" && Number.isFinite(Number(value)) ? Number(value) : null;
 export function matchesPokemon(c,f,assigned=[]) {
@@ -17,20 +23,35 @@ export function matchesPokemon(c,f,assigned=[]) {
   return true;
 }
 export function createTagStore({storage,owner,notify=()=>{}}) {
-  const key=`ppbui:pokemon-tags:v1:${encodeURIComponent(owner)}`;
-  let data={tags:[],assigned:{}},persistent=true;
+  const key=`ppbui:pokemon-tags:v2:${encodeURIComponent(owner)}`,legacyKey=`ppbui:pokemon-tags:v1:${encodeURIComponent(owner)}`;
+  let data={tags:fixedTags,assigned:{}},persistent=true;
+  const valid=new Set(fixedTags.map(t=>t.id));
   const clean=value=>{
-    const tags=Array.isArray(value?.tags)?value.tags.filter(t=>typeof t?.id==="string" && /^[a-z0-9-]{1,80}$/i.test(t.id) && typeof t.name==="string" && t.name.trim() && symbols.includes(t.icon)).slice(0,40).map(t=>({id:t.id,name:t.name.trim().slice(0,32),icon:t.icon})):[];
-    const ids=new Set(tags.map(t=>t.id)),assigned={};
-    for(const [id,list] of Object.entries(value?.assigned || {})) if(id && !["__proto__","constructor","prototype"].includes(id) && Array.isArray(list))assigned[id]=[...new Set(list.filter(tag=>ids.has(tag)))];
-    return {tags:[...new Map(tags.map(t=>[t.id,t])).values()],assigned};
+    const assigned={};
+    for(const [id,list] of Object.entries(value?.assigned || {})) if(id && !["__proto__","constructor","prototype"].includes(id) && Array.isArray(list)) {
+      const matches=[...new Set(list.filter(tag=>valid.has(tag)))];if(matches.length===1)assigned[id]=matches;
+    }
+    return {tags:fixedTags,assigned};
   };
-  const read=()=>{try{data=clean(JSON.parse(storage.getItem(key)||"{}"));persistent=true;}catch{persistent=false;}};read();
-  const save=()=>{try{storage.setItem(key,JSON.stringify(data));persistent=true;}catch{persistent=false;}notify();};
+  const read=()=>{try{
+    const saved=storage.getItem(key);
+    if(saved!==null)data=clean(JSON.parse(saved));
+    else {
+      const legacy=JSON.parse(storage.getItem(legacyKey)||"{}"),map=new Map();
+      for(const tag of Array.isArray(legacy.tags)?legacy.tags:[]) {
+        const match=fixedTags.find(t=>t.name.toLowerCase()===String(tag?.name||"").trim().toLowerCase());if(match)map.set(tag.id,match.id);
+      }
+      const assigned={};for(const [id,list]of Object.entries(legacy.assigned||{}))if(Array.isArray(list))assigned[id]=list.map(tag=>map.get(tag)).filter(Boolean);
+      data=clean({assigned});
+      if(storage.getItem(legacyKey)!==null)storage.setItem(key,JSON.stringify({assigned:data.assigned}));
+    }
+    persistent=true;
+  }catch{persistent=false;}};read();
   return {key,get:()=>data,persistent:()=>persistent,reload(){read();notify();},
-    put(name,icon,id=globalThis.crypto.randomUUID()) {name=String(name).trim().slice(0,32);if(!name || !symbols.includes(icon))return null;const old=data.tags.find(t=>t.id===id);if(old)Object.assign(old,{name,icon});else if(data.tags.length<40)data.tags.push({id,name,icon});else return null;save();return id;},
-    remove(id){data.tags=data.tags.filter(t=>t.id!==id);for(const key in data.assigned)data.assigned[key]=data.assigned[key].filter(tag=>tag!==id);save();},
-    assign(id,tags){if(!id || ["__proto__","constructor","prototype"].includes(id))return;const valid=new Set(data.tags.map(t=>t.id));const list=[...new Set(tags.filter(t=>valid.has(t)))];if(list.length)data.assigned[id]=list;else delete data.assigned[id];save();}
+    assign(id,tag){if(!id || ["__proto__","constructor","prototype"].includes(id) || (tag!==null && !valid.has(tag)))return;
+      if(tag===null)delete data.assigned[id];else data.assigned[id]=[tag];
+      try{storage.setItem(key,JSON.stringify({assigned:data.assigned}));persistent=true;}catch{persistent=false;}notify();
+    }
   };
 }
 const services=new WeakMap();
