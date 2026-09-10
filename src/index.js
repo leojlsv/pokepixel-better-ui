@@ -1,3 +1,4 @@
+import { createStorageModule, storageText } from "./modules/storage/index.js";
 import { createAutoHelperModule, autoHelperText } from "./modules/auto-helper/index.js";
 import { createBetterUI } from "./core/bootstrap.js";
 import { exampleModule } from "./modules/example/index.js";
@@ -19,11 +20,12 @@ import { createTeamPresetsModule, teamPresetsText } from "./modules/team-presets
 import { createMarksShopModule } from "./modules/marks-shop/index.js";
 import { shopText } from "./modules/marks-shop/dom.js";
 
-const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true, "auto-helper": true } });
+const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true, "auto-helper": true, storage: true } });
 const moduleControls = createModuleControls({
   preferences,
   modules: [
     { id: "menu-bar", name: text => text.name, description: text => text.description },
+    { id: "storage", name: () => storageText().name, description: () => storageText().description },
     { id: "inventory", name: () => inventoryText().name, description: () => inventoryText().description },
     { id: "chat", name: () => chatText().name, description: () => chatText().description },
     { id: "hunts", name: () => huntsText().name, description: () => huntsText().description },
@@ -42,6 +44,7 @@ const app = createBetterUI({
     exampleModule,
     menuBarModule,
     createInventoryModule(),
+    createStorageModule(),
     createChatModule(),
     createHuntsModule(),
     createTeamModule(),

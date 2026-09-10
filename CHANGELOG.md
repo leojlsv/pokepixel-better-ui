@@ -33,6 +33,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Added the optional Storage module: name/species search across both inventories before pagination, occupied-result page counts, individual native sprite URLs with icon fallback, and a compact empty selection panel. Native slots, transfer actions, bulk scope, capacity, filters and sorting remain intact. In-game validation is pending.
+
 - Raised the toolbar stacking context to the maximum layer while the Better UI menu is open, keeping its preferences above game windows and restoring native stacking when closed.
 
 - Replaced Auto Helper destination dropdowns with a compact Keep/Sell/Extract radio matrix. Rarity labels reuse native quality colors, paused states appear in column headers, and explanations stay in How it works. Exclusive assignments, license locks and saving behavior are preserved.
