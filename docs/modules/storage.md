@@ -15,7 +15,7 @@ The optional Storage module appears under Activities & items. It enhances the na
 
 The native scene builds filtered lists before rendering and closes over its page count in navigation listeners. DOM-only filtering would miss off-page Pokémon. The module therefore installs reversible adapters on the current scene instance's filter and render methods. No scene prototype, global API or transfer method is patched. Page position is clamped before the original vault renderer runs; only the returned page label and Next availability are corrected. The real storage capacity is never modified.
 
-Scene discovery checks the native methods and associated panel body. The centralized reconciler mounts the adapter once; idle reconciliation does not scan cards, resolve sprites, refresh the scene or make requests. Disabling restores method descriptors and refreshes the native screen.
+Scene discovery checks the native methods and associated panel body in ReactiveWindows.cached() and SceneManager._scene, including non-blocking windows over the active map. The centralized reconciler mounts the adapter once; idle reconciliation does not scan cards, resolve sprites, refresh the scene or make requests. Disabling restores method descriptors and refreshes the native screen.
 
 Bulk transfers retain their native all-Pokémon scope, including hidden search results; the native filtered-scope tooltip remains active while searching. This delivery does not change bulk confirmations.
 

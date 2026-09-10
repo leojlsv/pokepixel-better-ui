@@ -33,6 +33,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Fixed Storage module discovery for native non-blocking windows: resolve the scene from ReactiveWindows by its panel body as well as SceneManager, allowing the enhancement to mount while the map stays active.
+
 - Added the optional Storage module: name/species search across both inventories before pagination, occupied-result page counts, individual native sprite URLs with icon fallback, and a compact empty selection panel. Native slots, transfer actions, bulk scope, capacity, filters and sorting remain intact. In-game validation is pending.
 
 - Raised the toolbar stacking context to the maximum layer while the Better UI menu is open, keeping its preferences above game windows and restoring native stacking when closed.

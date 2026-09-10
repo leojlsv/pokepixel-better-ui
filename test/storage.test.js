@@ -46,3 +46,11 @@ test('empty and overflow storage clamp to occupied pages; cleanup restores nativ
 test('scene discovery rejects unrelated windows without the native contract',t=>{
   const s=setup(t);assert.equal(findStorage(s.doc).scene,s.scene);s.window.SceneManager._scene={};assert.equal(findStorage(s.doc),null);
 });
+
+test('Storage mounts from ReactiveWindows while the map remains the active scene',t=>{
+  const s=setup(t);
+  s.window.SceneManager._scene={map:true};
+  s.window.PokeIdle.ReactiveWindows={cached:()=>[{_panel:{body:s.doc.createElement('div')}},s.scene]};
+  assert.equal(findStorage(s.doc).scene,s.scene);
+  s.root.remove();assert.equal(findStorage(s.doc),null);
+});
