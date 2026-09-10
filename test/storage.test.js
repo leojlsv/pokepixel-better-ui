@@ -9,8 +9,8 @@ function setup(t,count=44) {
   const el=(tag,cls,text)=>{const n=doc.createElement(tag);n.className=cls||"";n.textContent=text||"";return n;};
   const calls=[];
   const scene={_creatures:Array.from({length:count},(_,i)=>({id:String(i),species:{name:i===43?"Flabébé":"Eevee",normal_sprite_url:"https://example.test/sprite.png"},location:"storage"})),_storagePage:0,_inventoryPage:0,_storageLimit:2000,_panel:{body},
-    pokeCentroFiltersActive(){return false;}, filterAndSortPokeCentro(list){return list;},
-    renderPokeCentroFilters(){const bar=el('div'),controls=el('div','pokecentro-filter-bar__controls'),clear=el('button','pokecentro-filter-clear');clear.disabled=!this.pokeCentroFiltersActive();clear.addEventListener('click',()=>this.refresh());controls.append(clear);bar.append(controls);return bar;},
+    pokeCentroFiltersActive(){return false;}, filterAndSortPokeCentro(list){return list.filter(c=>!this._qualityFilter || c.quality===this._qualityFilter);},
+    renderPokeCentroFilters(){const bar=el('div'),controls=el('div','pokecentro-filter-bar__controls'),clear=el('button','pokecentro-filter-clear');clear.disabled=!this.pokeCentroFiltersActive();clear.addEventListener('click',()=>this.refresh());for(const [key,values] of [['_qualityFilter',['','rare']],['_elementFilter',['','fire']],['_sortBy',['name','power']]]){const select=el('select');for(const value of values){const option=el('option','',value);option.value=value;select.append(option);}select.value=this[key] || values[0];controls.append(select);}controls.append(clear);bar.append(controls);return bar;},
     renderPokeCentroVault(title,subtitle,list,side,total){
       const capacity=this.pokeCentroFiltersActive()?Math.max(42,list.length):Math.max(this._storageLimit,total),pages=Math.ceil(capacity/42);
       const vault=el('section');
@@ -53,4 +53,37 @@ test('Storage mounts from ReactiveWindows while the map remains the active scene
   s.window.PokeIdle.ReactiveWindows={cached:()=>[{_panel:{body:s.doc.createElement('div')}},s.scene]};
   assert.equal(findStorage(s.doc).scene,s.scene);
   s.root.remove();assert.equal(findStorage(s.doc),null);
+});
+
+test('independent searches and Clear affect only their own column',t=>{
+  const s=setup(t);
+  const inventory=s.scene._creatures.map(c=>({...c,location:'inventory'}));
+  const render=()=>s.body.replaceChildren(s.scene.renderPokeCentroVault('','',s.scene.filterAndSortPokeCentro(inventory),'inventory',44),s.scene.renderPokeCentroVault('','',s.scene.filterAndSortPokeCentro(s.scene._creatures),'storage',44));
+  s.scene.refresh=render;render();
+  let input=s.root.querySelector('[data-ppbui-storage-search=inventory]');input.value='eevee';input.dispatchEvent(new s.window.Event('input'));
+  input=s.root.querySelector('[data-ppbui-storage-search=storage]');input.value='flabebe';input.dispatchEvent(new s.window.Event('input'));
+  assert.equal(s.scene.filterAndSortPokeCentro(inventory).length,43);assert.equal(s.scene.filterAndSortPokeCentro(s.scene._creatures).length,1);
+  s.root.querySelector('[data-ppbui-storage-side=storage] .pokecentro-filter-clear').click();
+  assert.equal(s.scene.filterAndSortPokeCentro(inventory).length,43);assert.equal(s.scene.filterAndSortPokeCentro(s.scene._creatures).length,44);
+});
+test('selected native transfer button moves to its column and preserves its listener',t=>{
+  const s=setup(t);s.mounted.cleanup();
+  let clicks=0;
+  s.scene.renderPokeCentroSelection=function(){
+    const section=s.doc.createElement('section');section.className='pokecentro-selection';
+    section.innerHTML='<div class="pokecentro-selection__identity"><h3>Eevee</h3></div><div class="pokecentro-selection__actions"><button>Details</button><button>Withdraw</button></div>';
+    section.lastChild.lastChild.addEventListener('click',()=>clicks++);return section;
+  };
+  const mounted=mountStorage({root:s.root,scene:s.scene});s.scene._selectedId='0';
+  const selection=s.scene.renderPokeCentroSelection();assert.equal(selection.hidden,true);
+  s.root.querySelector('[data-ppbui-storage-side=storage] .ppbui-storage-transfer button').click();assert.equal(clicks,1);
+  s.scene.renderPokeCentroSelection();assert.equal(s.root.querySelectorAll('.ppbui-storage-transfer').length,1);mounted.cleanup();
+});
+
+test('rarity selection is scoped and does not replace shared native filter state',t=>{
+  const s=setup(t);s.scene._creatures[0].quality='rare';
+  const select=s.root.querySelector('select');select.value='rare';select.dispatchEvent(new s.window.Event('change'));
+  assert.equal(s.scene.filterAndSortPokeCentro(s.scene._creatures).length,1);
+  assert.equal(s.scene.filterAndSortPokeCentro(s.scene._creatures.map(c=>({...c,location:'inventory'}))).length,44);
+  assert.equal(s.scene._qualityFilter,undefined);
 });

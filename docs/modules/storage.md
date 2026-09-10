@@ -6,10 +6,11 @@ Status: implemented on feature/storage; awaiting in-game validation.
 
 The optional Storage module appears under Activities & items. It enhances the native two-column Pokémon Center without modifying transfers or making API calls.
 
-- Search matches name, nickname, species and the native display name, ignoring case and accents. It combines with native rarity/element filters and sorting before pagination, resets both pages, and clears through the original Clear button.
+- Each column has independent search, rarity, element, sorting and Clear controls. Changing one column resets only its page.
+- Search matches name, nickname, species and the native display name, ignoring case and accents. It combines with native rarity/element filters and sorting before pagination, resets the corresponding page, and clears through the original Clear button.
 - Pages reflect occupied results (42 per page), not the 100/2000 capacity. Capacity counters and deposit limits remain native. Overflow Pokémon beyond capacity remain reachable.
 - Slots display the existing normal/shiny species sprite URL. If absent or loading fails, the original icon remains. The slot node and its click, double-click and native tooltip listeners are retained.
-- The empty selection panel uses compact spacing; selected details remain native.
+- The lower selection panel is hidden. Its native transfer button moves into a compact name/action strip in the selected column; hover and double-click remain available. A hidden native selection anchor preserves the original slot selection handler.
 
 ## Integration
 

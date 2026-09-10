@@ -1,6 +1,6 @@
 export const storageConfig = {
   id: "storage", pageSize: 42,
-  selectors: { root: ".storage-window", body: ".pokeidle-panel__body", filters: ".pokecentro-filter-bar__controls", clear: ".pokecentro-filter-clear", slots: ".pokecentro-transfer-slot", icon: ".inventory-slot__icon", pager: ".pokecentro-pager", pagerLabel: ".pokecentro-pager > span", next: ".pokecentro-pager > button:last-child", search: "[data-ppbui-storage-search]" },
+  selectors: { select:"select", transfer:".ppbui-storage-transfer", vault:"[data-ppbui-storage-side]", actions:".pokecentro-selection__actions", name:".pokecentro-selection__identity h3", root: ".storage-window", body: ".pokeidle-panel__body", filters: ".pokecentro-filter-bar__controls", clear: ".pokecentro-filter-clear", slots: ".pokecentro-transfer-slot", icon: ".inventory-slot__icon", pager: ".pokecentro-pager", pagerLabel: ".pokecentro-pager > span", next: ".pokecentro-pager > button:last-child", search: "[data-ppbui-storage-search]" },
   methods: ["filterAndSortPokeCentro", "pokeCentroFiltersActive", "renderPokeCentroFilters", "renderPokeCentroVault", "refresh"],
 };
 export function storageText(doc = document) {
