@@ -18,7 +18,7 @@ The native scene builds filtered lists before rendering and closes over its page
 
 Scene discovery checks the native methods and associated panel body in ReactiveWindows.cached() and SceneManager._scene, including non-blocking windows over the active map. The centralized reconciler mounts the adapter once; idle reconciliation does not scan cards, resolve sprites, refresh the scene or make requests. Disabling restores method descriptors and refreshes the native screen.
 
-Bulk transfers retain their native all-Pokémon scope, including hidden search results; the native filtered-scope tooltip remains active while searching. This delivery does not change bulk confirmations.
+Bulk transfers retain their native all-Pokémon scope, including hidden search results. The existing native confirmation receives a scoped informational note with the source count as an upper bound, destination and explicit unfiltered scope. It does not add a second confirmation or replace the transfer handler/API.
 
 ## Validation
 
@@ -27,3 +27,5 @@ Tests cover occupied pagination, empty and overflow storage, off-page/accent-ins
 In game: search a Pokémon beyond page one, combine search with rarity/element filters, clear, navigate the final occupied page, select and double-click a Pokémon, and disable/re-enable the module. Check normal/shiny sprites and that the selected details retain their original layout.
 
 Native sources: https://pokepixel.nietore.com/play/js/plugins/CreatureStorageScene.js and the game's inventory-slots.css / pokecentro-filters.css. The source inspection confirmed that unfiltered pagination used warehouse capacity rather than occupied count.
+
+The approved direction is saved in `.interface-design/system.md`. Both columns reserve 48px for the selected action/idle hint. Capacity stays in the header; result counts sit beside search. Empty sources and no matches have distinct messages. Pagination clears selection only on the selected side. Refresh preserves scroll and control focus (falling back to search when a control becomes disabled). The redundant management banner is hidden reversibly.

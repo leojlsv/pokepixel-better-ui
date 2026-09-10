@@ -13,8 +13,9 @@ function setup(t,count=44) {
     renderPokeCentroFilters(){const bar=el('div'),controls=el('div','pokecentro-filter-bar__controls'),clear=el('button','pokecentro-filter-clear');clear.disabled=!this.pokeCentroFiltersActive();clear.addEventListener('click',()=>this.refresh());for(const [key,values] of [['_qualityFilter',['','rare']],['_elementFilter',['','fire']],['_sortBy',['name','power']]]){const select=el('select');for(const value of values){const option=el('option','',value);option.value=value;select.append(option);}select.value=this[key] || values[0];controls.append(select);}controls.append(clear);bar.append(controls);return bar;},
     renderPokeCentroVault(title,subtitle,list,side,total){
       const capacity=this.pokeCentroFiltersActive()?Math.max(42,list.length):Math.max(this._storageLimit,total),pages=Math.ceil(capacity/42);
-      const vault=el('section');
-      for(const c of list.slice(this._storagePage*42,this._storagePage*42+42)){const slot=el('button','pokecentro-transfer-slot',c.species.name);slot.append(el('i','inventory-slot__icon'));slot.addEventListener('click',()=>calls.push(['select',c.id]));slot.addEventListener('dblclick',()=>calls.push(['transfer',c.id]));vault.append(slot);}
+      const vault=el('section'),header=el('header'),count=el('span','pokecentro-vault__count'),bulk=el('button','pokecentro-vault__bulk'),grid=el('div','pokecentro-slot-grid');
+      bulk.addEventListener('click',()=>{const dialog=el('div','pokeidle-dialog-overlay');dialog.append(el('div','pokeidle-dialog__body'));doc.body.append(dialog);});header.append(count,bulk);vault.append(header,grid);
+      for(const c of list.slice(this._storagePage*42,this._storagePage*42+42)){const slot=el('button','pokecentro-transfer-slot',c.species.name);slot.append(el('i','inventory-slot__icon'));slot.addEventListener('click',()=>calls.push(['select',c.id]));slot.addEventListener('dblclick',()=>calls.push(['transfer',c.id]));grid.append(slot);}
       const pager=el('footer','pokecentro-pager'),prev=el('button'),next=el('button');prev.addEventListener('click',()=>{this._storagePage--;this.refresh();});next.disabled=this._storagePage>=pages-1;next.addEventListener('click',()=>{this._storagePage++;this.refresh();});pager.append(prev,el('span','',String(pages)),next);vault.append(pager);return vault;
     },refresh(){body.replaceChildren(this.renderPokeCentroFilters(),this.renderPokeCentroVault('','',this.filterAndSortPokeCentro(this._creatures),'storage',this._creatures.length));}
   };
@@ -86,4 +87,30 @@ test('rarity selection is scoped and does not replace shared native filter state
   assert.equal(s.scene.filterAndSortPokeCentro(s.scene._creatures).length,1);
   assert.equal(s.scene.filterAndSortPokeCentro(s.scene._creatures.map(c=>({...c,location:'inventory'}))).length,44);
   assert.equal(s.scene._qualityFilter,undefined);
+});
+
+test('empty-state copy distinguishes filters from empty inventory and counts retain capacity',t=>{
+  const s=setup(t);const search=s.root.querySelector('input');search.value='missing';search.dispatchEvent(new s.window.Event('input'));
+  assert.match(s.root.querySelector('.ppbui-storage-empty').textContent,/No Pokémon found/);
+  assert.equal(s.root.querySelector('.pokecentro-vault__count').textContent,'44/2000');
+  assert.equal(s.root.querySelector('.ppbui-storage-results').textContent,'0 results');
+  s.root.querySelector('.ppbui-storage-empty button').click();assert.equal(s.root.querySelector('input').value,'');
+  s.scene._creatures=[];s.scene.refresh();assert.match(s.root.querySelector('.ppbui-storage-empty').textContent,/Storage empty/);
+  assert.equal(s.root.querySelector('.ppbui-storage-empty button'),null);
+});
+test('pagination clears only its selected side and preserves scroll and usable focus',t=>{
+  const s=setup(t);s.scene._selectedId='0';s.body.scrollTop=123;
+  const next=s.root.querySelector('.pokecentro-pager button:last-child');next.focus();next.click();
+  assert.equal(s.scene._selectedId,'');assert.equal(s.body.scrollTop,123);assert.equal(s.doc.activeElement,s.root.querySelector('input'));
+  s.scene._creatures.push({id:'other',location:'inventory',species:{name:'Other'}});s.scene._selectedId='other';
+  s.root.querySelector('.pokecentro-pager button').click();assert.equal(s.scene._selectedId,'other');
+  const select=s.root.querySelector('select');select.focus();select.value='rare';select.dispatchEvent(new s.window.Event('change'));
+  assert.equal(s.doc.activeElement,s.root.querySelector('select'));assert.equal(s.body.scrollTop,123);
+});
+test('bulk summary enriches only the new native dialog without changing transfer scope',async t=>{
+  const s=setup(t);const old=s.doc.createElement('div');old.className='pokeidle-dialog-overlay';old.innerHTML='<div class="pokeidle-dialog__body">Other dialog</div>';s.doc.body.append(old);
+  s.root.querySelector('.pokecentro-vault__bulk').click();await Promise.resolve();
+  assert.equal(old.querySelector('[data-ppbui-storage-bulk]'),null);
+  const note=s.doc.querySelector('[data-ppbui-storage-bulk]');assert.match(note.textContent,/44 Pokémon → Backpack/);assert.match(note.textContent,/hidden by filters/);
+  s.mounted.cleanup();assert.equal(s.doc.querySelector('[data-ppbui-storage-bulk]'),null);
 });
