@@ -76,6 +76,7 @@ export function createInventoryViews(root) {
             if (row.quality !== null) facts.push(`${text.quality}: ×${row.quality}`);
             if (row.node.classList.contains("is-equipped")) facts.push(text.equipped);
             if (row.node.classList.contains("inventory-slot--shiny")) facts.push("Shiny");
+            if (row.node.dataset.ppbuiPokemonTags) facts.push(row.node.dataset.ppbuiPokemonTags);
           } else if (row.quantity !== null) facts.push(`${text.quantity}: ${row.quantity.toLocaleString(locale())}`);
           if (row.node.querySelector(config.selectors.locked)) facts.push(text.locked);
           content(entry.name, row.name); content(entry.detail, facts.join(" · "));

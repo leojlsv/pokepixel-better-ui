@@ -35,6 +35,8 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
+- Added personal Pokémon tags shared by Backpack, Storage and Trade using trainer-scoped local persistence and individual creature IDs. Added native-looking tag editing, single slot markers/list labels, tag filters and Pokémon-specific rarity/element/advanced filters. Preserved native Trade eligibility and offer contents, Storage transfers and Backpack item filters. In-game validation pending; dist was not regenerated.
+
 - Recorded the approved Storage design direction. Added stable selection footers, separate result/capacity counters, distinct empty/filter states, pagination selection clearing and focus/scroll restoration. Removed the redundant management banner and enriched the existing bulk confirmation with quantity, destination and unfiltered scope.
 
 - Gave Backpack and Pokémon Center independent search, rarity, element, sort and Clear controls. Removed the visible lower detail panel; selection now places its native transfer button and Pokémon name in the corresponding column. Hover, double-click and bulk transfer semantics remain unchanged.

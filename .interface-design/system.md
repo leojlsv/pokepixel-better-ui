@@ -16,3 +16,12 @@ Two independent columns: Backpack and Pokémon Center. Order: identity/capacity,
 - Controls use native sizes; filter gaps 5–6px, content padding 8px 10px. Footer 48px with border-box sizing and a single native separator.
 
 Approved for implementation and subsequently validated in game by the user through 8a4097a.
+
+
+## Pokémon organization (pending in-game validation)
+
+- Keep general Backpack search/category separate from Pokémon-specific controls. Show the latter only in the Pokémon category.
+- Use native selects and disclosures for tags and advanced filters; show active counts while collapsed. Reuse each screen's existing Clear action when available.
+- Show only one familiar symbol (+ for multiple tags) in slots; keep names in the tooltip title and list view. Preserve rarity borders, shiny/equipped/lock markers.
+- Edit labels through an explicit disclosure and individual Pokémon selector. Do not bind tag editing to a click that adds an offer or transfers a creature.
+- Personal labels use character-scoped local persistence and do not imply protection from actions. No tags belonging to another player are displayed.

@@ -1,3 +1,4 @@
+import { createPokemonTools } from "../pokemon-tools/ui.js";
 import { storageConfig as config, storageText } from "./config.js";
 const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 export function mountStorage({root,scene}) {
@@ -5,6 +6,7 @@ export function mountStorage({root,scene}) {
   const state = Object.fromEntries(["inventory","storage"].map(side=>[side,{query:"",quality:scene._qualityFilter || "",element:scene._elementFilter || "",sort:scene._sortBy || "name"}]));
   let activeSide = "inventory", alive=true;
   const dialogNotes=new Set();
+  const pokemonTools=Object.fromEntries(["inventory","storage"].map(side=>[side,createPokemonTools(root,{basics:false,clearControl:false,getCreatures:()=>scene._creatures.filter(c=>c.location===side),refresh:()=>{scene[side==="storage"?"_storagePage":"_inventoryPage"]=0;scene.refresh();}})]));
   const inSide = (side, fn) => {
     const previous=activeSide, saved=[scene._qualityFilter,scene._elementFilter,scene._sortBy];
     activeSide=side; const filter=state[side];
@@ -61,9 +63,10 @@ export function mountStorage({root,scene}) {
   wrap("filterAndSortPokeCentro",original=>function(list) {
     const side=list[0]?.location === "storage" ? "storage" : "inventory";
     const result=inSide(side,()=>original.call(this,list)), needle=normalize(state[side].query.trim());
-    return needle ? result.filter(c=>normalize([c.nickname,c.name,c.species_name,c.species?.name,pi.DittoDisplayName?.get?.(c)].filter(Boolean).join(" ")).includes(needle)) : result;
+    const tagged=result.filter(c=>pokemonTools[side].matches(c));
+    return needle ? tagged.filter(c=>normalize([c.nickname,c.name,c.species_name,c.species?.name,pi.DittoDisplayName?.get?.(c)].filter(Boolean).join(" ")).includes(needle)) : tagged;
   });
-  wrap("pokeCentroFiltersActive",original=>function() { return !!state[activeSide].query.trim() || original.call(this); });
+  wrap("pokeCentroFiltersActive",original=>function() { return !!state[activeSide].query.trim() || pokemonTools[activeSide].active() || original.call(this); });
   const nativeFilters=scene.renderPokeCentroFilters;
   wrap("renderPokeCentroFilters",()=>function() { const placeholder=doc.createElement("span");placeholder.hidden=true;return placeholder; });
   function filters(side,count,total) {
@@ -82,9 +85,9 @@ export function mountStorage({root,scene}) {
     for(const select of selects) select.addEventListener("change",event=>{
       event.stopImmediatePropagation();[state[side].quality,state[side].element,state[side].sort]=selects.map(el=>el.value);refresh();
     },true);
-    clear?.addEventListener("click",event=>{event.stopImmediatePropagation();state[side]={query:"",quality:"",element:"",sort:"name"};refresh();},true);
+    clear?.addEventListener("click",event=>{event.stopImmediatePropagation();state[side]={query:"",quality:"",element:"",sort:"name"};pokemonTools[side].reset();refresh();},true);
     const searchRow=doc.createElement("div"),resultCount=doc.createElement("small");searchRow.className="ppbui-storage-search-row";resultCount.className="ppbui-storage-results";resultCount.textContent=`${count} ${storageText(doc).results}`;
-    searchRow.append(input,resultCount);controls.className="ppbui-storage-filter-row";container.append(searchRow,controls);return container;
+    searchRow.append(input,resultCount);controls.className="ppbui-storage-filter-row";container.append(searchRow,controls,pokemonTools[side].render());return container;
   }
   wrap("renderPokeCentroVault",original=>function(title,subtitle,list,side,totalCount) {
     const pageKey=side==="storage" ? "_storagePage" : "_inventoryPage";
@@ -129,6 +132,7 @@ export function mountStorage({root,scene}) {
     const visible=list.slice(page*config.pageSize,(page+1)*config.pageSize);
     vault.querySelectorAll(q.slots).forEach((slot,index)=>{
       const c=visible[index], species=c?.species, icon=slot.querySelector(q.icon);
+      pokemonTools[side].decorate(slot,c);
       const url=(c?.is_shiny && species?.shiny_sprite_url) || species?.normal_sprite_url;
       if(!icon || !url) return;
       const image=doc.createElement("img");image.className="ppbui-storage-sprite";image.alt="";image.loading="lazy";
@@ -152,7 +156,7 @@ export function mountStorage({root,scene}) {
   });
   scene.refresh();
   return {cleanup() {
-    alive=false;dialogNotes.forEach(note=>note.remove());
+    alive=false;Object.values(pokemonTools).forEach(tools=>tools.cleanup());dialogNotes.forEach(note=>note.remove());
     for(const [key,{descriptor}] of originals) if(scene[key]===wrappers.get(key)) { if(descriptor) Object.defineProperty(scene,key,descriptor); else delete scene[key]; }
     style.remove();
     if(root.isConnected && scene._panel?.body===root.querySelector(q.body)) scene.refresh();
