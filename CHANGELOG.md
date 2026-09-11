@@ -4,6 +4,8 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Added a persistent Interface toggle to disable Pokémon hover details while retaining native right-click cards. Disabled by default; reversible without reloading.
+
 ### Storage refinement
 
 - Storage: preserve rarity borders on selection; fixed four-column extra filters, 980px minimum window width (Backpack: 560px). Filtered deposit/withdraw uses a confirmed snapshot across result pages and native individual transfers; stops on failure.

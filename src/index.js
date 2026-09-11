@@ -1,3 +1,4 @@
+import { createPokemonHoverModule, hoverText } from "./modules/pokemon-hover/index.js";
 import { createTradePokemonModule } from "./modules/pokemon-tools/adapters.js";
 import { createStorageModule, storageText } from "./modules/storage/index.js";
 import { createAutoHelperModule, autoHelperText } from "./modules/auto-helper/index.js";
@@ -21,10 +22,11 @@ import { createTeamPresetsModule, teamPresetsText } from "./modules/team-presets
 import { createMarksShopModule } from "./modules/marks-shop/index.js";
 import { shopText } from "./modules/marks-shop/dom.js";
 
-const preferences = createModulePreferences({ defaults: { "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true, "auto-helper": true, storage: true, trade: true } });
+const preferences = createModulePreferences({ defaults: { "disable-pokemon-hover": false, "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true, "auto-helper": true, storage: true, trade: true } });
 const moduleControls = createModuleControls({
   preferences,
   modules: [
+    { id: "disable-pokemon-hover", name: () => hoverText().name, description: () => hoverText().description },
     { id: "menu-bar", name: text => text.name, description: text => text.description },
     { id: "trade", name: () => "Trade", description: () => "Personal Pokémon tags and filters in trade.", },
     { id: "storage", name: () => storageText().name, description: () => storageText().description },
@@ -44,6 +46,7 @@ const app = createBetterUI({
   preferences,
   modules: [
     exampleModule,
+    createPokemonHoverModule(),
     menuBarModule,
     createInventoryModule(),
     createStorageModule(),
