@@ -4,6 +4,8 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Refined Trade: item categories combine with search without replacing quantity handlers; inventory uses four slots per row, with a 1000px window minimum. Balance shares the offer currency block, cancellation is secondary, status text is legible, and added Trade controls match the native Portuguese screen.
+
 - Trade: moved Pokémon filters into a bounded four-column dialog with clear/close controls and a persistent result toolbar; aligned offer grids, moved balance below own actions, and normalized tab contrast and action heights. Native trade handlers remain unchanged.
 
 - Fixed Pokémon Center selected rarity borders against the master theme’s explicit gold `border-color: !important` override; the previous variable-only fix did not override that rule.

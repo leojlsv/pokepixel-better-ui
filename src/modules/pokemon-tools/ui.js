@@ -4,9 +4,9 @@ const labels={
  pt:{filters:"Filtros de Pokémon",tags:"Tags",more:"Mais filtros",clear:"Limpar filtros de Pokémon",all:"Todos",untagged:"Sem tag",any:"Qualquer uma das tags selecionadas",rarity:"Raridade",element:"Elemento",minLevel:"Nível mínimo",maxLevel:"Nível máximo",iv:"IV total mínimo",quality:"Multiplicador mínimo",shiny:"Shiny",locked:"Bloqueado",team:"Na equipe",nature:"Natureza",gender:"Gênero",yes:"Sim",no:"Não",edit:"Editar tags",choose:"Escolher Pokémon",newTag:"Nova tag",name:"Nome da tag",icon:"Símbolo",save:"Salvar tag",remove:"Excluir tag",confirm:"Excluir esta tag e suas associações?",local:"Tags pessoais · salvas neste navegador · não impedem venda ou troca",unavailable:"Tags indisponíveis até identificar o personagem.",unsaved:"Não foi possível salvar. Alterações válidas apenas nesta sessão.",limit:"Informe um nome; são permitidas até 40 tags.",none:"Nenhum Pokémon corresponde aos filtros."}
 };
 export function pokemonToolsText(doc=document){const lang=doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang;return labels[lang?.split(/[-_]/)[0]] || labels.en;}
-export function createPokemonTools(root,{getCreatures,refresh:refreshScene,basics=true,clearControl=true}) {
-  const doc=root.ownerDocument,win=doc.defaultView,service=tagService(win),text=pokemonToolsText(doc);
-  const pt=(win.PokeIdle?.Localization?.get?.()||doc.documentElement.lang||"").startsWith("pt");
+export function createPokemonTools(root,{getCreatures,refresh:refreshScene,basics=true,clearControl=true,language}) {
+  const doc=root.ownerDocument,win=doc.defaultView,service=tagService(win),text=labels[language] || pokemonToolsText(doc);
+  const pt=(language||win.PokeIdle?.Localization?.get?.()||doc.documentElement.lang||"").startsWith("pt");
   const copy={title:pt?"Tag do Pokémon":"Pokémon tag",remove:pt?"Remover tag":"Remove tag",close:pt?"Fechar":"Close",hint:pt?"Alt + clique esquerdo para atribuir uma tag":"Alt + left click to assign a tag",current:pt?"Atual":"Current"};
   let filter=freshFilters(),alive=true,pending=false,currentPanel=null,open=false,dialog=null,lastAlt=null;
   const panels=new Set(),badges=new Set(),titles=new Map(),slots=new WeakMap();

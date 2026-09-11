@@ -31,4 +31,6 @@ User-approved window minimums: Poké Center 980px, Backpack 560px. Poké Center 
 
 ## Trade (approved; pending in-game validation)
 
-Keep the native three-column layout. Pokémon filters open in a 560px dialog with four columns, native tokens, Clear and Close; inventory retains search, filter count and result count. Preserve filters on close and native offer actions. Offer gold rows reserve 50px; balance follows own actions so headings and grids align. Confirm/Cancel share 36px minimum height.
+Keep the native three-column layout. Pokémon filters open in a 560px dialog with four columns, native tokens, Clear and Close; inventory retains search, filter count and result count. Preserve filters on close and native offer actions. Offer gold rows reserve 72px; balance sits inside the own currency block so headings and grids align. Confirm/Cancel share 36px minimum height.
+
+Trade refinement: minimum width 1000px, offer columns at least 318px, inventory at least 280px with four 56px slots per row. Item category uses native category/type grouping and combines with search. Added labels match the native Portuguese Trade screen. Cancel remains visible as a secondary action.
