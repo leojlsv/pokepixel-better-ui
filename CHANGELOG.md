@@ -4,6 +4,8 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Trade: moved Pokémon filters into a bounded four-column dialog with clear/close controls and a persistent result toolbar; aligned offer grids, moved balance below own actions, and normalized tab contrast and action heights. Native trade handlers remain unchanged.
+
 - Fixed Pokémon Center selected rarity borders against the master theme’s explicit gold `border-color: !important` override; the previous variable-only fix did not override that rule.
 
 - Added a persistent Interface toggle to disable Pokémon hover details while retaining native right-click cards. Disabled by default; reversible without reloading.

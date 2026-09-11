@@ -1,3 +1,4 @@
+import {createTradeUI} from "./trade-ui.js";
 import {createPokemonTools,pokemonToolsText} from "./ui.js";
 export const toolsSelectors={body:".pokeidle-panel__body",inventory:".inventory-window--slots",toolbar:".inventory-slots-toolbar",clear:"[data-ppbui-inventory-clear]",trade:".trade-session-window",tradeList:".trade-inventory-list",tradeCard:".trade-inventory-item.is-pokemon"};
 export function sceneFor(root){const win=root.ownerDocument.defaultView,cached=win.PokeIdle?.ReactiveWindows?.cached?.();return [...(Array.isArray(cached)?cached:[]),win.SceneManager?._scene].find(scene=>scene?._panel?.body===root.querySelector(toolsSelectors.body));}
@@ -13,6 +14,8 @@ export function mountInventoryPokemon(root){
 }
 export function mountTradePokemon(root,scene){
   const adapter=adapt(scene),tools=createPokemonTools(root,{getCreatures:()=>scene._creatures||[],refresh:()=>scene.render()});
+  const ui=createTradeUI(root,tools);
+  adapter.wrap("render",original=>function(...args){const result=original.apply(this,args);ui.sync();return result;});
   adapter.wrap("pokemonTabPanel",original=>function(list){
     original.call(this,list);
     const offered=new Set((this.ownOffer().creatures||[]).map(c=>String(c.creature_id))),query=this._query.trim().toLocaleLowerCase("pt-BR");
@@ -22,8 +25,8 @@ export function mountTradePokemon(root,scene){
     if(cards.length===creatures.length)cards.forEach((card,index)=>{const c=creatures[index];if(tools.matches(c))tools.decorate(card,c);else card.remove();});
     if(!list.querySelector(toolsSelectors.tradeCard)){const empty=root.ownerDocument.createElement("p");empty.className="ppbui-pokemon-empty";empty.textContent=pokemonToolsText(root.ownerDocument).none;list.append(empty);}
   });
-  adapter.wrap("inventoryPanel",original=>function(){const panel=original.call(this);if(this._inventoryTab==="pokemon")panel.querySelector(toolsSelectors.tradeList)?.before(tools.render());return panel;});
+  adapter.wrap("inventoryPanel",original=>function(){const panel=original.call(this);if(this._inventoryTab==="pokemon")ui.inventory(panel,panel.querySelectorAll(toolsSelectors.tradeCard).length);else ui.close();return panel;});
   adapter.wrap("renderSlots",original=>function(offer,own){const grid=original.call(this,offer,own);if(own){const entries=this.offerEntries(offer);[...grid.children].forEach((slot,index)=>{const entry=entries[index];if(entry?.offer_kind==="creature")tools.decorate(slot,{...entry,id:entry.creature_id||entry.id});});}return grid;});
-  scene.render();return {cleanup(){adapter.restore();tools.cleanup();if(root.isConnected && !scene._finished)scene.render();}};
+  scene.render();return {cleanup(){ui.cleanup();adapter.restore();tools.cleanup();if(root.isConnected && !scene._finished)scene.render();}};
 }
 export function createTradePokemonModule(){let root,scene,mounted;return {id:"trade",shouldMount(){const next=document.querySelector(toolsSelectors.trade),candidate=next&&sceneFor(next);root=next;scene=candidate;return !!root && !!scene && ["pokemonTabPanel","inventoryPanel","renderSlots","render"].every(key=>typeof scene[key]==="function");},getMountKey:()=>scene,mount(){mounted=mountTradePokemon(root,scene);return()=>mounted.cleanup();}};}

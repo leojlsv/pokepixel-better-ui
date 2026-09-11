@@ -28,3 +28,7 @@ Approved for implementation and subsequently validated in game by the user throu
 - Slot markers use a compact colored monospace symbol on the native dark background; the modal pairs every symbol with its name and wraps safely in constrained widths.
 
 User-approved window minimums: Poké Center 980px, Backpack 560px. Poké Center More Filters always uses four equal columns. Selection must preserve the native rarity border token.
+
+## Trade (approved; pending in-game validation)
+
+Keep the native three-column layout. Pokémon filters open in a 560px dialog with four columns, native tokens, Clear and Close; inventory retains search, filter count and result count. Preserve filters on close and native offer actions. Offer gold rows reserve 50px; balance follows own actions so headings and grids align. Confirm/Cancel share 36px minimum height.
