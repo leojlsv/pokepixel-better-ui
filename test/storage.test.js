@@ -144,3 +144,11 @@ test('Storage keeps four filter columns and rarity tokens even for selected slot
   assert.match(css,/min-width:980px/);assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
   assert.match(css,/\.pokecentro-transfer-slot\.rarity-rare \{ --surface-border:var\(--quality-rare\)/);
 });
+
+
+test('rarity border overrides the native selected important border, not only its variable',t=>{
+  const s=setup(t),css=s.doc.querySelector('[data-ppbui-style="storage"]').textContent;
+  for(const quality of ['weak','common','uncommon','rare','epic','legendary','mythical']){
+    assert.ok(css.includes(`.storage-window .pokecentro-transfer-slot.rarity-${quality} { --surface-border:var(--quality-${quality}); border-color:var(--quality-${quality}) !important; }`));
+  }
+});

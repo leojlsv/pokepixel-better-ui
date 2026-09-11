@@ -24,7 +24,7 @@ export function mountStorage({root,scene}) {
   style.textContent=`
     .storage-window { min-width:980px !important; }
     .storage-window .ppbui-pokemon-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
-    ${["weak","common","uncommon","rare","epic","legendary","mythical"].map(quality=>`.storage-window .pokecentro-transfer-slot.rarity-${quality} { --surface-border:var(--quality-${quality}); }`).join("\n")}
+    ${["weak","common","uncommon","rare","epic","legendary","mythical"].map(quality=>`.storage-window .pokecentro-transfer-slot.rarity-${quality} { --surface-border:var(--quality-${quality}); border-color:var(--quality-${quality}) !important; }`).join("\n")}
     .storage-window [data-ppbui-storage-side] { display:flex; flex-direction:column; }
     .storage-window [data-ppbui-storage-side] > .pokecentro-slot-grid { flex:1 0 auto; }
     .storage-window .ppbui-storage-search { min-width:100px; width:180px; flex:1 1 140px; }

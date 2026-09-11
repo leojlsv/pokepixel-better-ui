@@ -4,6 +4,8 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Fixed Pokémon Center selected rarity borders against the master theme’s explicit gold `border-color: !important` override; the previous variable-only fix did not override that rule.
+
 - Added a persistent Interface toggle to disable Pokémon hover details while retaining native right-click cards. Disabled by default; reversible without reloading.
 
 ### Storage refinement
