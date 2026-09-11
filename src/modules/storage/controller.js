@@ -4,7 +4,7 @@ const normalize = value => String(value || "").normalize("NFD").replace(/[\u0300
 export function mountStorage({root,scene}) {
   const doc=root.ownerDocument, q=config.selectors, pi=doc.defaultView.PokeIdle;
   const state = Object.fromEntries(["inventory","storage"].map(side=>[side,{query:"",quality:scene._qualityFilter || "",element:scene._elementFilter || "",sort:scene._sortBy || "name"}]));
-  let activeSide = "inventory", alive=true;
+  let activeSide = "inventory", alive=true, transferring=false;
   const dialogNotes=new Set();
   const pokemonTools=Object.fromEntries(["inventory","storage"].map(side=>[side,createPokemonTools(root,{basics:false,clearControl:false,getCreatures:()=>scene._creatures.filter(c=>c.location===side),refresh:()=>{scene[side==="storage"?"_storagePage":"_inventoryPage"]=0;scene.refresh();}})]));
   const inSide = (side, fn) => {
@@ -22,6 +22,9 @@ export function mountStorage({root,scene}) {
   };
   const style=doc.createElement("style");style.dataset.ppbuiStyle="storage";
   style.textContent=`
+    .storage-window { min-width:980px !important; }
+    .storage-window .ppbui-pokemon-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); }
+    ${["weak","common","uncommon","rare","epic","legendary","mythical"].map(quality=>`.storage-window .pokecentro-transfer-slot.rarity-${quality} { --surface-border:var(--quality-${quality}); }`).join("\n")}
     .storage-window [data-ppbui-storage-side] { display:flex; flex-direction:column; }
     .storage-window [data-ppbui-storage-side] > .pokecentro-slot-grid { flex:1 0 auto; }
     .storage-window .ppbui-storage-search { min-width:100px; width:180px; flex:1 1 140px; }
@@ -99,7 +102,35 @@ export function mountStorage({root,scene}) {
     const text=storageText(doc), count=vault.querySelector(q.count);
     if(count)count.textContent=side==="storage" ? `${totalCount}/${this._storageLimit}` : `${totalCount} Pokémon`;
     const bulk=vault.querySelector(q.bulk);
-    bulk?.addEventListener("click",()=>{
+    const filtered=!!(state[side].query.trim() || state[side].quality || state[side].element || pokemonTools[side].active());
+    const portuguese=(pi.Localization?.get?.() || doc.documentElement.lang).startsWith("pt");
+    const filteredLabel=side==="storage" ? (portuguese?"Retirar filtrados":"Withdraw filtered") : (portuguese?"Depositar filtrados":"Deposit filtered");
+    if(bulk && filtered) { bulk.textContent=filteredLabel;bulk.title=`${list.length} Pokémon`;bulk.disabled=!list.length || typeof scene.transferPokeCentroCreature!=="function" || !pi.Dialog?.confirm; }
+    if(bulk && transferring)bulk.disabled=true;
+    bulk?.addEventListener("click",async event=>{
+      if(transferring){event.stopImmediatePropagation();return;}
+      if(filtered){
+        event.stopImmediatePropagation();
+        const ids=[...new Set(list.map(c=>String(c.id)))], target=side==="storage"?"inventory":"storage";
+        transferring=true;
+        root.querySelectorAll(q.bulk).forEach(button=>button.disabled=true);
+        try {
+          const message=portuguese ? `${ids.length} Pokémon filtrados → ${target==="storage"?text.storage:text.inventory}. Inclui todas as páginas dos resultados.` : `${ids.length} filtered Pokémon → ${target==="storage"?text.storage:text.inventory}. Includes all result pages.`;
+          if(!await pi.Dialog.confirm(message,{title:filteredLabel,acceptLabel:pi.t("common.confirm")}))return;
+          for(const id of ids){
+            if(!alive)break;
+            const creature=scene._creatures.find(c=>String(c.id)===id && c.location===side);
+            if(!creature || scene._equippedIds?.has(id))continue;
+            await scene.transferPokeCentroCreature(creature,target,bulk);
+            // Native transfer catches errors; stop if its authoritative reload did not confirm the move.
+            if(!scene._creatures.some(c=>String(c.id)===id && c.location===target)){
+              pi.Bus?.emit?.("system.feedback",{kind:"error",message:portuguese?"Transferência interrompida: o jogo não confirmou a movimentação.":"Transfer stopped: the game did not confirm the move."});break;
+            }
+          }
+        } catch(error){pi.Bus?.emit?.("system.feedback",{kind:"error",message:error.message});}
+        finally {transferring=false;if(alive)scene.refresh();}
+        return;
+      }
       const existing=new Set(doc.querySelectorAll(q.dialog));
       // Native confirmation opens synchronously. Enrich that new dialog only,
       // without replacing confirmation, transfer handlers or the Dialog API.

@@ -5,6 +5,9 @@ import { createInventoryViews, viewText } from "./views.js";
 import { createInventoryScroll } from "./scroll.js";
 
 export function mountInventory(root, preference) {
+  const hadStyle=root.hasAttribute("style");
+  const minimum=root.style.getPropertyValue("min-width"), priority=root.style.getPropertyPriority("min-width");
+  root.style.setProperty("min-width","560px","important");
   let parts = {};
   let baseline = [];
   let scope = null;
@@ -151,6 +154,8 @@ export function mountInventory(root, preference) {
   return {
     sync,
     cleanup() {
+      if(minimum)root.style.setProperty("min-width",minimum,priority);else root.style.removeProperty("min-width");
+      if(!hadStyle && !root.getAttribute("style"))root.removeAttribute("style");
       scroll.cleanup();
       order.removeEventListener("change", changeOrder);
       apply.removeEventListener("click", reapply);

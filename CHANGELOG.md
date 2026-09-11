@@ -4,6 +4,10 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+### Storage refinement
+
+- Storage: preserve rarity borders on selection; fixed four-column extra filters, 980px minimum window width (Backpack: 560px). Filtered deposit/withdraw uses a confirmed snapshot across result pages and native individual transfers; stops on failure.
+
 ### Documentation
 
 - Recorded the user’s in-game validation of Storage through 8a4097a: independent filters, occupied pagination, sprites, selection footers, empty states, capacity/results, focus/scroll and bulk confirmation clarity. No validation remains pending for this delivery.

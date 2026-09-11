@@ -19,7 +19,7 @@ function setup(t,count=44) {
       const pager=el('footer','pokecentro-pager'),prev=el('button'),next=el('button');prev.addEventListener('click',()=>{this._storagePage--;this.refresh();});next.disabled=this._storagePage>=pages-1;next.addEventListener('click',()=>{this._storagePage++;this.refresh();});pager.append(prev,el('span','',String(pages)),next);vault.append(pager);return vault;
     },refresh(){body.replaceChildren(this.renderPokeCentroFilters(),this.renderPokeCentroVault('','',this.filterAndSortPokeCentro(this._creatures),'storage',this._creatures.length));}
   };
-  dom.window.PokeIdle={t:(key,args)=>`${args.page}/${args.total}`,Localization:{get:()=>"en"}};dom.window.SceneManager={_scene:scene};
+  dom.window.PokeIdle={t:(key,args={})=>`${args.page}/${args.total}`,Localization:{get:()=>"en"}};dom.window.SceneManager={_scene:scene};
   const original=scene.renderPokeCentroVault;const mounted=mountStorage({root,scene});t.after(()=>{mounted.cleanup();dom.window.close();});
   return {doc,root,body,scene,mounted,original,calls,window:dom.window};
 }
@@ -113,4 +113,34 @@ test('bulk summary enriches only the new native dialog without changing transfer
   assert.equal(old.querySelector('[data-ppbui-storage-bulk]'),null);
   const note=s.doc.querySelector('[data-ppbui-storage-bulk]');assert.match(note.textContent,/44 Pokémon → Backpack/);assert.match(note.textContent,/hidden by filters/);
   s.mounted.cleanup();assert.equal(s.doc.querySelector('[data-ppbui-storage-bulk]'),null);
+});
+
+
+test('filtered transfer includes off-page matches only and keeps native all untouched',async t=>{
+  const s=setup(t,90);let confirmed='',all=0;const moved=[];
+  s.window.PokeIdle.Dialog={confirm:async message=>{confirmed=message;return true;}};
+  s.scene.transferPokeCentroCreature=async (c,target)=>{moved.push(c.id);c.location=target;};
+  s.scene._creatures.forEach((c,i)=>c.quality=i%2?'rare':'common');
+  const select=s.root.querySelector('select');select.value='rare';select.dispatchEvent(new s.window.Event('change'));
+  const button=s.root.querySelector('.pokecentro-vault__bulk');button.addEventListener('click',()=>all++);
+  assert.equal(button.textContent,'Withdraw filtered');button.click();
+  await new Promise(resolve=>setTimeout(resolve,0));
+  assert.equal(all,0);assert.equal(moved.length,45);assert.ok(moved.includes('89'));
+  assert.ok(moved.every(id=>Number(id)%2===1));assert.match(confirmed,/45 filtered Pokémon/);
+});
+
+test('filtered transfer cancellation and failed native move stop the batch',async t=>{
+  const s=setup(t,4);let accepted=false,calls=0;
+  s.window.PokeIdle.Dialog={confirm:async()=>accepted};
+  s.scene.transferPokeCentroCreature=async()=>{calls++;};
+  const search=s.root.querySelector('input');search.value='eevee';search.dispatchEvent(new s.window.Event('input'));
+  s.root.querySelector('.pokecentro-vault__bulk').click();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(calls,0);
+  accepted=true;s.root.querySelector('.pokecentro-vault__bulk').click();await new Promise(resolve=>setTimeout(resolve,0));assert.equal(calls,1);
+  assert.equal(s.root.querySelector('.pokecentro-vault__bulk').disabled,false);
+});
+
+test('Storage keeps four filter columns and rarity tokens even for selected slots',t=>{
+  const s=setup(t);const css=s.doc.querySelector('[data-ppbui-style="storage"]').textContent;
+  assert.match(css,/min-width:980px/);assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.pokecentro-transfer-slot\.rarity-rare \{ --surface-border:var\(--quality-rare\)/);
 });
