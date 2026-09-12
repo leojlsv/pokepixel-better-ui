@@ -32,6 +32,11 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's final in-game validation of Buff strip in both Menu Bar
+  positions. TOP and BOTTOM docking are approved after the native BOTTOM
+  `!important` positioning conflict was corrected in `825c95d`; no validation
+  remains pending for this feature.
+
 - Recorded the user's final in-game validation of the `feature/pokemon-tags`
   delivery: fixed Pokémon tags and shared filters across Backpack/Storage/Trade,
   the Trade filter/layout refinements, the Pokémon hover toggle and the latest

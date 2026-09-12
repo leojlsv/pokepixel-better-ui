@@ -35,13 +35,15 @@ Keep the native three-column layout. Pokémon filters open in a 560px dialog wit
 
 Trade refinement: minimum width 1000px, offer columns at least 318px, inventory at least 280px with four 56px slots per row. Item category uses native category/type grouping and combines with search. Added labels match the native Portuguese Trade screen. Cancel remains visible as a secondary action.
 
-## Buff strip (approved; pending in-game validation)
+## Buff strip (approved and validated)
 
 - Treat the native buff strip as a Rearrange feature, not a redesign. Reuse `.pokeidle-buff-strip`, `.pokeidle-buff-list` and `.pokeidle-event-ticker` without cloning or recreating buff state.
 - Keep the strip independent from the toolbar DOM lifecycle. Dock it geometrically against the top edge of `.pokeidle-top-toolbar`; do not reparent it into the toolbar.
 - Make the docking adaptive to toolbar placement: use the upper edge when there is room above; when the native Menu Bar is at the top of the viewport, attach the rail to the toolbar's lower edge instead of allowing it to leave the viewport. In BOTTOM mode, explicitly override the game's higher-specificity `top:auto !important` / `bottom:52px !important` buff positioning before applying Better UI geometry; do not compensate for that cascade conflict with arbitrary offsets.
 - Use the native strip as a compact one-line status rail: effect name, multiplier/effect and timer stay on the same row. Reuse every native pill and its text; do not shorten or synthesize state in JavaScript.
-- Preserve native typography and palette. Reduce only the standalone-panel chrome needed to merge it with the toolbar: compact padding/min-height, no separate drop shadow/backdrop blur, top-only rounding and subtle native-gold separators between entries.
+- Preserve native typography and palette. Reduce only the standalone-panel chrome needed to merge it with the toolbar: compact padding/min-height, no separate drop shadow/backdrop blur, edge-appropriate rounding and subtle native-gold separators between entries.
 - Prefer content width instead of the native fixed strip width and cap it to the toolbar/viewport. Existing overflow/ellipsis remains the fallback when many buffs are active.
 - Recalculate docking on normal Better UI reconciliation and viewport resize. Do not poll and do not add a feature-specific MutationObserver.
 - Cleanup removes only Better UI markers/styles/custom properties and must preserve the game's latest native inline `left`, `top` and `width` values.
+
+Final TOP and BOTTOM docking were validated in game by the user after the native BOTTOM `!important` positioning conflict was corrected in `825c95d`.

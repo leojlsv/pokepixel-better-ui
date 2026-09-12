@@ -1,6 +1,6 @@
 # Buff strip
 
-Status: implemented on `feature/buff-strip-docked`; automated validation complete, in-game validation pending.
+Status: implemented and validated in game on `feature/buff-strip-docked`.
 
 ## Scope
 
@@ -16,4 +16,4 @@ Cleanup removes Better UI CSS, markers and custom properties only. The game may 
 
 ## Validation
 
-Automated coverage verifies native-node identity, no reparenting, compact one-line composition, automatic above/below docking for bottom/top toolbar positions, precedence over the native BOTTOM `!important` positioning rule, geometry updates on resize, exact preservation of current native inline geometry and mount-key replacement behavior.
+Automated coverage verifies native-node identity, no reparenting, compact one-line composition, automatic above/below docking for bottom/top toolbar positions, precedence over the native BOTTOM `!important` positioning rule, geometry updates on resize, exact preservation of current native inline geometry and mount-key replacement behavior. Final TOP and BOTTOM behavior was validated in game by the user after the native BOTTOM positioning conflict was corrected in `825c95d`.
