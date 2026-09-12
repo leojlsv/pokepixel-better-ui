@@ -1,6 +1,7 @@
 export const buffStripConfig = Object.freeze({
   id: "buff-strip",
-  overlap: 1,
+  aboveOverlap: 10,
+  belowOverlap: 1,
   viewportMargin: 8,
   fallbackRailHeight: 30,
   selectors: {

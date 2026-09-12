@@ -36,7 +36,7 @@ test("buff strip becomes a compact native status rail above toolbar without repl
   assert.equal(s.strip.querySelector(".pokeidle-buff-list"), list);
   assert.equal(s.strip.querySelector(".pokeidle-event-ticker"), ticker);
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "414px");
-  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "55px");
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "64px");
   assert.equal(s.strip.dataset.ppbuiBuffStripDock, "above");
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-max-width"), "688px");
   const css = s.doc.querySelector('[data-ppbui-style="buff-strip"]').textContent;
@@ -62,7 +62,7 @@ test("resize updates docking and cleanup preserves current native geometry", () 
   s.setRect({ left: 100, top: 80, width: 600, height: 70, right: 700, bottom: 150 });
   s.dom.window.dispatchEvent(new s.dom.window.Event("resize"));
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "400px");
-  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "81px");
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "90px");
   assert.equal(s.strip.dataset.ppbuiBuffStripDock, "above");
   s.setRect({ left: 100, top: 20, width: 600, height: 70, right: 700, bottom: 90 });
   s.dom.window.dispatchEvent(new s.dom.window.Event("resize"));

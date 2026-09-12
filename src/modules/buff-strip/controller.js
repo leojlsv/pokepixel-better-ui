@@ -105,7 +105,7 @@ export function mountBuffStrip(target) {
     const dock = aboveSpace >= railHeight || aboveSpace >= belowSpace ? "above" : "below";
     if (strip.dataset.ppbuiBuffStripDock !== dock) strip.dataset.ppbuiBuffStripDock = dock;
     setVariable("--ppbui-buff-strip-left", `${rect.left + rect.width / 2}px`);
-    setVariable("--ppbui-buff-strip-top", `${dock === "above" ? rect.top + config.overlap : rect.bottom - config.overlap}px`);
+    setVariable("--ppbui-buff-strip-top", `${dock === "above" ? rect.top + config.aboveOverlap : rect.bottom - config.belowOverlap}px`);
     setVariable("--ppbui-buff-strip-max-width", `${maxWidth}px`);
   };
 
