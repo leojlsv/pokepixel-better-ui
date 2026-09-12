@@ -4,6 +4,21 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Reworked desktop Hunts interaction around explicit selection: native marker
+  click/keyboard activation now opens a right-side dossier instead of starting a
+  Hunt, and hover/focus no longer opens the floating information tooltip while
+  Better UI is active. The dossier reuses native visual tokens for Elements,
+  exact Weakness/Resistance/Immunity multipliers and valued Drops; Locate opens
+  the same dossier without changing zoom. The original Classic/Platform toggle
+  node is moved intact into the dossier footer and an explicit Hunt button calls
+  the native `_selectedIndex` + `startHunt()` flow. Refresh, filtering, world
+  changes, cleanup and full window replacement are covered by regressions. The
+  window controls are now grouped into a compact reversible deck using the native
+  toolbar, area counter and element filters; empty notices no longer reserve
+  space. Native refresh while the dossier is open now preserves relative zoom and
+  map center instead of reinterpreting the state against a transient full-width
+  viewport.
+
 - Added an optional Buff strip module that turns the native buff/status strip into
   a compact one-line status rail attached to the top toolbar. Timers stay inline
   with their effect, the standalone shadow/blur is removed, and the original

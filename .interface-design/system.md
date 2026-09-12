@@ -47,3 +47,17 @@ Trade refinement: minimum width 1000px, offer columns at least 318px, inventory 
 - Cleanup removes only Better UI markers/styles/custom properties and must preserve the game's latest native inline `left`, `top` and `width` values.
 
 Final TOP and BOTTOM docking were validated in game by the user after the native BOTTOM `!important` positioning conflict was corrected in `825c95d`.
+
+## Hunts — dossier revision (implemented; pending in-game validation)
+
+- Separate selection from gameplay. Desktop marker click/keyboard activation selects the hunt and opens a right-side dossier; only the explicit dossier Hunt action may invoke native `startHunt()`.
+- Suppress the native desktop hover/focus information tooltip while this module is active. Reuse its proven information model inside the persistent dossier: name/level, Elements, Weaknesses, Resistances, Immunities and valued Drops.
+- Keep the dossier inside the existing Hunt window. Move the native viewport intact once into a stable, reversible workspace; the workspace becomes two-column only while the dossier is open. Do not resize the Hunt window or clone the map/markers.
+- Treat the desktop window as three layers: global navigation (world tabs + zoom), a compact discovery/selection deck, then the map+dossier workspace. The deck reuses and moves the native toolbar, `.hunt-world-count` and `.hunt-world-elements` nodes intact; do not recreate their controls or handlers.
+- Within the deck, keep Search + level range + Clear as filtering, target select + Locate + Reset + native area count as the operational selection row, and element filters as a subordinate final row. Collapse only an empty native notice; notices with content remain visible.
+- Preserve native pan/zoom. Selection alone does not move the map. `Locate on map` selects the same zone, opens the dossier and then uses the existing native-state pan integration with unchanged zoom.
+- When native refresh replaces the viewport while the dossier is open, preserve relative zoom and focal center using the previous open-viewport geometry; never reinterpret the existing map state against the transient full-width replacement viewport.
+- Reuse the native `.hunt-presentation-toggle` node by moving it from the header to the dossier footer, directly above the explicit Hunt action. Preserve its listeners, `aria-pressed`, persistence and native refresh behavior.
+- Selection highlight and located focus are separate states. Click selection highlights only the chosen marker; Locate may continue dimming other labels to make the target findable.
+- Close dossier on ×/Escape, Reset, world change, or when filters remove the selected zone. Do not close on empty-map click because it conflicts with map drag/pan.
+- Intercept marker click/pointerenter/focus from the stable Hunt root in capture phase rather than rebinding each refreshed marker, replacing markers or monkey-patching scene methods. Track selection by stable zone identity and reacquire its current native index after refresh/reorder; clear it if that zone disappears. Cleanup must restore native click-to-Hunt, hover info, toolbar/count/element-filter order, viewport placement and presentation-toggle placement.

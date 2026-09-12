@@ -1,87 +1,68 @@
-# Hunts (Map) — encontrar a hunt
+# Hunts (Map) — seleção, dossiê e entrada explícita
 
-Status: implementação validada e aprovada no jogo em 2026-09-01.
-Menu-bar, Inventory e Chat continuam aprovados, sem novas pendências nesses módulos.
+Status: revisão implementada em `feature/hunts-dossier`; validação automatizada concluída, validação final no jogo pendente.
 
-## Escopo
+## Direção
 
-- Reutiliza busca, filtros de tipo/nível, contagem, limpar, mundos e marcadores nativos.
-- Uma linha compacta apresenta os resultados do mundo atual em um select nativo,
-  com os nomes e níveis já exibidos pelos marcadores, e o botão Localizar no mapa.
-- Localizar ajusta somente a navegação do mapa, mantendo o zoom. Nas bordas, usa
-  os limites nativos em vez de revelar áreas externas ao mapa.
-- Nenhuma hunt é iniciada, preparada, trocada ou parada. O usuário continua usando
-  o marcador original para iniciar a ação. Selecionar um resultado não clica nele.
-- Busca mantém capitalização e seleção do texto quando os controles são recriados
-  com o mesmo valor normalizado; limpar/trocar de mundo não ressuscita filtros.
-- Feedback para resultado vazio, seleção necessária, localização e indisponibilidade.
-- Em Johto, corrige para 1 o limite e o valor mínimo inicial do filtro que o cliente
-  entregava como 100, sem impedir que o jogador escolha outro nível depois.
-- Após Localizar, destaca somente o texto do Pokémon no marcador encontrado, usando
-  texto dourado, borda dourada fina sobre o fundo preto nativo e elevando o marcador
-  acima dos vizinhos. Um flash dourado único de 800 ms chama atenção para o sprite;
-  os nomes dos demais Pokémon passam a 35% de opacidade. O destaque acompanha
-  rerenders e é removido ao trocar de mundo, falhar uma localização ou desativar o módulo.
-- Um botão nativo Reset fica desabilitado até existir uma localização. Ele remove o
-  estado de foco, limpa a seleção para `All (X)` e desabilita Localizar novamente,
-  sem mudar filtros, zoom ou posição corrente do mapa.
-- O hover nativo mantém Elements e Drops e passa a separar Fraquezas, Resistências
-  e Imunidades. Cada relação usa o badge nativo do elemento e mostra seu multiplicador
-  defensivo exato, incluindo combinações de dois tipos como ×0,25 e imunidades ×0.
-- Os rótulos de relações usam formas compactas adequadas ao card (`WEAK`, `RES`,
-  `IMMU.` em inglês). Drops usam a grade nativa de duas colunas e exibem o valor de
-  venda como ícone de moeda + número; dado ausente é indicado por `—`.
-- Elements e relações compartilham uma coluna de rótulo de 52 px, fazendo todos os
-  badges começarem no mesmo eixo. Cada Drop forma uma unidade contínua no padrão
-  `ícone nome (ícone da moeda valor)`, reduzindo a separação visual e a altura do card.
-- Os badges de `WEAK`, `RES` e `IMMU.` mostram somente ícone e multiplicador sobre
-  o fundo colorido do tipo; nome e valor completo permanecem em `title` e `aria-label`.
-- O card pode crescer até 440 px, limitado à altura disponível da viewport; conteúdo
-  adicional continua usando o scroll nativo do tooltip e o posicionamento é recalculado
-  para permanecer visível.
-- Opção independente Hunts (Map) no painel Better UI; cleanup remove apenas a extensão.
+O mapa desktop passa a separar seleção de gameplay. Marcadores nativos continuam sendo reutilizados, mas left-click/Enter/Space selecionam a hunt e abrem um dossiê lateral; não iniciam mais a caça diretamente. O início da Hunt fica restrito ao botão explícito `Hunt`/`Entrar na Hunt` do dossiê.
 
-Não inclui busca entre mundos, favoritos, loot adicional, redesenho,
-responsividade nova ou alterações na geometria da janela. A lista móvel original,
-sem viewport de mapa, não recebe esta extensão.
+Hover e foco não abrem mais o tooltip flutuante. A informação antes exibida nele passa para o dossiê: nome, nível, Elements, Weaknesses, Resistances, Immunities e Drops com valor de venda. Relações defensivas continuam usando o type chart já validado e os badges/ícones nativos.
 
-## Fontes verificadas
+O dossiê abre à direita do mapa, dentro da janela existente, sem alterar as dimensões da janela. O viewport nativo é movido intacto uma vez para um workspace reversível; listeners de pan/zoom e marcadores não são clonados. O workspace só cria a segunda coluna enquanto o dossiê está aberto e o mapa volta a ocupar toda a largura disponível ao fechá-lo.
 
-- Custom UI: `src/modules/hunt/hunt-model.ts`, `HuntExplorer.tsx`, `src/types/hunt.ts`,
-  `src/modules/pokedex/type-chart.ts`, contrato e auditoria do Hunt de 2026-08-14.
-  Reutilizadas as regras e evidências de tipos;
-  não foram copiados React, bridge, snapshots de rede ou estilos do Custom UI.
-- Código público atual `js/plugins/HuntSelectionScene.js` e estilos públicos
-  `css/hud/hunt-world-map.css`, `css/panels/game-windows.css` e `panel-base.css`.
-- O filtro nativo combina texto, tipos e interseção de faixa de nível; o resultado
-  é expresso por `hidden` nos marcadores. Clicar em um marcador chama `startHunt`.
+## Composição da janela
 
-## Integração de navegação
+A janela desktop passa a ter três níveis visuais claros sem criar um tema novo. O header continua reservado à navegação global (mundos + zoom); um control deck compacto concentra descoberta/seleção; mapa + dossiê formam o workspace principal.
 
-`navigation.js` identifica exclusivamente a cena proprietária do corpo do painel,
-em ReactiveWindows/SceneManager. Antes de agir, confere marcador atual, zona/mundo,
-permissão de entrada, coordenadas, dimensões e métodos de navegação disponíveis.
+- A toolbar nativa mantém Search, faixa de nível e Clear no primeiro nível do control deck.
+- A linha Better UI concentra o alvo filtrado, `Localizar no mapa`, `Reset`, feedback e a contagem nativa de áreas. O node `.hunt-world-count` é movido intacto, não recriado.
+- Os filtros nativos de elemento ficam imediatamente abaixo, com o mesmo node/handlers e menos espaçamento vertical.
+- Notices nativos continuam aparecendo quando possuem conteúdo; notice vazio não reserva altura.
+- Tabs, zoom, toolbar, contador e filtros de elemento são sempre os nodes do cliente. O wrapper Better UI é apenas estrutural e o cleanup restaura a ordem original, inclusive whitespace/anchors do DOM.
 
-O mapa usa transform e mantém estado corrente e alvo de animação separados;
-`scrollIntoView` ou escrita isolada no transform desincronizariam zoom/pan.
-Por isso Localizar encerra a navegação anterior com `_navigationCleanup`, ajusta
-somente x/y de `_worldMapState`, salva pelo método nativo `saveWorldMapState` e
-reinstala a navegação nativa com `setupWorldMapNavigation`. Isso não substitui
-funções globais nem adiciona observers próprios. A persistência de posição continua
-pertencendo ao jogo, assim como quando o usuário arrasta o mapa.
+## Interação
 
-Essa integração depende de métodos internos do cliente. Contrato incompatível
-exibe indisponibilidade, sem tentar clicar em outra zona ou iniciar gameplay.
-Não há chamadas de rede nem acesso a estado de combate.
+- Click no marcador: seleciona, destaca e abre/atualiza o dossiê. Não chama `startHunt()`.
+- Hover/focus: não abre tooltip de informações.
+- `Localizar no mapa`: abre o mesmo dossiê, mantém zoom e usa o pan nativo já validado. O foco localizado continua destacando o alvo e reduzindo os demais rótulos.
+- `Reset`: limpa localização, seleção e dossiê sem alterar filtros, zoom ou posição corrente.
+- `Esc` ou `×`: fecha o dossiê; quando possível, o foco retorna ao marcador selecionado.
+- Se filtros ocultarem a seleção ou o mundo mudar, o dossiê fecha para não manter uma zona inválida.
 
-## Verificação
+## Entrada na Hunt
 
-- Suíte completa: 76 testes passaram; build do userscript concluído.
-- Testes sintéticos de filtros, vazio, localização sem clique, zoom preservado,
-  bloqueios, referências removidas, storage, busca/foco, reset, lifecycle do core,
-  correção inicial de Johto, relações defensivas de tipo duplo, valores dos Drops,
-  enriquecimento idempotente e cleanup do tooltip.
-- Preview sintético com estilos nativos confirmou a linha de resultados e o card.
-- O usuário validou no jogo localização, Reset, foco visual, filtros, efetividades e
-  apresentação compacta dos Drops; nenhuma validação permanece pendente neste escopo.
-- Nenhuma hunt real foi iniciada nos testes.
+O Better UI não substitui `startHunt()`. O botão explícito do dossiê valida a seleção atual, atribui o mesmo `_selectedIndex` usado pelo cliente e chama o método nativo. Não há clique sintético, chamada de rede própria ou automação de gameplay.
+
+Os listeners nativos de click/hover permanecem instalados no marcador. Enquanto o módulo está ativo, uma captura delegada no root da janela intercepta os eventos de ativação e informação dos marcadores antes dos listeners nativos, inclusive durante substituições de marker entre ciclos de reconciliação. O cleanup remove essa captura e restaura automaticamente o fluxo original.
+
+## Clássico / Plataforma
+
+O node nativo `.hunt-presentation-toggle` é movido intacto do header para o rodapé do dossiê, imediatamente antes da ação de entrar. Seus listeners, `aria-pressed`, persistência e `refresh()` continuam pertencendo ao cliente.
+
+Quando o refresh nativo recria a janela, o módulo descarta referências antigas, adota o novo toggle e o novo viewport e reacquire a seleção pela identidade estável da zona. Se a ordem de `_zones` mudar, o índice corrente é recalculado; se a zona desaparecer, a seleção é limpa em vez de apontar para outra Hunt. Cleanup devolve o toggle atual ao ponto original do header.
+
+Se o refresh acontecer com o dossiê aberto (inclusive ao trocar Clássico/Plataforma), o controller preserva o zoom relativo e o centro usando a geometria anterior do viewport aberto antes de aplicar a nova geometria. Isso evita reinterpretar o mesmo `_worldMapState` contra um viewport temporariamente full-width.
+
+## Navegação existente preservada
+
+- Busca, filtros de elemento/nível, contagem, Clear, mundos e zoom continuam nativos.
+- Johto continua corrigindo apenas o mínimo inicial incorreto de 100 para 1.
+- A linha Better UI de resultados continua oferecendo `Localizar no mapa` e `Reset`.
+- `navigation.js` continua alterando apenas x/y do `_worldMapState`, salvando e reinstalando a navegação nativa. Ao abrir/fechar o dossiê, o controller recalcula apenas o `scale` interno necessário para compensar a mudança de largura do viewport e preservar o mesmo zoom percebido e centro do mapa.
+- Não há MutationObserver específico, monkey-patch de globals ou interceptação de rede.
+
+## Validação automatizada
+
+- Marcador não inicia Hunt e o botão explícito inicia exatamente o fluxo nativo.
+- Hover/focus não executam os handlers nativos de tooltip.
+- Dossiê contém tipos, relações defensivas exatas e Drops valorizados.
+- Toggle Clássico/Plataforma é o mesmo node e retorna ao header no cleanup.
+- Toolbar, contador e filtros de elemento permanecem nodes nativos e retornam à ordem exata no cleanup.
+- Localizar abre o dossiê, mantém zoom e não inicia gameplay.
+- Refresh nativo com dossiê aberto preserva zoom relativo e centro do mapa.
+- Filtros, mundo, reorder/refresh nativo e substituição completa da janela não deixam referências antigas ou seleção apontando para outra zona.
+- Reconciliação estável não produz mutações e cleanup restaura a estrutura nativa.
+- Suíte Hunts: 26/26 testes. Suíte completa: 203/203 testes; build do userscript concluído.
+- A abertura/fechamento do dossiê preserva o estado nativo de pan/zoom após o reflow do viewport; selecionar uma Hunt não deve alterar enquadramento ou zoom do mapa.
+
+Validação visual/funcional in-game pelo usuário ainda é necessária para fechar esta revisão.

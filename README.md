@@ -99,9 +99,12 @@ It preserves messages, drafts and private tabs, and can be disabled independentl
 in Better UI. Only fixed-channel keys are persisted. See
 `docs/modules/chat-plan.md` for verification. The user has validated and approved the implemented Chat scope; no validation remains pending.
 
-Hunts (Map) adds compact filtered results and an explicit Locate on map action.
-It reuses native filters and markers, preserves zoom, and never starts a hunt.
-The current scope is validated in game. See `docs/modules/hunts.md`.
+Hunts (Map) consolidates the native search/level controls, target selection and
+element filters into a compact reversible control deck above the map, with Locate
+on map and a native-looking right-side dossier. Marker click now selects/inspects
+instead of starting gameplay; the Hunt action is explicit inside the dossier,
+which also owns the native Classic/Platform selector. The revision awaits final
+in-game validation. See `docs/modules/hunts.md`.
 
 Team adds compact level/HP tracking to the six native slots
 and brings the original action block beside
@@ -123,6 +126,5 @@ fixed-tag catalog and shared filters across Backpack, Storage and Trade. Trade
 also includes the validated filter dialog, item categories and aligned offer
 layout. See `docs/modules/storage.md` and `docs/modules/pokemon-tools.md`.
 
-The remaining modules with explicit in-game closure still pending are Team HUD
-and Mark's Shop; their automated coverage and local previews are already in
-place.
+The current Hunts dossier revision, Team HUD and Mark's Shop still require their
+explicit in-game closure; automated coverage is already in place.
