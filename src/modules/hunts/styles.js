@@ -458,11 +458,6 @@ export const huntsStyles = `
     border-top:var(--ppbui-separator-width) solid var(--ppbui-border);
     background:var(--ppbui-bg-2);
   }
-  .ppbui-hunts-inspector__presentation-label {
-    margin:0 0 var(--ppbui-space-2);
-    padding:0;
-    border:0;
-  }
   .ppbui-hunts-inspector__mode { min-width:0; }
   .ppbui-hunts-inspector__mode .hunt-presentation-toggle {
     display:grid;

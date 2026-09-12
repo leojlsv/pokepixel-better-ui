@@ -129,7 +129,7 @@ Inspector reading order:
 2. element badges;
 3. Weakness / Resistance / Immunity rows;
 4. Drops list with icon, name and NPC sell value;
-5. presentation segmented control;
+5. presentation segmented control, without a redundant visible heading label;
 6. full-width primary `Entrar na Hunt` action.
 
 Use spacing and separators rather than nested cards around every relation or drop.

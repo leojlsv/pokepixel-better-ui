@@ -300,6 +300,8 @@ test('inspector contains elements, exact defensive relations and valued drops in
   assert.match(panel.textContent,/Bent Spoon/);
   assert.match(panel.textContent,/¤1250/);
   assert.equal(panel.getAttribute('aria-labelledby'),panel.querySelector('.ppbui-hunts-inspector__title').id);
+  assert.equal(panel.querySelector('.ppbui-hunts-inspector__presentation-label'),null);
+  assert.doesNotMatch(panel.textContent,/Apresentação/i);
   assert.match(panel.querySelector('.ppbui-hunts-drop-name').title,/Bent Spoon/);
   assert.match(panel.querySelector('.ppbui-hunts-inspector__close').getAttribute('aria-label'),/Fechar/);
   assert.equal(s.doc.querySelector('.hunt-world-drop-tooltip'),null);

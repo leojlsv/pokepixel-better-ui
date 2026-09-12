@@ -1,10 +1,10 @@
 import {defensiveMultipliers} from './type-chart.js';
 
 const copyByLanguage={
-  pt:{weakness:'Fraq.',resistance:'Res.',immunity:'Imu.',drops:'Drops',none:'Nenhuma',value:'Valor de venda',presentation:'Apresentação',close:'Fechar dossiê',hunt:'Entrar na Hunt'},
-  en:{weakness:'Weak',resistance:'Res',immunity:'Immu.',drops:'Drops',none:'None',value:'Sell value',presentation:'Presentation',close:'Close dossier',hunt:'Enter Hunt'},
-  es:{weakness:'Débil',resistance:'Res.',immunity:'Inmu.',drops:'Drops',none:'Ninguna',value:'Valor de venta',presentation:'Presentación',close:'Cerrar dossier',hunt:'Entrar a la Hunt'},
-  zh:{weakness:'弱点',resistance:'抗性',immunity:'免疫',drops:'掉落',none:'无',value:'售价',presentation:'表现模式',close:'关闭详情',hunt:'进入狩猎'},
+  pt:{weakness:'Fraq.',resistance:'Res.',immunity:'Imu.',drops:'Drops',none:'Nenhuma',value:'Valor de venda',close:'Fechar dossiê',hunt:'Entrar na Hunt'},
+  en:{weakness:'Weak',resistance:'Res',immunity:'Immu.',drops:'Drops',none:'None',value:'Sell value',close:'Close dossier',hunt:'Enter Hunt'},
+  es:{weakness:'Débil',resistance:'Res.',immunity:'Inmu.',drops:'Drops',none:'Ninguna',value:'Valor de venta',close:'Cerrar dossier',hunt:'Entrar a la Hunt'},
+  zh:{weakness:'弱点',resistance:'抗性',immunity:'免疫',drops:'掉落',none:'无',value:'售价',close:'关闭详情',hunt:'进入狩猎'},
 };
 
 const languageCopy=doc=>{
@@ -92,10 +92,9 @@ export function createHuntInspector(doc,{onClose,onHunt}) {
   header.append(heading,close);
   const body=doc.createElement('div');body.className='ppbui-scroll ppbui-hunts-inspector__body';
   const footer=doc.createElement('div');footer.className='ppbui-hunts-inspector__footer';
-  const presentationLabel=doc.createElement('div');presentationLabel.className='ppbui-hunts-section-title ppbui-hunts-inspector__presentation-label';
   const modeSlot=doc.createElement('div');modeSlot.className='ppbui-hunts-inspector__mode';
   const hunt=doc.createElement('button');hunt.type='button';hunt.className='ppbui-button ppbui-button--primary ppbui-hunts-inspector__hunt';
-  footer.append(presentationLabel,modeSlot,hunt);aside.append(header,body,footer);
+  footer.append(modeSlot,hunt);aside.append(header,body,footer);
   close.addEventListener('click',()=>onClose?.());hunt.addEventListener('click',()=>onHunt?.());
   let key='';
 
@@ -105,7 +104,7 @@ export function createHuntInspector(doc,{onClose,onHunt}) {
       const copy=languageCopy(doc),locale=doc.defaultView?.PokeIdle?.Localization?.get?.()||doc.documentElement.lang||'';
       const name=scene.zoneName?.(zone)||zone?.name||'',levels=scene.zoneMinMaxLevel?.(zone)||null,types=scene.zoneElements?.(zone)||[],drops=scene.zoneDrops?.(zone)||[];
       const nextKey=JSON.stringify([scene?._tab||'',identity,locale,name,levels?.min??null,levels?.max??null,types,drops.map(item=>[item?.id??null,item?.name??null,item?.sell_price??null,item?.sell_value??null,item?.icon_index??null])]);
-      close.setAttribute('aria-label',copy.close);close.title=copy.close;presentationLabel.textContent=copy.presentation;
+      close.setAttribute('aria-label',copy.close);close.title=copy.close;
       hunt.textContent=copy.hunt;
       if(key===nextKey)return;
       key=nextKey;title.textContent=name;title.title=name;level.textContent=levelText(doc,scene,zone);
