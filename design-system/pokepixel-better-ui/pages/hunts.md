@@ -157,6 +157,12 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 - One continuous rail with one outer 2px frame and 1px internal dividers.
 - Desktop tab height is 32px; tabs are gapless inside the rail and must not retain
   native standalone-button chrome.
+- Every world tab must stretch to the full height of the rail and share the
+  available navigation width evenly; the selected tab background/edge must fill
+  its entire segment with no inset/native gap around the active surface.
+- The tab rail and zoom rail must share the same 32px inner row height and align
+  to the same top/bottom structural edges. Extra native margins/padding/gaps on
+  either rail are suppressed.
 - Default: `bg-1`, muted text, neutral edge.
 - Hover: `bg-3`, readable text, neutral strong edge.
 - Pressed: inset/depth-shift treatment; no scale animation.
@@ -175,6 +181,10 @@ zoom state has actual selected/current semantics.
 ### Search, level inputs and Hunt select
 
 - `bg-0` input well, 2px border, 32px desktop height.
+- Search and number inputs use hard square geometry (`border-radius: 0`) with no
+  residual UA/host rounding, clipping or inset treatment. This rule is
+  authoritative even when the host supplies rounded input styles at higher
+  specificity.
 - Hover uses strong neutral border; focus uses independent cyan outline.
 - Disabled follows MASTER without opacity-only treatment.
 - Browser chrome that conflicts with the approved visual language must be owned:
@@ -337,6 +347,10 @@ gameplay behavior.
    `Entrar na Hunt` uses 48px desktop / 52px coarse-pointer minimum height and the
    stronger gold + hard-shadow hierarchy above. No other action in the inspector
    may match that visual weight.
+6. **Second live geometry correction.** Search and Level min/max must render with
+   visibly square 0px corners; the world-tab rail and zoom rail must align to the
+   same inner row edges; every world tab, including the selected Johto tab, must
+   fill its complete segment with no inset gap or uncovered strip.
 
 ## DOM/CSS vs asset plan
 

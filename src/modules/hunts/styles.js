@@ -54,26 +54,41 @@ export const huntsStyles = `
 
   /* Atlas rail */
   .ppbui-hunts-enhanced .hunt-world-header.ppbui-hunts-atlas-rail {
-    display:flex;
+    display:flex !important;
     align-items:stretch;
+    box-sizing:border-box;
     min-width:0;
-    padding:0;
+    min-height:36px;
+    margin:0 !important;
+    padding:0 !important;
+    gap:0 !important;
     border:var(--ppbui-border-width) solid var(--ppbui-border);
     background:var(--ppbui-bg-2);
     box-shadow:var(--ppbui-shadow);
   }
   .ppbui-hunts-enhanced .hunt-world-tabs {
-    display:flex;
+    display:flex !important;
+    align-items:stretch;
     flex:1 1 auto;
+    box-sizing:border-box;
+    height:auto !important;
     min-width:0;
-    gap:0;
+    min-height:32px;
+    margin:0 !important;
+    padding:0 !important;
+    gap:0 !important;
+    border:0 !important;
+    background:transparent !important;
   }
   .ppbui-hunts-enhanced .hunt-world-tabs > button,
   .ppbui-hunts-enhanced .hunt-world-tabs .hunt-category-tab,
   .ppbui-hunts-enhanced .hunt-world-zoom > button {
     -webkit-appearance:none;
     appearance:none;
+    box-sizing:border-box;
+    height:32px !important;
     min-height:32px;
+    margin:0 !important;
     border:0 !important;
     border-right:var(--ppbui-separator-width) solid var(--ppbui-border) !important;
     border-radius:0 !important;
@@ -81,6 +96,18 @@ export const huntsStyles = `
     color:var(--ppbui-text-muted) !important;
     font:600 var(--ppbui-font-size-secondary)/var(--ppbui-line-height-tight) var(--ppbui-font-body);
     box-shadow:none !important;
+  }
+  .ppbui-hunts-enhanced .hunt-world-tabs > button,
+  .ppbui-hunts-enhanced .hunt-world-tabs .hunt-category-tab {
+    display:flex !important;
+    align-items:center;
+    justify-content:center;
+    flex:1 1 0 !important;
+    width:auto !important;
+    max-width:none !important;
+    min-width:0;
+    align-self:stretch !important;
+    padding:0 var(--ppbui-control-padding-x) !important;
   }
   .ppbui-hunts-enhanced .hunt-world-tabs > button:hover:not(:disabled):not(.is-active):not([aria-selected="true"]),
   .ppbui-hunts-enhanced .hunt-world-tabs .hunt-category-tab:hover:not(:disabled):not(.is-active):not([aria-selected="true"]),
@@ -111,18 +138,34 @@ export const huntsStyles = `
     box-shadow:none !important;
   }
   .ppbui-hunts-enhanced .hunt-world-header-actions {
-    display:flex;
+    display:flex !important;
     flex:0 0 auto;
     align-items:stretch;
+    box-sizing:border-box;
+    height:auto !important;
+    min-height:32px;
+    margin:0 !important;
+    padding:0 !important;
+    gap:0 !important;
     border-left:var(--ppbui-border-width) solid var(--ppbui-border);
   }
-  .ppbui-hunts-enhanced .hunt-world-zoom { display:flex; gap:0; }
   .ppbui-hunts-enhanced .hunt-world-zoom {
-    border-left:var(--ppbui-border-width) solid var(--ppbui-border);
-    border-right:var(--ppbui-border-width) solid var(--ppbui-border);
+    display:flex !important;
+    align-items:stretch;
+    box-sizing:border-box;
+    height:auto !important;
+    min-height:32px;
+    margin:0 !important;
+    padding:0 !important;
+    gap:0 !important;
+    border:0 !important;
     background:var(--ppbui-bg-2);
   }
-  .ppbui-hunts-enhanced .hunt-world-zoom > button { background:var(--ppbui-bg-2) !important; }
+  .ppbui-hunts-enhanced .hunt-world-zoom > button {
+    align-self:stretch;
+    padding:0 var(--ppbui-control-padding-x) !important;
+    background:var(--ppbui-bg-2) !important;
+  }
   .ppbui-hunts-enhanced .hunt-world-zoom > button:last-child { border-right:0; }
 
   /* Native notice participates in Atlas/Finder status language. */
@@ -187,6 +230,10 @@ export const huntsStyles = `
   .ppbui-hunts-enhanced .hunt-world-toolbar input[type="search"] {
     -webkit-appearance:none;
     appearance:none !important;
+    -webkit-border-radius:0 !important;
+    border-radius:0 !important;
+    clip-path:none !important;
+    background-clip:border-box !important;
   }
   .ppbui-hunts-enhanced .hunt-world-toolbar input[type="search"]::-webkit-search-cancel-button,
   .ppbui-hunts-enhanced .hunt-world-toolbar input[type="search"]::-webkit-search-decoration {
@@ -196,7 +243,12 @@ export const huntsStyles = `
   }
   .ppbui-hunts-enhanced .hunt-world-toolbar input[type="number"] {
     -moz-appearance:textfield;
-    appearance:textfield !important;
+    -webkit-appearance:none !important;
+    appearance:none !important;
+    -webkit-border-radius:0 !important;
+    border-radius:0 !important;
+    clip-path:none !important;
+    background-clip:border-box !important;
   }
   .ppbui-hunts-enhanced .hunt-world-toolbar input[type="number"]::-webkit-inner-spin-button,
   .ppbui-hunts-enhanced .hunt-world-toolbar input[type="number"]::-webkit-outer-spin-button {

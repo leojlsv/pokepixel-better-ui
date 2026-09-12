@@ -189,10 +189,16 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:\.10/);
   assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:1/);
   assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none/s);
-  assert.match(css,/input\[type="number"\][^}]*\{[^}]+appearance:textfield/s);
+  assert.match(css,/input\[type="number"\][^}]*\{[^}]+appearance:none !important;[^}]+border-radius:0 !important;[^}]+clip-path:none !important/s);
+  assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none !important;[^}]+border-radius:0 !important;[^}]+clip-path:none !important/s);
   assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+appearance:none/s);
   assert.match(css,/\.hunt-world-toolbar button\s*\{[^}]+appearance:none/s);
   assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-1\) !important;[^}]+box-shadow:none !important;/s);
+  assert.match(css,/\.hunt-world-header\.ppbui-hunts-atlas-rail\s*\{[^}]+box-sizing:border-box;[^}]+min-height:36px;[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
+  assert.match(css,/\.hunt-world-tabs\s*\{[^}]+align-items:stretch;[^}]+height:auto !important;[^}]+min-height:32px;[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
+  assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-category-tab\s*\{[^}]+flex:1 1 0 !important;[^}]+width:auto !important;[^}]+align-self:stretch !important;[^}]+padding:0 var\(--ppbui-control-padding-x\) !important;/s);
+  assert.match(css,/\.hunt-world-header-actions\s*\{[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
+  assert.match(css,/\.hunt-world-zoom\s*\{[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;[^}]+border:0 !important;/s);
   assert.match(css,/\.hunt-world-toolbar input,[\s\S]*\.ppbui-hunts-results select\s*\{[^}]+border:[^}]+!important;[^}]+border-radius:0 !important;[^}]+color:var\(--ppbui-text\) !important;[^}]+box-shadow:none !important;/s);
   assert.match(css,/\.hunt-world-toolbar button\s*\{[^}]+appearance:none !important;[^}]+background:var\(--ppbui-bg-2\) !important;[^}]+border-color:var\(--ppbui-border-strong\) !important;/s);
   assert.match(css,/\.ppbui-hunts-results select\s*\{[^}]+appearance:none !important;[^}]+background-image:none !important;/s);
