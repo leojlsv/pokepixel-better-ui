@@ -1,8 +1,7 @@
-# Painel de módulos — próxima etapa
+# Painel de módulos
 
-Status: implementação autorizada e concluída; testes locais passaram.
-O painel ainda aguarda validação do usuário no jogo. O menu-bar permanece
-validado no escopo anterior. Outros QoLs ficam para outra etapa.
+Status: implementação concluída e validada no jogo. Os refinamentos posteriores
+de agrupamento, contadores e seções recolhíveis também foram aprovados.
 
 ## Requisito do usuário
 
@@ -25,10 +24,15 @@ ativar ou desativar.
 
 ## Funcionamento e limites
 
-- Os módulos opcionais disponíveis são Menu bar e Inventory, ativados por
-  padrão e configuráveis independentemente.
+- Os módulos opcionais disponíveis atualmente são Menu bar, Chat, Disable
+  Pokémon hover, Team, Team HUD, Team Presets, Inventory, Hunts, Mark's Shop,
+  Auto Helper, Storage e Trade. Cada opção é configurável independentemente;
+  Disable Pokémon hover permanece desativado por padrão e as demais seguem os
+  defaults registrados em `src/index.js`.
 - O painel de gerenciamento não aparece como opção desativável.
-- Um botão com estado pressionado indica ativado/desativado, com descrição.
+- Os módulos são organizados em Interface, Equipe e Atividades e itens. Cada
+  grupo pode ser recolhido independentemente e exibe ativos/total.
+- Checkboxes nativos indicam ativado/desativado, com descrição.
 - Alterações entram em vigor imediatamente pelo lifecycle central.
 - Preferências ficam na chave `ppbui:modules:v1` do localStorage, por navegador
   e origem do jogo, não por personagem. Não se lê nem altera outra chave.
@@ -49,11 +53,10 @@ global ou regra de responsividade foi introduzida.
 
 ## Validação
 
-`npm test`: 27 testes passando, incluindo os 21 anteriores. A cobertura nova
-inclui desativação/reativação, restauração de nós, ausência de ações do jogo,
-persistência, armazenamento bloqueado/corrompido, sincronização entre abas,
-idioma, teclado e troca completa da toolbar.
+Cobertura automatizada inclui desativação/reativação, restauração de nós,
+ausência de ações do jogo, persistência, armazenamento bloqueado/corrompido,
+sincronização entre abas, idioma, teclado, troca completa da toolbar,
+agrupamento, contadores e persistência das seções recolhíveis.
 
-No navegador local, usando a captura original e o CSS nativo, foram conferidos
-layout em 1280 x 720, abertura, desativação, restauração e persistência após
-recarregar. Não equivale a uma sessão autenticada nem valida outros viewports.
+O painel e seus refinamentos atuais foram validados no jogo pelo usuário. Não há
+pendência de validação para o escopo atual.

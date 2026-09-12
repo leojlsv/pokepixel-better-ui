@@ -1,6 +1,7 @@
 # Pokémon tags and filters
 
-Status: fixed-tag refinement implemented on feature/pokemon-tags; awaiting in-game validation. dist was not regenerated.
+Status: fixed tags, shared filters and Trade integration implemented and validated
+in game on `feature/pokemon-tags`. The generated userscript includes this scope.
 
 ## Fixed tags
 
@@ -37,4 +38,9 @@ On first v2 load, exact case-insensitive trimmed matches from v1 custom names ar
 
 Inventory and Storage own their integrations; Trade has a separately toggleable module. Scene adapters remain reversible and no global game/network APIs are patched. Tag edits never modify offer contents or transfer behavior.
 
-Tests cover per-owner persistence, catalog enforcement, migration, missing data, filter scope, native handlers, Alt-click isolation, replacement/removal/cancel and owner changes during an open dialog. Local previews cover the modal and More Filters. In-game validation remains required across all three screens. Tags are organizational labels, not protection against sale or trade.
+Tests cover per-owner persistence, catalog enforcement, migration, missing data,
+filter scope, native handlers, Alt-click isolation, replacement/removal/cancel
+and owner changes during an open dialog. Local previews cover the modal and More
+Filters. Backpack, Storage and Trade integration, including the latest Trade
+layout/filter refinements and Pokémon hover toggle, were validated in game by
+the user. Tags are organizational labels, not protection against sale or trade.

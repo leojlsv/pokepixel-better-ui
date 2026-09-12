@@ -76,7 +76,8 @@ Menu bar can be enabled or disabled immediately, with choices saved in this
 browser. The preferences icon remains available when Menu bar is disabled.
 See `docs/modules/module-controls-plan.md` for behavior and validation scope.
 
-Run `npm test` for foundation, menu-bar, module-controls, Inventory and Chat regression checks.
+Run `npm test` for the complete regression suite across the core and production
+modules.
 
 Inventory groups Search/category/Clear Filters in one row and Sort/Re-Sort/view
 buttons in a second row, and preserves the reading position during loot refreshes.
@@ -96,8 +97,7 @@ in Better UI. Only fixed-channel keys are persisted. See
 
 Hunts (Map) adds compact filtered results and an explicit Locate on map action.
 It reuses native filters and markers, preserves zoom, and never starts a hunt.
-See `docs/modules/hunts.md` for the native navigation contract and pending
-in-game validation.
+The current scope is validated in game. See `docs/modules/hunts.md`.
 
 Team adds compact level/HP tracking to the six native slots
 and brings the original action block beside
@@ -112,3 +112,13 @@ Group selection reports partial state and selections outside native filters.
 See `docs/modules/marks-shop.md` for scope and pending in-game validation.
 
 Auto Helper groups the native settings editor into Support, Capture and Pokémon destination, with visible save/retry state, resource availability and one destination per quality. See `docs/modules/auto-helper.md`.
+
+Storage adds independent Backpack/Pokémon Center search and filtering, occupied
+pagination and native transfer refinements. Pokémon Tools provides the validated
+fixed-tag catalog and shared filters across Backpack, Storage and Trade. Trade
+also includes the validated filter dialog, item categories and aligned offer
+layout. See `docs/modules/storage.md` and `docs/modules/pokemon-tools.md`.
+
+The remaining modules with explicit in-game closure still pending are Team HUD
+and Mark's Shop; their automated coverage and local previews are already in
+place.

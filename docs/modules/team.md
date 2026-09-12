@@ -19,4 +19,9 @@ Foram consultados a auditoria e o contrato de Team do `pokepixel-custom-ui`, al�
 
 ## Validação
 
-Os testes sintéticos cobrem preservação dos slots e cliques, atualizações de HP, ações originais, estado desabilitado, filtros do seletor, reconciliação idempotente, recriação completa e cleanup. O usuário validou e aprovou no jogo a disposição das informações, ações compactas e busca/filtros para adicionar Pokémon. O rótulo `Position X` e a remoção completa da comparação aguardam validação visual desta revisão.
+Os testes sintéticos cobrem preservação dos slots e cliques, atualizações de HP,
+ações originais, estado desabilitado, filtros do seletor, reconciliação
+idempotente, recriação completa e cleanup. O usuário validou e aprovou no jogo a
+disposição das informações, ações compactas, `Position X`, remoção da comparação
+e busca/filtros para adicionar Pokémon. Não há pendência de validação para o
+escopo atual.

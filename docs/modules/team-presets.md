@@ -1,6 +1,8 @@
 # Team presets
 
-Status: implementation branch; requires local build/tests and in-game validation before merge.
+Status: implemented in the current Better UI baseline. HUD Apply, HUD collapse,
+manager controls, native rounding and the resolved FPS regression were validated
+in game during the implementation sequence recorded in `CHANGELOG.md`.
 
 ## Goal
 
@@ -104,15 +106,11 @@ A failure stops the sequence at the first unconfirmed native action. Because the
 - full 6/6 active replacement followed by order restoration;
 - zero-mutation abort for legacy/unavailable presets.
 
-## Required in-game validation
+## In-game validation record
 
-1. With active Pokémon outside position 1, Save current and verify the manager preview follows the Team Battle order rather than HUD order.
-2. Reload and verify persistence.
-3. Apply a preset that changes only Battle order.
-4. Apply a preset that changes composition, Battle order and active Pokémon.
-5. Apply a full 6/6 preset whose current active Pokémon must leave.
-6. Confirm Apply restores exact order without opening the equip picker or selecting profile controls.
-7. Confirm a sold/unavailable Pokémon blocks Apply before mutation.
-8. Confirm a migrated v1 preset is blocked until Confirm order or Update current.
-9. Verify Team manager cards remain at least `260x124` without changing native Team window dimensions.
-10. Disable Team presets and confirm both HUD and Team manager nodes clean up completely.
+The implementation was iterated and validated in game across the main user
+flows: applying from the HUD without opening Team, composition/order/active
+restoration, HUD minimization behavior, manager controls, visual hierarchy,
+native rounding and performance after the sync regression fix. Automated tests
+continue covering migration, unavailable members, order verification, exact
+final state and cleanup.

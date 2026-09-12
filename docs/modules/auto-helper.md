@@ -1,6 +1,8 @@
 # Auto Helper
 
-Status: functionality and compact consumable selectors validated in game; the destination radio matrix and rarity colors await in-game approval.
+Status: implemented and validated in game, including grouped settings,
+save/close/reopen behavior, compact consumable selection and per-quality
+Keep/Sell/Extract destinations.
 
 ## Scope
 
@@ -29,6 +31,6 @@ Automated coverage: serialized saves, pending text on close, error/retry, exclus
 
 Local preview uses the native AutoHelper script with mock settings and inventory, including a narrow view. No real hunt settings were changed during development.
 
-In-game checks: change a consumable and threshold; edit species then immediately close/reopen; choose Sell/Extract/Keep without changing the master toggles; verify unavailable/license states; refresh inventory; disable/re-enable the Better UI module. Confirm selections persist and existing automation behavior remains native.
-
-Earlier functional and compact-selector validation remains recorded. Validate the aligned support rows and unified destination section, including paused options and narrower window widths.
+The current grouped editor, save lifecycle, consumable selection and per-quality
+destinations were validated in game by the user. No validation remains pending
+for the current Auto Helper delivery.

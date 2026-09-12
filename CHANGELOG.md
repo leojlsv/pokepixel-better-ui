@@ -18,6 +18,12 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Recorded the user's final in-game validation of the `feature/pokemon-tags`
+  delivery: fixed Pokémon tags and shared filters across Backpack/Storage/Trade,
+  the Trade filter/layout refinements, the Pokémon hover toggle and the latest
+  Storage refinements. No additional in-game validation remains pending for this
+  delivery.
+
 - Recorded the user’s in-game validation of Storage through 8a4097a: independent filters, occupied pagination, sprites, selection footers, empty states, capacity/results, focus/scroll and bulk confirmation clarity. No validation remains pending for this delivery.
 
 - Recorded the user's in-game validation of Auto Helper in `38b41a7`, including grouped settings, save/close/reopen behavior, consumable selection and per-quality destinations. No in-game validation remains pending for this delivery.
@@ -47,9 +53,9 @@ All notable project changes are recorded in this file.
 
 ### Changed
 
-- Replaced custom/multiple Pokémon tags with the ten fixed named, colored symbols requested by the user, one per Pokémon. Alt + left click opens assignment/removal without triggering native slot actions. Removed tag editor fields; Tag now lives beside Gender inside More Filters. Added non-destructive v1 migration and interaction regressions; dist was not regenerated.
+- Replaced custom/multiple Pokémon tags with the ten fixed named, colored symbols requested by the user, one per Pokémon. Alt + left click opens assignment/removal without triggering native slot actions. Removed tag editor fields; Tag now lives beside Gender inside More Filters. Added non-destructive v1 migration and interaction regressions.
 
-- Added personal Pokémon tags shared by Backpack, Storage and Trade using trainer-scoped local persistence and individual creature IDs. Added native-looking tag editing, single slot markers/list labels, tag filters and Pokémon-specific rarity/element/advanced filters. Preserved native Trade eligibility and offer contents, Storage transfers and Backpack item filters. In-game validation pending; dist was not regenerated.
+- Added personal Pokémon tags shared by Backpack, Storage and Trade using trainer-scoped local persistence and individual creature IDs. Added native-looking tag editing, single slot markers/list labels, tag filters and Pokémon-specific rarity/element/advanced filters. Preserved native Trade eligibility and offer contents, Storage transfers and Backpack item filters.
 
 - Recorded the approved Storage design direction. Added stable selection footers, separate result/capacity counters, distinct empty/filter states, pagination selection clearing and focus/scroll restoration. Removed the redundant management banner and enriched the existing bulk confirmation with quantity, destination and unfiltered scope.
 
