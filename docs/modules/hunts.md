@@ -166,16 +166,16 @@ implementation batch, the current source baseline is classified as follows.
 | Classic/Platform presentation control | `REFINE` | P2 | The native control is safely moved and state-complete, but visually remains a generic two-button segment and is a candidate for stronger module-specific treatment. |
 | Dossier close control | `MATCH` | P3 | The plain `×` is functional, accessible and does not require a raster asset; a bespoke pixel glyph is optional future polish. |
 
-The next visual cycle must use the concept-first tooling flow in
-`docs/DESIGN_TOOLING.md`. The first UI-kit concept should focus on the P1/P2 rows
-above, then reclassify each component as `MATCH`, `REFINE`, `REDESIGN`,
-`ASSET NEEDED` or `REMOVE` before code changes.
+The next visual cycle must use the concept-first flow in
+`.skills/pixel_art_direction.md` and `docs/DESIGN_TOOLING.md`. The Lead Designer
+should focus first on the P1/P2 rows above, then reclassify each component as
+`MATCH`, `REFINE`, `REDESIGN`, `ASSET NEEDED` or `REMOVE` before code changes.
 
-No SpriteCook asset is mandatory for the remaining visual batch. Base marker
-labels, field/select chrome, tab rail hierarchy, command-deck weight,
+No raster asset is mandatory for the remaining visual batch. Base marker labels,
+field/select chrome, tab rail hierarchy, command-deck weight,
 selected-vs-located differentiation and coarse-pointer behavior should remain
-DOM/CSS work unless an adopted concept demonstrates a specific asset with clear
-artistic value.
+DOM/CSS work unless the approved design brief identifies a specific asset with
+clear artistic value.
 
 One live-surface item cannot be proven from the synthetic fixture: outer native
 panel chrome/title-bar elements outside `.pokeidle-panel__body`, if present in the

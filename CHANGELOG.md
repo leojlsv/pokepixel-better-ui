@@ -63,6 +63,13 @@ All notable project changes are recorded in this file.
 
 ### Documentation
 
+- Formalized project roles and multi-agent governance: Product Owner / Live
+  Validator, five standing agent roles and six specialists with explicit
+  authority, activation triggers, shared-surface write ownership, handoff format,
+  independent review rules and conflict escalation. Added the project-native
+  `.skills/pixel_art_direction.md` method and changed external art generators such
+  as SpriteCook from a pipeline dependency into optional asset-production tools.
+
 - Recorded the user's final in-game validation of Buff strip in both Menu Bar
   positions. TOP and BOTTOM docking are approved after the native BOTTOM
   `!important` positioning conflict was corrected in `825c95d`; no validation

@@ -477,7 +477,13 @@ not a requirement to keep its present visual composition.
 Before a build is handed to the user:
 
 - mandatory `.skills/ui_ux_pro.md` review completed;
+- `.skills/pixel_art_direction.md` completed when the task changes pixel-art
+  direction, performs a substantial visual redesign or introduces bespoke pixel
+  artwork;
 - design-system/page override checked;
+- required role-owned review gates in `docs/roles/README.md` are `READY`,
+  including Independent QA and UX/A11y & Design QA when that specialist gate is
+  triggered;
 - keyboard/focus/ARIA checked with automated/synthetic evidence where possible;
 - lifecycle/reconciliation/cleanup regressions pass;
 - build and diff checks pass;

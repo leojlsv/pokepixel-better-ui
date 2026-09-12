@@ -61,11 +61,15 @@ dist/pokepixel-better-ui.user.js
 See:
 
 - `docs/PROJECT_RULES.md`
+- `docs/roles/README.md`
 - `docs/DESIGN_GOVERNANCE.md`
+- `docs/DESIGN_TOOLING.md`
 - `docs/ARCHITECTURE.md`
 - `design-system/pokepixel-better-ui/MASTER.md`
 
 Every UI/UX change must also pass the review process in `.skills/ui_ux_pro.md`.
+Pixel-art redesign/art-direction work additionally uses
+`.skills/pixel_art_direction.md`.
 In-game interface validation is performed exclusively by the user; automated
 tests/builds do not count as an in-game green light.
 

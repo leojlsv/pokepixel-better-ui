@@ -18,6 +18,11 @@ specification live in `design-system/pokepixel-better-ui/MASTER.md`.
 `.skills/ui_ux_pro.md` is the required analysis/review method applied across
 those authorities; it is not a separate styling authority.
 
+The Lead UI/UX Designer / Pixel Art Director role owns visual proposals and
+design-system stewardship under these authorities. Independent UX/A11y & Design
+QA verifies conformance; it does not become another styling authority. See
+`docs/roles/README.md`.
+
 The native PokePixel interface supplies technical evidence about data, handlers,
 state and constraints. It does not constrain Better UI to the game's styling.
 
@@ -40,33 +45,31 @@ MASTER/page-override consistency, keyboard/focus/ARIA, contrast, responsive
 behavior, reduced motion, lifecycle/cleanup, regression tests, build and scoped
 CSS ownership. Do not claim the missing checklist was executed.
 
-## External visual tooling
+## Pixel-art direction and visual tooling
 
-External visual tools are production aids, not sources of truth. SpriteCook may
-be used when a redesign needs a coherent visual concept, bespoke pixel-art assets
-or a reusable UI asset family. Its concepts and generated files remain references
-until the user explicitly adopts the direction and the resulting reusable rules
-are recorded in MASTER or the approved module page override.
+Pixel-art redesigns use `.skills/pixel_art_direction.md` in addition to the
+mandatory UI/UX Pro review. The project-native skill requires one coherent module
+concept, complete component inventory/state families and an explicit DOM/CSS vs
+asset decision before implementation.
 
-For complete windows/systems, establish one coherent UI-kit concept before
-deriving components. For isolated icons, badges, frames, dividers or decorations,
-an isolated asset workflow is sufficient. Do not assemble a screen from unrelated
-generated controls and then treat the result as a design system.
+External visual tools are optional production aids, not sources of truth and not
+required project infrastructure. A Pixel Artist / Asset Producer may use any
+approved generator/editor to execute an asset brief, but generated output remains
+a candidate until it passes design review and is intentionally adopted.
 
 Better UI remains DOM/CSS-first for layout, typography, controls, interaction,
 responsive behavior, focus and accessibility. Raster assets are justified when
 they add visual information or pixel-art character that CSS cannot provide well.
-Do not replace ordinary dynamic controls with raster UI merely because an external
-tool can generate them.
+Do not replace ordinary dynamic controls with raster UI merely because a tool can
+generate them.
 
 Approved design references belong under
 `design-system/pokepixel-better-ui/references/<module>/`. Production assets that
 ship in the userscript belong in the project's normal asset pipeline. External
-tooling, MCP servers and third-party skill repositories remain outside this
-repository; do not vendor them into `.skills/`.
+tools, MCP servers and third-party skill repositories remain outside this
+repository unless the user explicitly changes that policy.
 
-The operational workflow, asset-manifest contract and fallback behavior are
-defined in `docs/DESIGN_TOOLING.md`.
+The operational production rules are defined in `docs/DESIGN_TOOLING.md`.
 
 ## Master + page overrides
 

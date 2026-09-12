@@ -27,22 +27,38 @@ For UI/UX work, resolve decisions in this order:
 not a competing visual source of truth. Generic recommendations must be evaluated
 against the game context and recorded in the design system when adopted.
 
+## Role governance
+
+`docs/roles/README.md` defines the project roles, authority matrix, activation
+rules, write ownership and handoff contract for multi-agent work.
+
+- Every delegated task must name the active role.
+- One shared authority surface has one write owner per task/run.
+- Design authors do not approve their own design as Design QA.
+- Implementation authors do not provide the final QA verdict for their own diff.
+- Reviewers report findings back to the owning role rather than editing the work
+  under review.
+- Unresolved conflicts between valid authorities are escalated to the user.
+
 ## Mandatory UI/UX workflow
 
 For every task that changes how an interface looks, feels, moves or is operated:
 
 1. Read the global design-system MASTER and the module override, if one exists.
 2. Read `.skills/ui_ux_pro.md` and perform the relevant analysis/review.
-3. Separate functional/native constraints from visual choices.
-4. Record reusable product-wide decisions in MASTER; record module-only
+3. For pixel-art redesign/art-direction work, also read
+   `.skills/pixel_art_direction.md`.
+4. Separate functional/native constraints from visual choices.
+5. Record reusable product-wide decisions in MASTER; record module-only
    exceptions in the module page override.
-5. When external visual tooling is useful, follow `docs/DESIGN_TOOLING.md`.
-   Generated concepts/assets are references until explicitly adopted by the
-   user and recorded in MASTER or the approved module page override.
-6. Implement with scoped Better UI ownership and preserve game behavior unless
+6. When bespoke artwork is justified, follow `docs/DESIGN_TOOLING.md`; external
+   generators are optional production tools, never a required pipeline stage or
+   a design authority.
+7. Implement with scoped Better UI ownership and preserve game behavior unless
    the approved feature explicitly changes an interaction.
-7. Run automated/local validation only.
-8. Deliver a build and stop for user-owned in-game validation.
+8. Run the independent review gates required by `docs/roles/README.md`.
+9. Run automated/local validation only.
+10. Deliver a build and stop for user-owned in-game validation.
 
 If the search data/tools or referenced checklists such as `pro-rules.md` are not
 available, use only the verified guidance present in `.skills/ui_ux_pro.md`,
@@ -114,9 +130,10 @@ modules mount and unmount.
 ## Validation ownership — non-negotiable
 
 The coding agent must never install, open, reload, control, inspect or validate
-Better UI in the live PokePixel game, the user's game browser, or Tampermonkey as
-part of interface validation. In-game visual and functional validation belongs
-exclusively to the user.
+Better UI in the live PokePixel game, the user's game browser, or Tampermonkey.
+This boundary applies regardless of whether the action is described as
+validation, research, debugging, design review or implementation support. Live
+visual and functional validation belongs exclusively to the user.
 
 Allowed agent validation includes unit/integration tests, synthetic DOM fixtures,
 static analysis, source inspection, build checks and other non-game local checks.
