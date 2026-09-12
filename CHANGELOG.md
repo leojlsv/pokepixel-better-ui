@@ -6,12 +6,12 @@ All notable project changes are recorded in this file.
 
 - Added the first shared pixel-art runtime: namespaced `--ppbui-*` tokens,
   opt-in surface/button/field/state primitives, singleton lifecycle injection and
-  CSS-as-text bundling inside the userscript. Hunts is the first full consumer:
-  its desktop window now uses a pixel-art world-navigation header, a two-group
-  Filters/Target command deck, a framed map workspace and a structured intel
-  dossier while preserving marker selection, Locate, explicit Hunt, native
-  presentation control, zoom/focal state and reversible cleanup. Automated
-  validation is complete; user in-game validation remains pending.
+  CSS-as-text bundling inside the userscript. Hunts is the first full consumer via
+  Hunt Atlas: a continuous world/zoom Atlas rail, compact Finder rail, dominant
+  framed map workspace and attached Inspector with explicit `Entrar na Hunt`, while
+  preserving marker selection, Locate, native presentation control, zoom/focal
+  state and reversible cleanup. Automated validation is complete and the Product
+  Owner approved the final in-game result on 2026-09-12 through `3faa712`.
 
 - Changed the project-wide UI direction from a vanilla/native visual baseline to
   an owned pixel-art design system. Native game UI remains authoritative for
@@ -69,6 +69,13 @@ All notable project changes are recorded in this file.
   independent review rules and conflict escalation. Added the project-native
   `.skills/pixel_art_direction.md` method and changed external art generators such
   as SpriteCook from a pipeline dependency into optional asset-production tools.
+
+- Recorded the Product Owner's final in-game validation of Hunt Atlas on
+  2026-09-12: shell/native-control ownership, scoped pixel scrollbars, 90% Locate
+  dimming, primary `Entrar na Hunt`, square Search/Level geometry, equal-fill world
+  tabs, presentation-label removal and the final nested title-owner typography fix
+  through `3faa712` are approved. No Hunt Atlas validation remains pending for this
+  delivery.
 
 - Recorded the user's final in-game validation of Buff strip in both Menu Bar
   positions. TOP and BOTTOM docking are approved after the native BOTTOM

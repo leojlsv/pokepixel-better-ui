@@ -4,7 +4,9 @@ Status: **approved**
 Direction: **Hunt Atlas**
 Product Owner approval: **2026-09-12**
 Migration classification: **redesign**
-Validation status: **pending in-game validation**
+Validation status: **user validated**
+Product Owner live validation: **2026-09-12 — All green**
+Validated implementation: **`3faa712`**
 
 This page specializes `../MASTER.md` for the Hunts window. Hunt Atlas replaces
 the previous four-zone/two-card composition with a map-first cartographic tool:
@@ -507,8 +509,9 @@ below are true:
     host UI.
 17. Independent UX/A11y & Design QA and Independent QA gates must be `READY` before
     user handoff.
-18. In-game appearance/function remains pending until the Product Owner performs
-    and explicitly approves live validation.
+18. In-game appearance/function for the current delivery is Product Owner-approved
+    through `3faa712`; any later visual/runtime change reopens live validation for
+    the changed scope.
 19. Automatic inspector closure restores focus using the specified deterministic
     fallback and never targets a detached node or intentionally moves the map.
 20. `.hunt-world-notice` is hidden when empty and, when populated, reads as an
@@ -532,10 +535,12 @@ Agents must not install, open, reload, control, inspect or validate Better UI in
 the live game, the user's browser or Tampermonkey. Automated/local validation is
 agent-owned; live validation remains exclusively Product Owner-owned.
 
-Product Owner live validation on 2026-09-12 confirmed that outer Hunt Map
-window/title chrome is visibly exposed and currently under-treated. It is therefore
-explicitly in scope for the next Hunt Atlas visual implementation pass. This
-recorded observation does not authorize agents to inspect the live game directly.
+Product Owner live validation on 2026-09-12 closed the Hunt Atlas delivery gate
+with the verdict **All green** after the shell/control polish, Locate dim treatment,
+primary Hunt action refinement and final title-owner typography correction. The
+validated implementation is `3faa712`. This recorded approval does not authorize
+agents to inspect the live game directly; future visual/runtime changes require a
+new Product Owner live-validation pass for the changed scope.
 
 ## Delivery gate
 
@@ -548,5 +553,7 @@ Before implementation is handed to the Product Owner:
 - full test suite/build/diff checks pass;
 - no unrelated host UI is restyled.
 
-Then stop for Product Owner in-game validation. This page moves to
-`user validated` only after explicit Product Owner green light.
+For the current Hunt Atlas delivery, all gates above were completed and the Product
+Owner explicitly approved the in-game result on 2026-09-12. The page is therefore
+`user validated` through `3faa712`. Future changes that affect live appearance or
+behavior reopen the Product Owner validation gate for that changed scope.
