@@ -1,6 +1,6 @@
 export const buffStripConfig = Object.freeze({
   id: "buff-strip",
-  gap: 5,
+  overlap: 1,
   viewportMargin: 8,
   selectors: {
     strip: ".pokeidle-buff-strip",

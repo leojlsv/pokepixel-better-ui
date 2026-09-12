@@ -38,8 +38,9 @@ Trade refinement: minimum width 1000px, offer columns at least 318px, inventory 
 ## Buff strip (approved; pending in-game validation)
 
 - Treat the native buff strip as a Rearrange feature, not a redesign. Reuse `.pokeidle-buff-strip`, `.pokeidle-buff-list` and `.pokeidle-event-ticker` without cloning or recreating buff state.
-- Keep the strip independent from the toolbar DOM lifecycle. Dock it geometrically immediately above `.pokeidle-top-toolbar`; do not reparent it into the toolbar.
-- Preserve native typography, palette, borders, shadows and item content. Only composition/geometry may change.
-- Prefer content width instead of the native fixed strip width and cap it to the toolbar/viewport. Preserve the native flex behavior: buff and event pills already share one horizontal line and shrink within the available width.
+- Keep the strip independent from the toolbar DOM lifecycle. Dock it geometrically against the top edge of `.pokeidle-top-toolbar`; do not reparent it into the toolbar.
+- Use the native strip as a compact one-line status rail: effect name, multiplier/effect and timer stay on the same row. Reuse every native pill and its text; do not shorten or synthesize state in JavaScript.
+- Preserve native typography and palette. Reduce only the standalone-panel chrome needed to merge it with the toolbar: compact padding/min-height, no separate drop shadow/backdrop blur, top-only rounding and subtle native-gold separators between entries.
+- Prefer content width instead of the native fixed strip width and cap it to the toolbar/viewport. Existing overflow/ellipsis remains the fallback when many buffs are active.
 - Recalculate docking on normal Better UI reconciliation and viewport resize. Do not poll and do not add a feature-specific MutationObserver.
 - Cleanup removes only Better UI markers/styles/custom properties and must preserve the game's latest native inline `left`, `top` and `width` values.

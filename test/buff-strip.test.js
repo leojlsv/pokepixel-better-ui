@@ -8,8 +8,13 @@ function setup() {
   const dom = new JSDOM(`<!doctype html><html><head></head><body>
     <div class="pokeidle-top-toolbar"><button>Inventory</button></div>
     <div class="pokeidle-buff-strip" style="left:468px;top:938px;width:592.24px">
-      <div class="pokeidle-buff-list"><span>XP ×2</span><span>Loot ×2</span></div>
-      <div class="pokeidle-event-ticker is-empty"></div>
+      <div class="pokeidle-buff-list">
+        <div class="pokeidle-buff-pill"><span>Normal Capture</span><b>×2</b><time>05:31</time></div>
+        <div class="pokeidle-buff-pill"><span>XP</span><b>×2</b><time>1D 0H</time></div>
+      </div>
+      <div class="pokeidle-event-ticker">
+        <div class="pokeidle-event-ticker__pill"><span class="pokeidle-event-ticker__name">Rampage</span><b class="pokeidle-event-ticker__effect">×2</b><time class="pokeidle-event-ticker__time">19:48:35</time></div>
+      </div>
     </div>
   </body></html>`, { pretendToBeVisual: true, url: "https://local.test" });
   const doc = dom.window.document;
@@ -20,7 +25,7 @@ function setup() {
   return { dom, doc, toolbar, strip: doc.querySelector(".pokeidle-buff-strip"), setRect(value) { rect = value; } };
 }
 
-test("buff strip docks above toolbar without replacing native nodes", () => {
+test("buff strip becomes a compact native status rail above toolbar without replacing nodes", () => {
   const s = setup();
   const list = s.strip.querySelector(".pokeidle-buff-list");
   const ticker = s.strip.querySelector(".pokeidle-event-ticker");
@@ -30,13 +35,17 @@ test("buff strip docks above toolbar without replacing native nodes", () => {
   assert.equal(s.strip.querySelector(".pokeidle-buff-list"), list);
   assert.equal(s.strip.querySelector(".pokeidle-event-ticker"), ticker);
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "414px");
-  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "49px");
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "55px");
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-max-width"), "688px");
   const css = s.doc.querySelector('[data-ppbui-style="buff-strip"]').textContent;
-  assert.match(css, /width:max-content/);
-  assert.doesNotMatch(css, /pokeidle-buff-pill/);
+  assert.match(css, /width:fit-content/);
+  assert.match(css, /min-height:22px/);
+  assert.match(css, /grid-template-columns:minmax\(0,auto\) auto auto/);
+  assert.match(css, /grid-column:auto/);
+  assert.match(css, /border-radius:4px 4px 0 0/);
+  assert.match(css, /box-shadow:none/);
+  assert.match(css, /pokeidle-event-ticker__time/);
   assert.doesNotMatch(css, /background\s*:/);
-  assert.doesNotMatch(css, /border-radius\s*:/);
   mounted.cleanup();
   s.dom.window.close();
 });
@@ -49,7 +58,7 @@ test("resize updates docking and cleanup preserves current native geometry", () 
   s.setRect({ left: 100, top: 80, width: 600, height: 70, right: 700, bottom: 150 });
   s.dom.window.dispatchEvent(new s.dom.window.Event("resize"));
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "400px");
-  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "75px");
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "81px");
   s.strip.style.left = "512px";
   s.strip.style.top = "901px";
   s.strip.style.width = "610px";
