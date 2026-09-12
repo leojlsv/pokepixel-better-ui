@@ -258,7 +258,7 @@ export function mountHunts(root) {
     if(located&&!activeLocated){located=null;clearFlash();}
     allMarkers.forEach(marker=>{
       const isSelected=marker===activeSelected,isLocated=marker===activeLocated,label=marker.querySelector(selectors.label);
-      marker.classList.toggle('ppbui-hunts-selected-marker',isSelected);marker.classList.toggle('ppbui-hunts-located-marker',isLocated);
+      marker.classList.toggle('ppbui-hunts-selected-marker',isSelected);marker.classList.toggle('ppbui-hunts-located-marker',isLocated);marker.classList.toggle('ppbui-hunts-dimmed-marker',Boolean(activeLocated&&!isLocated));
       label?.classList.toggle('ppbui-hunts-selected',isSelected);label?.classList.toggle('ppbui-hunts-located',isLocated);label?.classList.toggle('ppbui-hunts-dimmed',Boolean(activeLocated&&!isLocated&&!isSelected));
     });
     if(activeSelected){
@@ -292,7 +292,7 @@ export function mountHunts(root) {
     active=false;clearFlash();try{setInspectorLayout(false);}catch{}layoutBaseline=null;doc.defaultView.cancelAnimationFrame(focusFrame);interactions.cleanup();
     root.removeEventListener('input',remember,true);root.removeEventListener('select',remember,true);root.removeEventListener('focusin',focus);root.removeEventListener('input',update);root.removeEventListener('click',sync);root.removeEventListener('keydown',onKeydown);
     root.querySelectorAll('.ppbui-hunts-atlas-rail').forEach(node=>node.classList.remove('ppbui-hunts-atlas-rail'));
-    root.querySelectorAll('.ppbui-hunts-selected-marker').forEach(node=>node.classList.remove('ppbui-hunts-selected-marker'));root.querySelectorAll('.ppbui-hunts-located-marker').forEach(node=>node.classList.remove('ppbui-hunts-located-marker'));
+    root.querySelectorAll('.ppbui-hunts-selected-marker').forEach(node=>node.classList.remove('ppbui-hunts-selected-marker'));root.querySelectorAll('.ppbui-hunts-located-marker').forEach(node=>node.classList.remove('ppbui-hunts-located-marker'));root.querySelectorAll('.ppbui-hunts-dimmed-marker').forEach(node=>node.classList.remove('ppbui-hunts-dimmed-marker'));
     root.querySelectorAll('.ppbui-hunts-selected').forEach(node=>node.classList.remove('ppbui-hunts-selected'));root.querySelectorAll('.ppbui-hunts-located').forEach(node=>node.classList.remove('ppbui-hunts-located'));root.querySelectorAll('.ppbui-hunts-dimmed').forEach(node=>node.classList.remove('ppbui-hunts-dimmed'));
     restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');
     if(focusTarget){if(focusTargetTabIndex===null)focusTarget.removeAttribute('tabindex');else focusTarget.setAttribute('tabindex',focusTargetTabIndex);}

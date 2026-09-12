@@ -20,13 +20,13 @@ const markup=()=>`
   <div class="hunt-world-toolbar"><input type="search"><span class="hunt-world-level-label">Lv.</span><input type="number" min="1" max="100" value="1"><span class="hunt-world-level-label">to</span><input type="number" min="1" max="100" value="100"><button>Clear</button><strong class="hunt-world-count">2 areas</strong></div>
   <div class="hunt-element-filters hunt-world-elements"><button class="hunt-element-filter">All</button><button class="hunt-element-filter">Fire</button></div>
   <div class="hunt-world-viewport"><div class="hunt-world-stage">
-    <button class="hunt-map-marker" data-zone-index="0" style="left:80%;top:70%"><strong class="hunt-map-marker__name">Pikachu Lv. 20–30</strong></button>
-    <button class="hunt-map-marker" data-zone-index="1" style="left:10%;top:20%"><strong class="hunt-map-marker__name">Abra Lv. 10–15</strong></button>
+    <button class="hunt-map-marker" data-zone-index="0" style="left:80%;top:70%"><span class="hunt-map-marker__sprite"></span><strong class="hunt-map-marker__name">Pikachu Lv. 20–30</strong></button>
+    <button class="hunt-map-marker" data-zone-index="1" style="left:10%;top:20%"><span class="hunt-map-marker__sprite"></span><strong class="hunt-map-marker__name">Abra Lv. 10–15</strong></button>
   </div></div>`;
 
 function setup(t){
-  const dom=new JSDOM(`<div class="hunt-window"><div class="pokeidle-panel__body">${markup()}</div></div>`,{url:'https://test.local',pretendToBeVisual:true});
-  const doc=dom.window.document,root=doc.body.firstChild,body=root.firstChild;
+  const dom=new JSDOM(`<div class="hunt-window"><div class="pokeidle-panel__titlebar">Hunt Map<button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div></div>`,{url:'https://test.local',pretendToBeVisual:true});
+  const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
   let nativeClicks=0,starts=0,hovers=0,focusInfos=0,saves=0,cleanups=0,setups=0,modeClicks=0;
   const zones=[
     {id:'pika',world:'kanto',name:'Pikachu',elements:['electric'],min:20,max:30,drops:[{name:'Static Fur',sell_price:50,icon_index:1}]},
@@ -163,6 +163,10 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   const s=setup(t),css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
   assert.match(css,/--ppbui-bg-1/);assert.match(css,/--ppbui-accent/);assert.match(css,/--ppbui-focus/);
   assert.ok(s.root.querySelector('.hunt-world-header').classList.contains('ppbui-hunts-atlas-rail'));
+  assert.match(css,/\.ppbui-hunts-enhanced\s*\{[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]+box-shadow:var\(--ppbui-shadow-raised\)/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-2\) !important;/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{/);
+  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+appearance:none/s);
   assert.ok(s.root.querySelector('.ppbui-hunts-finder'));
   assert.ok(s.root.querySelector('.ppbui-hunts-atlas-workspace'));
   assert.match(css,/\.ppbui-hunts-atlas-workspace\.is-inspector-open/);
@@ -180,16 +184,28 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-located\s*\{[^}]+--ppbui-hunt-location-rail:var\(--ppbui-info\)/s);
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-selected\.ppbui-hunts-located/);
   assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\s*\{[^}]+outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\)/s);
-  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:\.55/);
+  assert.match(css,/\.hunt-map-marker\.ppbui-hunts-dimmed-marker > \.hunt-map-marker__sprite\s*\{\s*opacity:\.10 !important;/);
+  assert.match(css,/\.hunt-map-marker\.ppbui-hunts-located-marker > \.hunt-map-marker__sprite\s*\{\s*opacity:1 !important;/);
+  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:\.10/);
+  assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:1/);
   assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none/s);
   assert.match(css,/input\[type="number"\][^}]*\{[^}]+appearance:textfield/s);
+  assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+appearance:none/s);
+  assert.match(css,/\.hunt-world-toolbar button\s*\{[^}]+appearance:none/s);
+  assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-1\) !important;[^}]+box-shadow:none !important;/s);
+  assert.match(css,/\.hunt-world-toolbar input,[\s\S]*\.ppbui-hunts-results select\s*\{[^}]+border:[^}]+!important;[^}]+border-radius:0 !important;[^}]+color:var\(--ppbui-text\) !important;[^}]+box-shadow:none !important;/s);
+  assert.match(css,/\.hunt-world-toolbar button\s*\{[^}]+appearance:none !important;[^}]+background:var\(--ppbui-bg-2\) !important;[^}]+border-color:var\(--ppbui-border-strong\) !important;/s);
+  assert.match(css,/\.ppbui-hunts-results select\s*\{[^}]+appearance:none !important;[^}]+background-image:none !important;/s);
   assert.match(css,/\.ppbui-hunts-select-wrap::after/);
   assert.match(css,/\.hunt-world-notice:empty\s*\{\s*display:none/);
   assert.match(css,/\.hunt-world-notice:not\(:empty\)[^{]*\{[^}]+border-left:[^}]+var\(--ppbui-info\)[^}]+box-shadow:none/s);
   assert.match(css,/\.ppbui-hunts-inspector\s*\{[^}]+border-left:[^}]+box-shadow:none/s);
   assert.match(css,/\.ppbui-hunts-inspector__mode \.hunt-presentation-toggle\s*\{[^}]+gap:0/s);
-  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__hunt\s*\{\s*min-height:40px;\s*\}/);
+  assert.match(css,/\.ppbui-hunts-inspector__hunt\s*\{[^}]+min-height:48px;[^}]+margin-top:var\(--ppbui-space-5\);[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-accent\)[^}]+font:700 14px[^}]+box-shadow:var\(--ppbui-shadow\)/s);
+  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__hunt\s*\{\s*min-height:52px;\s*\}/);
   assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__close\s*\{[^}]+min-width:40px;[^}]+min-height:40px;/);
+  assert.match(css,/::-webkit-scrollbar\s*\{\s*width:10px;\s*height:10px;/);
+  assert.match(css,/::-webkit-scrollbar-thumb[^}]*\{[^}]+border:2px solid var\(--ppbui-bg-0\)[^}]+background:var\(--ppbui-border-strong\)/s);
   assert.ok(css.lastIndexOf('.hunt-category-tab:disabled')>css.lastIndexOf('.hunt-category-tab.is-active'));
   assert.ok(css.lastIndexOf('.hunt-world-elements button:disabled')>css.lastIndexOf('.hunt-world-elements button.is-active'));
   assert.match(css,/button:disabled[^}]+cursor:default/s);
@@ -201,11 +217,13 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
 
 test('Locate opens the same inspector, pans without starting Hunt, preserves zoom and dims other labels',t=>{
   const s=setup(t);s.choose();s.locate().click();
-  const marker=s.root.querySelector('.hunt-map-marker');
+  const [marker,other]=s.root.querySelectorAll('.hunt-map-marker');
   assert.equal(s.dossier().hidden,false);
   assert.ok(marker.classList.contains('ppbui-hunts-selected-marker'));
   assert.ok(marker.classList.contains('ppbui-hunts-located-marker'));
-  assert.ok(s.root.querySelectorAll('.hunt-map-marker__name')[1].classList.contains('ppbui-hunts-dimmed'));
+  assert.equal(marker.classList.contains('ppbui-hunts-dimmed-marker'),false);
+  assert.ok(other.classList.contains('ppbui-hunts-dimmed-marker'));
+  assert.ok(other.querySelector('.hunt-map-marker__name').classList.contains('ppbui-hunts-dimmed'));
   assert.deepEqual(s.stats(),{nativeClicks:0,starts:0,hovers:0,focusInfos:0,saves:2,cleanups:2,setups:2,modeClicks:0});
   assert.deepEqual(s.scene._worldMapState,{scale:.9375,x:-600,y:-375});
 });
@@ -218,6 +236,7 @@ test('Reset clears located focus and inspector without moving the map or changin
   assert.equal(s.root.querySelector('.ppbui-hunts-selected'),null);
   assert.equal(s.root.querySelector('.ppbui-hunts-located'),null);
   assert.equal(s.root.querySelector('.ppbui-hunts-dimmed'),null);
+  assert.equal(s.root.querySelector('.ppbui-hunts-dimmed-marker'),null);
   assert.equal(s.dossier().hidden,true);
   assert.equal(s.reset().disabled,true);
   assert.equal(s.select().value,'');
@@ -255,6 +274,7 @@ test('selecting another marker after Locate keeps location state separate withou
   const [locatedMarker,selectedMarker]=s.root.querySelectorAll('.hunt-map-marker');selectedMarker.click();
   assert.ok(locatedMarker.classList.contains('ppbui-hunts-located-marker'));
   assert.ok(selectedMarker.classList.contains('ppbui-hunts-selected-marker'));
+  assert.ok(selectedMarker.classList.contains('ppbui-hunts-dimmed-marker'));
   assert.equal(selectedMarker.querySelector('.hunt-map-marker__name').classList.contains('ppbui-hunts-dimmed'),false);
   assert.match(s.dossier().textContent,/Abra/);
   assert.deepEqual(s.stats(),{nativeClicks:0,starts:0,hovers:0,focusInfos:0,saves:2,cleanups:2,setups:2,modeClicks:0});
@@ -419,7 +439,7 @@ test('native window replacement remounts cleanly without duplicate Better UI sur
   const {createBetterUI}=await import('../src/core/bootstrap.js');const {createHuntsModule}=await import('../src/modules/hunts/index.js');const s=setup(t);s.c.cleanup();const previous=new Map();
   for(const key of ['document','MutationObserver','requestAnimationFrame','cancelAnimationFrame']){previous.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,value:typeof s.dom.window[key]==='function'&&key!=='MutationObserver'?s.dom.window[key].bind(s.dom.window):s.dom.window[key]});}
   let enabled=true;const app=createBetterUI({modules:[createHuntsModule()],preferences:{isEnabled:()=>enabled,subscribe:()=>()=>{}}});t.after(()=>{app.stop();for(const [key,d]of previous)if(d)Object.defineProperty(globalThis,key,d);else delete globalThis[key];});app.start();
-  const replacement=s.doc.createElement('div');replacement.className='hunt-window';replacement.innerHTML=`<div class="pokeidle-panel__body">${markup()}</div>`;s.root.replaceWith(replacement);s.scene._panel.body=replacement.firstChild;
+  const replacement=s.doc.createElement('div');replacement.className='hunt-window';replacement.innerHTML=`<div class="pokeidle-panel__titlebar">Hunt Map<button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div>`;s.root.replaceWith(replacement);s.scene._panel.body=replacement.querySelector('.pokeidle-panel__body');
   await new Promise(resolve=>s.dom.window.setTimeout(resolve,50));assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);assert.equal(replacement.querySelectorAll('.ppbui-hunts-atlas-workspace').length,1);
   enabled=false;app.reconcile();assert.equal(replacement.querySelector('[data-ppbui-module]'),null);enabled=true;app.reconcile();assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);
 });

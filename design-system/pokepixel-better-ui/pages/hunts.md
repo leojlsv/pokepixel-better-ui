@@ -139,7 +139,11 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 
 ### Surface grammar
 
-- Main shell: `bg-1`.
+- Main Hunt Map shell is Better UI-owned for the complete visible window chrome,
+  including exposed native title/header framing inside `.hunt-window`: square
+  geometry, `bg-1` body, `bg-2` title/header strip, 2px strong outer border and a
+  single 4px hard raised shadow. Host gradients, soft rounding and unrelated host
+  surface styling must not remain visible inside this scoped shell.
 - Atlas/Finder supporting rails: `bg-2` only where separation from the shell is
   needed; avoid equal hard-shadow elevation on every group.
 - Map frame: `bg-0` boundary with a crisp 2px structural edge.
@@ -151,6 +155,8 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 ### World tabs
 
 - One continuous rail with one outer 2px frame and 1px internal dividers.
+- Desktop tab height is 32px; tabs are gapless inside the rail and must not retain
+  native standalone-button chrome.
 - Default: `bg-1`, muted text, neutral edge.
 - Hover: `bg-3`, readable text, neutral strong edge.
 - Pressed: inset/depth-shift treatment; no scale animation.
@@ -160,8 +166,11 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 
 ### Zoom utility
 
-Uses the same crisp rail grammar as world navigation but remains neutral. Gold is
-not used unless a future zoom state has actual selected/current semantics.
+Uses the same crisp rail grammar as world navigation but remains neutral. Zoom
+buttons are 32px high with 2px neutral borders, `bg-2` default surface, `bg-3`
+hover, inset/depth-shift pressed state, cyan focus and subtle disabled state. They
+must not retain native button bevels/rounding. Gold is not used unless a future
+zoom state has actual selected/current semantics.
 
 ### Search, level inputs and Hunt select
 
@@ -169,11 +178,18 @@ not used unless a future zoom state has actual selected/current semantics.
 - Hover uses strong neutral border; focus uses independent cyan outline.
 - Disabled follows MASTER without opacity-only treatment.
 - Browser chrome that conflicts with the approved visual language must be owned:
-  remove redundant search decoration when explicit Clear is present and use a
-  CSS-owned select arrow.
-- Number-field visual cleanup is allowed only if keyboard entry, value editing and
-  native functional behavior remain intact.
+  remove the native search cancel decoration because explicit Clear is present;
+  remove visible number-input spinner buttons while preserving keyboard/value
+  editing; use one CSS-owned pixel chevron for the Hunt select and suppress the
+  native select arrow.
 - Labels remain visible wherever meaning would otherwise be ambiguous.
+
+### Clear action
+
+Clear is a 32px secondary utility button with square 2px neutral border,
+`bg-2` default surface, `bg-3` hover, inset/depth-shift pressed state, cyan focus
+and subtle disabled state. It must read as part of Finder and must not retain
+native bevel/rounding/shadow treatment.
 
 ### Element chips
 
@@ -204,10 +220,13 @@ host visual chrome. Pokémon/domain sprites remain native domain assets.
   simultaneously visible.
 - **Focus-visible:** independent 2px cyan outline outside whichever state is
   active; focus must remain visible on selected and located markers.
-- **Dimmed:** only non-relevant labels dim while a located target is emphasized;
-  keep text/sprites legible and do not reduce required information below usable
-  contrast. A value around 0.55 is the design target, subject to implementation
-  review.
+- **Dimmed while Locate is active:** every non-Located Pokémon sprite is reduced
+  by exactly 90% visual alpha (`opacity: 0.10`). Non-Located, non-Selected marker
+  labels use the same `opacity: 0.10`. If a different marker is Selected while a
+  Locate target remains active, that Selected label plate stays fully readable at
+  `opacity: 1` so inspection state is not lost, but its non-Located Pokémon sprite
+  remains at `opacity: 0.10`. A focused label/focus outline also stays fully
+  visible. The Located marker remains `opacity: 1`.
 - **Locate flash:** short stepped state feedback only; remove it under
   `prefers-reduced-motion: reduce`.
 
@@ -248,6 +267,20 @@ standalone card.
   1px row separators rather than a frame around every row.
 - Scrollbar, when needed, follows the local Better UI pixel scrollbar grammar.
 
+### Hunts scrollbars
+
+All horizontal and vertical scrollbars exposed by Hunt Atlas-owned scroll
+containers receive one scoped pixel treatment; no host-wide scrollbar styling.
+
+- thickness: 10px on both axes;
+- track: `bg-0`, square corners;
+- thumb: `border-strong` fill with a 2px `bg-0` inset edge so it reads as a pixel
+  handle rather than browser chrome;
+- thumb hover/active: gold accent edge/fill cue, without glow;
+- scrollbar corner: `bg-0`;
+- inspector/map/list scrolling must retain normal wheel, drag and keyboard
+  behavior; styling is visual only.
+
 ### Presentation control
 
 The native Classic/Platform node remains intact but is visually treated as one
@@ -261,16 +294,49 @@ segmented rail:
 
 ### Primary Hunt action
 
-`Entrar na Hunt` is the only primary action in the inspector.
+`Entrar na Hunt` is the only primary action in the inspector and receives a much
+stronger action hierarchy than every utility control.
 
-- full-width, 36px desktop action height;
-- gold primary edge;
-- hover uses accent highlight;
-- pressed uses pixel depth shift/inset treatment;
-- focus remains cyan and independent;
+- full-width minimum height: **48px desktop**;
+- coarse-pointer minimum height: **52px**;
+- minimum label treatment: 14px / 700, centered, with at least 12px horizontal
+  padding;
+- `bg-3` surface, 2px gold primary edge and one 2px hard shadow for persistent
+  prominence;
+- hover uses accent-highlight edge/text without increasing geometry;
+- pressed uses a brief inset/depth shift and removes the raised shadow while held;
+- focus remains an independent 2px cyan outline outside the gold edge;
+- keep at least 12px visual separation above the action so presentation/metadata
+  controls cannot visually merge into its click target;
 - pending uses `aria-busy`, blocks duplicate submission and receives a visible
   pending treatment. Any new visible pending copy must be localized before use;
 - disabled remains readable and does not rely on opacity alone.
+
+## Live validation fix addendum — 2026-09-12
+
+Product Owner live validation confirmed that the Hunt Atlas hierarchy is correct
+but the following visible surfaces still read as native/untreated. This addendum is
+approved direction and narrows the next implementation pass; it does not change
+gameplay behavior.
+
+1. **Own the full Hunt Map shell.** The exposed `.hunt-window` outer/title chrome
+   must use the Hunt Atlas shell treatment defined above rather than relying on the
+   host panel appearance.
+2. **Finish native-control visual ownership.** World tabs, Clear, zoom buttons,
+   Search, Level min/max and the Hunt dropdown must receive their complete Hunt
+   Atlas Base/Hover/Pressed/Selected-or-current/Focus/Disabled states where
+   applicable, with native browser bevels/arrows/spinners/rounding suppressed as
+   specified above. Native handlers and state remain untouched.
+3. **Finish both-axis scrollbar ownership.** Every horizontal/vertical scrollbar
+   visible inside Hunt Atlas uses the 10px scoped pixel scrollbar treatment above.
+4. **Locate emphasis is intentionally aggressive.** While Locate is active,
+   non-Located Pokémon sprites use exactly `opacity: 0.10` (90% dim). Label
+   exceptions exist only to preserve a simultaneous Selected or Focus state as
+   specified in the marker state family.
+5. **Primary entry action is deliberately oversized relative to utilities.**
+   `Entrar na Hunt` uses 48px desktop / 52px coarse-pointer minimum height and the
+   stronger gold + hard-shadow hierarchy above. No other action in the inspector
+   may match that visual weight.
 
 ## DOM/CSS vs asset plan
 
@@ -375,6 +441,15 @@ reversible Better UI wrappers/anchors while preserving their identity and handle
     Hunts root/body focus target, never a detached node and never by moving the map.
 12. Treat `.hunt-world-notice` as an inline Atlas/Finder status strip: hidden when
     empty; text + semantic left edge when populated; no card elevation.
+13. Apply the scoped Hunt Map shell treatment to all visible `.hunt-window`
+    chrome confirmed by Product Owner live validation.
+14. Apply the complete Hunt Atlas treatment to world tabs, Clear, zoom, Search,
+    Level min/max, Hunt select and visible horizontal/vertical scrollbars without
+    replacing their native behavior.
+15. Implement Locate dim exactly as specified: non-Located Pokémon sprites at
+    `opacity: 0.10`, with only Selected/Focus label readability exceptions.
+16. Raise `Entrar na Hunt` to 48px desktop / 52px coarse-pointer minimum height
+    and preserve its exclusive primary-action hierarchy.
 
 ## Design acceptance checks
 
@@ -414,6 +489,18 @@ below are true:
     fallback and never targets a detached node or intentionally moves the map.
 20. `.hunt-world-notice` is hidden when empty and, when populated, reads as an
     inline status strip with text + semantic left edge and no card elevation.
+21. The full visible Hunt Map shell uses square PPBUI surfaces/borders/shadow and
+    no longer exposes host gradients, soft rounding or untreated panel chrome.
+22. World tabs, Clear, zoom, Search, Level min/max and Hunt dropdown visibly belong
+    to one Hunt Atlas component family across their complete applicable states.
+23. Horizontal and vertical Hunt Atlas scrollbars use the scoped 10px pixel track/
+    thumb treatment and preserve normal scrolling behavior.
+24. With Locate active, every non-Located Pokémon sprite is visibly 90% dimmed
+    (`opacity: 0.10`); the Located sprite remains fully visible, and Selected/Focus
+    label exceptions do not cancel the sprite dim.
+25. `Entrar na Hunt` is full-width, at least 48px high on desktop and 52px on
+    coarse pointer, with a larger 14px/700 label and clearly greater visual/click
+    prominence than Locate, Reset, Clear, presentation or zoom controls.
 
 ## Validation boundary
 
@@ -421,10 +508,10 @@ Agents must not install, open, reload, control, inspect or validate Better UI in
 the live game, the user's browser or Tampermonkey. Automated/local validation is
 agent-owned; live validation remains exclusively Product Owner-owned.
 
-One visual surface remains source-unverifiable until user validation: outer native
-panel/title-bar chrome outside `.pokeidle-panel__body`, if exposed by the current
-game build. The module must not invent treatment for an unseen surface; Product
-Owner validation determines whether follow-up ownership is required.
+Product Owner live validation on 2026-09-12 confirmed that outer Hunt Map
+window/title chrome is visibly exposed and currently under-treated. It is therefore
+explicitly in scope for the next Hunt Atlas visual implementation pass. This
+recorded observation does not authorize agents to inspect the live game directly.
 
 ## Delivery gate
 
