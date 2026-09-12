@@ -4,6 +4,11 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Added an optional Buff strip module that keeps the native buff/status strip
+  docked immediately above the top toolbar. It preserves the original buff/ticker
+  nodes, flex behavior and visual tokens, shrinks the surface to content width
+  and restores only Better UI-owned geometry on cleanup.
+
 - Removed the Auto Helper initial native-UI flash while its settings/inventory
   bootstrap requests are pending. Native pickers and destination grids are hidden
   immediately and the Better UI surface shows an explicit loading state until the

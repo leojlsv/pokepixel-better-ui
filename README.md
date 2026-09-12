@@ -76,6 +76,10 @@ Menu bar can be enabled or disabled immediately, with choices saved in this
 browser. The preferences icon remains available when Menu bar is disabled.
 See `docs/modules/module-controls-plan.md` for behavior and validation scope.
 
+Buff strip keeps the game's native buff HUD in a compact single-line surface
+immediately above the toolbar, without cloning its state or visual language.
+See `docs/modules/buff-strip.md`.
+
 Run `npm test` for the complete regression suite across the core and production
 modules.
 

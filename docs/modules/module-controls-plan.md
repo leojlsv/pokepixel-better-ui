@@ -24,11 +24,11 @@ ativar ou desativar.
 
 ## Funcionamento e limites
 
-- Os módulos opcionais disponíveis atualmente são Menu bar, Chat, Disable
-  Pokémon hover, Team, Team HUD, Team Presets, Inventory, Hunts, Mark's Shop,
-  Auto Helper, Storage e Trade. Cada opção é configurável independentemente;
-  Disable Pokémon hover permanece desativado por padrão e as demais seguem os
-  defaults registrados em `src/index.js`.
+- Os módulos opcionais disponíveis atualmente são Menu bar, Buff strip, Chat,
+  Disable Pokémon hover, Team, Team HUD, Team Presets, Inventory, Hunts, Mark's
+  Shop, Auto Helper, Storage e Trade. Cada opção é configurável
+  independentemente; Disable Pokémon hover permanece desativado por padrão e as
+  demais seguem os defaults registrados em `src/index.js`.
 - O painel de gerenciamento não aparece como opção desativável.
 - Os módulos são organizados em Interface, Equipe e Atividades e itens. Cada
   grupo pode ser recolhido independentemente e exibe ativos/total.

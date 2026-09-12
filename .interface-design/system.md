@@ -34,3 +34,12 @@ User-approved window minimums: Poké Center 980px, Backpack 560px. Poké Center 
 Keep the native three-column layout. Pokémon filters open in a 560px dialog with four columns, native tokens, Clear and Close; inventory retains search, filter count and result count. Preserve filters on close and native offer actions. Offer gold rows reserve 72px; balance sits inside the own currency block so headings and grids align. Confirm/Cancel share 36px minimum height.
 
 Trade refinement: minimum width 1000px, offer columns at least 318px, inventory at least 280px with four 56px slots per row. Item category uses native category/type grouping and combines with search. Added labels match the native Portuguese Trade screen. Cancel remains visible as a secondary action.
+
+## Buff strip (approved; pending in-game validation)
+
+- Treat the native buff strip as a Rearrange feature, not a redesign. Reuse `.pokeidle-buff-strip`, `.pokeidle-buff-list` and `.pokeidle-event-ticker` without cloning or recreating buff state.
+- Keep the strip independent from the toolbar DOM lifecycle. Dock it geometrically immediately above `.pokeidle-top-toolbar`; do not reparent it into the toolbar.
+- Preserve native typography, palette, borders, shadows and item content. Only composition/geometry may change.
+- Prefer content width instead of the native fixed strip width and cap it to the toolbar/viewport. Preserve the native flex behavior: buff and event pills already share one horizontal line and shrink within the available width.
+- Recalculate docking on normal Better UI reconciliation and viewport resize. Do not poll and do not add a feature-specific MutationObserver.
+- Cleanup removes only Better UI markers/styles/custom properties and must preserve the game's latest native inline `left`, `top` and `width` values.
