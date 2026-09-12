@@ -16,6 +16,7 @@ const markup=()=>`
       </div>
     </div>
   </div>
+  <div class="hunt-world-notice"></div>
   <div class="hunt-world-toolbar"><input type="search"><span class="hunt-world-level-label">Lv.</span><input type="number" min="1" max="100" value="1"><span class="hunt-world-level-label">to</span><input type="number" min="1" max="100" value="100"><button>Clear</button><strong class="hunt-world-count">2 areas</strong></div>
   <div class="hunt-element-filters hunt-world-elements"><button class="hunt-element-filter">All</button><button class="hunt-element-filter">Fire</button></div>
   <div class="hunt-world-viewport"><div class="hunt-world-stage">
@@ -53,7 +54,7 @@ function setup(t){
   function bind(){
     const viewport=body.querySelector('.hunt-world-viewport');
     Object.defineProperties(viewport,{
-      clientWidth:{configurable:true,get:()=>viewport.parentElement?.classList.contains('is-dossier-open')?300:400},
+      clientWidth:{configurable:true,get:()=>viewport.parentElement?.classList.contains('is-inspector-open')?300:400},
       clientHeight:{configurable:true,value:300},
     });
     body.querySelectorAll('.hunt-map-marker').forEach((marker,index)=>{
@@ -72,12 +73,12 @@ function setup(t){
   const select=()=>root.querySelector('.ppbui-hunts-results select');
   const locate=()=>root.querySelectorAll('.ppbui-hunts-results button')[0];
   const reset=()=>root.querySelectorAll('.ppbui-hunts-results button')[1];
-  const dossier=()=>root.querySelector('.ppbui-hunts-dossier');
+  const dossier=()=>root.querySelector('.ppbui-hunts-inspector');
   const choose=(i='0')=>{select().value=i;select().dispatchEvent(new dom.window.Event('change'));};
   return {dom,doc,root,body,scene,c,before,bind,select,locate,reset,dossier,choose,stats:()=>({nativeClicks,starts,hovers,focusInfos,saves,cleanups,setups,modeClicks})};
 }
 
-test('marker click selects and opens dossier without starting a hunt; explicit Hunt starts native flow',async t=>{
+test('marker click selects and opens inspector without starting a hunt; explicit Hunt starts native flow',async t=>{
   const s=setup(t),marker=s.root.querySelector('.hunt-map-marker');
   marker.dispatchEvent(new s.dom.window.PointerEvent('pointerenter',{bubbles:false}));
   marker.focus();
@@ -89,16 +90,16 @@ test('marker click selects and opens dossier without starting a hunt; explicit H
   assert.equal(s.dossier().hidden,false);
   assert.equal(s.doc.activeElement,s.dossier());
   assert.match(s.dossier().textContent,/Pikachu/);
-  assert.match(s.dossier().querySelector('.ppbui-hunts-dossier__hunt').textContent,/Entrar na Hunt/);
+  assert.match(s.dossier().querySelector('.ppbui-hunts-inspector__hunt').textContent,/Entrar na Hunt/);
   assert.ok(marker.classList.contains('ppbui-hunts-selected-marker'));
-  s.dossier().querySelector('.ppbui-hunts-dossier__hunt').click();
+  s.dossier().querySelector('.ppbui-hunts-inspector__hunt').click();
   await Promise.resolve();
   assert.equal(s.stats().nativeClicks,0);
   assert.equal(s.stats().starts,1);
   assert.equal(s.scene._selectedIndex,0);
 });
 
-test('pointer selection keeps marker focus while keyboard activation enters the dossier tab sequence',t=>{
+test('pointer selection keeps marker focus while keyboard activation enters the inspector tab sequence',t=>{
   const pointer=setup(t),pointerMarker=pointer.root.querySelector('.hunt-map-marker');
   pointerMarker.dispatchEvent(new pointer.dom.window.MouseEvent('click',{bubbles:true,button:0,detail:1}));
   assert.equal(pointer.doc.activeElement,pointerMarker);
@@ -133,7 +134,7 @@ test('delegated capture protects freshly replaced markers before reconciliation'
   assert.equal(s.stats().starts,0);
 });
 
-test('native presentation toggle is moved intact into dossier and restored exactly on cleanup',t=>{
+test('native presentation toggle is moved intact into inspector and restored exactly on cleanup',t=>{
   const s=setup(t),toggle=s.root.querySelector('.hunt-presentation-toggle'),header=s.root.querySelector('.hunt-world-header-actions');
   assert.equal(header.contains(toggle),false);
   assert.equal(s.dossier().contains(toggle),true);
@@ -144,43 +145,61 @@ test('native presentation toggle is moved intact into dossier and restored exact
   assert.equal(s.root.outerHTML,s.before);
 });
 
-test('control deck groups native filters, target actions and elements while moving count intact',t=>{
-  const s=setup(t),toolbar=s.root.querySelector('.hunt-world-toolbar'),elements=s.root.querySelector('.hunt-world-elements'),count=s.root.querySelector('.hunt-world-count'),deck=s.root.querySelector('.ppbui-hunts-controls'),filters=deck.querySelector('.ppbui-hunts-filters'),target=deck.querySelector('.ppbui-hunts-target');
-  assert.ok(deck);
-  assert.deepEqual([...deck.children],[filters,target]);
-  assert.deepEqual([...filters.children].slice(1),[toolbar,elements]);
-  assert.equal(target.lastElementChild,s.root.querySelector('.ppbui-hunts-results'));
-  assert.equal(filters.getAttribute('aria-labelledby'),filters.firstElementChild.id);assert.equal(target.getAttribute('aria-labelledby'),target.firstElementChild.id);
-  assert.equal(filters.firstElementChild.textContent,'Filtros');assert.equal(target.firstElementChild.textContent,'Alvo');
+test('Hunt Atlas Finder rail keeps native query, element and count nodes intact without old card groups',t=>{
+  const s=setup(t),toolbar=s.root.querySelector('.hunt-world-toolbar'),elements=s.root.querySelector('.hunt-world-elements'),count=s.root.querySelector('.hunt-world-count'),finder=s.root.querySelector('.ppbui-hunts-finder');
+  assert.ok(finder);
+  assert.deepEqual([...finder.children],[toolbar,elements,s.root.querySelector('.ppbui-hunts-results')]);
+  assert.equal(s.root.querySelector('.ppbui-hunts-controls'),null);
+  assert.equal(s.root.querySelector('.ppbui-hunts-control-group'),null);
   assert.equal(count.parentElement,s.root.querySelector('.ppbui-hunts-results'));
   assert.equal(toolbar.querySelector('.hunt-world-count'),null);
   s.c.cleanup();
-  assert.equal(s.root.querySelector('.ppbui-hunts-controls'),null);
+  assert.equal(s.root.querySelector('.ppbui-hunts-finder'),null);
   assert.equal(s.root.querySelector('.hunt-world-toolbar .hunt-world-count'),count);
   assert.equal(s.root.outerHTML,s.before);
 });
 
-test('Hunts pilot consumes the shared pixel-art system without host-wide selectors',t=>{
+test('Hunt Atlas structure and complete state language consume scoped Better UI primitives',t=>{
   const s=setup(t),css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
   assert.match(css,/--ppbui-bg-1/);assert.match(css,/--ppbui-accent/);assert.match(css,/--ppbui-focus/);
-  assert.match(css,/grid-template-columns:minmax\(0,1fr\) minmax\(280px,340px\)/);
-  assert.match(css,/@container \(max-width:760px\)/);
+  assert.ok(s.root.querySelector('.hunt-world-header').classList.contains('ppbui-hunts-atlas-rail'));
+  assert.ok(s.root.querySelector('.ppbui-hunts-finder'));
+  assert.ok(s.root.querySelector('.ppbui-hunts-atlas-workspace'));
+  assert.match(css,/\.ppbui-hunts-atlas-workspace\.is-inspector-open/);
+  assert.match(css,/@container \(max-width:780px\)/);
+  assert.match(css,/@media \(pointer:coarse\)/);
   assert.match(css,/button:disabled[^}]+color:var\(--ppbui-text-subtle\)/s);
   assert.match(css,/\.hunt-category-tab\.is-active[^{]*\{[^}]+color:var\(--ppbui-text\)/s);
   assert.match(css,/\.hunt-category-tab:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-selected="true"\]\)/);
   assert.match(css,/\.hunt-world-elements button:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-pressed="true"\]\)/);
   assert.match(css,/hunt-presentation-toggle button:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-pressed="true"\]\)/);
+  assert.match(css,/\.hunt-map-marker__name\s*\{[^}]+--ppbui-hunt-location-rail:transparent/s);
+  assert.match(css,/\.hunt-map-marker:hover \.hunt-map-marker__name:not\(\.ppbui-hunts-selected\)/);
+  assert.doesNotMatch(css,/\.hunt-map-marker:hover \.hunt-map-marker__name\s*\{/);
+  assert.match(css,/\.hunt-map-marker:active \.hunt-map-marker__name/);
+  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-located\s*\{[^}]+--ppbui-hunt-location-rail:var\(--ppbui-info\)/s);
+  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-selected\.ppbui-hunts-located/);
   assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\s*\{[^}]+outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\)/s);
+  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:\.55/);
+  assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none/s);
+  assert.match(css,/input\[type="number"\][^}]*\{[^}]+appearance:textfield/s);
+  assert.match(css,/\.ppbui-hunts-select-wrap::after/);
+  assert.match(css,/\.hunt-world-notice:empty\s*\{\s*display:none/);
+  assert.match(css,/\.hunt-world-notice:not\(:empty\)[^{]*\{[^}]+border-left:[^}]+var\(--ppbui-info\)[^}]+box-shadow:none/s);
+  assert.match(css,/\.ppbui-hunts-inspector\s*\{[^}]+border-left:[^}]+box-shadow:none/s);
+  assert.match(css,/\.ppbui-hunts-inspector__mode \.hunt-presentation-toggle\s*\{[^}]+gap:0/s);
+  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__hunt\s*\{\s*min-height:40px;\s*\}/);
+  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__close\s*\{[^}]+min-width:40px;[^}]+min-height:40px;/);
   assert.ok(css.lastIndexOf('.hunt-category-tab:disabled')>css.lastIndexOf('.hunt-category-tab.is-active'));
   assert.ok(css.lastIndexOf('.hunt-world-elements button:disabled')>css.lastIndexOf('.hunt-world-elements button.is-active'));
   assert.match(css,/button:disabled[^}]+cursor:default/s);
   assert.doesNotMatch(css,/(^|\})\s*(button|input|select)\s*\{/m);
   assert.equal(s.root.querySelector('.ppbui-hunts-results select').classList.contains('ppbui-select'),true);
-  assert.equal(s.dossier().classList.contains('ppbui-dialog'),true);
-  assert.equal(s.dossier().querySelector('.ppbui-hunts-dossier__hunt').classList.contains('ppbui-button--primary'),true);
+  assert.equal(s.dossier().classList.contains('ppbui-dialog'),false);
+  assert.equal(s.dossier().querySelector('.ppbui-hunts-inspector__hunt').classList.contains('ppbui-button--primary'),true);
 });
 
-test('Locate opens the same dossier, pans without starting Hunt, preserves zoom and dims other labels',t=>{
+test('Locate opens the same inspector, pans without starting Hunt, preserves zoom and dims other labels',t=>{
   const s=setup(t);s.choose();s.locate().click();
   const marker=s.root.querySelector('.hunt-map-marker');
   assert.equal(s.dossier().hidden,false);
@@ -191,7 +210,7 @@ test('Locate opens the same dossier, pans without starting Hunt, preserves zoom 
   assert.deepEqual(s.scene._worldMapState,{scale:.9375,x:-600,y:-375});
 });
 
-test('Reset clears located focus and dossier without moving the map or changing filters',t=>{
+test('Reset clears located focus and inspector without moving the map or changing filters',t=>{
   const s=setup(t);s.choose();s.locate().click();const state={...s.scene._worldMapState};
   const openRatio=state.scale/(Math.max(300/1000,300/800)*1.002),openCenterX=(300/2-state.x)/state.scale,openCenterY=(300/2-state.y)/state.scale;
   assert.equal(s.reset().disabled,false);s.reset().click();
@@ -206,7 +225,7 @@ test('Reset clears located focus and dossier without moving the map or changing 
   assert.ok(Math.abs(closedRatio-openRatio)<1e-9);assert.ok(Math.abs(closedCenterX-openCenterX)<1e-9);assert.ok(Math.abs(closedCenterY-openCenterY)<1e-9);
 });
 
-test('Reset is available for click-only selection and clears the dossier without navigation',t=>{
+test('Reset is available for click-only selection and clears the inspector without navigation',t=>{
   const s=setup(t),marker=s.root.querySelector('.hunt-map-marker'),state={...s.scene._worldMapState};marker.click();
   assert.equal(s.reset().disabled,false);s.reset().click();
   assert.equal(s.dossier().hidden,true);
@@ -217,7 +236,7 @@ test('Reset is available for click-only selection and clears the dossier without
   assert.deepEqual(s.stats(),{nativeClicks:0,starts:0,hovers:0,focusInfos:0,saves:2,cleanups:2,setups:2,modeClicks:0});
 });
 
-test('opening and closing dossier preserves relative zoom and restores untouched map state',t=>{
+test('opening and closing inspector preserves relative zoom and restores untouched map state',t=>{
   const s=setup(t),marker=s.root.querySelector('.hunt-map-marker'),initial={...s.scene._worldMapState};
   const closedCover=Math.max(400/1000,300/800)*1.002,initialRatio=initial.scale/closedCover;
   marker.click();
@@ -241,7 +260,7 @@ test('selecting another marker after Locate keeps location state separate withou
   assert.deepEqual(s.stats(),{nativeClicks:0,starts:0,hovers:0,focusInfos:0,saves:2,cleanups:2,setups:2,modeClicks:0});
 });
 
-test('dossier contains elements, exact defensive relations and valued drops instead of hover tooltip',t=>{
+test('inspector contains elements, exact defensive relations and valued drops instead of hover tooltip',t=>{
   const s=setup(t),marker=s.root.querySelectorAll('.hunt-map-marker')[1];
   marker.click();const panel=s.dossier();
   assert.match(panel.textContent,/Abra/);
@@ -254,26 +273,27 @@ test('dossier contains elements, exact defensive relations and valued drops inst
   assert.match(panel.textContent,/×0/);
   assert.match(panel.textContent,/Bent Spoon/);
   assert.match(panel.textContent,/¤1250/);
-  assert.equal(panel.getAttribute('aria-labelledby'),panel.querySelector('.ppbui-hunts-dossier__title').id);
+  assert.equal(panel.getAttribute('aria-labelledby'),panel.querySelector('.ppbui-hunts-inspector__title').id);
   assert.match(panel.querySelector('.ppbui-hunts-drop-name').title,/Bent Spoon/);
-  assert.match(panel.querySelector('.ppbui-hunts-dossier__close').getAttribute('aria-label'),/Fechar/);
-  assert.equal(s.doc.querySelector('.hunt-world-drop-tooltip:not(.ppbui-hunts-dossier)'),null);
+  assert.match(panel.querySelector('.ppbui-hunts-inspector__close').getAttribute('aria-label'),/Fechar/);
+  assert.equal(s.doc.querySelector('.hunt-world-drop-tooltip'),null);
   for(const className of ['hunt-drop-tooltip__title','hunt-drop-tooltip__elements','hunt-drop-tooltip__elements-label','hunt-drop-tooltip__element-badges','hunt-drop-tooltip__element','hunt-drop-tooltip__empty','hunt-drop-tooltip__list','hunt-drop-tooltip__item']){
     assert.equal(panel.querySelector(`.${className}`),null);
   }
   assert.ok(panel.querySelector('.hunt-drop-tooltip__icon'));
 });
 
-test('search hiding the selected marker closes dossier and does not fabricate zones',t=>{
+test('search hiding the selected marker closes inspector, restores focus and does not fabricate zones',t=>{
   const s=setup(t),marker=s.root.querySelector('.hunt-map-marker');marker.click();
   const input=s.body.querySelector('input[type=search]');input.value='missing';input.dispatchEvent(new s.dom.window.Event('input',{bubbles:true}));
   assert.equal(s.select().disabled,true);
   assert.equal(s.locate().disabled,true);
   assert.equal(s.dossier().hidden,true);
+  assert.equal(s.doc.activeElement,input);
   assert.match(s.root.querySelector('[role=status]').textContent,/Nenhuma/);
 });
 
-test('native refresh preserves selected zone, dossier and new presentation toggle without stale nodes',t=>{
+test('native refresh preserves selected zone, inspector and new presentation toggle without stale nodes',t=>{
   const s=setup(t);s.root.querySelectorAll('.hunt-map-marker')[1].click();const oldToggle=s.root.querySelector('.hunt-presentation-toggle');
   const before={...s.scene._worldMapState},beforeViewport=s.root.querySelector('.hunt-world-viewport'),layout=s.scene._worldLayouts.kanto;
   const beforeRatio=before.scale/(Math.max(beforeViewport.clientWidth/layout.width,beforeViewport.clientHeight/layout.height)*1.002);
@@ -324,17 +344,17 @@ test('zone identity survives native reorder and explicit Hunt uses the reacquire
   const [pikaMarker,abraMarker]=s.body.querySelectorAll('.hunt-map-marker');pikaMarker.dataset.zoneIndex='1';abraMarker.dataset.zoneIndex='0';s.c.sync();
   assert.match(s.dossier().textContent,/Abra/);
   assert.ok(abraMarker.classList.contains('ppbui-hunts-selected-marker'));
-  s.dossier().querySelector('.ppbui-hunts-dossier__hunt').click();await Promise.resolve();
+  s.dossier().querySelector('.ppbui-hunts-inspector__hunt').click();await Promise.resolve();
   assert.equal(s.scene._selectedIndex,0);assert.equal(s.stats().starts,1);
 });
 
-test('selected zone disappearing during refresh clears dossier instead of reusing its old index',t=>{
+test('selected zone disappearing during refresh clears inspector, focuses result select and never reuses its old index',t=>{
   const s=setup(t);s.root.querySelectorAll('.hunt-map-marker')[1].click();
   s.scene._zones[1]={id:'different-zone',world:'kanto',name:'Different Zone',elements:['fire'],min:1,max:2,drops:[]};s.body.innerHTML=markup();s.bind();s.c.sync();
-  assert.equal(s.dossier().hidden,true);assert.equal(s.root.querySelector('.ppbui-hunts-selected-marker'),null);assert.equal(s.reset().disabled,true);
+  assert.equal(s.dossier().hidden,true);assert.equal(s.root.querySelector('.ppbui-hunts-selected-marker'),null);assert.equal(s.reset().disabled,true);assert.equal(s.doc.activeElement,s.select());
 });
 
-test('dossier rerenders when data changes for the same stable zone identity',t=>{
+test('inspector rerenders when data changes for the same stable zone identity',t=>{
   const s=setup(t);s.root.querySelector('.hunt-map-marker').click();
   s.scene._zones[0]={...s.scene._zones[0],name:'Pikachu Updated',drops:[{name:'Updated Fur',sell_price:999,icon_index:4}]};s.c.sync();
   assert.match(s.dossier().textContent,/Pikachu Updated/);assert.match(s.dossier().textContent,/Updated Fur/);assert.match(s.dossier().textContent,/¤999/);
@@ -352,12 +372,12 @@ test('stable reconciliation makes no DOM mutations and cleanup restores exact na
   s.c.cleanup();assert.equal(s.root.outerHTML,s.before);
 });
 
-test('cleanup with dossier open restores native-width map state and native structure',t=>{
+test('cleanup with inspector open restores native-width map state and native structure',t=>{
   const s=setup(t),initial={...s.scene._worldMapState},viewport=s.root.querySelector('.hunt-world-viewport'),layout=s.scene._worldLayouts.kanto;
   const initialRatio=initial.scale/(Math.max(viewport.clientWidth/layout.width,viewport.clientHeight/layout.height)*1.002);
   const initialCenterX=(viewport.clientWidth/2-initial.x)/initial.scale,initialCenterY=(viewport.clientHeight/2-initial.y)/initial.scale;
   s.root.querySelector('.hunt-map-marker').click();
-  assert.equal(s.root.querySelector('.ppbui-hunts-workspace').classList.contains('is-dossier-open'),true);
+  assert.equal(s.root.querySelector('.ppbui-hunts-atlas-workspace').classList.contains('is-inspector-open'),true);
   s.c.cleanup();
   const restoredViewport=s.root.querySelector('.hunt-world-viewport'),restored=s.scene._worldMapState;
   const restoredRatio=restored.scale/(Math.max(restoredViewport.clientWidth/layout.width,restoredViewport.clientHeight/layout.height)*1.002);
@@ -375,9 +395,15 @@ test('blocked, hidden, detached and unsupported navigation cannot start actions 
   assert.deepEqual(s.scene._worldMapState,before);assert.equal(s.stats().starts,0);
 });
 
-test('world change clears selection and does not carry dossier into another world',t=>{
+test('world change clears selection, closes inspector and focuses the result select',t=>{
   const s=setup(t);s.root.querySelector('.hunt-map-marker').click();s.scene._tab='johto';s.scene._zones.forEach(zone=>zone.world='johto');s.body.innerHTML=markup();s.bind();s.c.sync();
-  assert.equal(s.select().value,'');assert.equal(s.dossier().hidden,true);
+  assert.equal(s.select().value,'');assert.equal(s.dossier().hidden,true);assert.equal(s.doc.activeElement,s.select());
+});
+
+test('automatic inspector close falls back to Hunts body when marker, result select and search are unavailable',t=>{
+  const s=setup(t),marker=s.root.querySelector('.hunt-map-marker');marker.click();
+  s.body.querySelector('input[type=search]').disabled=true;s.root.querySelectorAll('.hunt-map-marker').forEach(node=>node.hidden=true);s.c.sync();
+  assert.equal(s.select().disabled,true);assert.equal(s.dossier().hidden,true);assert.equal(s.doc.activeElement,s.body);assert.equal(s.body.getAttribute('tabindex'),'-1');
 });
 
 test('Johto exposes level 1 and corrects only its initial level 100 filter',t=>{
@@ -394,7 +420,7 @@ test('native window replacement remounts cleanly without duplicate Better UI sur
   for(const key of ['document','MutationObserver','requestAnimationFrame','cancelAnimationFrame']){previous.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,value:typeof s.dom.window[key]==='function'&&key!=='MutationObserver'?s.dom.window[key].bind(s.dom.window):s.dom.window[key]});}
   let enabled=true;const app=createBetterUI({modules:[createHuntsModule()],preferences:{isEnabled:()=>enabled,subscribe:()=>()=>{}}});t.after(()=>{app.stop();for(const [key,d]of previous)if(d)Object.defineProperty(globalThis,key,d);else delete globalThis[key];});app.start();
   const replacement=s.doc.createElement('div');replacement.className='hunt-window';replacement.innerHTML=`<div class="pokeidle-panel__body">${markup()}</div>`;s.root.replaceWith(replacement);s.scene._panel.body=replacement.firstChild;
-  await new Promise(resolve=>s.dom.window.setTimeout(resolve,50));assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);assert.equal(replacement.querySelectorAll('.ppbui-hunts-workspace').length,1);
+  await new Promise(resolve=>s.dom.window.setTimeout(resolve,50));assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);assert.equal(replacement.querySelectorAll('.ppbui-hunts-atlas-workspace').length,1);
   enabled=false;app.reconcile();assert.equal(replacement.querySelector('[data-ppbui-module]'),null);enabled=true;app.reconcile();assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);
 });
 

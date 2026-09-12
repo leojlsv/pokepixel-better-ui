@@ -1,21 +1,25 @@
 import {parts,results,markers,markerLabel,huntsText,huntScene,selectors} from './dom.js';
 import {locateHunt} from './navigation.js';
-import {createHuntDossier} from './dossier.js';
+import {createHuntInspector} from './dossier.js';
 import {createHuntMarkerInteractions} from './interaction.js';
 import {huntsStyles} from './styles.js';
 
 export function mountHunts(root) {
   const doc=root.ownerDocument;
   root.classList.add('ppbui-hunts-enhanced');
-  const row=doc.createElement('div'),select=doc.createElement('select'),button=doc.createElement('button'),reset=doc.createElement('button'),status=doc.createElement('span');
+  const focusTarget=parts(root).body;
+  const focusTargetTabIndex=focusTarget?.getAttribute('tabindex');
+  if(focusTarget&&!focusTarget.hasAttribute('tabindex'))focusTarget.setAttribute('tabindex','-1');
+  const row=doc.createElement('div'),selectWrap=doc.createElement('span'),select=doc.createElement('select'),button=doc.createElement('button'),reset=doc.createElement('button'),status=doc.createElement('span');
   row.className='ppbui-hunts-results';row.dataset.ppbuiModule='hunts';
+  selectWrap.className='ppbui-hunts-select-wrap';
   select.className='ppbui-select';button.className='ppbui-button';button.type='button';reset.className='ppbui-button ppbui-button--ghost';reset.type='button';
-  status.setAttribute('role','status');row.append(select,button,reset,status);
+  selectWrap.append(select);status.setAttribute('role','status');row.append(selectWrap,button,reset,status);
 
   const style=doc.createElement('style');style.dataset.ppbuiModule='hunts';style.textContent=huntsStyles;
   root.append(style);
 
-  let options=[],currentWorld,search=null,raw='',focused=false,selection=null,message='',focusFrame=0,flashTimer=0,located=null,selected=null,active=true,layout=null,controls=null,layoutBaseline=null,presentationPlacement=null,countPlacement=null;
+  let options=[],currentWorld,search=null,raw='',focused=false,selection=null,message='',focusFrame=0,flashTimer=0,located=null,selected=null,selectedNode=null,active=true,layout=null,controls=null,layoutBaseline=null,presentationPlacement=null,countPlacement=null;
   const adjustedLevelWorlds=new Set();
   let dossier;
 
@@ -67,9 +71,9 @@ export function mountHunts(root) {
     return {scale,x,y};
   }
 
-  function setDossierLayout(open,scene=huntScene(root)) {
+  function setInspectorLayout(open,scene=huntScene(root)) {
     const workspace=layout?.workspace;if(!workspace)return;
-    const wasOpen=workspace.classList.contains('is-dossier-open');if(wasOpen===open){if(!open)layoutBaseline=null;return;}
+    const wasOpen=workspace.classList.contains('is-inspector-open');if(wasOpen===open){if(!open)layoutBaseline=null;return;}
     const before=parts(root),worldLayout=scene?._worldLayouts?.[scene?._tab],currentState=scene?._worldMapState;
     const continuingOpen=open&&!wasOpen&&layoutBaseline?.scene===scene&&layoutBaseline.world===scene?._tab&&layoutBaseline.openGeometry&&layoutBaseline.stateRef;
     let snapshot=continuingOpen
@@ -78,7 +82,7 @@ export function mountHunts(root) {
     const unchangedFromOpen=!open&&layoutBaseline?.scene===scene&&layoutBaseline.world===scene?._tab&&layoutBaseline.expected&&currentState&&
       ['scale','x','y'].every(key=>Math.abs(currentState[key]-layoutBaseline.expected[key])<1e-7);
     if(unchangedFromOpen)snapshot=layoutBaseline.snapshot;
-    workspace.classList.toggle('is-dossier-open',open);
+    workspace.classList.toggle('is-inspector-open',open);
     if(!snapshot){if(!open)layoutBaseline=null;return;}
     const current=parts(root),currentLayout=scene?._worldLayouts?.[scene?._tab],desired=stateForSnapshot(snapshot,current.viewport,currentLayout);
     if(!current.viewport||!current.stage||!currentLayout||!currentState||!desired||
@@ -98,8 +102,8 @@ export function mountHunts(root) {
   }
 
   function clearSelectionState() {
-    selected=null;dossier?.reset();
-    setDossierLayout(false);
+    selected=null;selectedNode=null;dossier?.reset();
+    setInspectorLayout(false);
   }
   function closeDossier(returnFocus=true) {
     const marker=selectedMarker();clearSelectionState();select.value='';message='';sync();
@@ -113,7 +117,7 @@ export function mountHunts(root) {
     const done=()=>{if(!active)return;dossier.huntButton.disabled=false;dossier.huntButton.removeAttribute('aria-busy');};
     try {Promise.resolve(scene.startHunt()).then(done,done);} catch {done();}
   }
-  dossier=createHuntDossier(doc,{onClose:()=>closeDossier(true),onHunt:startSelectedHunt});
+  dossier=createHuntInspector(doc,{onClose:()=>closeDossier(true),onHunt:startSelectedHunt});
 
   function restoreCount() {
     if(!countPlacement)return;
@@ -147,15 +151,10 @@ export function mountHunts(root) {
     if(controls?.toolbar===toolbar&&controls?.elements===elements&&controls.wrapper.isConnected)return;
     teardownControls(true);
     const toolbarAnchor=doc.createComment('ppbui-hunts-toolbar'),elementsAnchor=elements?doc.createComment('ppbui-hunts-elements'):null,wrapper=doc.createElement('div');
-    const filters=doc.createElement('section'),target=doc.createElement('section'),filtersHeading=doc.createElement('div'),targetHeading=doc.createElement('div');
-    wrapper.className='ppbui-hunts-controls';wrapper.dataset.ppbuiModule='hunts';
-    filters.className='ppbui-hunts-control-group ppbui-hunts-filters';target.className='ppbui-hunts-control-group ppbui-hunts-target';
-    filtersHeading.className='ppbui-hunts-control-group__heading';targetHeading.className='ppbui-hunts-control-group__heading';
-    const headingId=Math.random().toString(36).slice(2);filtersHeading.id=`ppbui-hunts-filters-title-${headingId}`;targetHeading.id=`ppbui-hunts-target-title-${headingId}`;filtersHeading.setAttribute('role','heading');targetHeading.setAttribute('role','heading');filtersHeading.setAttribute('aria-level','3');targetHeading.setAttribute('aria-level','3');
-    filters.setAttribute('aria-labelledby',filtersHeading.id);target.setAttribute('aria-labelledby',targetHeading.id);
+    wrapper.className='ppbui-hunts-finder';wrapper.dataset.ppbuiModule='hunts';
     toolbar.before(toolbarAnchor);if(elements)elements.before(elementsAnchor);toolbarAnchor.after(wrapper);
-    filters.append(filtersHeading,toolbar);if(elements)filters.append(elements);target.append(targetHeading,row);wrapper.append(filters,target);
-    controls={wrapper,toolbar,elements,toolbarAnchor,elementsAnchor,filters,target,filtersHeading,targetHeading};
+    wrapper.append(toolbar);if(elements)wrapper.append(elements);wrapper.append(row);
+    controls={wrapper,toolbar,elements,toolbarAnchor,elementsAnchor};
   }
 
   function teardownWorkspace(restore=true) {
@@ -168,7 +167,7 @@ export function mountHunts(root) {
     if(layout?.viewport===viewport&&layout.workspace.isConnected)return;
     teardownWorkspace(true);
     const anchor=doc.createComment('ppbui-hunts-viewport'),workspace=doc.createElement('div');
-    workspace.className='ppbui-hunts-workspace';workspace.dataset.ppbuiModule='hunts';
+    workspace.className='ppbui-hunts-atlas-workspace';workspace.dataset.ppbuiModule='hunts';
     viewport.before(anchor);anchor.after(workspace);workspace.append(viewport,dossier.element);layout={workspace,viewport,anchor};
   }
   function restorePresentation() {
@@ -200,7 +199,7 @@ export function mountHunts(root) {
   function selectMarker(marker,{keyboard=false}={}) {
     const scene=huntScene(root),nextState=stateForMarker(scene,marker);
     if(!scene||!nextState||!results(root).includes(marker))return false;
-    selected=nextState;message='';scene.hideDropTooltip?.();
+    selected=nextState;selectedNode=marker;message='';scene.hideDropTooltip?.();
     const entry=options.find(item=>item.node===marker);if(entry)select.value=entry.option.value;
     sync();
     if(keyboard&&!dossier.element.hidden)dossier.element.focus({preventScroll:true});
@@ -209,19 +208,26 @@ export function mountHunts(root) {
   }
   const interactions=createHuntMarkerInteractions(root,selectMarker,selectors.marker);
 
+  function focusAfterAutoClose(previousState,previousMarker,scene,nodes) {
+    const validMarker=previousMarker?.isConnected&&resolveState(previousState,scene,nodes)?.marker===previousMarker?previousMarker:null;
+    const target=validMarker||select.isConnected&&!select.disabled&&select||search?.isConnected&&!search.disabled&&search||focusTarget?.isConnected&&focusTarget;
+    target?.focus?.({preventScroll:true});
+  }
+
   function sync() {
     const next=parts(root),text=huntsText(doc),scene=huntScene(root),world=scene?._tab;
     if(!next.toolbar||!next.viewport){row.remove();interactions.sync([]);return;}
+    if(next.header&&!next.header.classList.contains('ppbui-hunts-atlas-rail'))next.header.classList.add('ppbui-hunts-atlas-rail');
     ensureControls(next.toolbar,next.elements);placeCount(next.count);ensureWorkspace(next.viewport);placePresentation(next.presentation);scene?.hideDropTooltip?.();
-    if(controls){
-      if(controls.filtersHeading.textContent!==text.filters)controls.filtersHeading.textContent=text.filters;
-      if(controls.targetHeading.textContent!==text.target)controls.targetHeading.textContent=text.target;
-    }
     if(search&&next.search!==search&&currentWorld===world&&next.search){
       if(next.search.value.trim().toLowerCase()===raw.trim().toLowerCase())next.search.value=raw;
       if(focused&&doc.activeElement===doc.body){next.search.focus({preventScroll:true});if(selection)next.search.setSelectionRange(...selection);}
     }
-    if(world!==currentWorld){clearFlash();select.value='';message='';located=null;clearSelectionState();}
+    let autoCloseFocus=null;
+    if(world!==currentWorld){
+      if(selected)autoCloseFocus={state:selected,node:selectedNode};
+      clearFlash();select.value='';message='';located=null;clearSelectionState();
+    }
     currentWorld=world;search=next.search;
     if(isJohto(scene,world)&&next.minLevel){
       if(next.minLevel.min!=='1')next.minLevel.min='1';
@@ -246,8 +252,8 @@ export function mountHunts(root) {
 
     interactions.sync(allMarkers);
     const selectedResolution=resolveState(selected,scene,nodes),activeSelected=selectedResolution?.marker||null;
-    if(selected&&!activeSelected){clearSelectionState();select.value='';}
-    else if(activeSelected){const entry=options.find(item=>item.node===activeSelected);if(entry&&select.value!==entry.option.value)select.value=entry.option.value;}
+    if(selected&&!activeSelected){autoCloseFocus={state:selected,node:selectedNode};clearSelectionState();select.value='';}
+    else if(activeSelected){selectedNode=activeSelected;const entry=options.find(item=>item.node===activeSelected);if(entry&&select.value!==entry.option.value)select.value=entry.option.value;}
     const locatedResolution=resolveState(located,scene,nodes);let activeLocated=locatedResolution?.marker||null;
     if(located&&!activeLocated){located=null;clearFlash();}
     allMarkers.forEach(marker=>{
@@ -257,13 +263,14 @@ export function mountHunts(root) {
     });
     if(activeSelected){
       const {index,zone}=selectedResolution;
-      if(zone){dossier.render(scene,zone,selected.id??`index:${index}`);dossier.setOpen(true);setDossierLayout(true,scene);}
-    } else {dossier.setOpen(false);setDossierLayout(false,scene);}
+      if(zone){dossier.render(scene,zone,selected.id??`index:${index}`);dossier.setOpen(true);setInspectorLayout(true,scene);}
+    } else {dossier.setOpen(false);setInspectorLayout(false,scene);}
 
     const disabled=select.value===''||!nodes.length;if(button.disabled!==disabled)button.disabled=disabled;
     const canReset=Boolean(activeLocated||activeSelected);if(reset.disabled!==!canReset)reset.disabled=!canReset;
     if(select.disabled!==!nodes.length)select.disabled=!nodes.length;
     const feedback=!nodes.length?text.empty:(message?text[message]:disabled?text.choose:'');if(status.textContent!==feedback)status.textContent=feedback;
+    if(autoCloseFocus)focusAfterAutoClose(autoCloseFocus.state,autoCloseFocus.node,scene,nodes);
   }
 
   function update(){message='';sync();}
@@ -282,10 +289,12 @@ export function mountHunts(root) {
   sync();
 
   return {sync,cleanup(){
-    active=false;clearFlash();try{setDossierLayout(false);}catch{}layoutBaseline=null;doc.defaultView.cancelAnimationFrame(focusFrame);interactions.cleanup();
+    active=false;clearFlash();try{setInspectorLayout(false);}catch{}layoutBaseline=null;doc.defaultView.cancelAnimationFrame(focusFrame);interactions.cleanup();
     root.removeEventListener('input',remember,true);root.removeEventListener('select',remember,true);root.removeEventListener('focusin',focus);root.removeEventListener('input',update);root.removeEventListener('click',sync);root.removeEventListener('keydown',onKeydown);
+    root.querySelectorAll('.ppbui-hunts-atlas-rail').forEach(node=>node.classList.remove('ppbui-hunts-atlas-rail'));
     root.querySelectorAll('.ppbui-hunts-selected-marker').forEach(node=>node.classList.remove('ppbui-hunts-selected-marker'));root.querySelectorAll('.ppbui-hunts-located-marker').forEach(node=>node.classList.remove('ppbui-hunts-located-marker'));
     root.querySelectorAll('.ppbui-hunts-selected').forEach(node=>node.classList.remove('ppbui-hunts-selected'));root.querySelectorAll('.ppbui-hunts-located').forEach(node=>node.classList.remove('ppbui-hunts-located'));root.querySelectorAll('.ppbui-hunts-dimmed').forEach(node=>node.classList.remove('ppbui-hunts-dimmed'));
     restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');
+    if(focusTarget){if(focusTargetTabIndex===null)focusTarget.removeAttribute('tabindex');else focusTarget.setAttribute('tabindex',focusTargetTabIndex);}
   }};
 }
