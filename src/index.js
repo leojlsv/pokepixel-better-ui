@@ -4,6 +4,11 @@ import { createTradePokemonModule } from "./modules/pokemon-tools/adapters.js";
 import { createStorageModule, storageText } from "./modules/storage/index.js";
 import { createAutoHelperModule, autoHelperText } from "./modules/auto-helper/index.js";
 import { createBetterUI } from "./core/bootstrap.js";
+import { createDesignSystemRuntime } from "./core/design-system.js";
+import tokensCss from "./styles/tokens.css";
+import baseCss from "./styles/base.css";
+import componentsCss from "./styles/components.css";
+import statesCss from "./styles/states.css";
 import { exampleModule } from "./modules/example/index.js";
 import { menuBarModule } from "./modules/menu-bar/index.js";
 import { createModulePreferences } from "./core/preferences.js";
@@ -24,6 +29,7 @@ import { createMarksShopModule } from "./modules/marks-shop/index.js";
 import { shopText } from "./modules/marks-shop/dom.js";
 
 const preferences = createModulePreferences({ defaults: { "disable-pokemon-hover": false, "buff-strip": true, "menu-bar": true, inventory: true, chat: true, hunts: true, team: true, "team-hud": true, "team-presets": true, "marks-shop": true, "auto-helper": true, storage: true, trade: true } });
+const designSystem = createDesignSystemRuntime({ cssText: [tokensCss, baseCss, componentsCss, statesCss].join("\n") });
 const moduleControls = createModuleControls({
   preferences,
   modules: [
@@ -46,6 +52,7 @@ const moduleControls = createModuleControls({
 const app = createBetterUI({
   debug: false,
   preferences,
+  designSystem,
   modules: [
     exampleModule,
     createPokemonHoverModule(),

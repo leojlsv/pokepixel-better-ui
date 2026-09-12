@@ -1,4 +1,59 @@
-/*
- * Do not invent a parallel design system here.
- * Add tokens only after they are measured/derived from the original UI.
- */
+:root {
+  --ppbui-pixel-unit: 2px;
+
+  --ppbui-space-1: 2px;
+  --ppbui-space-2: 4px;
+  --ppbui-space-3: 6px;
+  --ppbui-space-4: 8px;
+  --ppbui-space-5: 12px;
+  --ppbui-space-6: 16px;
+  --ppbui-space-7: 24px;
+
+  --ppbui-bg-0: #0b0e14;
+  --ppbui-bg-1: #141922;
+  --ppbui-bg-2: #1b2230;
+  --ppbui-bg-3: #252e3d;
+  --ppbui-border: #46566c;
+  --ppbui-border-strong: #7387a5;
+
+  --ppbui-text: #f3f6fa;
+  --ppbui-text-muted: #aab4c3;
+  --ppbui-text-subtle: #8f9caf;
+  --ppbui-text-inverse: #0b0e14;
+
+  --ppbui-accent: #f3c969;
+  --ppbui-accent-hi: #ffe3a0;
+  --ppbui-accent-low: #c99a3a;
+  --ppbui-focus: #70d6ff;
+
+  --ppbui-success: #72d572;
+  --ppbui-warning: #f0b84b;
+  --ppbui-danger: #f06a6a;
+  --ppbui-info: #6eaeff;
+
+  --ppbui-font-body: system-ui, "Segoe UI", Arial, sans-serif;
+  --ppbui-font-data: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --ppbui-font-size-title: 16px;
+  --ppbui-font-size-section: 13px;
+  --ppbui-font-size-body: 13px;
+  --ppbui-font-size-secondary: 12px;
+  --ppbui-font-size-meta: 11px;
+  --ppbui-line-height-tight: 1.25;
+  --ppbui-line-height-body: 1.35;
+  --ppbui-line-height-meta: 1.3;
+
+  --ppbui-border-width: 2px;
+  --ppbui-separator-width: 1px;
+  --ppbui-radius: 0;
+  --ppbui-radius-badge: 2px;
+  --ppbui-shadow: 2px 2px 0 var(--ppbui-bg-0);
+  --ppbui-shadow-raised: 4px 4px 0 var(--ppbui-bg-0);
+
+  --ppbui-control-height: 32px;
+  --ppbui-action-height: 36px;
+  --ppbui-icon-button-size: 32px;
+  --ppbui-control-padding-x: 8px;
+
+  --ppbui-motion-fast: 100ms;
+  --ppbui-motion-panel: 160ms;
+}

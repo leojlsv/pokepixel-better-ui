@@ -1,0 +1,100 @@
+.ppbui-button:hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--ppbui-bg-3);
+}
+
+.ppbui-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--ppbui-accent-hi);
+}
+
+.ppbui-button--danger:hover:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--ppbui-danger);
+}
+
+.ppbui-input:hover:not(:disabled),
+.ppbui-select:hover:not(:disabled) {
+  border-color: var(--ppbui-border-strong);
+}
+
+.ppbui-button:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--ppbui-bg-0);
+  box-shadow: inset var(--ppbui-pixel-unit) var(--ppbui-pixel-unit) 0 var(--ppbui-bg-0);
+}
+
+.ppbui-button--primary:active:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--ppbui-accent);
+}
+
+.ppbui-button--danger:active:not(:disabled):not([aria-disabled="true"]) {
+  border-color: var(--ppbui-danger);
+}
+
+.ppbui-button[aria-pressed="true"],
+.ppbui-button[aria-current="true"],
+.ppbui-button.ppbui-is-selected {
+  border-color: var(--ppbui-accent);
+  background: var(--ppbui-bg-3);
+  color: var(--ppbui-text);
+}
+
+.ppbui-button:focus-visible,
+.ppbui-input:focus-visible,
+.ppbui-select:focus-visible,
+.ppbui-dialog:focus-visible,
+.ppbui-focusable:focus-visible {
+  outline: var(--ppbui-border-width) solid var(--ppbui-focus);
+  outline-offset: var(--ppbui-pixel-unit);
+}
+
+.ppbui-button:disabled,
+.ppbui-button[aria-disabled="true"],
+.ppbui-input:disabled,
+.ppbui-select:disabled {
+  cursor: default;
+  border-color: var(--ppbui-border);
+  background: var(--ppbui-bg-1);
+  color: var(--ppbui-text-subtle);
+  box-shadow: none;
+}
+
+.ppbui-button[aria-busy="true"],
+.ppbui-is-pending {
+  cursor: progress;
+}
+
+.ppbui-is-error,
+.ppbui-input[aria-invalid="true"],
+.ppbui-select[aria-invalid="true"],
+.ppbui-field.ppbui-is-error .ppbui-input,
+.ppbui-field.ppbui-is-error .ppbui-select {
+  border-color: var(--ppbui-danger);
+}
+
+.ppbui-is-success {
+  border-color: var(--ppbui-success);
+}
+
+.ppbui-is-warning {
+  border-color: var(--ppbui-warning);
+}
+
+@media (pointer: coarse) {
+  .ppbui-button,
+  .ppbui-input,
+  .ppbui-select {
+    min-height: 40px;
+  }
+
+  .ppbui-icon-button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ppbui-motion {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

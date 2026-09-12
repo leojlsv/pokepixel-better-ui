@@ -2,7 +2,7 @@ import { createDomObserver } from "./observer.js";
 import { createLifecycle } from "./lifecycle.js";
 import { createLogger } from "./logger.js";
 
-export function createBetterUI({ modules = [], debug = false, preferences } = {}) {
+export function createBetterUI({ modules = [], debug = false, preferences, designSystem } = {}) {
   const lifecycle = createLifecycle();
   const logger = createLogger("core", debug);
   const mountKeys = new Map();
@@ -42,6 +42,7 @@ export function createBetterUI({ modules = [], debug = false, preferences } = {}
         throw new Error("document.body is not available");
       }
 
+      designSystem?.mount?.();
       reconcile();
       if (!unsubscribe && preferences) unsubscribe = preferences.subscribe(reconcile);
       observer.start(document.body);
@@ -53,7 +54,11 @@ export function createBetterUI({ modules = [], debug = false, preferences } = {}
       unsubscribe?.();
       unsubscribe = null;
       mountKeys.clear();
-      lifecycle.destroy();
+      try {
+        lifecycle.destroy();
+      } finally {
+        designSystem?.unmount?.();
+      }
       logger.debug("stopped");
     },
 

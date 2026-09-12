@@ -1,4 +1,28 @@
-/*
- * Intentionally minimal.
- * Do not normalize, reset or globally restyle the host application.
- */
+.ppbui-surface,
+.ppbui-card,
+.ppbui-button,
+.ppbui-input,
+.ppbui-select,
+.ppbui-dialog,
+.ppbui-toolbar,
+.ppbui-badge,
+.ppbui-progress {
+  box-sizing: border-box;
+}
+
+.ppbui-surface,
+.ppbui-dialog {
+  color: var(--ppbui-text);
+  font-family: var(--ppbui-font-body);
+  font-size: var(--ppbui-font-size-body);
+  line-height: var(--ppbui-line-height-body);
+}
+
+.ppbui-data {
+  font-family: var(--ppbui-font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.ppbui-pixel-sprite {
+  image-rendering: pixelated;
+}

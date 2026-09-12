@@ -24,6 +24,7 @@ const options = {
   format: "iife",
   platform: "browser",
   target: ["es2020"],
+  loader: { ".css": "text" },
   banner: {
     js: metadata.trim(),
   },
