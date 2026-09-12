@@ -149,8 +149,11 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
   restored during cleanup.
 - `HUNT ATLAS` is the module's display-title exception to MASTER body typography:
   use a self-contained bitmap-like monospace stack (`Lucida Console` first),
-  14px/700, 1px tracking, no kerning/ligatures and a 2px hard shadow. Do not apply
-  this display treatment to body text, controls or the titlebar close button.
+  14px/700, 1px tracking, no kerning/ligatures and a 2px hard shadow. Apply this
+  directly to the native element that owns the visible title text with authoritative
+  `!important` inline typography while mounted; restore its exact original `style`
+  and class state during cleanup. Do not apply this display treatment to body text,
+  controls or the titlebar close button.
 - Atlas/Finder supporting rails: `bg-2` only where separation from the shell is
   needed; avoid equal hard-shadow elevation on every group.
 - Map frame: `bg-0` boundary with a crisp 2px structural edge.

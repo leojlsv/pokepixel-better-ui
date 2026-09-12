@@ -18,8 +18,18 @@ export function mountHunts(root) {
   const doc=root.ownerDocument;
   const titlebar=root.querySelector('.pokeidle-panel__titlebar');
   const titleNode=findTitleText(titlebar,doc.defaultView.Node);
-  const nativeTitle=titleNode?.textContent??null;
+  const nativeTitle=titleNode?.textContent??null,titleOwner=titleNode?.parentElement||null;
+  const nativeTitleStyle=titleOwner?.getAttribute('style')??null,hadTitleClass=titleOwner?.classList.contains('ppbui-hunts-title')||false;
   if(titleNode)titleNode.textContent='HUNT ATLAS';
+  if(titleOwner){
+    titleOwner.classList.add('ppbui-hunts-title');
+    titleOwner.style.setProperty('font','700 14px/1 "Lucida Console", Monaco, "Courier New", monospace','important');
+    titleOwner.style.setProperty('font-kerning','none','important');
+    titleOwner.style.setProperty('font-variant-ligatures','none','important');
+    titleOwner.style.setProperty('letter-spacing','1px','important');
+    titleOwner.style.setProperty('text-transform','uppercase','important');
+    titleOwner.style.setProperty('text-shadow','var(--ppbui-pixel-unit) var(--ppbui-pixel-unit) 0 var(--ppbui-bg-0)','important');
+  }
   root.classList.add('ppbui-hunts-enhanced');
   const focusTarget=parts(root).body;
   const focusTargetTabIndex=focusTarget?.getAttribute('tabindex');
@@ -310,6 +320,10 @@ export function mountHunts(root) {
     root.querySelectorAll('.ppbui-hunts-selected').forEach(node=>node.classList.remove('ppbui-hunts-selected'));root.querySelectorAll('.ppbui-hunts-located').forEach(node=>node.classList.remove('ppbui-hunts-located'));root.querySelectorAll('.ppbui-hunts-dimmed').forEach(node=>node.classList.remove('ppbui-hunts-dimmed'));
     restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');
     if(titleNode?.isConnected&&nativeTitle!==null)titleNode.textContent=nativeTitle;
+    if(titleOwner){
+      if(nativeTitleStyle===null)titleOwner.removeAttribute('style');else titleOwner.setAttribute('style',nativeTitleStyle);
+      if(!hadTitleClass)titleOwner.classList.remove('ppbui-hunts-title');
+    }
     if(focusTarget){if(focusTargetTabIndex===null)focusTarget.removeAttribute('tabindex');else focusTarget.setAttribute('tabindex',focusTargetTabIndex);}
   }};
 }

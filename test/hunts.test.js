@@ -25,7 +25,7 @@ const markup=()=>`
   </div></div>`;
 
 function setup(t){
-  const dom=new JSDOM(`<div class="hunt-window"><div class="pokeidle-panel__titlebar">Hunt Map<button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div></div>`,{url:'https://test.local',pretendToBeVisual:true});
+  const dom=new JSDOM(`<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunt Map</span><button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div></div>`,{url:'https://test.local',pretendToBeVisual:true});
   const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
   let nativeClicks=0,starts=0,hovers=0,focusInfos=0,saves=0,cleanups=0,setups=0,modeClicks=0;
   const zones=[
@@ -161,12 +161,16 @@ test('Hunt Atlas Finder rail keeps native query, element and count nodes intact 
 
 test('Hunt Atlas structure and complete state language consume scoped Better UI primitives',t=>{
   const s=setup(t),css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
-  assert.equal(s.root.querySelector('.pokeidle-panel__titlebar').childNodes[0].textContent,'HUNT ATLAS');
+  const title=s.root.querySelector('.pokeidle-panel__title');
+  assert.equal(title.textContent,'HUNT ATLAS');
+  assert.equal(title.classList.contains('ppbui-hunts-title'),true);
+  assert.equal(title.style.getPropertyPriority('font'),'important');
+  assert.match(title.style.getPropertyValue('font'),/Lucida Console/);
   assert.match(css,/--ppbui-bg-1/);assert.match(css,/--ppbui-accent/);assert.match(css,/--ppbui-focus/);
   assert.ok(s.root.querySelector('.hunt-world-header').classList.contains('ppbui-hunts-atlas-rail'));
   assert.match(css,/\.ppbui-hunts-enhanced\s*\{[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]+box-shadow:var\(--ppbui-shadow-raised\)/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-2\) !important;/s);
-  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+font:700 14px\/1 "Lucida Console", Monaco, "Courier New", monospace !important;[^}]+font-kerning:none;[^}]+font-variant-ligatures:none;[^}]+letter-spacing:1px;[^}]+text-transform:uppercase;[^}]+text-shadow:var\(--ppbui-pixel-unit\) var\(--ppbui-pixel-unit\) 0 var\(--ppbui-bg-0\)/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.ppbui-hunts-title\s*\{[^}]+font:700 14px\/1 "Lucida Console", Monaco, "Courier New", monospace !important;[^}]+font-kerning:none !important;[^}]+font-variant-ligatures:none !important;[^}]+letter-spacing:1px !important;[^}]+text-transform:uppercase !important;[^}]+text-shadow:var\(--ppbui-pixel-unit\) var\(--ppbui-pixel-unit\) 0 var\(--ppbui-bg-0\) !important/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{/);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+appearance:none/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+font-family:var\(--ppbui-font-body\) !important;[^}]+letter-spacing:normal;[^}]+text-shadow:none;/s);
@@ -225,10 +229,14 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
 });
 
 test('cleanup restores the native Hunt Map title exactly',t=>{
-  const s=setup(t),titlebar=s.root.querySelector('.pokeidle-panel__titlebar');
-  assert.equal(titlebar.childNodes[0].textContent,'HUNT ATLAS');
+  const s=setup(t),title=s.root.querySelector('.pokeidle-panel__title'),nativeStyle='font:600 14px/1.2 Arial,sans-serif !important';
+  assert.equal(title.textContent,'HUNT ATLAS');
+  assert.equal(title.classList.contains('ppbui-hunts-title'),true);
+  assert.notEqual(title.getAttribute('style'),nativeStyle);
   s.c.cleanup();
-  assert.equal(titlebar.childNodes[0].textContent,'Hunt Map');
+  assert.equal(title.textContent,'Hunt Map');
+  assert.equal(title.getAttribute('style'),nativeStyle);
+  assert.equal(title.classList.contains('ppbui-hunts-title'),false);
   assert.equal(s.root.outerHTML,s.before);
 });
 
@@ -458,7 +466,7 @@ test('native window replacement remounts cleanly without duplicate Better UI sur
   const {createBetterUI}=await import('../src/core/bootstrap.js');const {createHuntsModule}=await import('../src/modules/hunts/index.js');const s=setup(t);s.c.cleanup();const previous=new Map();
   for(const key of ['document','MutationObserver','requestAnimationFrame','cancelAnimationFrame']){previous.set(key,Object.getOwnPropertyDescriptor(globalThis,key));Object.defineProperty(globalThis,key,{configurable:true,value:typeof s.dom.window[key]==='function'&&key!=='MutationObserver'?s.dom.window[key].bind(s.dom.window):s.dom.window[key]});}
   let enabled=true;const app=createBetterUI({modules:[createHuntsModule()],preferences:{isEnabled:()=>enabled,subscribe:()=>()=>{}}});t.after(()=>{app.stop();for(const [key,d]of previous)if(d)Object.defineProperty(globalThis,key,d);else delete globalThis[key];});app.start();
-  const replacement=s.doc.createElement('div');replacement.className='hunt-window';replacement.innerHTML=`<div class="pokeidle-panel__titlebar">Hunt Map<button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div>`;s.root.replaceWith(replacement);s.scene._panel.body=replacement.querySelector('.pokeidle-panel__body');
+  const replacement=s.doc.createElement('div');replacement.className='hunt-window';replacement.innerHTML=`<div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunt Map</span><button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div>`;s.root.replaceWith(replacement);s.scene._panel.body=replacement.querySelector('.pokeidle-panel__body');
   await new Promise(resolve=>s.dom.window.setTimeout(resolve,50));assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);assert.equal(replacement.querySelectorAll('.ppbui-hunts-atlas-workspace').length,1);
   enabled=false;app.reconcile();assert.equal(replacement.querySelector('[data-ppbui-module]'),null);enabled=true;app.reconcile();assert.equal(replacement.querySelectorAll('.ppbui-hunts-results').length,1);
 });
