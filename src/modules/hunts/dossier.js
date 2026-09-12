@@ -83,18 +83,18 @@ function renderDrops(doc,scene,zone,copy) {
 }
 
 export function createHuntDossier(doc,{onClose,onHunt}) {
-  const aside=doc.createElement('aside');aside.className='hunt-world-drop-tooltip ppbui-hunts-dossier';aside.hidden=true;aside.dataset.ppbuiModule='hunts';
+  const aside=doc.createElement('aside');aside.className='ppbui-dialog ppbui-focusable ppbui-hunts-dossier';aside.hidden=true;aside.dataset.ppbuiModule='hunts';
   aside.tabIndex=-1;
   const header=doc.createElement('div');header.className='ppbui-hunts-dossier__header';
   const heading=doc.createElement('div'), title=doc.createElement('strong'), level=doc.createElement('small');
   title.className='hunt-drop-tooltip__title';title.id=`ppbui-hunts-dossier-title-${Math.random().toString(36).slice(2)}`;aside.setAttribute('aria-labelledby',title.id);heading.append(title,level);
-  const close=doc.createElement('button');close.type='button';close.className='pokeidle-btn ppbui-hunts-dossier__close';close.textContent='×';
+  const close=doc.createElement('button');close.type='button';close.className='ppbui-button ppbui-button--ghost ppbui-icon-button ppbui-hunts-dossier__close';close.textContent='×';
   header.append(heading,close);
-  const body=doc.createElement('div');body.className='ppbui-hunts-dossier__body';
+  const body=doc.createElement('div');body.className='ppbui-scroll ppbui-hunts-dossier__body';
   const footer=doc.createElement('div');footer.className='ppbui-hunts-dossier__footer';
   const presentationLabel=doc.createElement('div');presentationLabel.className='ppbui-hunts-section-title ppbui-hunts-dossier__presentation-label';
   const modeSlot=doc.createElement('div');modeSlot.className='ppbui-hunts-dossier__mode';
-  const hunt=doc.createElement('button');hunt.type='button';hunt.className='pokeidle-btn pokeidle-btn--primary ppbui-hunts-dossier__hunt';
+  const hunt=doc.createElement('button');hunt.type='button';hunt.className='ppbui-button ppbui-button--primary ppbui-hunts-dossier__hunt';
   footer.append(presentationLabel,modeSlot,hunt);aside.append(header,body,footer);
   close.addEventListener('click',()=>onClose?.());hunt.addEventListener('click',()=>onHunt?.());
   let key='';

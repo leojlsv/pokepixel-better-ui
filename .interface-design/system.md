@@ -55,6 +55,10 @@ Final TOP and BOTTOM docking were validated in game by the user after the native
 
 ## Hunts — dossier revision (implemented; pending in-game validation)
 
+> Visual direction in this section is superseded by the approved
+> `design-system/pokepixel-better-ui/pages/hunts.md`. The behavioral/integration
+> constraints below remain historical implementation evidence.
+
 - Separate selection from gameplay. Desktop marker click/keyboard activation selects the hunt and opens a right-side dossier; only the explicit dossier Hunt action may invoke native `startHunt()`.
 - Suppress the native desktop hover/focus information tooltip while this module is active. Reuse its proven information model inside the persistent dossier: name/level, Elements, Weaknesses, Resistances, Immunities and valued Drops.
 - Keep the dossier inside the existing Hunt window. Move the native viewport intact once into a stable, reversible workspace; the workspace becomes two-column only while the dossier is open. Do not resize the Hunt window or clone the map/markers.

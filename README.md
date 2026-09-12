@@ -77,6 +77,10 @@ Keep, Refine or Redesign. Their functional behavior and historical user
 validations remain evidence; a future visual migration reopens validation only
 for the changed delivery.
 
+The shared pixel-art runtime now provides namespaced Better UI tokens and opt-in
+surface/button/field/state primitives without globally restyling the host game.
+Hunts is the first module migrated as a full `reviewed / redesign` pilot.
+
 The menu-bar module implements the approved organization of up to 33 native
 actions, including Premium Shop, Pack and Gacha under Shop. It reuses action
 nodes, native groups and styling, preserves conditional access, and restores
@@ -110,12 +114,14 @@ It preserves messages, drafts and private tabs, and can be disabled independentl
 in Better UI. Only fixed-channel keys are persisted. See
 `docs/modules/chat-plan.md` for verification. The user has validated and approved the implemented Chat scope; no validation remains pending.
 
-Hunts (Map) consolidates the native search/level controls, target selection and
-element filters into a compact reversible control deck above the map, with Locate
-on map and a right-side dossier. Marker click now selects/inspects
-instead of starting gameplay; the Hunt action is explicit inside the dossier,
-which also owns the native Classic/Platform selector. The revision awaits final
-in-game validation. See `docs/modules/hunts.md`.
+Hunts (Map) is the first full pixel-art pilot. World navigation, a two-group
+Filters/Target command deck, the map workspace and the right-side dossier now
+share the Better UI design system while retaining the proven native map/action
+integration. Marker click selects/inspects instead of starting gameplay; the
+Hunt action is explicit inside the dossier, which also owns the original
+Classic/Platform selector. Automated validation is complete; user in-game
+validation is pending. See `docs/modules/hunts.md` and
+`design-system/pokepixel-better-ui/pages/hunts.md`.
 
 Team adds compact level/HP tracking to the six native slots
 and brings the original action block beside

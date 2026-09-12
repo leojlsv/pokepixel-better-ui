@@ -69,9 +69,9 @@ overrides under `design-system/pokepixel-better-ui/pages/`. UI/UX work must also
 pass the review process in `.skills/ui_ux_pro.md`.
 
 During the migration, legacy modules may continue injecting module-local styles.
-After the design-system candidate is approved, shared Better UI tokens and
-component appearance will move to one cross-module style runtime, while dynamic
-integration geometry and domain/game state remain owned by their modules.
+The approved shared Better UI tokens and component primitives are injected once
+through the cross-module design-system runtime; dynamic integration geometry and
+domain/game state remain owned by their modules.
 
 Global Better UI styling must be opt-in and namespaced. It must not introduce a
 host-wide reset or globally rewrite game `--ui-*`, `--quality-*` or equivalent

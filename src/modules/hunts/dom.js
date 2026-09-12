@@ -7,15 +7,15 @@ export const selectors = {
   marker: '.hunt-map-marker[data-zone-index]', label: '.hunt-map-marker__name',
 };
 const texts = {
-  pt: ['Hunts (Map)', 'Encontrar hunts nos resultados dos filtros', 'Todos', 'Localizar no mapa', 'Reset', 'Nenhuma hunt corresponde aos filtros neste mundo.', 'Selecione uma hunt nos resultados.', 'Hunt localizada.', 'Não foi possível localizar esta hunt. Use o mapa nativo.'],
-  en: ['Hunts (Map)', 'Find hunts in filtered results', 'All', 'Locate on map', 'Reset', 'No hunts match the filters in this world.', 'Select a hunt from the results.', 'Hunt located.', 'Unable to locate this hunt. Use the native map.'],
-  es: ['Hunts (Map)', 'Encontrar hunts en los resultados filtrados', 'Todos', 'Localizar en el mapa', 'Reset', 'Ninguna hunt coincide con los filtros en este mundo.', 'Selecciona una hunt en los resultados.', 'Hunt localizada.', 'No se pudo localizar esta hunt. Usa el mapa original.'],
-  zh: ['Hunts (Map)', '在筛选结果中查找狩猎地点', '全部', '在地图上定位', '重置', '当前世界没有符合筛选条件的狩猎地点。', '请从结果中选择狩猎地点。', '已定位。', '无法定位，请使用原生地图。'],
+  pt: ['Hunts (Map)', 'Encontrar hunts nos resultados dos filtros', 'Todos', 'Localizar no mapa', 'Reset', 'Nenhuma hunt corresponde aos filtros neste mundo.', 'Selecione uma hunt nos resultados.', 'Hunt localizada.', 'Não foi possível localizar esta hunt. Use o mapa nativo.', 'Filtros', 'Alvo'],
+  en: ['Hunts (Map)', 'Find hunts in filtered results', 'All', 'Locate on map', 'Reset', 'No hunts match the filters in this world.', 'Select a hunt from the results.', 'Hunt located.', 'Unable to locate this hunt. Use the native map.', 'Filters', 'Target'],
+  es: ['Hunts (Map)', 'Encontrar hunts en los resultados filtrados', 'Todos', 'Localizar en el mapa', 'Reset', 'Ninguna hunt coincide con los filtros en este mundo.', 'Selecciona una hunt en los resultados.', 'Hunt localizada.', 'No se pudo localizar esta hunt. Usa el mapa original.', 'Filtros', 'Objetivo'],
+  zh: ['Hunts (Map)', '在筛选结果中查找狩猎地点', '全部', '在地图上定位', '重置', '当前世界没有符合筛选条件的狩猎地点。', '请从结果中选择狩猎地点。', '已定位。', '无法定位，请使用原生地图。', '筛选', '目标'],
 };
 export function huntsText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || 'pt';
-  const [name, description, results, locate, reset, empty, choose, located, unavailable] = texts[lang.split(/[-_]/)[0]] || texts.en;
-  return {name, description, results, locate, reset, empty, choose, located, unavailable};
+  const [name, description, results, locate, reset, empty, choose, located, unavailable, filters, target] = texts[lang.split(/[-_]/)[0]] || texts.en;
+  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target};
 }
 export const findHunts = () => document.querySelector(selectors.root);
 export function parts(root) {

@@ -4,6 +4,15 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Added the first shared pixel-art runtime: namespaced `--ppbui-*` tokens,
+  opt-in surface/button/field/state primitives, singleton lifecycle injection and
+  CSS-as-text bundling inside the userscript. Hunts is the first full consumer:
+  its desktop window now uses a pixel-art world-navigation header, a two-group
+  Filters/Target command deck, a framed map workspace and a structured intel
+  dossier while preserving marker selection, Locate, explicit Hunt, native
+  presentation control, zoom/focal state and reversible cleanup. Automated
+  validation is complete; user in-game validation remains pending.
+
 - Changed the project-wide UI direction from a vanilla/native visual baseline to
   an owned pixel-art design system. Native game UI remains authoritative for
   functional state, rules and safe integrations, but no longer constrains Better
@@ -14,13 +23,13 @@ All notable project changes are recorded in this file.
 - Reworked desktop Hunts interaction around explicit selection: native marker
   click/keyboard activation now opens a right-side dossier instead of starting a
   Hunt, and hover/focus no longer opens the floating information tooltip while
-  Better UI is active. The dossier reuses native visual tokens for Elements,
+  Better UI is active. The dossier exposes Elements,
   exact Weakness/Resistance/Immunity multipliers and valued Drops; Locate opens
   the same dossier without changing zoom. The original Classic/Platform toggle
   node is moved intact into the dossier footer and an explicit Hunt button calls
   the native `_selectedIndex` + `startHunt()` flow. Refresh, filtering, world
   changes, cleanup and full window replacement are covered by regressions. The
-  window controls are now grouped into a compact reversible deck using the native
+  window controls are grouped through reversible wrappers using the native
   toolbar, area counter and element filters; empty notices no longer reserve
   space. Native refresh while the dossier is open now preserves relative zoom and
   map center instead of reinterpreting the state against a transient full-width

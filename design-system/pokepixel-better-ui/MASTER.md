@@ -11,10 +11,10 @@ silently redefine global tokens. Draft page files have no design authority.
 
 ## 1. Review provenance
 
-This design candidate follows the mandatory `.skills/ui_ux_pro.md` workflow.
+This approved design system follows the mandatory `.skills/ui_ux_pro.md` workflow.
 The skill's referenced searchable `search.py`, `quick-reference.md` and
 `pro-rules.md` resources are not available in this workspace and no
-`CLAUDE_PLUGIN_ROOT` is configured. Therefore this draft uses the skill's
+`CLAUDE_PLUGIN_ROOT` is configured. Therefore this version uses the skill's
 documented fallback priorities only; it does **not** claim a generated palette,
 style match or catalog search result.
 
@@ -442,7 +442,7 @@ Motion exists to explain state change, not decorate the interface.
 
 ## 14. Better UI CSS contract
 
-Runtime implementation, once this MASTER is approved, must follow these rules:
+Runtime implementation follows these rules:
 
 - all global design tokens are `--ppbui-*`;
 - Better UI global styles are opt-in through `ppbui-*` classes or
@@ -467,7 +467,7 @@ the mandatory UI/UX review:
 - **Redesign:** layout/interaction hierarchy is reworked while preserving the
   agreed functional contract.
 
-Hunts is the planned first full pilot after this MASTER is approved. Its current
+Hunts is the first full pilot for this approved MASTER. Its current
 functional work (selection vs gameplay, Locate, dossier data, explicit Hunt,
 stable identity, map state preservation and lifecycle) is an integration asset,
 not a requirement to keep its present visual composition.
