@@ -61,6 +61,22 @@ Each module owns:
 A module must not depend on DOM created by another feature unless that
 dependency is explicitly modeled.
 
+## Visual architecture
+
+The visual source of truth is
+`design-system/pokepixel-better-ui/MASTER.md`, with optional module-specific
+overrides under `design-system/pokepixel-better-ui/pages/`. UI/UX work must also
+pass the review process in `.skills/ui_ux_pro.md`.
+
+During the migration, legacy modules may continue injecting module-local styles.
+After the design-system candidate is approved, shared Better UI tokens and
+component appearance will move to one cross-module style runtime, while dynamic
+integration geometry and domain/game state remain owned by their modules.
+
+Global Better UI styling must be opt-in and namespaced. It must not introduce a
+host-wide reset or globally rewrite game `--ui-*`, `--quality-*` or equivalent
+tokens.
+
 ## Ownership markers
 
 Better UI-created nodes should use:

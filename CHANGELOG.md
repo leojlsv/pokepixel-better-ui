@@ -4,6 +4,13 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Changed the project-wide UI direction from a vanilla/native visual baseline to
+  an owned pixel-art design system. Native game UI remains authoritative for
+  functional state, rules and safe integrations, but no longer constrains Better
+  UI styling. Added mandatory `.skills/ui_ux_pro.md` review governance and made
+  live in-game interface validation explicitly user-only. Existing modules remain
+  legacy visual implementations until individually reviewed/migrated.
+
 - Reworked desktop Hunts interaction around explicit selection: native marker
   click/keyboard activation now opens a right-side dossier instead of starting a
   Hunt, and hover/focus no longer opens the floating information tooltip while

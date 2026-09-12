@@ -28,4 +28,13 @@ In game: search a Pokémon beyond page one, combine search with rarity/element f
 
 Native sources: https://pokepixel.nietore.com/play/js/plugins/CreatureStorageScene.js and the game's inventory-slots.css / pokecentro-filters.css. The source inspection confirmed that unfiltered pagination used warehouse capacity rather than occupied count.
 
-The approved direction is saved in `.interface-design/system.md`. Both columns reserve 48px for the selected action/idle hint. Capacity stays in the header; result counts sit beside search. Empty sources and no matches have distinct messages. Pagination clears selection only on the selected side. Refresh preserves scroll and control focus (falling back to search when a control becomes disabled). The redundant management banner is hidden reversibly.
+The historical approved Storage direction is preserved in the deprecated
+`.interface-design/system.md` during the pixel-art migration. Its behavioral and
+user-validation record remains evidence; current project-wide visual authority
+is `design-system/pokepixel-better-ui/MASTER.md`. In the validated legacy
+implementation, both columns reserve 48px for the selected action/idle hint.
+Capacity stays in the header; result counts sit beside search. Empty sources and
+no matches have distinct messages. Pagination clears selection only on the
+selected side. Refresh preserves scroll and control focus (falling back to search
+when a control becomes disabled). The redundant management banner is hidden
+reversibly.

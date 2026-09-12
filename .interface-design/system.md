@@ -1,6 +1,11 @@
-# PokePixel Better UI — interface direction
+# PokePixel Better UI — legacy interface decisions
 
-Native enhancement only. Preserve game fonts, tokens, colors, rounding, window dimensions and responsive rules. Reuse native nodes and action listeners.
+> **Deprecated as a source of visual truth.** The project moved from a
+> vanilla/native visual baseline to its own pixel-art design system. Global
+> visual authority now lives in `design-system/pokepixel-better-ui/MASTER.md`.
+> This file temporarily preserves historical module decisions during migration.
+> Behavioral constraints and user-validation records remain evidence; visual
+> clauses that require native styling no longer govern new work.
 
 ## Storage
 

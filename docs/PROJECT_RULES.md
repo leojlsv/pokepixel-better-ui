@@ -2,48 +2,84 @@
 
 ## Product definition
 
-PokePixel Idle Better UI enhances the existing interface without replacing its
-identity.
+PokePixel Idle Better UI is an independent UI/UX layer for PokePixel Idle with a
+project-wide pixel-art design system. It may redesign game surfaces while keeping
+the underlying game rules, permissions and authoritative state intact.
 
-The original PokePixel Idle UI is not inspiration. It is the baseline.
+The native client is a functional integration target, not the visual source of
+truth.
 
 ## Decision order
 
-When implementing a feature, prefer:
+For a feature or redesign, decide in this order:
 
-1. Reuse existing behavior and styling.
-2. Move/regroup existing elements.
-3. Add a small native-looking extension.
-4. Recreate a component only when reuse is unsafe or impossible.
+1. explicit user requirement;
+2. gameplay/safety and architecture invariants in `AGENTS.md`, this file and
+   `docs/ARCHITECTURE.md`;
+3. the global pixel-art design system, specialized by an approved module page
+   override when one exists;
+4. module functional contract;
+5. safest integration with the current game implementation.
 
-## Feature categories
+`.skills/ui_ux_pro.md` is mandatory review methodology throughout the process; it
+does not become a second visual source of truth.
 
-Every feature should primarily be one of:
+Reuse native behavior when it reduces risk. Reuse native styling only when it is
+also the intended Better UI design.
 
-- **Expose** — show useful existing information.
-- **Rearrange** — reposition or regroup.
-- **Reduce** — remove unnecessary interaction steps.
-- **Extend** — add a QoL capability.
+## Design governance
 
-Changes categorized mainly as **Redesign** require explicit approval.
+- `design-system/pokepixel-better-ui/MASTER.md` is the global visual source of
+  truth.
+- `design-system/pokepixel-better-ui/pages/<module>.md` may override MASTER only
+  for that module, must state why, and has authority only when its status is
+  explicitly `approved`.
+- `.skills/ui_ux_pro.md` is mandatory for UI/UX analysis and review. It provides
+  recommendations; adopted decisions must fit the product context.
+- Legacy module docs may describe native-looking implementations historically.
+  They do not override current design governance.
+- A module that has not yet migrated may remain a legacy visual implementation;
+  migration is progressive, not an automatic whole-project rewrite.
 
-## Safety
+## Functional safety
 
 - Do not automate gameplay.
 - Do not silently change game actions.
-- Do not destroy original DOM state without a reversible cleanup path.
-- Do not rely on unstable generated class names without documenting the risk.
-- Do not create parallel copies of game state when the original state can be
-  read safely.
+- Preserve server/client eligibility, permissions and authoritative state.
+- Do not destroy original DOM/state without a safe lifecycle/cleanup strategy
+  when reversibility is part of the module contract.
+- Do not rely on unstable generated selectors without documenting the risk.
+- Do not duplicate game state when it can be read safely from the source.
+- Do not intercept or modify network traffic without explicit feature scope and
+  approval.
 
-## Review gate
+## Styling safety
 
-A feature is ready only when:
+- Better UI tokens use the `--ppbui-*` namespace.
+- Better UI-owned selectors use `ppbui-*` / `data-ppbui-*` ownership.
+- Do not globally redefine host game tokens or use broad element resets.
+- Keep dynamic gameplay/integration values local when they are not reusable
+  design decisions.
+- Shared appearance should converge on the design system rather than being
+  duplicated independently across modules.
 
-- original behavior still works;
-- original visual identity is preserved;
-- SPA rerenders do not duplicate UI;
-- mounting twice does not duplicate UI;
-- cleanup is possible where applicable;
-- selectors are localized;
-- no unrelated global CSS is introduced.
+## Review gates
+
+### Automated-ready
+
+A UI feature may be handed to the user when:
+
+- behavior covered by the task still works in automated/synthetic validation;
+- SPA rerenders do not duplicate the UI;
+- repeated reconciliation is safe;
+- cleanup/lifecycle behavior is covered where applicable;
+- keyboard/focus/ARIA behavior is covered where applicable;
+- styling is scoped and conforms to the design system or documented override;
+- relevant `.skills/ui_ux_pro.md` checks were considered;
+- tests/build/static checks pass.
+
+### User-validated
+
+Only the user may perform and approve in-game interface validation. The agent
+must not operate the game/browser/Tampermonkey for this purpose. Until explicit
+user approval is received, documentation must say `pending in-game validation`.

@@ -1,28 +1,28 @@
 # PokePixel Idle Better UI
 
-Vanilla+ UI/QoL enhancement layer for PokePixel Idle.
+Pixel-art UI/UX and QoL layer for PokePixel Idle.
 
 ## Principle
 
-The player should notice that the interface became better before noticing that
-its design changed.
-
-The original game UI is the visual source of truth.
+Better UI owns a coherent pixel-art interface system while preserving the game
+rules, authoritative state and safe native integrations underneath it. The
+original client is a functional reference, not the visual source of truth.
 
 ## Scope
 
 - QoL improvements
+- interface redesign and restructuring
 - rearrangement of existing controls
 - additional information
 - search/filter helpers
 - reduced interaction friction
-- native-looking extensions
+- accessible, consistent pixel-art components
 
 Not in scope:
 
-- visual redesign
 - gameplay automation
-- replacement of game assets
+- bypassing game/server restrictions
+- unrelated replacement of game logic or state
 
 ## Development
 
@@ -61,10 +61,21 @@ dist/pokepixel-better-ui.user.js
 See:
 
 - `docs/PROJECT_RULES.md`
-- `docs/VISUAL_FIDELITY.md`
+- `docs/DESIGN_GOVERNANCE.md`
 - `docs/ARCHITECTURE.md`
+- `design-system/pokepixel-better-ui/MASTER.md`
+
+Every UI/UX change must also pass the review process in `.skills/ui_ux_pro.md`.
+In-game interface validation is performed exclusively by the user; automated
+tests/builds do not count as an in-game green light.
 
 ## Status
+
+Existing modules were built under the previous native/vanilla visual policy and
+remain legacy visual implementations until they are individually reviewed as
+Keep, Refine or Redesign. Their functional behavior and historical user
+validations remain evidence; a future visual migration reopens validation only
+for the changed delivery.
 
 The menu-bar module implements the approved organization of up to 33 native
 actions, including Premium Shop, Pack and Gacha under Shop. It reuses action
@@ -101,7 +112,7 @@ in Better UI. Only fixed-channel keys are persisted. See
 
 Hunts (Map) consolidates the native search/level controls, target selection and
 element filters into a compact reversible control deck above the map, with Locate
-on map and a native-looking right-side dossier. Marker click now selects/inspects
+on map and a right-side dossier. Marker click now selects/inspects
 instead of starting gameplay; the Hunt action is explicit inside the dossier,
 which also owns the native Classic/Platform selector. The revision awaits final
 in-game validation. See `docs/modules/hunts.md`.
