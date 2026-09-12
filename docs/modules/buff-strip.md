@@ -6,7 +6,7 @@ Status: implemented on `feature/buff-strip-docked`; automated validation complet
 
 Keep the native buff strip visible and visually integrated with the top toolbar without recreating it. The Better UI module reuses the existing `.pokeidle-buff-strip`, `.pokeidle-buff-list` and `.pokeidle-event-ticker` nodes and does not copy buff state or handlers.
 
-The strip remains in its original DOM parent. Better UI centers it on the current toolbar and turns the native two-row pills into a compact one-line status rail: name, multiplier/effect and timer remain visible on the same row. The rail uses content width capped to the toolbar/viewport, a 22px minimum pill height, top-only rounding, subtle separators, and removes the standalone shadow/backdrop blur so it reads as part of the toolbar rather than as a second floating panel. Native typography, palette, text and state remain unchanged.
+The strip remains in its original DOM parent. Better UI centers it on the current toolbar and turns the native two-row pills into a compact one-line status rail: name, multiplier/effect and timer remain visible on the same row. Docking is adaptive: with the toolbar at the bottom the rail attaches to its upper edge; with the toolbar at the top it flips to the lower edge so it stays inside the viewport. The rail uses content width capped to the toolbar/viewport, a 22px minimum pill height, edge-appropriate rounding, subtle separators, and removes the standalone shadow/backdrop blur so it reads as part of the toolbar rather than as a second floating panel. Native typography, palette, text and state remain unchanged.
 
 ## Lifecycle
 
@@ -16,4 +16,4 @@ Cleanup removes Better UI CSS, markers and custom properties only. The game may 
 
 ## Validation
 
-Automated coverage verifies native-node identity, no reparenting, compact one-line composition, geometry updates on resize, exact preservation of current native inline geometry and mount-key replacement behavior.
+Automated coverage verifies native-node identity, no reparenting, compact one-line composition, automatic above/below docking for bottom/top toolbar positions, geometry updates on resize, exact preservation of current native inline geometry and mount-key replacement behavior.

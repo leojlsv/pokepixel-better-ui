@@ -39,6 +39,7 @@ Trade refinement: minimum width 1000px, offer columns at least 318px, inventory 
 
 - Treat the native buff strip as a Rearrange feature, not a redesign. Reuse `.pokeidle-buff-strip`, `.pokeidle-buff-list` and `.pokeidle-event-ticker` without cloning or recreating buff state.
 - Keep the strip independent from the toolbar DOM lifecycle. Dock it geometrically against the top edge of `.pokeidle-top-toolbar`; do not reparent it into the toolbar.
+- Make the docking adaptive to toolbar placement: use the upper edge when there is room above; when the native Menu Bar is at the top of the viewport, attach the rail to the toolbar's lower edge instead of allowing it to leave the viewport.
 - Use the native strip as a compact one-line status rail: effect name, multiplier/effect and timer stay on the same row. Reuse every native pill and its text; do not shorten or synthesize state in JavaScript.
 - Preserve native typography and palette. Reduce only the standalone-panel chrome needed to merge it with the toolbar: compact padding/min-height, no separate drop shadow/backdrop blur, top-only rounding and subtle native-gold separators between entries.
 - Prefer content width instead of the native fixed strip width and cap it to the toolbar/viewport. Existing overflow/ellipsis remains the fallback when many buffs are active.
