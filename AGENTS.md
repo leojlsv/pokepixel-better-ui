@@ -36,10 +36,13 @@ For every task that changes how an interface looks, feels, moves or is operated:
 3. Separate functional/native constraints from visual choices.
 4. Record reusable product-wide decisions in MASTER; record module-only
    exceptions in the module page override.
-5. Implement with scoped Better UI ownership and preserve game behavior unless
+5. When external visual tooling is useful, follow `docs/DESIGN_TOOLING.md`.
+   Generated concepts/assets are references until explicitly adopted by the
+   user and recorded in MASTER or the approved module page override.
+6. Implement with scoped Better UI ownership and preserve game behavior unless
    the approved feature explicitly changes an interaction.
-6. Run automated/local validation only.
-7. Deliver a build and stop for user-owned in-game validation.
+7. Run automated/local validation only.
+8. Deliver a build and stop for user-owned in-game validation.
 
 If the search data/tools or referenced checklists such as `pro-rules.md` are not
 available, use only the verified guidance present in `.skills/ui_ux_pro.md`,

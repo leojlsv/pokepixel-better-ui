@@ -40,6 +40,34 @@ MASTER/page-override consistency, keyboard/focus/ARIA, contrast, responsive
 behavior, reduced motion, lifecycle/cleanup, regression tests, build and scoped
 CSS ownership. Do not claim the missing checklist was executed.
 
+## External visual tooling
+
+External visual tools are production aids, not sources of truth. SpriteCook may
+be used when a redesign needs a coherent visual concept, bespoke pixel-art assets
+or a reusable UI asset family. Its concepts and generated files remain references
+until the user explicitly adopts the direction and the resulting reusable rules
+are recorded in MASTER or the approved module page override.
+
+For complete windows/systems, establish one coherent UI-kit concept before
+deriving components. For isolated icons, badges, frames, dividers or decorations,
+an isolated asset workflow is sufficient. Do not assemble a screen from unrelated
+generated controls and then treat the result as a design system.
+
+Better UI remains DOM/CSS-first for layout, typography, controls, interaction,
+responsive behavior, focus and accessibility. Raster assets are justified when
+they add visual information or pixel-art character that CSS cannot provide well.
+Do not replace ordinary dynamic controls with raster UI merely because an external
+tool can generate them.
+
+Approved design references belong under
+`design-system/pokepixel-better-ui/references/<module>/`. Production assets that
+ship in the userscript belong in the project's normal asset pipeline. External
+tooling, MCP servers and third-party skill repositories remain outside this
+repository; do not vendor them into `.skills/`.
+
+The operational workflow, asset-manifest contract and fallback behavior are
+defined in `docs/DESIGN_TOOLING.md`.
+
 ## Master + page overrides
 
 `MASTER.md` contains reusable decisions: color roles, type scale, spacing,

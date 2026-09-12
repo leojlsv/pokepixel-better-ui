@@ -36,6 +36,10 @@ also the intended Better UI design.
   explicitly `approved`.
 - `.skills/ui_ux_pro.md` is mandatory for UI/UX analysis and review. It provides
   recommendations; adopted decisions must fit the product context.
+- External visual tools such as SpriteCook may produce concepts, references and
+  assets, but do not become design authorities. Their output has project
+  authority only after explicit user adoption and recording in MASTER or an
+  approved module page override. See `docs/DESIGN_TOOLING.md`.
 - Legacy module docs may describe native-looking implementations historically.
   They do not override current design governance.
 - A module that has not yet migrated may remain a legacy visual implementation;
