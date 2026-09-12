@@ -2,7 +2,8 @@
 
 Status: **reviewed / redesign**. Shared pixel-art migration implemented on
 `refactor/pixel-design-system`; automated validation complete for the module,
-user in-game validation pending.
+user in-game validation partially completed; visual-completion follow-up remains
+open.
 
 Visual authority: `design-system/pokepixel-better-ui/MASTER.md` plus the approved
 `design-system/pokepixel-better-ui/pages/hunts.md` override.
@@ -139,6 +140,48 @@ Focused Hunts coverage verifies:
 
 Focused suite: **28/28 tests**. Full suite: **212/212 tests**. Userscript build:
 **PASS**. Automated checks do not constitute in-game validation.
+
+## Visual follow-up after partial in-game validation
+
+The user reported on 2026-09-12 that the Hunts redesign is only partially
+validated because some objects still do not read as redesigned. Before the next
+implementation batch, the current source baseline is classified as follows.
+
+| Component | Classification | Priority | Source-confirmable reason |
+| --- | --- | --- | --- |
+| World header surface | `MATCH` | — | Uses Better UI surface, border, hard shadow and shared state palette. |
+| World tabs | `REFINE` | P2 | Correct state semantics are present, but the buttons still read as generic individual controls rather than a strongly unified pixel navigation rail. |
+| Zoom utility | `MATCH` | P3 | Scoped state styling and compact grouping are complete; any additional art treatment is optional polish pending user visual confirmation. |
+| Command-deck group surfaces | `REFINE` | P2 | Filters/Target use the same framed hard-shadow elevation as larger surfaces, which can make supporting chrome compete visually with the map. |
+| Search/level/Clear filter row | `REFINE` | P2 | Better UI owns color, geometry and focus, but browser search decorations and number steppers are not explicitly owned and may remain visibly native. |
+| Element filters | `REFINE` | P3 | State styling is complete, but the moved native buttons remain 26px tall and do not receive the shared coarse-pointer 40px adaptation. |
+| Target select / count / Locate / Reset / status | `REFINE` | P2 | Buttons/count/status are Better UI-owned, but the result `<select>` still exposes native select arrow/popup chrome. |
+| Marker keyboard focus | `MATCH` (resolved) | — | The follow-up adds a Better UI `:focus-visible` outline on the marker label, independent from selected/located state. |
+| Normal map-marker labels | `REFINE` | P2 | Normal `.hunt-map-marker__name` nodes receive no Better UI base treatment; only selected/located/dimmed variants are restyled, leaving host visual language on the dominant map surface. |
+| Selected vs. located marker feedback | `REDESIGN` | P2 | The states are functionally separate but share the same border/background/text rule, so the visual system does not communicate the distinction clearly. |
+| Map workspace frame | `MATCH` | — | The map itself remains untouched as required while the surrounding workspace receives Better UI framing. |
+| Dossier shell/header/body/footer | `MATCH` | — | Uses shared dialog/scroll/button primitives and the approved surface hierarchy. |
+| Better UI-created dossier content ownership | `MATCH` (resolved) | — | Better UI-created dossier nodes now use `ppbui-hunts-*` classes; only genuine native/domain icon nodes returned by game APIs retain their native classes. |
+| Element/relation badges and drops | `REFINE` | P3 | Semantics and readability are sound after ownership cleanup; additional pixel-art character is optional. |
+| Classic/Platform presentation control | `REFINE` | P2 | The native control is safely moved and state-complete, but visually remains a generic two-button segment and is a candidate for stronger module-specific treatment. |
+| Dossier close control | `MATCH` | P3 | The plain `×` is functional, accessible and does not require a raster asset; a bespoke pixel glyph is optional future polish. |
+
+The next visual cycle must use the concept-first tooling flow in
+`docs/DESIGN_TOOLING.md`. The first UI-kit concept should focus on the P1/P2 rows
+above, then reclassify each component as `MATCH`, `REFINE`, `REDESIGN`,
+`ASSET NEEDED` or `REMOVE` before code changes.
+
+No SpriteCook asset is mandatory for the remaining visual batch. Base marker
+labels, field/select chrome, tab rail hierarchy, command-deck weight,
+selected-vs-located differentiation and coarse-pointer behavior should remain
+DOM/CSS work unless an adopted concept demonstrates a specific asset with clear
+artistic value.
+
+One live-surface item cannot be proven from the synthetic fixture: outer native
+panel chrome/title-bar elements outside `.pokeidle-panel__body`, if present in the
+current game build. The Hunts module has no explicit source treatment for those
+elements, so the next user validation should confirm whether they are visually
+exposed and need Better UI ownership.
 
 ## In-game validation boundary
 

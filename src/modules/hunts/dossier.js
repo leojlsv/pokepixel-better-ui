@@ -14,7 +14,7 @@ const languageCopy=doc=>{
 
 function badge(doc,icons,{type,multiplier}) {
   const definition=icons?.definition?.(type), node=doc.createElement('span');
-  node.className='hunt-drop-tooltip__element ppbui-hunts-relation-badge';
+  node.className='ppbui-hunts-element-badge ppbui-hunts-relation-badge';
   node.style.setProperty('--hunt-element-color',definition?.color||'#777');
   const icon=icons?.create?.(type,{size:18});
   if(icon)node.append(icon);
@@ -27,10 +27,10 @@ function badge(doc,icons,{type,multiplier}) {
 
 function relationRow(doc,icons,label,items,none) {
   const node=doc.createElement('div');node.className='ppbui-hunts-relation';
-  const title=doc.createElement('span');title.className='hunt-drop-tooltip__elements-label';title.textContent=label;
-  const values=doc.createElement('div');values.className='hunt-drop-tooltip__element-badges';
+  const title=doc.createElement('span');title.className='ppbui-hunts-field-label';title.textContent=label;
+  const values=doc.createElement('div');values.className='ppbui-hunts-badge-list';
   if(items.length)items.forEach(item=>values.append(badge(doc,icons,item)));
-  else {const empty=doc.createElement('span');empty.className='hunt-drop-tooltip__empty';empty.textContent=none;values.append(empty);}
+  else {const empty=doc.createElement('span');empty.className='ppbui-hunts-empty';empty.textContent=none;values.append(empty);}
   node.append(title,values);return node;
 }
 
@@ -48,27 +48,27 @@ function levelText(doc,scene,zone) {
 
 function renderElements(doc,scene,zone) {
   const icons=doc.defaultView?.PokeIdle?.ElementIcons, types=scene.zoneElements?.(zone)||[];
-  const row=doc.createElement('div');row.className='hunt-drop-tooltip__elements';
+  const row=doc.createElement('div');row.className='ppbui-hunts-elements';
   const t=doc.defaultView?.PokeIdle?.t;
   const nativeLabel=typeof t==='function'?t(types.length===1?'hunt_selection.element_singular':'hunt_selection.element_plural'):'';
-  const label=doc.createElement('span');label.className='hunt-drop-tooltip__elements-label';label.textContent=nativeLabel&&!nativeLabel.startsWith('hunt_selection.')?nativeLabel:(types.length===1?'Element':'Elements');
-  const values=doc.createElement('div');values.className='hunt-drop-tooltip__element-badges';
+  const label=doc.createElement('span');label.className='ppbui-hunts-field-label';label.textContent=nativeLabel&&!nativeLabel.startsWith('hunt_selection.')?nativeLabel:(types.length===1?'Element':'Elements');
+  const values=doc.createElement('div');values.className='ppbui-hunts-badge-list';
   types.forEach(type=>{
-    const definition=icons?.definition?.(type), item=doc.createElement('span');item.className='hunt-drop-tooltip__element';
+    const definition=icons?.definition?.(type), item=doc.createElement('span');item.className='ppbui-hunts-element-badge';
     item.style.setProperty('--hunt-element-color',definition?.color||'#777');
     const icon=icons?.create?.(type,{size:21});if(icon)item.append(icon);
     item.append(doc.createTextNode(definition?.label||type));values.append(item);
   });
-  if(!types.length){const empty=doc.createElement('span');empty.className='hunt-drop-tooltip__empty';empty.textContent='—';values.append(empty);}
+  if(!types.length){const empty=doc.createElement('span');empty.className='ppbui-hunts-empty';empty.textContent='—';values.append(empty);}
   row.append(label,values);return {row,types};
 }
 
 function renderDrops(doc,scene,zone,copy) {
-  const list=doc.createElement('div');list.className='hunt-drop-tooltip__list';
+  const list=doc.createElement('div');list.className='ppbui-hunts-drop-list';
   const drops=typeof scene.zoneDrops==='function'?scene.zoneDrops(zone):[];
-  if(!drops.length){const empty=doc.createElement('span');empty.className='hunt-drop-tooltip__empty';empty.textContent=copy.none;list.append(empty);return list;}
+  if(!drops.length){const empty=doc.createElement('span');empty.className='ppbui-hunts-empty';empty.textContent=copy.none;list.append(empty);return list;}
   drops.forEach(item=>{
-    const row=doc.createElement('div');row.className='hunt-drop-tooltip__item';
+    const row=doc.createElement('div');row.className='ppbui-hunts-drop-item';
     const icon=typeof scene.itemIcon==='function'?scene.itemIcon(item):null;if(icon)row.append(icon);
     const name=doc.createElement('span');name.className='ppbui-hunts-drop-name';name.textContent=item?.name||item?.id||'—';name.title=name.textContent;row.append(name);
     const value=Number(item?.sell_price??item?.sell_value), output=doc.createElement('span');
@@ -87,7 +87,7 @@ export function createHuntDossier(doc,{onClose,onHunt}) {
   aside.tabIndex=-1;
   const header=doc.createElement('div');header.className='ppbui-hunts-dossier__header';
   const heading=doc.createElement('div'), title=doc.createElement('strong'), level=doc.createElement('small');
-  title.className='hunt-drop-tooltip__title';title.id=`ppbui-hunts-dossier-title-${Math.random().toString(36).slice(2)}`;aside.setAttribute('aria-labelledby',title.id);heading.append(title,level);
+  title.className='ppbui-hunts-dossier__title';title.id=`ppbui-hunts-dossier-title-${Math.random().toString(36).slice(2)}`;aside.setAttribute('aria-labelledby',title.id);heading.append(title,level);
   const close=doc.createElement('button');close.type='button';close.className='ppbui-button ppbui-button--ghost ppbui-icon-button ppbui-hunts-dossier__close';close.textContent='×';
   header.append(heading,close);
   const body=doc.createElement('div');body.className='ppbui-scroll ppbui-hunts-dossier__body';

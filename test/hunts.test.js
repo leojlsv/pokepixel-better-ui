@@ -170,6 +170,7 @@ test('Hunts pilot consumes the shared pixel-art system without host-wide selecto
   assert.match(css,/\.hunt-category-tab:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-selected="true"\]\)/);
   assert.match(css,/\.hunt-world-elements button:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-pressed="true"\]\)/);
   assert.match(css,/hunt-presentation-toggle button:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-pressed="true"\]\)/);
+  assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\s*\{[^}]+outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\)/s);
   assert.ok(css.lastIndexOf('.hunt-category-tab:disabled')>css.lastIndexOf('.hunt-category-tab.is-active'));
   assert.ok(css.lastIndexOf('.hunt-world-elements button:disabled')>css.lastIndexOf('.hunt-world-elements button.is-active'));
   assert.match(css,/button:disabled[^}]+cursor:default/s);
@@ -253,10 +254,14 @@ test('dossier contains elements, exact defensive relations and valued drops inst
   assert.match(panel.textContent,/×0/);
   assert.match(panel.textContent,/Bent Spoon/);
   assert.match(panel.textContent,/¤1250/);
-  assert.equal(panel.getAttribute('aria-labelledby'),panel.querySelector('.hunt-drop-tooltip__title').id);
+  assert.equal(panel.getAttribute('aria-labelledby'),panel.querySelector('.ppbui-hunts-dossier__title').id);
   assert.match(panel.querySelector('.ppbui-hunts-drop-name').title,/Bent Spoon/);
   assert.match(panel.querySelector('.ppbui-hunts-dossier__close').getAttribute('aria-label'),/Fechar/);
   assert.equal(s.doc.querySelector('.hunt-world-drop-tooltip:not(.ppbui-hunts-dossier)'),null);
+  for(const className of ['hunt-drop-tooltip__title','hunt-drop-tooltip__elements','hunt-drop-tooltip__elements-label','hunt-drop-tooltip__element-badges','hunt-drop-tooltip__element','hunt-drop-tooltip__empty','hunt-drop-tooltip__list','hunt-drop-tooltip__item']){
+    assert.equal(panel.querySelector(`.${className}`),null);
+  }
+  assert.ok(panel.querySelector('.hunt-drop-tooltip__icon'));
 });
 
 test('search hiding the selected marker closes dossier and does not fabricate zones',t=>{
