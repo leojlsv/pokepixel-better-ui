@@ -14,6 +14,12 @@ export const huntsStyles = `
     border-radius:0 !important;
     background:var(--ppbui-bg-2) !important;
     color:var(--ppbui-text) !important;
+    font:700 14px/1 "Lucida Console", Monaco, "Courier New", monospace !important;
+    font-kerning:none;
+    font-variant-ligatures:none;
+    letter-spacing:1px;
+    text-transform:uppercase;
+    text-shadow:var(--ppbui-pixel-unit) var(--ppbui-pixel-unit) 0 var(--ppbui-bg-0);
     box-shadow:none !important;
   }
   .ppbui-hunts-enhanced .pokeidle-panel__titlebar button {
@@ -26,6 +32,9 @@ export const huntsStyles = `
     border-radius:0 !important;
     background:var(--ppbui-bg-2) !important;
     color:var(--ppbui-text-muted) !important;
+    font-family:var(--ppbui-font-body) !important;
+    letter-spacing:normal;
+    text-shadow:none;
     box-shadow:none !important;
   }
   .ppbui-hunts-enhanced .pokeidle-panel__titlebar button:hover:not(:disabled) {

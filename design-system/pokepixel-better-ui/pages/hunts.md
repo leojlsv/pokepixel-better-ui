@@ -147,6 +147,10 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 - While Better UI is mounted, the visible native window title is presented as
   `HUNT ATLAS`; the original native title node is preserved and its exact text is
   restored during cleanup.
+- `HUNT ATLAS` is the module's display-title exception to MASTER body typography:
+  use a self-contained bitmap-like monospace stack (`Lucida Console` first),
+  14px/700, 1px tracking, no kerning/ligatures and a 2px hard shadow. Do not apply
+  this display treatment to body text, controls or the titlebar close button.
 - Atlas/Finder supporting rails: `bg-2` only where separation from the shell is
   needed; avoid equal hard-shadow elevation on every group.
 - Map frame: `bg-0` boundary with a crisp 2px structural edge.

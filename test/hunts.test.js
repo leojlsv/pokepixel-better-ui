@@ -166,8 +166,10 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.ok(s.root.querySelector('.hunt-world-header').classList.contains('ppbui-hunts-atlas-rail'));
   assert.match(css,/\.ppbui-hunts-enhanced\s*\{[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]+box-shadow:var\(--ppbui-shadow-raised\)/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-2\) !important;/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+font:700 14px\/1 "Lucida Console", Monaco, "Courier New", monospace !important;[^}]+font-kerning:none;[^}]+font-variant-ligatures:none;[^}]+letter-spacing:1px;[^}]+text-transform:uppercase;[^}]+text-shadow:var\(--ppbui-pixel-unit\) var\(--ppbui-pixel-unit\) 0 var\(--ppbui-bg-0\)/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{/);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+appearance:none/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+font-family:var\(--ppbui-font-body\) !important;[^}]+letter-spacing:normal;[^}]+text-shadow:none;/s);
   assert.ok(s.root.querySelector('.ppbui-hunts-finder'));
   assert.ok(s.root.querySelector('.ppbui-hunts-atlas-workspace'));
   assert.match(css,/\.ppbui-hunts-atlas-workspace\.is-inspector-open/);
