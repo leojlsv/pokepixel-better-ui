@@ -71,6 +71,7 @@ export function mountAutoHelper(root, session) {
     @media(max-width:760px) { .ppbui-auto-group-body { grid-template-columns:1fr; } .ppbui-auto-support-head { display:none; } .ppbui-auto-support-part { grid-template-columns:minmax(100px,1fr) minmax(0,2fr); } .ppbui-auto-support-condition { grid-column:2; grid-row:2; } }
   `;
   root.append(style); owned.push(style); root.dataset.ppbuiAutoHelper = "";
+  for (const original of [...parts.pickers, parts.sellGrid, parts.extractGrid].filter(Boolean)) hide(original);
   const wasInert = parts.body.inert; parts.body.inert = true;
   const groups = [
     ["support", [parts.support]], ["capture", [parts.normal, parts.shiny, parts.filter]],
@@ -227,6 +228,7 @@ export function mountAutoHelper(root, session) {
   pi.Bus?.on?.("inventory.updated", onInventory);
   async function initialize() {
     loadError = ""; parts.body.inert = true;
+    content(saveMessage, autoHelperText(doc).loading); saveState.dataset.state = "loading";
     const beforeLoad = session.saver.state();
     try {
       const [settingsResponse, inventoryResponse] = await Promise.all([pi.Api.getHuntSettings(), pi.Api.getInventory()]);

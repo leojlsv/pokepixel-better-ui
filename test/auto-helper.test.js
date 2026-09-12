@@ -22,7 +22,7 @@ test("flush saves debounced edits and failure preserves draft for explicit retry
   assert.equal(saver.state().phase,"error");assert.deepEqual(saver.state().draft,["names"]);
   fail=false;await saver.flush();assert.equal(calls,2);assert.equal(saver.state().pending,false);
 });
-function setup(t, settingsOverride={}) {
+function setup(t, settingsOverride={}, apiOverride={}) {
   const check = label => `<label class="auto-helper-row"><input type="checkbox"><b>${label}</b></label>`;
   const picker = '<div class="auto-capsule-grid"><button>Original picker</button></div>';
   const qualities = '<div class="auto-sell-qualities"><label><input type="checkbox" value="common">Common</label><label><input type="checkbox" value="rare">Rare</label></div>';
@@ -39,13 +39,23 @@ function setup(t, settingsOverride={}) {
   const settings={auto_potion:{hp_threshold:40},auto_capture:{},auto_sell:{qualities:[]},auto_extract:{qualities:[]},...settingsOverride};
   let inventory=[{item_id:'p',type:'potion',name:'Potion long name',qty:2},{item_id:'b',type:'capsule',name:'Ball',qty:3}];
   const handlers=new Map(), calls=[];
-  doc.defaultView.PokeIdle={ t:key=>key, Localization:{get:()=> 'en'}, Bus:{on:(key,fn)=>handlers.set(key,fn),off:key=>handlers.delete(key)}, Api:{getHuntSettings:async()=>settings,getInventory:async()=>inventory} };
+  doc.defaultView.PokeIdle={ t:key=>key, Localization:{get:()=> 'en'}, Bus:{on:(key,fn)=>handlers.set(key,fn),off:key=>handlers.delete(key)}, Api:{getHuntSettings:apiOverride.getHuntSettings || (async()=>settings),getInventory:apiOverride.getInventory || (async()=>inventory)} };
   const saver=createSettingsSaver(async payload=>{calls.push(payload);});
   const session={groups:{},saver};const original=root.innerHTML;
   const mounted=mountAutoHelper(root,session);
   t.after(()=>{mounted.cleanup();dom.window.close();});
   return {dom,doc,root,mounted,session,calls,original,handlers,nativeChanges:()=>nativeChanges,setInventory:value=>inventory=value};
 }
+test("slow initialization never exposes native pickers or destination grids", async t => {
+  const settingsPending=deferred(), inventoryPending=deferred();
+  const s=setup(t,{}, {getHuntSettings:()=>settingsPending.promise,getInventory:()=>inventoryPending.promise});
+  assert.equal(s.root.querySelector('.ppbui-auto-save')?.textContent.includes('Loading interface'),true);
+  assert.ok([...s.root.querySelectorAll('.auto-capsule-grid,.auto-sell-qualities')].every(node=>node.hidden));
+  settingsPending.resolve({auto_potion:{hp_threshold:40},auto_capture:{},auto_sell:{qualities:[]},auto_extract:{qualities:[]}});
+  inventoryPending.resolve([]);await tick();
+  assert.equal(s.root.querySelectorAll('.ppbui-auto-picker').length,4);
+  assert.equal(s.root.querySelector('.ppbui-auto-destinations')!==null,true);
+});
 test("native controls remain intact while destination choices serialize exclusive native values",async t=>{
   const s=setup(t);await tick();
   assert.equal(s.root.querySelectorAll('.ppbui-auto-group').length,3);

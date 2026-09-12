@@ -4,6 +4,11 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- Removed the Auto Helper initial native-UI flash while its settings/inventory
+  bootstrap requests are pending. Native pickers and destination grids are hidden
+  immediately and the Better UI surface shows an explicit loading state until the
+  enhanced controls are ready.
+
 - Refined Trade: item categories combine with search without replacing quantity handlers; inventory uses four slots per row, with a 1000px window minimum. Balance shares the offer currency block, cancellation is secondary, status text is legible, and added Trade controls match the native Portuguese screen.
 
 - Trade: moved Pokémon filters into a bounded four-column dialog with clear/close controls and a persistent result toolbar; aligned offer grids, moved balance below own actions, and normalized tab contrast and action heights. Native trade handlers remain unchanged.
