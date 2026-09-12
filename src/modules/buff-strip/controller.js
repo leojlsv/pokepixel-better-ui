@@ -37,6 +37,10 @@ export function mountBuffStrip(target) {
       backdrop-filter:none !important;
       overflow:hidden;
     }
+    body.pokeidle-toolbar-bottom:not(.pokeidle-mobile) .pokeidle-buff-strip[data-ppbui-buff-strip] {
+      top:var(--ppbui-buff-strip-top) !important;
+      bottom:auto !important;
+    }
     .pokeidle-buff-strip[data-ppbui-buff-strip][data-ppbui-buff-strip-dock="above"] {
       transform:translate(-50%,-100%) !important;
       border-bottom:0 !important;

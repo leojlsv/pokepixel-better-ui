@@ -4,8 +4,15 @@ import { JSDOM } from "jsdom";
 import { createBuffStripModule } from "../src/modules/buff-strip/index.js";
 import { mountBuffStrip } from "../src/modules/buff-strip/controller.js";
 
-function setup() {
-  const dom = new JSDOM(`<!doctype html><html><head></head><body>
+function setup({ nativeBottomRule = false } = {}) {
+  const nativeStyle = nativeBottomRule ? `<style>
+    body.pokeidle-toolbar-bottom:not(.pokeidle-mobile) .pokeidle-buff-strip {
+      top:auto !important;
+      bottom:52px !important;
+    }
+  </style>` : "";
+  const bodyClass = nativeBottomRule ? ' class="pokeidle-toolbar-bottom"' : "";
+  const dom = new JSDOM(`<!doctype html><html><head>${nativeStyle}</head><body${bodyClass}>
     <div class="pokeidle-top-toolbar"><button>Inventory</button></div>
     <div class="pokeidle-buff-strip" style="left:468px;top:938px;width:592.24px">
       <div class="pokeidle-buff-list">
@@ -36,7 +43,7 @@ test("buff strip becomes a compact native status rail above toolbar without repl
   assert.equal(s.strip.querySelector(".pokeidle-buff-list"), list);
   assert.equal(s.strip.querySelector(".pokeidle-event-ticker"), ticker);
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "414px");
-  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "64px");
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "55px");
   assert.equal(s.strip.dataset.ppbuiBuffStripDock, "above");
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-max-width"), "688px");
   const css = s.doc.querySelector('[data-ppbui-style="buff-strip"]').textContent;
@@ -62,7 +69,7 @@ test("resize updates docking and cleanup preserves current native geometry", () 
   s.setRect({ left: 100, top: 80, width: 600, height: 70, right: 700, bottom: 150 });
   s.dom.window.dispatchEvent(new s.dom.window.Event("resize"));
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "400px");
-  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "90px");
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "81px");
   assert.equal(s.strip.dataset.ppbuiBuffStripDock, "above");
   s.setRect({ left: 100, top: 20, width: 600, height: 70, right: 700, bottom: 90 });
   s.dom.window.dispatchEvent(new s.dom.window.Event("resize"));
@@ -79,6 +86,19 @@ test("resize updates docking and cleanup preserves current native geometry", () 
   assert.equal(s.strip.hasAttribute("data-ppbui-buff-strip-dock"), false);
   assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-left"), "");
   assert.equal(s.doc.querySelector('[data-ppbui-style="buff-strip"]'), null);
+  s.dom.window.close();
+});
+
+test("bottom toolbar native important positioning cannot override Better UI docking", () => {
+  const s = setup({ nativeBottomRule: true });
+  const list = s.strip.querySelector(".pokeidle-buff-list");
+  const ticker = s.strip.querySelector(".pokeidle-event-ticker");
+  const mounted = mountBuffStrip({ strip: s.strip, toolbar: s.toolbar, list, ticker });
+  const css = s.doc.querySelector('[data-ppbui-style="buff-strip"]').textContent;
+  assert.match(css, /body\.pokeidle-toolbar-bottom:not\(\.pokeidle-mobile\) \.pokeidle-buff-strip\[data-ppbui-buff-strip\]/);
+  assert.equal(s.strip.style.getPropertyValue("--ppbui-buff-strip-top"), "55px");
+  assert.equal(s.strip.dataset.ppbuiBuffStripDock, "above");
+  mounted.cleanup();
   s.dom.window.close();
 });
 

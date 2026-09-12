@@ -10,8 +10,8 @@ All notable project changes are recorded in this file.
   buff/ticker nodes and state remain intact with reversible cleanup. Docking now
   flips below the toolbar when the native Menu Bar is positioned at the top of
   the viewport, preventing the rail from disappearing off-screen. BOTTOM docking
-  compensates for the toolbar's transparent top inset so the rail meets the
-  visible panel edge instead of floating above it.
+  now explicitly wins over the game's native higher-specificity `!important`
+  buff positioning rule, removing the persistent gap without offset hacks.
 
 - Removed the Auto Helper initial native-UI flash while its settings/inventory
   bootstrap requests are pending. Native pickers and destination grids are hidden
