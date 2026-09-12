@@ -189,12 +189,19 @@ Normal marker labels become Better UI-owned dark pixel plates instead of inherit
 host visual chrome. Pokémon/domain sprites remain native domain assets.
 
 - **Base:** dark plate, crisp neutral border, readable text, small hard shadow.
+- **Hover:** keep the Base geometry, raise the plate to `bg-3` and strengthen the
+  neutral edge; do not introduce gold or blue semantic cues on hover alone.
+- **Pressed:** apply a brief inset/depth shift while the pointer/key activation is
+  held; pressed feedback must not create, clear or visually imply Selected or
+  Located state.
 - **Selected:** gold 2px border/edge + `bg-3`; clearly indicates the Hunt currently
   shown in the inspector.
-- **Located:** informational blue edge plus a second structural cue such as a small
-  square/notch/underline; must not reuse the selected gold treatment.
-- **Selected + Located:** selected gold remains the primary border while the blue
-  location cue remains simultaneously visible.
+- **Located:** retain the neutral outer plate and add one deterministic INFO-blue
+  2px bottom rail/underline inside the label plate; do not reuse the selected gold
+  outer border.
+- **Selected + Located:** retain the Selected gold outer border while also keeping
+  the INFO-blue 2px bottom rail inside the same plate, so both semantics remain
+  simultaneously visible.
 - **Focus-visible:** independent 2px cyan outline outside whichever state is
   active; focus must remain visible on selected and located markers.
 - **Dimmed:** only non-relevant labels dim while a located target is emphasized;
@@ -212,6 +219,18 @@ Selected, Located and Focus must be distinguishable by structure as well as colo
 - Status remains text-first and reserves layout space to avoid jumping.
 - Empty/error/unavailable states may use semantic color only as a secondary cue;
   the message remains explicit text.
+
+### Native world notice
+
+`.hunt-world-notice` is part of the Hunt Atlas status language rather than a
+standalone card.
+
+- Empty notice remains hidden and occupies no layout space.
+- Populated notice appears as an inline Atlas/Finder status strip.
+- Use text plus a semantic 2px left edge as the primary treatment.
+- Background may use the supporting `bg-2` surface, but the notice has no card
+  elevation or independent hard shadow.
+- Notice text remains readable and must not rely on semantic color alone.
 
 ### Locate, Reset and Clear
 
@@ -319,6 +338,13 @@ Layout changes are based on container fit, not generic device breakpoints.
 - Reduced-motion removes the Locate flash and any future non-essential motion.
 - Keyboard flow remains coherent through Atlas/Finder, markers, inspector and
   primary action without trapping focus.
+- When the inspector closes automatically because a world/filter change invalidates
+  the current selection or the selected zone disappears, restore focus
+  deterministically without moving the map: first focus the previously selected
+  marker only if that exact node is still connected, valid and visible; otherwise
+  focus the Hunt result select if it is connected and enabled; otherwise focus
+  Search if it is connected and enabled; otherwise focus the Hunts root/body focus
+  target. Never attempt to focus a detached node.
 
 ## Implementation brief
 
@@ -330,9 +356,10 @@ reversible Better UI wrappers/anchors while preserving their identity and handle
 3. Keep the native viewport/map as the dominant workspace.
 4. Convert the current dossier presentation into an attached `Inspector` surface;
    retain its data and explicit Hunt action.
-5. Give normal map labels a complete Better UI base treatment and implement four
-   simultaneously coherent marker states: Base, Selected, Located,
-   Selected+Located, plus independent Focus.
+5. Give normal map labels a complete Better UI treatment and implement the full
+   state family: Base, Hover, Pressed, Selected, Located, Selected+Located, Focus
+   and Dimmed. Located uses the INFO-blue 2px bottom rail; Selected+Located keeps
+   the gold outer border and blue bottom rail simultaneously.
 6. Fully own browser-visible chrome for Search/number/select where safe, including
    the select arrow and redundant search decoration.
 7. Convert the presentation toggle into a gapless segmented rail while moving the
@@ -343,6 +370,11 @@ reversible Better UI wrappers/anchors while preserving their identity and handle
    is strictly necessary to support presentational wrappers/classes.
 10. Keep Hunts-specific layout/state CSS module-local. Change shared design-system
     runtime only when a primitive is demonstrably reusable outside Hunts.
+11. Implement the automatic-inspector-close focus fallback in this exact order:
+    valid/visible prior marker -> enabled Hunt result select -> enabled Search ->
+    Hunts root/body focus target, never a detached node and never by moving the map.
+12. Treat `.hunt-world-notice` as an inline Atlas/Finder status strip: hidden when
+    empty; text + semantic left edge when populated; no card elevation.
 
 ## Design acceptance checks
 
@@ -354,8 +386,9 @@ below are true:
 3. World tabs read as one navigation rail with a clear current-world state.
 4. No visible Search/number/select affordance falls back to accidental browser or
    host chrome where Better UI is expected to own it.
-5. Marker Base, Selected, Located, Selected+Located and Focus states are all
-   visually distinct at runtime size and remain the same component family.
+5. Marker Base, Hover, Pressed, Selected, Located, Selected+Located, Focus and
+   Dimmed states are all visually distinct at runtime size and remain the same
+   component family.
 6. Selected and Located can coexist without becoming visually ambiguous.
 7. Cyan is reserved for keyboard focus; gold remains the primary selected/action
    accent; domain colors retain gameplay meaning.
@@ -377,6 +410,10 @@ below are true:
     user handoff.
 18. In-game appearance/function remains pending until the Product Owner performs
     and explicitly approves live validation.
+19. Automatic inspector closure restores focus using the specified deterministic
+    fallback and never targets a detached node or intentionally moves the map.
+20. `.hunt-world-notice` is hidden when empty and, when populated, reads as an
+    inline status strip with text + semantic left edge and no card elevation.
 
 ## Validation boundary
 
