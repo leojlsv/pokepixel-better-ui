@@ -144,6 +144,9 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
   geometry, `bg-1` body, `bg-2` title/header strip, 2px strong outer border and a
   single 4px hard raised shadow. Host gradients, soft rounding and unrelated host
   surface styling must not remain visible inside this scoped shell.
+- While Better UI is mounted, the visible native window title is presented as
+  `HUNT ATLAS`; the original native title node is preserved and its exact text is
+  restored during cleanup.
 - Atlas/Finder supporting rails: `bg-2` only where separation from the shell is
   needed; avoid equal hard-shadow elevation on every group.
 - Map frame: `bg-0` boundary with a crisp 2px structural edge.

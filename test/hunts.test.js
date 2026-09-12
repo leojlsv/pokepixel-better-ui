@@ -161,6 +161,7 @@ test('Hunt Atlas Finder rail keeps native query, element and count nodes intact 
 
 test('Hunt Atlas structure and complete state language consume scoped Better UI primitives',t=>{
   const s=setup(t),css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
+  assert.equal(s.root.querySelector('.pokeidle-panel__titlebar').childNodes[0].textContent,'HUNT ATLAS');
   assert.match(css,/--ppbui-bg-1/);assert.match(css,/--ppbui-accent/);assert.match(css,/--ppbui-focus/);
   assert.ok(s.root.querySelector('.hunt-world-header').classList.contains('ppbui-hunts-atlas-rail'));
   assert.match(css,/\.ppbui-hunts-enhanced\s*\{[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]+box-shadow:var\(--ppbui-shadow-raised\)/s);
@@ -219,6 +220,14 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.equal(s.root.querySelector('.ppbui-hunts-results select').classList.contains('ppbui-select'),true);
   assert.equal(s.dossier().classList.contains('ppbui-dialog'),false);
   assert.equal(s.dossier().querySelector('.ppbui-hunts-inspector__hunt').classList.contains('ppbui-button--primary'),true);
+});
+
+test('cleanup restores the native Hunt Map title exactly',t=>{
+  const s=setup(t),titlebar=s.root.querySelector('.pokeidle-panel__titlebar');
+  assert.equal(titlebar.childNodes[0].textContent,'HUNT ATLAS');
+  s.c.cleanup();
+  assert.equal(titlebar.childNodes[0].textContent,'Hunt Map');
+  assert.equal(s.root.outerHTML,s.before);
 });
 
 test('Locate opens the same inspector, pans without starting Hunt, preserves zoom and dims other labels',t=>{

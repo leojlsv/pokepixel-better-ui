@@ -4,8 +4,22 @@ import {createHuntInspector} from './dossier.js';
 import {createHuntMarkerInteractions} from './interaction.js';
 import {huntsStyles} from './styles.js';
 
+function findTitleText(node,NodeCtor) {
+  for(const child of node?.childNodes||[]){
+    if(child.nodeType===NodeCtor.TEXT_NODE&&child.textContent.trim())return child;
+    if(child.nodeType===NodeCtor.ELEMENT_NODE&&child.tagName!=='BUTTON'){
+      const nested=findTitleText(child,NodeCtor);if(nested)return nested;
+    }
+  }
+  return null;
+}
+
 export function mountHunts(root) {
   const doc=root.ownerDocument;
+  const titlebar=root.querySelector('.pokeidle-panel__titlebar');
+  const titleNode=findTitleText(titlebar,doc.defaultView.Node);
+  const nativeTitle=titleNode?.textContent??null;
+  if(titleNode)titleNode.textContent='HUNT ATLAS';
   root.classList.add('ppbui-hunts-enhanced');
   const focusTarget=parts(root).body;
   const focusTargetTabIndex=focusTarget?.getAttribute('tabindex');
@@ -295,6 +309,7 @@ export function mountHunts(root) {
     root.querySelectorAll('.ppbui-hunts-selected-marker').forEach(node=>node.classList.remove('ppbui-hunts-selected-marker'));root.querySelectorAll('.ppbui-hunts-located-marker').forEach(node=>node.classList.remove('ppbui-hunts-located-marker'));root.querySelectorAll('.ppbui-hunts-dimmed-marker').forEach(node=>node.classList.remove('ppbui-hunts-dimmed-marker'));
     root.querySelectorAll('.ppbui-hunts-selected').forEach(node=>node.classList.remove('ppbui-hunts-selected'));root.querySelectorAll('.ppbui-hunts-located').forEach(node=>node.classList.remove('ppbui-hunts-located'));root.querySelectorAll('.ppbui-hunts-dimmed').forEach(node=>node.classList.remove('ppbui-hunts-dimmed'));
     restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');
+    if(titleNode?.isConnected&&nativeTitle!==null)titleNode.textContent=nativeTitle;
     if(focusTarget){if(focusTargetTabIndex===null)focusTarget.removeAttribute('tabindex');else focusTarget.setAttribute('tabindex',focusTargetTabIndex);}
   }};
 }
