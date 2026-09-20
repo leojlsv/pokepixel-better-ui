@@ -80,9 +80,15 @@ Recorded: 2026-09-20
 - Corrected `candidate2` A11Y/QOL QA: **READY — P0=0, P1=0, P2=0, P3=0**.
 - Corrected `candidate2` UX/VISUAL QA: **READY — P0=0, P1=0, P2=0, P3=0**; approved render hashes are byte-identical to the prior candidate.
 - Product Owner live revalidation of corrected `candidate2`: **COMPLETE — functional on 2026-09-20**.
-- Final normal-host promotion from the corrected source: **COMPLETE**.
-- Final normal-host build / local smoke / compatibility-wrapper validation: **PASS**.
-- Final independent release audit on the promoted host: **RELEASE READY — P0=0, P1=0, P2=0, P3=0**.
+- A later Product Owner UI/UX audit reopened the visual gate after visible alignment defects were reported in the Command Deck.
+- Alignment correction `candidate3` TECH-UI QA: **READY — P0=0, P1=0, P2=0, P3=0** on exact artifact SHA `A304E45F55152350A569EB6AA0816779154A11287A8D1062DAEA4E64E4CAF830`.
+- Alignment correction `candidate3` UX/A11Y QA: **READY — P0=0, P1=0, P2=0, P3=0** on the same exact artifact.
+- Alignment correction `candidate3` VISUAL QA: **READY — P0=0, P1=0, P2=0, P3=0** on the same exact artifact and its fresh 20-render matrix.
+- Proper blocking `candidate3` smoke (`Start-Process -Wait`) after the final keyboard-routing fix: **PASS**, exit `0`, stderr empty; all 20 local render artifacts regenerated from that run.
+- Product Owner live validation of exact `candidate3`: **COMPLETE — validated on 2026-09-20**.
+- Final normal-host promotion from the `candidate3` source: **COMPLETE**.
+- Final normal-host build / blocking local smoke / compatibility-wrapper validation: **PASS**.
+- Final independent release audit on the newly promoted host: **RELEASE READY — P0=0, P1=0, P2=0, P3=0**.
 
 ## Frozen candidate evidence — 2026-09-20
 
@@ -112,17 +118,43 @@ Recorded: 2026-09-20
 - Independent focused A11Y/QOL re-QA: **READY — P0=0, P1=0, P2=0, P3=0**.
 - Independent focused UX/VISUAL carry-forward: **READY — P0=0, P1=0, P2=0, P3=0**.
 - Product Owner live revalidation: **functional** on 2026-09-20.
-- Final promoted normal host: `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.exe`
-- Final promoted normal-host SHA-256: `052D146BED95045FED641A56CD1A8C64178CFAD9AEB570800A7C0CF9AF609F81`
-- Final normal-host build from the corrected source: **PASS**.
-- Final normal-host local smoke: **PASS**.
-- Compatibility wrapper `tools/coupled-workspace/Start-CoupledWorkspace.ps1 -SkipBuild -ValidateOnly`: **PASS** after final promotion.
+- Candidate2-era promoted normal host: `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.exe`
+- Candidate2-era promoted normal-host SHA-256: `052D146BED95045FED641A56CD1A8C64178CFAD9AEB570800A7C0CF9AF609F81`
+- Candidate2-era normal-host build from the corrected source: **PASS**.
+- Candidate2-era normal-host local smoke: **PASS**.
+- Candidate2-era compatibility-wrapper validation: **PASS**.
 
-Representative local-only render evidence:
+### Post-audit alignment / UX correction candidate
 
-- `bin/smoke/visual/workspace-dual-composite-1180.png` — SHA-256 `F8FFAC768DC2F88C873A6E33DF1E90EE6CBF9DE5F37FB1D91C43E8A8950FED8A`
-- `bin/smoke/visual/workspace-focus-composite-1180.png` — SHA-256 `3541CD9781E67917095CCB45E045B43B89C0C14A1CDFEF7EE2B8F1C8083E3125`
-- `bin/smoke/visual/workspace-drawer-composite-1180.png` — SHA-256 `440ADD2E09F98173A489FB2BD6832BEDC3A3FC0D048EE224FC3B1AD529160C5B`
+- Review artifact: `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate3.exe`
+- SHA-256: `A304E45F55152350A569EB6AA0816779154A11287A8D1062DAEA4E64E4CAF830`
+- Product Owner trigger: a complete UI/UX audit was requested after visible element misalignment was reported.
+- Corrected Command Deck geometry: 44px logical row; 32px logical inner groups; 28px logical controls; 6–8px dense gaps; no default WinForms margin seam before the viewport.
+- Center layout now resolves responsive visibility before measurement, then physically centers the dual-layout group when space permits and clamps it away from the side groups when required.
+- Native ComboBox chrome was replaced by a square Better UI select/dropdown using the Miyazaki 16 palette; keyboard commands are handled through WinForms `ProcessCmdKey`, and the custom accessibility object exposes ComboBox role/name/value/default action plus expanded/collapsed state.
+- Dual health remains visible at the supported 1180px logical minimum with compact deck labels and full status through accessibility/tooltip/diagnostics.
+- WebView keyboard focus keeps selected/current gold semantics while adding the independent cyan focus cue required by the design contract.
+- Focus mode order is `active identity -> health -> Restore` for either physical side.
+- DPI policy is Per-Monitor V2 + `AutoScaleMode.Dpi`; logical metrics are reapplied on DPI changes without constructor-time double scaling; Maintenance Drawer placement uses the monitor containing the `⋯` trigger and clamps correctly across signed multi-monitor coordinates.
+- Blocking local smoke after the final `ProcessCmdKey` fix: **PASS**, exit `0`, stderr empty, stdout ends `WebView2 coupled workspace smoke: PASS`.
+- Fresh render matrix contains 20 PNGs, including 1180/1200/1280/1600 dual layouts, compact/expanded threshold renders, single mode, focus-left/right, keyboard focus, WebView focus, select dropdown, drawer and workspace composites.
+- Independent TECH-UI QA: **READY — P0=0, P1=0, P2=0, P3=0**.
+- Independent UX/A11Y QA: **READY — P0=0, P1=0, P2=0, P3=0**.
+- Independent VISUAL QA: **READY — P0=0, P1=0, P2=0, P3=0**.
+- Product Owner live validation: **validated** on 2026-09-20.
+- Promoted normal host: `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.exe`
+- Promoted normal-host SHA-256: `3C904395CACB17CD8B467FDDEEFC46170B4441B7C88D6BB599100DF32CF84C27`
+- Promoted normal-host blocking smoke: **PASS**, exit `0`, stderr empty.
+- Compatibility wrapper `tools/coupled-workspace/Start-CoupledWorkspace.ps1 -SkipBuild -ValidateOnly`: **PASS**.
+- Final independent release audit on the promoted normal host: **RELEASE READY — P0=0, P1=0, P2=0, P3=0**.
+
+Representative local-only render evidence from the final `candidate3` correction pass:
+
+- `bin/smoke/visual/workspace-dual-composite-1180.png` — SHA-256 `E54593E6161B94332920C88B29E6338B9D7661F23029D59C88B1C6EC7C9C1043`
+- `bin/smoke/visual/workspace-focus-composite-1180.png` — SHA-256 `3AF7F841C05095D887468C190E2BD71D9D070B988AF4F620D1467E78FF0FA22A`
+- `bin/smoke/visual/workspace-drawer-composite-1180.png` — SHA-256 `755020C9A76565D4C7B8E3E77B930F72BD23FCACE063450FE8B5BE77312ADD58`
+- `bin/smoke/visual/command-deck-scope-dropdown.png` — SHA-256 `71625588F80752CBFAED44983571B67D5686401253793C24BEBF19E64E00F643`
+- `bin/smoke/visual/command-deck-webview-focus-1180.png` — SHA-256 `C7DC6993F9F5A56EE4F64E58421DF1156D0A8F41B9A22F88631FBD4E47F5C0F2`
 - Composite pages are synthetic local WebView2 pages. `CapturePreviewAsync` is used only by smoke evidence; no live-game claim is inferred from them.
 - Dual composite proves the active gold and inactive strong-neutral cues are **2px top rails** immediately above actual WebView2 preview content.
 - Focus composite proves the focused Active account remains a full viewport with the same quiet 2px rail rather than a gold frame.
@@ -151,6 +183,8 @@ Representative local-only render evidence:
 Original frozen-candidate live result: **functional**. A later audit identified the keyboard-only Drawer boundary defect described above.
 
 Corrected `candidate2` live revalidation result: **functional**. No live blocker was reported by the Product Owner on 2026-09-20, and the corrected source was subsequently promoted to the normal host path.
+
+After the later UI/UX alignment audit and `candidate3` correction pass, the Product Owner validated the exact `candidate3` artifact on 2026-09-20. That source was then promoted to the normal host path only after the live validation; `candidate2` was preserved as the previous known-good reference artifact.
 
 The approved live-validation checklist for that frozen candidate was:
 

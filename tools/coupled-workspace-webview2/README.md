@@ -16,7 +16,7 @@ Product Owner reported it functional in the live PokePixel environment. A later
 F6-F8 keyboard-accessibility audit found one Maintenance Drawer Tab-boundary
 defect that was not exercised by that live report.
 
-Final corrected validation candidate:
+Post-live keyboard-accessibility correction candidate:
 
 ```text
 PokePixelCoupledWorkspace.candidate2.exe
@@ -29,14 +29,34 @@ TECH, A11Y/QOL, UX and VISUAL re-QA are READY with no remaining P0–P3 findings
 the approved visual evidence is byte-identical. The Product Owner reported this
 corrected candidate functional in the live PokePixel environment on 2026-09-20.
 
-The corrected source is now promoted to the normal host path:
+The later UI/UX alignment audit produced the current validation candidate:
+
+```text
+PokePixelCoupledWorkspace.candidate3.exe
+SHA-256 A304E45F55152350A569EB6AA0816779154A11287A8D1062DAEA4E64E4CAF830
+```
+
+This pass corrects Command Deck alignment/centering, removes the viewport seam,
+keeps dual health visible at the 1180px logical minimum, replaces native light
+ComboBox chrome with the Better UI select, keeps WebView keyboard focus cyan
+independent from gold current state, normalizes Focus ordering, and adds
+Per-Monitor V2/DPI-aware geometry including mixed-monitor Drawer placement.
+The final select keyboard path is handled through WinForms `ProcessCmdKey` and
+is exercised by the blocking local smoke through `PreProcessMessage`.
+Independent TECH-UI, UX/A11Y and render-first VISUAL gates are READY with no
+P0–P3 findings, and the Product Owner validated this exact candidate live on
+2026-09-20.
+
+The candidate3 source is now promoted to the normal host path:
 
 ```text
 PokePixelCoupledWorkspace.exe
-SHA-256 052D146BED95045FED641A56CD1A8C64178CFAD9AEB570800A7C0CF9AF609F81
+SHA-256 3C904395CACB17CD8B467FDDEEFC46170B4441B7C88D6BB599100DF32CF84C27
 ```
 
-Normal-host build, local smoke and compatibility-wrapper validation all pass.
+Normal-host build, blocking local smoke and compatibility-wrapper validation all
+pass. `candidate2` is retained as the previous known-good accessibility-corrected
+reference artifact.
 
 ## Architecture
 

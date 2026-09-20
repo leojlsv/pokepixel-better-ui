@@ -13,8 +13,8 @@ namespace PokePixel.CoupledWorkspace
 {
     internal sealed class BetterUiFlowLayoutPanel : FlowLayoutPanel
     {
-        private const int ScrollbarWidth = 10;
-        private const int MinimumThumbHeight = 24;
+        private const int LogicalScrollbarWidth = 10;
+        private const int LogicalMinimumThumbHeight = 24;
         private const int SbHorz = 0;
         private const int SbVert = 1;
 
@@ -160,10 +160,11 @@ namespace PokePixel.CoupledWorkspace
 
         private Rectangle GetTrackRectangle()
         {
+            var scrollbarWidth = ScaleMetric(LogicalScrollbarWidth);
             return new Rectangle(
-                Math.Max(0, ClientSize.Width - ScrollbarWidth),
+                Math.Max(0, ClientSize.Width - scrollbarWidth),
                 0,
-                ScrollbarWidth,
+                scrollbarWidth,
                 Math.Max(0, ClientSize.Height)
             );
         }
@@ -176,7 +177,7 @@ namespace PokePixel.CoupledWorkspace
 
             var contentHeight = Math.Max(ClientSize.Height, DisplayRectangle.Height);
             var thumbHeight = Math.Max(
-                MinimumThumbHeight,
+                ScaleMetric(LogicalMinimumThumbHeight),
                 (int)Math.Round((double)track.Height * ClientSize.Height / contentHeight)
             );
             thumbHeight = Math.Min(track.Height, thumbHeight);
@@ -224,6 +225,462 @@ namespace PokePixel.CoupledWorkspace
         {
             Invalidate(GetTrackRectangle());
         }
+
+        private int ScaleMetric(int logicalPixels)
+        {
+            return Math.Max(
+                1,
+                (int)Math.Round(
+                    logicalPixels * Math.Max(96, DeviceDpi) / 96.0,
+                    MidpointRounding.AwayFromZero
+                )
+            );
+        }
+    }
+
+    internal sealed class BetterUiMenuRenderer : ToolStripRenderer
+    {
+        private static readonly Color Base = Color.FromArgb(0x23, 0x22, 0x28);
+        private static readonly Color Stone = Color.FromArgb(0x5F, 0x58, 0x54);
+        private static readonly Color Strong = Color.FromArgb(0x87, 0x85, 0x73);
+
+        protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
+        {
+            using (var brush = new SolidBrush(Base))
+                e.Graphics.FillRectangle(brush, e.AffectedBounds);
+        }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+            var edge = ScaleMetric(e.ToolStrip, 2);
+            using (var brush = new SolidBrush(Stone))
+            {
+                e.Graphics.FillRectangle(brush, 0, 0, e.ToolStrip.Width, edge);
+                e.Graphics.FillRectangle(brush, 0, e.ToolStrip.Height - edge, e.ToolStrip.Width, edge);
+                e.Graphics.FillRectangle(brush, 0, 0, edge, e.ToolStrip.Height);
+                e.Graphics.FillRectangle(brush, e.ToolStrip.Width - edge, 0, edge, e.ToolStrip.Height);
+            }
+        }
+
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+        {
+            var color = e.Item.Selected || e.Item.Pressed ? Stone : Base;
+            using (var brush = new SolidBrush(color))
+                e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, e.Item.Size));
+
+            if (e.Item.Selected)
+            {
+                var edge = ScaleMetric(e.ToolStrip, 2);
+                using (var pen = new Pen(Strong, edge))
+                    e.Graphics.DrawRectangle(
+                        pen,
+                        edge / 2,
+                        edge / 2,
+                        Math.Max(0, e.Item.Width - edge - 1),
+                        Math.Max(0, e.Item.Height - edge - 1)
+                    );
+            }
+        }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            e.TextColor = e.Item.ForeColor;
+            base.OnRenderItemText(e);
+        }
+
+        protected override void OnRenderImageMargin(ToolStripRenderEventArgs e)
+        {
+        }
+
+        private static int ScaleMetric(Control control, int logicalPixels)
+        {
+            var dpi = control == null ? 96 : Math.Max(96, control.DeviceDpi);
+            return Math.Max(
+                1,
+                (int)Math.Round(
+                    logicalPixels * dpi / 96.0,
+                    MidpointRounding.AwayFromZero
+                )
+            );
+        }
+    }
+
+    internal sealed class BetterUiSelect : Control
+    {
+        private readonly List<object> _items = new List<object>();
+        private readonly ContextMenuStrip _menu;
+        private int _selectedIndex = -1;
+        private bool _hover;
+        private bool _pressed;
+
+        public BetterUiSelect()
+        {
+            SetStyle(
+                ControlStyles.AllPaintingInWmPaint
+                | ControlStyles.OptimizedDoubleBuffer
+                | ControlStyles.ResizeRedraw
+                | ControlStyles.UserPaint,
+                true
+            );
+            Height = 28;
+            TabStop = true;
+            AccessibleRole = AccessibleRole.ComboBox;
+            Cursor = Cursors.Hand;
+            BackColor = Color.FromArgb(0x23, 0x22, 0x28);
+            ForeColor = Color.FromArgb(0xEB, 0xEC, 0xDC);
+
+            _menu = new ContextMenuStrip();
+            _menu.ShowImageMargin = false;
+            _menu.ShowCheckMargin = false;
+            _menu.Padding = new Padding(2);
+            _menu.BackColor = BackColor;
+            _menu.ForeColor = ForeColor;
+            _menu.Renderer = new BetterUiMenuRenderer();
+            _menu.Opened += delegate
+            {
+                AccessibilityNotifyClients(AccessibleEvents.StateChange, -1);
+            };
+            _menu.Closed += delegate
+            {
+                AccessibilityNotifyClients(AccessibleEvents.StateChange, -1);
+            };
+        }
+
+        public IList<object> Items
+        {
+            get { return _items; }
+        }
+
+        public int SelectedIndex
+        {
+            get { return _selectedIndex; }
+            set
+            {
+                var normalized = value >= 0 && value < _items.Count ? value : -1;
+                if (_selectedIndex == normalized) return;
+                _selectedIndex = normalized;
+                Invalidate();
+                AccessibilityNotifyClients(AccessibleEvents.ValueChange, -1);
+                var handler = SelectedIndexChanged;
+                if (handler != null) handler(this, EventArgs.Empty);
+            }
+        }
+
+        public object SelectedItem
+        {
+            get
+            {
+                return _selectedIndex >= 0 && _selectedIndex < _items.Count
+                    ? _items[_selectedIndex]
+                    : null;
+            }
+            set
+            {
+                var index = -1;
+                for (var i = 0; i < _items.Count; i++)
+                {
+                    if (object.ReferenceEquals(_items[i], value) || object.Equals(_items[i], value))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                SelectedIndex = index;
+            }
+        }
+
+        public event EventHandler SelectedIndexChanged;
+
+        internal ContextMenuStrip MenuForSmoke
+        {
+            get { return _menu; }
+        }
+
+        internal void OpenMenuForSmoke()
+        {
+            ShowMenu();
+        }
+
+        protected override AccessibleObject CreateAccessibilityInstance()
+        {
+            return new BetterUiSelectAccessibleObject(this);
+        }
+
+        protected override bool IsInputKey(Keys keyData)
+        {
+            var key = keyData & Keys.KeyCode;
+            if (key == Keys.Up || key == Keys.Down || key == Keys.Home || key == Keys.End)
+                return true;
+            return base.IsInputKey(keyData);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            var stone = Color.FromArgb(0x5F, 0x58, 0x54);
+            var strong = Color.FromArgb(0x87, 0x85, 0x73);
+            var cyan = Color.FromArgb(0x54, 0xBA, 0xD2);
+            var surface = _hover || _pressed ? stone : BackColor;
+            var border = Focused ? cyan : (_hover ? strong : stone);
+            var edge = ScaleMetric(2);
+
+            using (var borderBrush = new SolidBrush(border))
+                e.Graphics.FillRectangle(borderBrush, ClientRectangle);
+            using (var surfaceBrush = new SolidBrush(surface))
+                e.Graphics.FillRectangle(
+                    surfaceBrush,
+                    new Rectangle(
+                        edge,
+                        edge,
+                        Math.Max(0, Width - (edge * 2)),
+                        Math.Max(0, Height - (edge * 2))
+                    )
+                );
+
+            var selected = SelectedItem;
+            var text = selected == null ? "" : selected.ToString();
+            var textInset = ScaleMetric(8);
+            var arrowReserve = ScaleMetric(30);
+            var textBounds = new Rectangle(
+                textInset,
+                0,
+                Math.Max(0, Width - arrowReserve),
+                Height
+            );
+            TextRenderer.DrawText(
+                e.Graphics,
+                text,
+                Font,
+                textBounds,
+                ForeColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis
+            );
+
+            var arrowColor = Focused ? cyan : ForeColor;
+            using (var pen = new Pen(arrowColor, edge))
+            {
+                var cx = Width - ScaleMetric(13);
+                var cy = Height / 2;
+                var half = ScaleMetric(3);
+                var rise = ScaleMetric(2);
+                var drop = ScaleMetric(1);
+                e.Graphics.DrawLine(pen, cx - half, cy - rise, cx, cy + drop);
+                e.Graphics.DrawLine(pen, cx, cy + drop, cx + half, cy - rise);
+            }
+        }
+
+        protected override void OnMouseEnter(EventArgs e)
+        {
+            _hover = true;
+            Invalidate();
+            base.OnMouseEnter(e);
+        }
+
+        protected override void OnMouseLeave(EventArgs e)
+        {
+            _hover = false;
+            _pressed = false;
+            Invalidate();
+            base.OnMouseLeave(e);
+        }
+
+        protected override void OnMouseDown(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                Focus();
+                _pressed = true;
+                Invalidate();
+            }
+            base.OnMouseDown(e);
+        }
+
+        protected override void OnMouseUp(MouseEventArgs e)
+        {
+            _pressed = false;
+            Invalidate();
+            base.OnMouseUp(e);
+        }
+
+        protected override void OnClick(EventArgs e)
+        {
+            base.OnClick(e);
+            ShowMenu();
+        }
+
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            if (HandleKeyboardCommand(keyData)) return true;
+            return base.ProcessCmdKey(ref msg, keyData);
+        }
+
+        private bool HandleKeyboardCommand(Keys keyData)
+        {
+            var keyCode = keyData & Keys.KeyCode;
+            var alt = (keyData & Keys.Alt) == Keys.Alt;
+            if (keyCode == Keys.Down && alt)
+            {
+                ShowMenu();
+                return true;
+            }
+            if (keyCode == Keys.F4 || keyCode == Keys.Enter || keyCode == Keys.Space)
+            {
+                ShowMenu();
+                return true;
+            }
+            if (keyCode == Keys.Down || keyCode == Keys.Up)
+            {
+                if (_items.Count > 0)
+                {
+                    var delta = keyCode == Keys.Down ? 1 : -1;
+                    var next = _selectedIndex < 0 ? 0 : _selectedIndex + delta;
+                    next = Math.Max(0, Math.Min(_items.Count - 1, next));
+                    SelectedIndex = next;
+                }
+                return true;
+            }
+            if (keyCode == Keys.Home && _items.Count > 0)
+            {
+                SelectedIndex = 0;
+                return true;
+            }
+            if (keyCode == Keys.End && _items.Count > 0)
+            {
+                SelectedIndex = _items.Count - 1;
+                return true;
+            }
+            return false;
+        }
+
+        protected override void OnGotFocus(EventArgs e)
+        {
+            Invalidate();
+            base.OnGotFocus(e);
+        }
+
+        protected override void OnLostFocus(EventArgs e)
+        {
+            _pressed = false;
+            Invalidate();
+            base.OnLostFocus(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _menu.Dispose();
+            base.Dispose(disposing);
+        }
+
+        private sealed class BetterUiSelectAccessibleObject : Control.ControlAccessibleObject
+        {
+            private readonly BetterUiSelect _owner;
+
+            public BetterUiSelectAccessibleObject(BetterUiSelect owner)
+                : base(owner)
+            {
+                _owner = owner;
+            }
+
+            public override AccessibleRole Role
+            {
+                get { return AccessibleRole.ComboBox; }
+            }
+
+            public override string Name
+            {
+                get
+                {
+                    return string.IsNullOrWhiteSpace(_owner.AccessibleName)
+                        ? base.Name
+                        : _owner.AccessibleName;
+                }
+                set { base.Name = value; }
+            }
+
+            public override string Value
+            {
+                get
+                {
+                    var selected = _owner.SelectedItem;
+                    return selected == null ? "" : selected.ToString();
+                }
+                set
+                {
+                    if (value == null) return;
+                    for (var i = 0; i < _owner.Items.Count; i++)
+                    {
+                        var item = _owner.Items[i];
+                        if (item != null
+                            && string.Equals(item.ToString(), value, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _owner.SelectedIndex = i;
+                            return;
+                        }
+                    }
+                }
+            }
+
+            public override string DefaultAction
+            {
+                get { return "Open"; }
+            }
+
+            public override AccessibleStates State
+            {
+                get
+                {
+                    var state = base.State;
+                    state &= ~(AccessibleStates.Expanded | AccessibleStates.Collapsed);
+                    return state | (_owner._menu.Visible
+                        ? AccessibleStates.Expanded
+                        : AccessibleStates.Collapsed);
+                }
+            }
+
+            public override void DoDefaultAction()
+            {
+                _owner.ShowMenu();
+            }
+        }
+
+        private void ShowMenu()
+        {
+            if (_items.Count == 0 || IsDisposed) return;
+            _menu.Items.Clear();
+            _menu.Font = Font;
+            _menu.Padding = new Padding(ScaleMetric(2));
+            for (var i = 0; i < _items.Count; i++)
+            {
+                var index = i;
+                var item = new ToolStripMenuItem(_items[i].ToString());
+                item.AutoSize = false;
+                item.Width = Math.Max(Width, ScaleMetric(96));
+                item.Height = ScaleMetric(28);
+                item.Padding = new Padding(ScaleMetric(8), 0, ScaleMetric(8), 0);
+                item.Margin = Padding.Empty;
+                item.BackColor = BackColor;
+                item.ForeColor = i == _selectedIndex
+                    ? Color.FromArgb(0xE3, 0xC0, 0x54)
+                    : ForeColor;
+                item.Checked = i == _selectedIndex;
+                item.Click += delegate { SelectedIndex = index; };
+                _menu.Items.Add(item);
+            }
+            _menu.AccessibleName = string.IsNullOrWhiteSpace(AccessibleName)
+                ? "Options"
+                : AccessibleName + " options";
+            _menu.Show(this, new Point(0, Height));
+        }
+
+        private int ScaleMetric(int logicalPixels)
+        {
+            return Math.Max(
+                1,
+                (int)Math.Round(
+                    logicalPixels * Math.Max(96, DeviceDpi) / 96.0,
+                    MidpointRounding.AwayFromZero
+                )
+            );
+        }
     }
 
     internal sealed class MaintenanceDrawerForm : Form
@@ -247,6 +704,9 @@ namespace PokePixel.CoupledWorkspace
     {
         private const string TargetUrl = "https://pokepixel.nietore.com/play/";
         private const string TargetOrigin = "https://pokepixel.nietore.com";
+        private const int ExpandedDeckMinimumWidth = 1520;
+        private const int CompactStatusWidth = 64;
+        private const int ExpandedStatusWidth = 112;
 
         private readonly string _baseDir;
         private readonly bool _smokeMode;
@@ -263,12 +723,13 @@ namespace PokePixel.CoupledWorkspace
         private readonly Label _rightStatus;
         private readonly System.Windows.Forms.Timer _smokeTimer;
         private readonly SemaphoreSlim _workspaceMutationGate = new SemaphoreSlim(1, 1);
+        private readonly ToolTip _toolTip;
         private Panel _commandDeck;
         private FlowLayoutPanel _leftCommandGroup;
         private FlowLayoutPanel _rightCommandGroup;
         private Button _singleModeButton;
         private Button _dualModeButton;
-        private ComboBox _singleProfileSelector;
+        private BetterUiSelect _singleProfileSelector;
         private Label _singleStatus;
         private FlowLayoutPanel _dualLayoutGroup;
         private Button _leftAccountButton;
@@ -279,7 +740,7 @@ namespace PokePixel.CoupledWorkspace
         private Button _swapButton;
         private Button _focusButton;
         private Label _activeProfileLabel;
-        private ComboBox _scopeSelector;
+        private BetterUiSelect _scopeSelector;
         private Button _homeButton;
         private Button _reloadButton;
         private Button _maintenanceButton;
@@ -297,6 +758,7 @@ namespace PokePixel.CoupledWorkspace
         private Button _drawerCopyButton;
         private Button _drawerResetLayoutButton;
         private string _betterUiScript;
+        private string _webViewFocusedProfileId;
         private bool _applyingLayout;
         private bool _updatingCommandDeck;
         private DateTime _maintenanceDrawerAutoClosedAtUtc = DateTime.MinValue;
@@ -325,11 +787,14 @@ namespace PokePixel.CoupledWorkspace
             Text = "PokePixel Coupled Workspace — WebView2";
             BackColor = Color.FromArgb(0x23, 0x22, 0x28);
             ForeColor = Color.FromArgb(0xEB, 0xEC, 0xDC);
+            AutoScaleDimensions = new SizeF(96.0f, 96.0f);
+            AutoScaleMode = AutoScaleMode.Dpi;
             Width = 1600;
             Height = 960;
             MinimumSize = new Size(1180, 600);
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font(FontFamily.GenericMonospace, 9.0f, FontStyle.Regular);
+            _toolTip = new ToolTip();
 
             if (_smokeMode)
             {
@@ -340,6 +805,8 @@ namespace PokePixel.CoupledWorkspace
             var root = new TableLayoutPanel();
             _rootLayout = root;
             root.Dock = DockStyle.Fill;
+            root.Margin = Padding.Empty;
+            root.Padding = Padding.Empty;
             root.RowCount = 2;
             root.ColumnCount = 1;
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
@@ -355,6 +822,7 @@ namespace PokePixel.CoupledWorkspace
 
             _split = new SplitContainer();
             _split.Dock = DockStyle.Fill;
+            _split.Margin = Padding.Empty;
             _split.Orientation = Orientation.Vertical;
             _split.SplitterWidth = 8;
             _split.BackColor = Color.FromArgb(0x5F, 0x58, 0x54);
@@ -375,12 +843,14 @@ namespace PokePixel.CoupledWorkspace
 
             Shown += async delegate
             {
+                ApplyWorkspaceDpiMetrics();
                 await RunWorkspaceMutationAsync(InitializeAsync);
             };
             FormClosed += delegate
             {
                 if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
                     _maintenanceDrawer.Close();
+                _toolTip.Dispose();
                 if (!_smokeMode) PersistWorkspaceState();
                 foreach (var pane in new List<AccountPane>(_panesByProfile.Values))
                     pane.Dispose();
@@ -395,6 +865,21 @@ namespace PokePixel.CoupledWorkspace
             {
                 if (_maintenanceDrawer != null && _maintenanceDrawer.Visible)
                     PositionMaintenanceDrawer();
+            };
+            DpiChanged += delegate
+            {
+                if (!IsHandleCreated || IsDisposed) return;
+                BeginInvoke(new Action(delegate
+                {
+                    if (IsDisposed) return;
+                    ApplyWorkspaceDpiMetrics();
+                    UpdateCommandDeck();
+                    if (_maintenanceDrawer != null && _maintenanceDrawer.Visible)
+                    {
+                        ApplyMaintenanceDrawerDpiMetrics();
+                        PositionMaintenanceDrawer();
+                    }
+                }));
             };
 
             _smokeTimer = new System.Windows.Forms.Timer();
@@ -416,6 +901,7 @@ namespace PokePixel.CoupledWorkspace
             var toolbar = new Panel();
             _commandDeck = toolbar;
             toolbar.Dock = DockStyle.Fill;
+            toolbar.Margin = Padding.Empty;
             toolbar.BackColor = BackColor;
             toolbar.Padding = new Padding(8, 6, 8, 6);
 
@@ -428,13 +914,12 @@ namespace PokePixel.CoupledWorkspace
             leftGroup.Controls.Add(_singleModeButton);
             leftGroup.Controls.Add(_dualModeButton);
 
-            _singleProfileSelector = MakeComboBox(92);
+            _singleProfileSelector = MakeSelect(92);
             _singleProfileSelector.AccessibleName = "Account profile";
             foreach (var profile in ProfileRegistry.All())
                 _singleProfileSelector.Items.Add(profile);
             leftGroup.Controls.Add(_singleProfileSelector);
-            _singleStatus = MakeLabel("Starting", 66);
-            _singleStatus.Margin = new Padding(4, 6, 0, 0);
+            _singleStatus = MakeToolbarLabel("INIT", CompactStatusWidth);
             leftGroup.Controls.Add(_singleStatus);
             toolbar.Controls.Add(leftGroup);
 
@@ -442,16 +927,14 @@ namespace PokePixel.CoupledWorkspace
             _dualLayoutGroup.Top = 6;
 
             _leftAccountButton = MakeButton("Rhyxus", 104, 0);
-            leftStatus = MakeLabel("Starting", 62);
-            leftStatus.Margin = new Padding(2, 6, 4, 0);
+            leftStatus = MakeToolbarLabel("INIT", CompactStatusWidth);
             _layout12Button = MakeButton("1:2", 44, 0);
             _layout11Button = MakeButton("1:1", 44, 0);
             _layout21Button = MakeButton("2:1", 44, 0);
             _swapButton = MakeButton("Swap", 52, 0);
             _focusButton = MakeButton("Focus", 62, 0);
             _rightAccountButton = MakeButton("Rhyosa", 104, 0);
-            rightStatus = MakeLabel("Starting", 62);
-            rightStatus.Margin = new Padding(2, 6, 0, 0);
+            rightStatus = MakeToolbarLabel("INIT", CompactStatusWidth);
 
             _dualLayoutGroup.Controls.Add(_leftAccountButton);
             _dualLayoutGroup.Controls.Add(leftStatus);
@@ -468,15 +951,14 @@ namespace PokePixel.CoupledWorkspace
             _rightCommandGroup = rightGroup;
             rightGroup.Dock = DockStyle.Right;
 
-            _activeProfileLabel = MakeLabel("ACTIVE: RHYXUS", 116);
-            _activeProfileLabel.Margin = new Padding(0, 6, 2, 0);
-            _scopeSelector = MakeComboBox(74);
+            _activeProfileLabel = MakeToolbarLabel("ACTIVE: RHYXUS", 116);
+            _scopeSelector = MakeSelect(72);
             _scopeSelector.AccessibleName = "Command scope";
             _scopeSelector.Items.Add("Active");
             _scopeSelector.Items.Add("Both");
-            _homeButton = MakeButton("Home", 58, 0);
-            _reloadButton = MakeButton("Reload", 66, 0);
-            _maintenanceButton = MakeButton("⋯", 30, 0);
+            _homeButton = MakeButton("Home", 56, 0);
+            _reloadButton = MakeButton("Reload", 64, 0);
+            _maintenanceButton = MakeButton("⋯", 28, 0);
             _maintenanceButton.AccessibleName = "Maintenance";
 
             rightGroup.Controls.Add(_activeProfileLabel);
@@ -612,23 +1094,25 @@ namespace PokePixel.CoupledWorkspace
             group.AutoSizeMode = AutoSizeMode.GrowAndShrink;
             group.WrapContents = false;
             group.Height = 32;
+            group.MinimumSize = new Size(0, 32);
             group.Margin = new Padding(0);
             group.Padding = new Padding(0);
             return group;
         }
 
-        private ComboBox MakeComboBox(int width)
+        private BetterUiSelect MakeSelect(int width)
         {
-            var combo = new ComboBox();
-            combo.Width = width;
-            combo.Height = 28;
-            combo.DropDownStyle = ComboBoxStyle.DropDownList;
-            combo.FlatStyle = FlatStyle.Flat;
-            combo.BackColor = Color.FromArgb(0x23, 0x22, 0x28);
-            combo.ForeColor = Color.FromArgb(0xEB, 0xEC, 0xDC);
-            combo.Font = Font;
-            combo.Margin = new Padding(4, 0, 0, 0);
-            return combo;
+            var select = new BetterUiSelect();
+            select.Width = width;
+            select.Height = 28;
+            select.Font = Font;
+            select.Margin = new Padding(3, 2, 3, 2);
+            select.GotFocus += delegate
+            {
+                _webViewFocusedProfileId = null;
+                UpdateCommandDeck();
+            };
+            return select;
         }
 
         private void LayoutCommandDeck()
@@ -641,15 +1125,23 @@ namespace PokePixel.CoupledWorkspace
                 || _rightStatus == null)
                 return;
 
-            var leftEdge = _leftCommandGroup.Right + 8;
-            var rightEdge = _rightCommandGroup.Left - 8;
-            _dualLayoutGroup.Left = Math.Max(
-                leftEdge,
-                leftEdge + Math.Max(0, rightEdge - leftEdge - _dualLayoutGroup.Width) / 2
-            );
-            _dualLayoutGroup.Top = 6;
+            ApplyResponsiveCommandDeckState();
+            _leftCommandGroup.PerformLayout();
+            _dualLayoutGroup.PerformLayout();
+            _rightCommandGroup.PerformLayout();
+            _commandDeck.PerformLayout();
 
-            var compact = _commandDeck.ClientSize.Width < 1280;
+            var safetyGap = DpiMetric(8);
+            var leftEdge = _leftCommandGroup.Right + safetyGap;
+            var rightEdge = _rightCommandGroup.Left - safetyGap;
+            var desired = (_commandDeck.ClientSize.Width - _dualLayoutGroup.Width) / 2;
+            var maximum = Math.Max(leftEdge, rightEdge - _dualLayoutGroup.Width);
+            _dualLayoutGroup.Left = Math.Max(leftEdge, Math.Min(maximum, desired));
+            _dualLayoutGroup.Top = DpiMetric(6);
+        }
+
+        private void ApplyResponsiveCommandDeckState()
+        {
             var dual = _workspaceState.Mode == WorkspaceMode.Dual;
             var focusMode = dual && _workspaceState.FocusMode;
             var activeOnLeft = dual && string.Equals(
@@ -657,27 +1149,237 @@ namespace PokePixel.CoupledWorkspace
                 _workspaceState.LeftProfileId,
                 StringComparison.OrdinalIgnoreCase
             );
-            _leftStatus.Visible = !compact && dual && (!focusMode || activeOnLeft);
-            _rightStatus.Visible = !compact && dual && (!focusMode || !activeOnLeft);
-            _activeProfileLabel.Visible = dual
-                && !focusMode
-                && _commandDeck.ClientSize.Width >= 1200;
+            var expanded = IsExpandedDeck();
+            var statusWidth = DpiMetric(expanded ? ExpandedStatusWidth : CompactStatusWidth);
+
+            _singleModeButton.Visible = !focusMode;
+            _dualModeButton.Visible = !focusMode;
+            _singleProfileSelector.Visible = !dual;
+            _singleStatus.Visible = !dual;
+            _dualLayoutGroup.Visible = dual;
+            _scopeSelector.Visible = dual;
+
+            _leftStatus.Width = statusWidth;
+            _rightStatus.Width = statusWidth;
+            _singleStatus.Width = statusWidth;
+            _leftAccountButton.Width = DpiMetric(expanded ? 104 : 112);
+            _rightAccountButton.Width = DpiMetric(expanded ? 104 : 112);
+
+            _layout12Button.Visible = dual && !focusMode;
+            _layout11Button.Visible = dual && !focusMode;
+            _layout21Button.Visible = dual && !focusMode;
+            _swapButton.Visible = dual && !focusMode;
+            _leftAccountButton.Visible = dual && (!focusMode || activeOnLeft);
+            _rightAccountButton.Visible = dual && (!focusMode || !activeOnLeft);
+            _leftStatus.Visible = dual && (!focusMode || activeOnLeft);
+            _rightStatus.Visible = dual && (!focusMode || !activeOnLeft);
+            _activeProfileLabel.Visible = dual && !focusMode && expanded;
+
+            var leftName = ProfileRegistry.Get(_workspaceState.LeftProfileId).DisplayName;
+            var rightName = ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName;
+            var inlineActiveCue = !expanded || focusMode;
+            var leftActive = dual && string.Equals(
+                _workspaceState.ActiveProfileId,
+                _workspaceState.LeftProfileId,
+                StringComparison.OrdinalIgnoreCase
+            );
+            var rightActive = dual && string.Equals(
+                _workspaceState.ActiveProfileId,
+                _workspaceState.RightProfileId,
+                StringComparison.OrdinalIgnoreCase
+            );
+            _leftAccountButton.Text = inlineActiveCue && leftActive
+                ? "ACTIVE " + leftName
+                : leftName;
+            _rightAccountButton.Text = inlineActiveCue && rightActive
+                ? "ACTIVE " + rightName
+                : rightName;
+
+            ArrangeDualLayoutGroup(focusMode, activeOnLeft);
+            RefreshHealthLabelsForLayout(expanded);
         }
 
-        private void SetButtonSelected(Button button, bool selected)
+        private static int ScaleLogicalPixels(int logicalPixels, int dpi)
+        {
+            return Math.Max(
+                1,
+                (int)Math.Round(
+                    logicalPixels * Math.Max(96, dpi) / 96.0,
+                    MidpointRounding.AwayFromZero
+                )
+            );
+        }
+
+        private int DpiMetric(int logicalPixels)
+        {
+            var dpi = IsHandleCreated ? Math.Max(96, DeviceDpi) : 96;
+            return ScaleLogicalPixels(logicalPixels, dpi);
+        }
+
+        private int DrawerDpiMetric(int logicalPixels)
+        {
+            var dpi = _maintenanceDrawer != null && _maintenanceDrawer.IsHandleCreated
+                ? Math.Max(96, _maintenanceDrawer.DeviceDpi)
+                : IsHandleCreated ? Math.Max(96, DeviceDpi) : 96;
+            return ScaleLogicalPixels(logicalPixels, dpi);
+        }
+
+        private Padding DpiPadding(int left, int top, int right, int bottom)
+        {
+            return new Padding(
+                DpiMetric(left),
+                DpiMetric(top),
+                DpiMetric(right),
+                DpiMetric(bottom)
+            );
+        }
+
+        private bool IsExpandedDeck()
+        {
+            return _commandDeck != null
+                && _commandDeck.ClientSize.Width >= DpiMetric(ExpandedDeckMinimumWidth);
+        }
+
+        private void ApplyWorkspaceDpiMetrics()
+        {
+            MinimumSize = new Size(DpiMetric(1180), DpiMetric(600));
+            if (_rootLayout != null && _rootLayout.RowStyles.Count > 0)
+                _rootLayout.RowStyles[0].Height = DpiMetric(44);
+            if (_commandDeck != null)
+                _commandDeck.Padding = DpiPadding(8, 6, 8, 6);
+            if (_split != null)
+            {
+                _split.SplitterWidth = DpiMetric(8);
+                _split.Panel1MinSize = DpiMetric(320);
+                _split.Panel2MinSize = DpiMetric(320);
+            }
+            if (_leftHost != null) _leftHost.Padding = new Padding(0, DpiMetric(2), 0, 0);
+            if (_rightHost != null) _rightHost.Padding = new Padding(0, DpiMetric(2), 0, 0);
+
+            var groups = new[] { _leftCommandGroup, _dualLayoutGroup, _rightCommandGroup };
+            foreach (var group in groups)
+            {
+                if (group == null) continue;
+                group.Height = DpiMetric(32);
+                group.MinimumSize = new Size(0, DpiMetric(32));
+            }
+
+            var toolbarControls = new Control[]
+            {
+                _singleModeButton,
+                _dualModeButton,
+                _singleProfileSelector,
+                _singleStatus,
+                _leftAccountButton,
+                _leftStatus,
+                _layout12Button,
+                _layout11Button,
+                _layout21Button,
+                _swapButton,
+                _focusButton,
+                _rightAccountButton,
+                _rightStatus,
+                _activeProfileLabel,
+                _scopeSelector,
+                _homeButton,
+                _reloadButton,
+                _maintenanceButton
+            };
+            foreach (var control in toolbarControls)
+            {
+                if (control == null) continue;
+                control.Height = DpiMetric(28);
+                control.Margin = DpiPadding(3, 2, 3, 2);
+                var button = control as Button;
+                if (button != null) button.FlatAppearance.BorderSize = DpiMetric(2);
+            }
+
+            ApplyResponsiveCommandDeckState();
+            PerformLayout();
+            LayoutCommandDeck();
+        }
+
+        private void ArrangeDualLayoutGroup(bool focusMode, bool activeOnLeft)
+        {
+            if (_dualLayoutGroup == null) return;
+            Control[] order;
+            if (focusMode && activeOnLeft)
+            {
+                order = new Control[]
+                {
+                    _leftAccountButton,
+                    _leftStatus,
+                    _focusButton,
+                    _layout12Button,
+                    _layout11Button,
+                    _layout21Button,
+                    _swapButton,
+                    _rightAccountButton,
+                    _rightStatus
+                };
+            }
+            else if (focusMode)
+            {
+                order = new Control[]
+                {
+                    _rightAccountButton,
+                    _rightStatus,
+                    _focusButton,
+                    _layout12Button,
+                    _layout11Button,
+                    _layout21Button,
+                    _swapButton,
+                    _leftAccountButton,
+                    _leftStatus
+                };
+            }
+            else
+            {
+                order = new Control[]
+                {
+                    _leftAccountButton,
+                    _leftStatus,
+                    _layout12Button,
+                    _layout11Button,
+                    _layout21Button,
+                    _swapButton,
+                    _focusButton,
+                    _rightAccountButton,
+                    _rightStatus
+                };
+            }
+
+            _dualLayoutGroup.SuspendLayout();
+            try
+            {
+                for (var i = order.Length - 1; i >= 0; i--)
+                    _dualLayoutGroup.Controls.SetChildIndex(order[i], 0);
+            }
+            finally
+            {
+                _dualLayoutGroup.ResumeLayout(false);
+            }
+        }
+
+        private void SetButtonSelected(Button button, bool selected, bool externalFocusCue)
         {
             if (button == null) return;
             var gold = Color.FromArgb(0xE3, 0xC0, 0x54);
             var cyan = Color.FromArgb(0x54, 0xBA, 0xD2);
             var stone = Color.FromArgb(0x5F, 0x58, 0x54);
             button.Tag = selected;
-            button.FlatAppearance.BorderColor = button.Focused
+            button.FlatAppearance.BorderColor = button.Focused || externalFocusCue
                 ? cyan
                 : selected ? gold : stone;
             button.BackColor = selected
                 ? stone
                 : Color.FromArgb(0x23, 0x22, 0x28);
             button.ForeColor = selected ? gold : ForeColor;
+        }
+
+        private void SetButtonSelected(Button button, bool selected)
+        {
+            SetButtonSelected(button, selected, false);
         }
 
         private void UpdateCommandDeck()
@@ -690,13 +1392,6 @@ namespace PokePixel.CoupledWorkspace
                 var focusMode = !single && _workspaceState.FocusMode;
                 SetButtonSelected(_singleModeButton, single);
                 SetButtonSelected(_dualModeButton, !single);
-                _singleModeButton.Visible = !focusMode;
-                _dualModeButton.Visible = !focusMode;
-                _singleProfileSelector.Visible = single;
-                _singleStatus.Visible = single;
-                _dualLayoutGroup.Visible = !single;
-                _scopeSelector.Visible = !single;
-
                 var singleProfile = ProfileRegistry.Get(_workspaceState.SingleProfileId);
                 _singleProfileSelector.SelectedItem = singleProfile;
 
@@ -710,16 +1405,8 @@ namespace PokePixel.CoupledWorkspace
                     _workspaceState.RightProfileId,
                     StringComparison.OrdinalIgnoreCase
                 );
-                var compactActiveCue = _commandDeck != null && _commandDeck.ClientSize.Width < 1200;
-                var inlineActiveCue = compactActiveCue || focusMode;
                 var leftName = ProfileRegistry.Get(_workspaceState.LeftProfileId).DisplayName;
                 var rightName = ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName;
-                _leftAccountButton.Text = inlineActiveCue && leftActive
-                    ? "ACTIVE " + leftName
-                    : leftName;
-                _rightAccountButton.Text = inlineActiveCue && rightActive
-                    ? "ACTIVE " + rightName
-                    : rightName;
                 _leftAccountButton.AccessibleName = leftActive
                     ? "Active account " + leftName
                     : "Account " + leftName;
@@ -728,11 +1415,21 @@ namespace PokePixel.CoupledWorkspace
                     : "Account " + rightName;
                 SetButtonSelected(
                     _leftAccountButton,
-                    leftActive
+                    leftActive,
+                    string.Equals(
+                        _webViewFocusedProfileId,
+                        _workspaceState.LeftProfileId,
+                        StringComparison.OrdinalIgnoreCase
+                    )
                 );
                 SetButtonSelected(
                     _rightAccountButton,
-                    rightActive
+                    rightActive,
+                    string.Equals(
+                        _webViewFocusedProfileId,
+                        _workspaceState.RightProfileId,
+                        StringComparison.OrdinalIgnoreCase
+                    )
                 );
 
                 SetButtonSelected(_layout12Button, IsCurrentLayoutPreset(1.0 / 3.0));
@@ -742,13 +1439,6 @@ namespace PokePixel.CoupledWorkspace
                 _focusButton.AccessibleName = _workspaceState.FocusMode
                     ? "Restore dual layout"
                     : "Focus active account";
-                _layout12Button.Visible = !single && !_workspaceState.FocusMode;
-                _layout11Button.Visible = !single && !_workspaceState.FocusMode;
-                _layout21Button.Visible = !single && !_workspaceState.FocusMode;
-                _swapButton.Visible = !single && !_workspaceState.FocusMode;
-                _leftAccountButton.Visible = !single && (!_workspaceState.FocusMode || leftActive);
-                _rightAccountButton.Visible = !single && (!_workspaceState.FocusMode || rightActive);
-
                 var activeProfile = ProfileRegistry.Get(_workspaceState.ActiveProfileId);
                 _activeProfileLabel.Text = "ACTIVE: " + activeProfile.DisplayName.ToUpperInvariant();
                 _scopeSelector.SelectedIndex = _workspaceState.CommandScope == CommandScope.Both ? 1 : 0;
@@ -825,8 +1515,10 @@ namespace PokePixel.CoupledWorkspace
             }
 
             RefreshMaintenanceDrawer();
-            PositionMaintenanceDrawer();
+            _maintenanceDrawer.Location = _maintenanceButton.PointToScreen(Point.Empty);
             _maintenanceDrawer.Show(this);
+            ApplyMaintenanceDrawerDpiMetrics();
+            PositionMaintenanceDrawer();
             _maintenanceDrawer.BringToFront();
             _workspaceState.MaintenanceDrawerExpanded = true;
             if (!_smokeMode) PersistWorkspaceState();
@@ -836,6 +1528,8 @@ namespace PokePixel.CoupledWorkspace
         private Form CreateMaintenanceDrawer()
         {
             var drawer = new MaintenanceDrawerForm();
+            drawer.AutoScaleDimensions = new SizeF(96.0f, 96.0f);
+            drawer.AutoScaleMode = AutoScaleMode.Dpi;
             drawer.FormBorderStyle = FormBorderStyle.None;
             drawer.ShowInTaskbar = false;
             drawer.StartPosition = FormStartPosition.Manual;
@@ -949,6 +1643,16 @@ namespace PokePixel.CoupledWorkspace
                     HideMaintenanceDrawer();
                 }
             };
+            drawer.DpiChanged += delegate
+            {
+                if (!drawer.IsHandleCreated || drawer.IsDisposed) return;
+                drawer.BeginInvoke(new Action(delegate
+                {
+                    if (drawer.IsDisposed) return;
+                    ApplyMaintenanceDrawerDpiMetrics();
+                    PositionMaintenanceDrawer();
+                }));
+            };
 
             return drawer;
         }
@@ -1013,16 +1717,81 @@ namespace PokePixel.CoupledWorkspace
             var trigger = _maintenanceButton.PointToScreen(
                 new Point(_maintenanceButton.Width, _maintenanceButton.Height)
             );
-            var working = Screen.FromControl(this).WorkingArea;
+            var working = Screen.FromPoint(trigger).WorkingArea;
+            var margin = DrawerDpiMetric(8);
+            var minimumHeight = DrawerDpiMetric(220);
+            var maximumHeight = DrawerDpiMetric(480);
+            var drawerWidth = _maintenanceDrawer.Width;
             var height = Math.Min(
-                480,
-                Math.Max(220, working.Bottom - trigger.Y - 8)
+                maximumHeight,
+                Math.Max(minimumHeight, working.Bottom - trigger.Y - margin)
             );
             _maintenanceDrawer.Height = height;
-            _maintenanceDrawer.Location = new Point(
-                Math.Max(working.Left, Math.Min(working.Right - 360, trigger.X - 360)),
-                Math.Max(working.Top, Math.Min(working.Bottom - height, trigger.Y))
+            _maintenanceDrawer.Location = ClampDrawerLocation(
+                trigger,
+                working,
+                new Size(drawerWidth, height)
             );
+        }
+
+        private static Point ClampDrawerLocation(
+            Point trigger,
+            Rectangle workingArea,
+            Size drawerSize
+        )
+        {
+            var maximumX = Math.Max(workingArea.Left, workingArea.Right - drawerSize.Width);
+            var maximumY = Math.Max(workingArea.Top, workingArea.Bottom - drawerSize.Height);
+            return new Point(
+                Math.Max(
+                    workingArea.Left,
+                    Math.Min(maximumX, trigger.X - drawerSize.Width)
+                ),
+                Math.Max(workingArea.Top, Math.Min(maximumY, trigger.Y))
+            );
+        }
+
+        private void ApplyMaintenanceDrawerDpiMetrics()
+        {
+            if (_maintenanceDrawer == null || _maintenanceDrawer.IsDisposed) return;
+            var width = DrawerDpiMetric(360);
+            _maintenanceDrawer.MinimumSize = new Size(width, DrawerDpiMetric(220));
+            _maintenanceDrawer.MaximumSize = new Size(width, DrawerDpiMetric(480));
+            _maintenanceDrawer.Width = width;
+            if (_maintenanceDrawerSurface != null)
+                _maintenanceDrawerSurface.Padding = new Padding(DrawerDpiMetric(2));
+
+            var drawerButtons = new[]
+            {
+                _drawerRecoverButton,
+                _drawerHomeButton,
+                _drawerReloadButton,
+                _drawerDevToolsButton,
+                _drawerCopyButton,
+                _drawerResetLayoutButton
+            };
+            foreach (var button in drawerButtons)
+            {
+                if (button == null) continue;
+                button.Height = DrawerDpiMetric(28);
+                button.Margin = new Padding(
+                    DrawerDpiMetric(3),
+                    DrawerDpiMetric(2),
+                    DrawerDpiMetric(3),
+                    DrawerDpiMetric(2)
+                );
+                button.FlatAppearance.BorderSize = DrawerDpiMetric(2);
+            }
+
+            var browserRow = _drawerHomeButton == null
+                ? null
+                : _drawerHomeButton.Parent as FlowLayoutPanel;
+            if (browserRow != null)
+            {
+                browserRow.Height = DrawerDpiMetric(32);
+                browserRow.MinimumSize = new Size(0, DrawerDpiMetric(32));
+            }
+            _maintenanceDrawer.PerformLayout();
         }
 
         private void HideMaintenanceDrawer()
@@ -1193,14 +1962,19 @@ namespace PokePixel.CoupledWorkspace
             button.Width = width;
             button.Height = 28;
             button.Left = left;
-            button.Top = 6;
+            button.Margin = new Padding(3, 2, 3, 2);
+            button.Padding = Padding.Empty;
             button.FlatStyle = FlatStyle.Flat;
             button.FlatAppearance.BorderSize = 2;
             button.FlatAppearance.BorderColor = Color.FromArgb(0x5F, 0x58, 0x54);
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0x5F, 0x58, 0x54);
+            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0x28, 0x42, 0x61);
             button.BackColor = BackColor;
             button.ForeColor = ForeColor;
+            button.UseVisualStyleBackColor = false;
             button.GotFocus += delegate
             {
+                _webViewFocusedProfileId = null;
                 SetButtonSelected(button, button.Tag is bool && (bool)button.Tag);
             };
             button.LostFocus += delegate
@@ -1208,6 +1982,15 @@ namespace PokePixel.CoupledWorkspace
                 if (!button.IsDisposed) UpdateCommandDeck();
             };
             return button;
+        }
+
+        private Label MakeToolbarLabel(string text, int width)
+        {
+            var label = MakeLabel(text, width);
+            label.Height = 28;
+            label.TextAlign = ContentAlignment.MiddleLeft;
+            label.Margin = new Padding(3, 2, 3, 2);
+            return label;
         }
 
         private Label MakeLabel(string text, int width)
@@ -1316,6 +2099,89 @@ namespace PokePixel.CoupledWorkspace
             }
         }
 
+        private static string HealthDeckText(PaneHealthState state, bool expanded)
+        {
+            if (expanded)
+            {
+                switch (state)
+                {
+                    case PaneHealthState.Idle: return "IDLE";
+                    case PaneHealthState.Initializing: return "INITIALIZING";
+                    case PaneHealthState.Loading: return "LOADING";
+                    case PaneHealthState.Ready: return "READY";
+                    case PaneHealthState.UiReady: return "UI READY";
+                    case PaneHealthState.Error: return "ERROR";
+                    case PaneHealthState.ProcessFailed: return "PROCESS FAILED";
+                    case PaneHealthState.Blocked: return "BLOCKED URL";
+                    default: return "STATUS";
+                }
+            }
+
+            switch (state)
+            {
+                case PaneHealthState.Idle: return "IDLE";
+                case PaneHealthState.Initializing: return "INIT";
+                case PaneHealthState.Loading: return "LOAD";
+                case PaneHealthState.Ready: return "READY";
+                case PaneHealthState.UiReady: return "UI OK";
+                case PaneHealthState.Error: return "ERROR";
+                case PaneHealthState.ProcessFailed: return "FAILED";
+                case PaneHealthState.Blocked: return "BLOCK";
+                default: return "STATUS";
+            }
+        }
+
+        private void ApplyHealthToLabel(
+            Label status,
+            string profileName,
+            PaneHealthState state,
+            string detail,
+            bool expanded
+        )
+        {
+            if (status == null) return;
+            status.Text = HealthDeckText(state, expanded);
+            status.ForeColor = HealthColor(state);
+            var full = string.IsNullOrWhiteSpace(detail)
+                ? status.Text
+                : detail;
+            status.AccessibleName = profileName + " health: " + full;
+            _toolTip.SetToolTip(status, full);
+        }
+
+        private void RefreshHealthLabelsForLayout(bool expanded)
+        {
+            var singleProfile = ProfileRegistry.Get(_workspaceState.SingleProfileId);
+            var singlePane = GetPaneForProfile(singleProfile.Id);
+            ApplyHealthToLabel(
+                _singleStatus,
+                singleProfile.DisplayName,
+                singlePane == null ? PaneHealthState.Initializing : singlePane.HealthState,
+                singlePane == null ? "Initializing" : singlePane.HealthText,
+                expanded
+            );
+
+            var leftProfile = ProfileRegistry.Get(_workspaceState.LeftProfileId);
+            var leftPane = GetPaneForProfile(leftProfile.Id);
+            ApplyHealthToLabel(
+                _leftStatus,
+                leftProfile.DisplayName,
+                leftPane == null ? PaneHealthState.Initializing : leftPane.HealthState,
+                leftPane == null ? "Initializing" : leftPane.HealthText,
+                expanded
+            );
+
+            var rightProfile = ProfileRegistry.Get(_workspaceState.RightProfileId);
+            var rightPane = GetPaneForProfile(rightProfile.Id);
+            ApplyHealthToLabel(
+                _rightStatus,
+                rightProfile.DisplayName,
+                rightPane == null ? PaneHealthState.Initializing : rightPane.HealthState,
+                rightPane == null ? "Initializing" : rightPane.HealthText,
+                expanded
+            );
+        }
+
         private bool IsCurrentPane(AccountPane pane)
         {
             if (pane == null) return false;
@@ -1331,8 +2197,8 @@ namespace PokePixel.CoupledWorkspace
             pane.HealthText = text;
             var status = GetStatusLabelForProfile(pane.Profile.Id);
             if (status == null) return;
-            status.Text = text;
-            status.ForeColor = HealthColor(state);
+            var expanded = IsExpandedDeck();
+            ApplyHealthToLabel(status, pane.Profile.DisplayName, state, text, expanded);
         }
 
         private void ApplyPaneHealthToCurrentLabel(AccountPane pane)
@@ -1386,8 +2252,13 @@ namespace PokePixel.CoupledWorkspace
 
             if (status != null)
             {
-                status.Text = "Initializing";
-                status.ForeColor = ForeColor;
+                ApplyHealthToLabel(
+                    status,
+                    pane.Profile.DisplayName,
+                    PaneHealthState.Initializing,
+                    "Initializing",
+                    IsExpandedDeck()
+                );
             }
             pane.HealthState = PaneHealthState.Initializing;
             pane.HealthText = "Initializing";
@@ -1429,10 +2300,9 @@ namespace PokePixel.CoupledWorkspace
         {
             try
             {
-                _split.Panel1MinSize = 320;
-                _split.Panel2MinSize = 320;
-                _leftStatus.Text = "Initializing";
-                _rightStatus.Text = "Initializing";
+                _split.Panel1MinSize = DpiMetric(320);
+                _split.Panel2MinSize = DpiMetric(320);
+                RefreshHealthLabelsForLayout(IsExpandedDeck());
 
                 if (_workspaceState.Mode == WorkspaceMode.Single)
                 {
@@ -1442,7 +2312,13 @@ namespace PokePixel.CoupledWorkspace
                         _leftHost,
                         _leftStatus
                     );
-                    _rightStatus.Text = "Idle";
+                    ApplyHealthToLabel(
+                        _rightStatus,
+                        ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName,
+                        PaneHealthState.Idle,
+                        "Idle",
+                        IsExpandedDeck()
+                    );
                 }
                 else
                 {
@@ -1485,8 +2361,20 @@ namespace PokePixel.CoupledWorkspace
             }
             catch (Exception ex)
             {
-                _leftStatus.Text = "Init error";
-                _rightStatus.Text = "Init error";
+                ApplyHealthToLabel(
+                    _leftStatus,
+                    ProfileRegistry.Get(_workspaceState.LeftProfileId).DisplayName,
+                    PaneHealthState.Error,
+                    "Initialization error",
+                    IsExpandedDeck()
+                );
+                ApplyHealthToLabel(
+                    _rightStatus,
+                    ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName,
+                    PaneHealthState.Error,
+                    "Initialization error",
+                    IsExpandedDeck()
+                );
                 Console.Error.WriteLine(ex);
                 if (_smokeMode)
                 {
@@ -1561,8 +2449,13 @@ namespace PokePixel.CoupledWorkspace
 
             _split.Panel2Collapsed = true;
             _rightHost.Controls.Clear();
-            _rightStatus.Text = "Idle";
-            _rightStatus.ForeColor = ForeColor;
+            ApplyHealthToLabel(
+                _rightStatus,
+                ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName,
+                PaneHealthState.Idle,
+                "Idle",
+                IsExpandedDeck()
+            );
 
             await EnsurePaneAsync(selectedProfile.Id, _leftHost, _leftStatus);
             if (!_smokeMode) PersistWorkspaceState();
@@ -1670,7 +2563,7 @@ namespace PokePixel.CoupledWorkspace
                     available,
                     (int)Math.Round(available * presetRatio)
                 );
-                if (Math.Abs(released - target) <= 24)
+                if (Math.Abs(released - target) <= DpiMetric(24))
                 {
                     SetSplitRatio(presetRatio);
                     snapped = true;
@@ -1833,9 +2726,25 @@ namespace PokePixel.CoupledWorkspace
             {
                 await RunWorkspaceMutationAsync(delegate
                 {
-                    if (IsCurrentPane(pane)) SetActiveProfile(profileId);
+                    if (IsCurrentPane(pane))
+                    {
+                        _webViewFocusedProfileId = profileId;
+                        SetActiveProfile(profileId);
+                    }
                     return Task.FromResult(0);
                 });
+            };
+            view.LostFocus += delegate
+            {
+                if (string.Equals(
+                    _webViewFocusedProfileId,
+                    profileId,
+                    StringComparison.OrdinalIgnoreCase
+                ))
+                {
+                    _webViewFocusedProfileId = null;
+                    if (!IsDisposed) UpdateCommandDeck();
+                }
             };
             core.Settings.AreDevToolsEnabled = true;
             core.Settings.AreDefaultContextMenusEnabled = true;
@@ -2023,6 +2932,7 @@ namespace PokePixel.CoupledWorkspace
         private async Task RunSmokeAsync()
         {
             RunWorkspaceSettingsSmoke();
+            RunDpiMetricSmoke();
             var leftPane = GetPaneForSide(PaneSide.Left);
             var rightPane = GetPaneForSide(PaneSide.Right);
             if (leftPane == null || rightPane == null)
@@ -2120,6 +3030,65 @@ namespace PokePixel.CoupledWorkspace
             Console.WriteLine("WebView2 coupled workspace smoke: PASS");
             Environment.ExitCode = 0;
             Close();
+        }
+
+        private void RunDpiMetricSmoke()
+        {
+            if (AutoScaleMode != AutoScaleMode.Dpi)
+                throw new InvalidOperationException("Workspace DPI autoscaling is not enabled.");
+
+            var expectations = new[]
+            {
+                new[] { 28, 120, 35 },
+                new[] { 28, 144, 42 },
+                new[] { 44, 120, 55 },
+                new[] { 44, 144, 66 },
+                new[] { 320, 120, 400 },
+                new[] { 320, 144, 480 },
+                new[] { 1180, 120, 1475 },
+                new[] { 1180, 144, 1770 },
+                new[] { ExpandedDeckMinimumWidth, 120, 1900 },
+                new[] { ExpandedDeckMinimumWidth, 144, 2280 }
+            };
+            foreach (var expectation in expectations)
+            {
+                var actual = ScaleLogicalPixels(expectation[0], expectation[1]);
+                if (actual != expectation[2])
+                {
+                    throw new InvalidOperationException(
+                        "Logical DPI metric scaling failed: logical=" + expectation[0]
+                        + " dpi=" + expectation[1]
+                        + " expected=" + expectation[2]
+                        + " actual=" + actual + "."
+                    );
+                }
+            }
+
+            var secondaryWorkingArea = new Rectangle(1920, -200, 2560, 1440);
+            var syntheticDrawer = new Size(450, 600);
+            var lowerRight = ClampDrawerLocation(
+                new Point(4400, 1300),
+                secondaryWorkingArea,
+                syntheticDrawer
+            );
+            if (lowerRight.X != 3950 || lowerRight.Y != 640)
+            {
+                throw new InvalidOperationException(
+                    "Cross-monitor drawer lower/right clamp failed: " + lowerRight + "."
+                );
+            }
+
+            var upperLeft = ClampDrawerLocation(
+                new Point(1950, -150),
+                secondaryWorkingArea,
+                syntheticDrawer
+            );
+            if (upperLeft.X != secondaryWorkingArea.Left || upperLeft.Y != -150)
+            {
+                throw new InvalidOperationException(
+                    "Cross-monitor drawer upper/left clamp failed: " + upperLeft + "."
+                );
+            }
         }
 
         private async Task RunWorkspaceLifecycleSmokeAsync(
@@ -2232,7 +3201,10 @@ namespace PokePixel.CoupledWorkspace
             _applyingLayout = true;
             try
             {
-                _split.SplitterDistance = ClampSplitterDistance(available, halfTarget + 20);
+                _split.SplitterDistance = ClampSplitterDistance(
+                    available,
+                    halfTarget + DpiMetric(20)
+                );
             }
             finally
             {
@@ -2260,7 +3232,7 @@ namespace PokePixel.CoupledWorkspace
                 throw new InvalidOperationException("Custom splitter ratio was incorrectly snapped.");
 
             var originalWidth = Width;
-            Width = 2000;
+            Width = DpiMetric(2000);
             PerformLayout();
             var wideAvailable = Math.Max(1, _split.ClientSize.Width - _split.SplitterWidth);
             var wideMin = ClampSplitterDistance(wideAvailable, 0);
@@ -2293,7 +3265,10 @@ namespace PokePixel.CoupledWorkspace
             _applyingLayout = true;
             try
             {
-                _split.SplitterDistance = ClampSplitterDistance(wideAvailable, wideHalf + 30);
+                _split.SplitterDistance = ClampSplitterDistance(
+                    wideAvailable,
+                    wideHalf + DpiMetric(30)
+                );
             }
             finally
             {
@@ -2360,6 +3335,432 @@ namespace PokePixel.CoupledWorkspace
             }
         }
 
+        private void RunCommandDeckRegressionSmoke(string outputDir)
+        {
+            if (_workspaceState.Mode != WorkspaceMode.Dual)
+                throw new InvalidOperationException("Command Deck regression smoke requires Dual mode.");
+            if (_workspaceState.FocusMode) RestoreFocusMode();
+
+            var originalWidth = Width;
+            var originalHeight = Height;
+            var originalActiveProfileId = _workspaceState.ActiveProfileId;
+            try
+            {
+                _workspaceState.ActiveProfileId = _workspaceState.LeftProfileId;
+                var windowWidths = new[] { 1180, 1200, 1280, 1600 };
+                foreach (var windowWidth in windowWidths)
+                {
+                    Width = DpiMetric(windowWidth);
+                    PerformLayout();
+                    Application.DoEvents();
+                    AssertCommandDeckFirstPassStable("window-" + windowWidth);
+                    AssertCommandDeckGeometry("window-" + windowWidth);
+
+                    if (windowWidth == 1200 || windowWidth == 1280)
+                    {
+                        CaptureControl(
+                            _commandDeck,
+                            Path.Combine(
+                                outputDir,
+                                "command-deck-dual-" + windowWidth + ".png"
+                            )
+                        );
+                    }
+                }
+
+                SetSmokeDeckClientWidth(DpiMetric(ExpandedDeckMinimumWidth) - 1);
+                AssertCommandDeckFirstPassStable("compact-threshold");
+                AssertCommandDeckGeometry("compact-threshold");
+                if (_leftStatus.Width != DpiMetric(CompactStatusWidth)
+                    || _rightStatus.Width != DpiMetric(CompactStatusWidth))
+                {
+                    throw new InvalidOperationException(
+                        "Command Deck compact threshold did not keep compact health widths."
+                    );
+                }
+                CaptureControl(
+                    _commandDeck,
+                    Path.Combine(outputDir, "command-deck-dual-compact-threshold.png")
+                );
+
+                SetSmokeDeckClientWidth(DpiMetric(ExpandedDeckMinimumWidth));
+                AssertCommandDeckFirstPassStable("expanded-threshold");
+                AssertCommandDeckGeometry("expanded-threshold");
+                if (_leftStatus.Width != DpiMetric(ExpandedStatusWidth)
+                    || _rightStatus.Width != DpiMetric(ExpandedStatusWidth))
+                {
+                    throw new InvalidOperationException(
+                        "Command Deck expanded threshold did not apply expanded health widths."
+                    );
+                }
+                CaptureControl(
+                    _commandDeck,
+                    Path.Combine(outputDir, "command-deck-dual-expanded-threshold.png")
+                );
+
+                AssertHealthDeckTextFits();
+                AssertBetterUiSelectContract();
+            }
+            finally
+            {
+                _workspaceState.ActiveProfileId = originalActiveProfileId;
+                Width = originalWidth;
+                Height = originalHeight;
+                PerformLayout();
+                UpdateCommandDeck();
+                Application.DoEvents();
+            }
+        }
+
+        private void SetSmokeDeckClientWidth(int targetWidth)
+        {
+            PerformLayout();
+            Application.DoEvents();
+            Width += targetWidth - _commandDeck.ClientSize.Width;
+            PerformLayout();
+            Application.DoEvents();
+            if (_commandDeck.ClientSize.Width != targetWidth)
+            {
+                Width += targetWidth - _commandDeck.ClientSize.Width;
+                PerformLayout();
+                Application.DoEvents();
+            }
+            if (_commandDeck.ClientSize.Width != targetWidth)
+            {
+                throw new InvalidOperationException(
+                    "Could not establish Command Deck client width " + targetWidth
+                    + "; actual=" + _commandDeck.ClientSize.Width + "."
+                );
+            }
+        }
+
+        private void AssertCommandDeckFirstPassStable(string context)
+        {
+            UpdateCommandDeck();
+            Application.DoEvents();
+            var first = CommandDeckGeometrySignature();
+            LayoutCommandDeck();
+            Application.DoEvents();
+            var second = CommandDeckGeometrySignature();
+            if (!string.Equals(first, second, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Command Deck requires a second layout pass at " + context
+                    + ". first=" + first + " second=" + second
+                );
+            }
+        }
+
+        private string CommandDeckGeometrySignature()
+        {
+            return string.Join(
+                "|",
+                new[]
+                {
+                    ControlGeometrySignature(_leftCommandGroup),
+                    ControlGeometrySignature(_dualLayoutGroup),
+                    ControlGeometrySignature(_rightCommandGroup),
+                    ControlGeometrySignature(_leftAccountButton),
+                    ControlGeometrySignature(_leftStatus),
+                    ControlGeometrySignature(_focusButton),
+                    ControlGeometrySignature(_rightAccountButton),
+                    ControlGeometrySignature(_rightStatus),
+                    ControlGeometrySignature(_activeProfileLabel),
+                    ControlGeometrySignature(_scopeSelector)
+                }
+            );
+        }
+
+        private static string ControlGeometrySignature(Control control)
+        {
+            if (control == null) return "null";
+            return (control.Visible ? "1" : "0")
+                + ":" + control.Left
+                + "," + control.Top
+                + "," + control.Width
+                + "," + control.Height;
+        }
+
+        private void AssertCommandDeckGeometry(string context)
+        {
+            var deckHeight = DpiMetric(44);
+            if (_commandDeck.Height != deckHeight)
+            {
+                throw new InvalidOperationException(
+                    "Command Deck row height regression at " + context
+                    + ": " + _commandDeck.Height + "."
+                );
+            }
+            if (_commandDeck.Top != 0
+                || _commandDeck.Bottom != deckHeight
+                || _split.Top != _commandDeck.Bottom)
+            {
+                throw new InvalidOperationException(
+                    "Workspace viewport seam regression at " + context
+                    + ": deck=" + _commandDeck.Bounds
+                    + " split=" + _split.Bounds + "."
+                );
+            }
+
+            AssertToolbarGroupGeometry(_leftCommandGroup, "left", context);
+            AssertToolbarGroupGeometry(_dualLayoutGroup, "center", context);
+            AssertToolbarGroupGeometry(_rightCommandGroup, "right", context);
+
+            var standardButtons = new[]
+            {
+                _singleModeButton,
+                _dualModeButton,
+                _leftAccountButton,
+                _layout12Button,
+                _layout11Button,
+                _layout21Button,
+                _swapButton,
+                _focusButton,
+                _rightAccountButton,
+                _homeButton,
+                _reloadButton,
+                _maintenanceButton
+            };
+            foreach (var button in standardButtons)
+                AssertToolbarControlGeometry(button, DpiMetric(28), context);
+            AssertToolbarControlGeometry(_singleProfileSelector, DpiMetric(28), context);
+            AssertToolbarControlGeometry(_scopeSelector, DpiMetric(28), context);
+            AssertToolbarControlGeometry(_singleStatus, DpiMetric(28), context);
+            AssertToolbarControlGeometry(_leftStatus, DpiMetric(28), context);
+            AssertToolbarControlGeometry(_rightStatus, DpiMetric(28), context);
+
+            if (_workspaceState.Mode != WorkspaceMode.Dual || !_dualLayoutGroup.Visible)
+                return;
+
+            var safetyGap = DpiMetric(8);
+            var leftEdge = _leftCommandGroup.Right + safetyGap;
+            var rightEdge = _rightCommandGroup.Left - safetyGap;
+            if (_dualLayoutGroup.Left < leftEdge || _dualLayoutGroup.Right > rightEdge)
+            {
+                throw new InvalidOperationException(
+                    "Command Deck horizontal overlap/gap contract failed at " + context
+                    + ": leftEdge=" + leftEdge
+                    + " center=" + _dualLayoutGroup.Bounds
+                    + " rightEdge=" + rightEdge + "."
+                );
+            }
+
+            var desiredLeft = (_commandDeck.ClientSize.Width - _dualLayoutGroup.Width) / 2;
+            if (desiredLeft >= leftEdge
+                && desiredLeft + _dualLayoutGroup.Width <= rightEdge
+                && Math.Abs(_dualLayoutGroup.Left - desiredLeft) > 1)
+            {
+                throw new InvalidOperationException(
+                    "Command Deck center is not physically centered at " + context
+                    + ": desired=" + desiredLeft
+                    + " actual=" + _dualLayoutGroup.Left + "."
+                );
+            }
+
+            if (_workspaceState.FocusMode)
+            {
+                var activeOnLeft = string.Equals(
+                    _workspaceState.ActiveProfileId,
+                    _workspaceState.LeftProfileId,
+                    StringComparison.OrdinalIgnoreCase
+                );
+                var account = activeOnLeft ? _leftAccountButton : _rightAccountButton;
+                var status = activeOnLeft ? _leftStatus : _rightStatus;
+                if (!account.Visible
+                    || !status.Visible
+                    || !_focusButton.Visible
+                    || !(account.Left < status.Left && status.Left < _focusButton.Left))
+                {
+                    throw new InvalidOperationException(
+                        "Focus hierarchy must be account -> health -> Restore at " + context
+                        + ": account=" + account.Bounds
+                        + " status=" + status.Bounds
+                        + " restore=" + _focusButton.Bounds + "."
+                    );
+                }
+            }
+            else if (!_leftStatus.Visible || !_rightStatus.Visible)
+            {
+                throw new InvalidOperationException(
+                    "Dual health labels must remain visible at " + context + "."
+                );
+            }
+        }
+
+        private void AssertToolbarGroupGeometry(
+            FlowLayoutPanel group,
+            string name,
+            string context
+        )
+        {
+            if (group == null || !group.Visible) return;
+            if (group.Height < DpiMetric(32))
+            {
+                throw new InvalidOperationException(
+                    "Command Deck " + name + " group is clipped at " + context
+                    + ": " + group.Bounds + "."
+                );
+            }
+        }
+
+        private static void AssertToolbarControlGeometry(
+            Control control,
+            int expectedHeight,
+            string context
+        )
+        {
+            if (control == null || !control.Visible) return;
+            if (control.Height != expectedHeight)
+            {
+                throw new InvalidOperationException(
+                    "Command Deck control height regression at " + context
+                    + ": " + control.GetType().Name
+                    + " height=" + control.Height + "."
+                );
+            }
+            if (control.Parent != null
+                && (control.Top < 0 || control.Bottom > control.Parent.ClientSize.Height))
+            {
+                throw new InvalidOperationException(
+                    "Command Deck control is vertically clipped at " + context
+                    + ": " + control.GetType().Name
+                    + " bounds=" + control.Bounds
+                    + " parent=" + control.Parent.ClientSize + "."
+                );
+            }
+        }
+
+        private void AssertHealthDeckTextFits()
+        {
+            foreach (PaneHealthState state in Enum.GetValues(typeof(PaneHealthState)))
+            {
+                var compact = HealthDeckText(state, false);
+                var expanded = HealthDeckText(state, true);
+                var compactWidth = TextRenderer.MeasureText(
+                    compact,
+                    Font,
+                    Size.Empty,
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine
+                ).Width;
+                var expandedWidth = TextRenderer.MeasureText(
+                    expanded,
+                    Font,
+                    Size.Empty,
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine
+                ).Width;
+                var compactReserved = DpiMetric(CompactStatusWidth);
+                var expandedReserved = DpiMetric(ExpandedStatusWidth);
+                if (compactWidth > compactReserved || expandedWidth > expandedReserved)
+                {
+                    throw new InvalidOperationException(
+                        "Health deck text does not fit its reserved width: state=" + state
+                        + " compact=" + compactWidth + "/" + compactReserved
+                        + " expanded=" + expandedWidth + "/" + expandedReserved + "."
+                    );
+                }
+            }
+        }
+
+        private void AssertBetterUiSelectContract()
+        {
+            var selects = new[] { _singleProfileSelector, _scopeSelector };
+            foreach (var select in selects)
+            {
+                if (select == null
+                    || select.Height != DpiMetric(28)
+                    || !select.TabStop
+                    || select.AccessibleRole != AccessibleRole.ComboBox
+                    || select.BackColor.ToArgb() != Color.FromArgb(0x23, 0x22, 0x28).ToArgb())
+                {
+                    throw new InvalidOperationException("Better UI select base contract failed.");
+                }
+            }
+
+            var originalIndex = _scopeSelector.SelectedIndex;
+            var previousUpdating = _updatingCommandDeck;
+            _updatingCommandDeck = true;
+            try
+            {
+                _scopeSelector.SelectedIndex = 0;
+                _scopeSelector.Focus();
+                Application.DoEvents();
+                if (!_scopeSelector.Focused)
+                {
+                    throw new InvalidOperationException(
+                        "Better UI select could not receive keyboard focus for input smoke."
+                    );
+                }
+                var down = Message.Create(
+                    _scopeSelector.Handle,
+                    0x0100,
+                    new IntPtr((int)Keys.Down),
+                    IntPtr.Zero
+                );
+                var handled = _scopeSelector.PreProcessMessage(ref down);
+                var accessibleValue = _scopeSelector.AccessibilityObject.Value;
+                if (!handled
+                    || _scopeSelector.SelectedIndex != 1
+                    || !string.Equals(
+                        accessibleValue,
+                        "Both",
+                        StringComparison.Ordinal
+                    ))
+                {
+                    throw new InvalidOperationException(
+                        "Better UI select keyboard/accessibility value contract failed."
+                        + " handled=" + handled
+                        + " index=" + _scopeSelector.SelectedIndex
+                        + " value=" + (accessibleValue ?? "<null>")
+                        + "."
+                    );
+                }
+                _scopeSelector.SelectedIndex = originalIndex;
+            }
+            finally
+            {
+                _updatingCommandDeck = previousUpdating;
+            }
+            UpdateCommandDeck();
+        }
+
+        private void CaptureBetterUiSelectPopupSmoke(string outputDir)
+        {
+            if ((_scopeSelector.AccessibilityObject.State & AccessibleStates.Collapsed) == 0)
+            {
+                throw new InvalidOperationException(
+                    "Better UI select did not expose the collapsed accessibility state."
+                );
+            }
+
+            _scopeSelector.Focus();
+            _scopeSelector.OpenMenuForSmoke();
+            Application.DoEvents();
+            var menu = _scopeSelector.MenuForSmoke;
+            if (menu == null
+                || !menu.Visible
+                || ( _scopeSelector.AccessibilityObject.State & AccessibleStates.Expanded) == 0)
+            {
+                throw new InvalidOperationException(
+                    "Better UI select did not expose an open dropdown/accessibility state."
+                );
+            }
+
+            menu.Location = new Point(-10000, -10000);
+            Application.DoEvents();
+            CaptureControl(
+                menu,
+                Path.Combine(outputDir, "command-deck-scope-dropdown.png")
+            );
+            menu.Close(ToolStripDropDownCloseReason.CloseCalled);
+            Application.DoEvents();
+            if ((_scopeSelector.AccessibilityObject.State & AccessibleStates.Collapsed) == 0)
+            {
+                throw new InvalidOperationException(
+                    "Better UI select did not return to the collapsed accessibility state."
+                );
+            }
+        }
+
         private async Task CaptureVisualSmokeAsync()
         {
             var outputDir = Path.Combine(_baseDir, "smoke", "visual");
@@ -2377,21 +3778,24 @@ namespace PokePixel.CoupledWorkspace
             if (_workspaceState.FocusMode) RestoreFocusMode();
             await PrepareVisualSmokePagesAsync();
             ApplyLayoutPreset(0.5);
+            RunCommandDeckRegressionSmoke(outputDir);
 
-            Width = 1600;
+            Width = DpiMetric(1600);
             PerformLayout();
             UpdateCommandDeck();
-            LayoutCommandDeck();
+            Application.DoEvents();
+            AssertCommandDeckGeometry("dual-1600");
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-dual-1600.png")
             );
 
-            Width = 1180;
-            Height = 600;
+            Width = DpiMetric(1180);
+            Height = DpiMetric(600);
             PerformLayout();
             UpdateCommandDeck();
-            LayoutCommandDeck();
+            Application.DoEvents();
+            AssertCommandDeckGeometry("dual-1180");
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-dual-1180.png")
@@ -2404,11 +3808,11 @@ namespace PokePixel.CoupledWorkspace
                 Path.Combine(outputDir, "workspace-dual-composite-1180.png"),
                 false
             );
+            CaptureBetterUiSelectPopupSmoke(outputDir);
 
             _leftAccountButton.Focus();
             Application.DoEvents();
             UpdateCommandDeck();
-            LayoutCommandDeck();
             Application.DoEvents();
             if (!_leftAccountButton.Focused
                 || _leftAccountButton.FlatAppearance.BorderColor.ToArgb()
@@ -2425,10 +3829,33 @@ namespace PokePixel.CoupledWorkspace
                 Path.Combine(outputDir, "workspace-keyboard-focus-1180.png")
             );
 
+            _scopeSelector.Focus();
+            Application.DoEvents();
+            _webViewFocusedProfileId = _workspaceState.LeftProfileId;
+            UpdateCommandDeck();
+            Application.DoEvents();
+            if (_leftAccountButton.Focused
+                || _leftAccountButton.FlatAppearance.BorderColor.ToArgb()
+                    != Color.FromArgb(0x54, 0xBA, 0xD2).ToArgb()
+                || _leftAccountButton.ForeColor.ToArgb()
+                    != Color.FromArgb(0xE3, 0xC0, 0x54).ToArgb())
+            {
+                throw new InvalidOperationException(
+                    "WebView focus cue did not remain independent from selected/current semantics."
+                );
+            }
+            CaptureControl(
+                _commandDeck,
+                Path.Combine(outputDir, "command-deck-webview-focus-1180.png")
+            );
+            _webViewFocusedProfileId = null;
+            UpdateCommandDeck();
+
             await SwitchToSingleAsync(ProfileRegistry.Rhyxus.Id);
             PerformLayout();
             UpdateCommandDeck();
-            LayoutCommandDeck();
+            Application.DoEvents();
+            AssertCommandDeckGeometry("single-1180");
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-single-1180.png")
@@ -2436,14 +3863,31 @@ namespace PokePixel.CoupledWorkspace
 
             await SwitchToDualAsync();
             await PrepareVisualSmokePagesAsync();
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            EnterFocusMode();
+            PerformLayout();
+            UpdateCommandDeck();
+            Application.DoEvents();
+            AssertCommandDeckGeometry("focus-left-1180");
+            CaptureControl(
+                _commandDeck,
+                Path.Combine(outputDir, "command-deck-focus-left-1180.png")
+            );
+            RestoreFocusMode();
+
             SetActiveProfile(ProfileRegistry.Rhyosa.Id);
             EnterFocusMode();
             PerformLayout();
             UpdateCommandDeck();
-            LayoutCommandDeck();
+            Application.DoEvents();
+            AssertCommandDeckGeometry("focus-right-1180");
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-focus-1180.png")
+            );
+            CaptureControl(
+                _commandDeck,
+                Path.Combine(outputDir, "command-deck-focus-right-1180.png")
             );
             CaptureControl(
                 _rootLayout,
@@ -2487,7 +3931,7 @@ namespace PokePixel.CoupledWorkspace
             _commandDeck.Enabled = originalDeckEnabled;
             PerformLayout();
             UpdateCommandDeck();
-            LayoutCommandDeck();
+            Application.DoEvents();
         }
 
         private void RunMaintenanceDrawerKeyboardSmoke()
@@ -2867,14 +4311,50 @@ namespace PokePixel.CoupledWorkspace
 
     internal static class Program
     {
+        private static readonly IntPtr DpiAwarenessContextPerMonitorAwareV2 = new IntPtr(-4);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetProcessDpiAwarenessContext(IntPtr dpiContext);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool SetProcessDPIAware();
+
         [STAThread]
         private static void Main(string[] args)
         {
+            EnableDpiAwareness();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             var smoke = args != null && Array.IndexOf(args, "--smoke") >= 0;
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             Application.Run(new WorkspaceForm(baseDir, smoke));
+        }
+
+        private static void EnableDpiAwareness()
+        {
+            try
+            {
+                if (SetProcessDpiAwarenessContext(DpiAwarenessContextPerMonitorAwareV2))
+                    return;
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+            catch (DllNotFoundException)
+            {
+                return;
+            }
+
+            try
+            {
+                SetProcessDPIAware();
+            }
+            catch (EntryPointNotFoundException)
+            {
+            }
+            catch (DllNotFoundException)
+            {
+            }
         }
     }
 }
