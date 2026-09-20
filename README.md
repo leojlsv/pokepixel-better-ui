@@ -73,6 +73,20 @@ Pixel-art redesign/art-direction work additionally uses
 In-game interface validation is performed exclusively by the user; automated
 tests/builds do not count as an in-game green light.
 
+### Coupled Workspace
+
+The supported multi-account desktop host is the native WinForms + WebView2
+implementation under `tools/coupled-workspace-webview2/`. It supports one or two
+isolated account sessions in one frame, semantic 1:2 / 1:1 / 2:1 layouts,
+Swap/Focus, scoped Home/Reload controls, explicit health state and a Better
+UI-native Maintenance Drawer without mirroring gameplay input.
+
+The legacy `tools/coupled-workspace/Start-CoupledWorkspace.ps1` entry point is a
+compatibility wrapper to the WebView2 host; the Electron implementation in that
+directory is archived/superseded. See `docs/COUPLED_WORKSPACE_STATUS.md` and
+`design-system/pokepixel-better-ui/pages/coupled-workspace.md` for the final
+acceptance and design records.
+
 ## Status
 
 Existing modules were built under the previous native/vanilla visual policy and

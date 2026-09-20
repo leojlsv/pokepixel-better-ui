@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PokePixel Coupled Workspace</title>
+    <link rel="stylesheet" href="./shell.css" />
+  </head>
+  <body>
+    <header class="toolbar">
+      <section class="pane-controls" aria-label="Rhyxus controls">
+        <strong>Rhyxus</strong>
+        <button type="button" data-side="left" data-action="home">Home</button>
+        <button type="button" data-side="left" data-action="reload">Reload</button>
+        <button type="button" data-side="left" data-action="devtools">DevTools</button>
+        <span id="left-status" class="status">Loading</span>
+      </section>
+      <section class="split-controls" aria-label="Workspace split">
+        <label for="split-range">Split</label>
+        <input id="split-range" type="range" min="20" max="80" step="1" value="50" />
+        <button type="button" data-split="0.33">33/67</button>
+        <button id="split-reset" type="button">50/50</button>
+        <button type="button" data-split="0.67">67/33</button>
+      </section>
+      <section class="pane-controls pane-controls-right" aria-label="Rhyosa controls">
+        <span id="right-status" class="status">Loading</span>
+        <button type="button" data-side="right" data-action="devtools">DevTools</button>
+        <button type="button" data-side="right" data-action="reload">Reload</button>
+        <button type="button" data-side="right" data-action="home">Home</button>
+        <strong>Rhyosa</strong>
+      </section>
+    </header>
+    <div id="divider" class="divider" aria-hidden="true"></div>
+    <script src="./shell.js"></script>
+  </body>
+</html>

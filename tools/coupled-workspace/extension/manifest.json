@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "PokePixel Better UI Coupled Loader",
+  "version": "0.1.0",
+  "content_scripts": [
+    {
+      "matches": ["https://pokepixel.nietore.com/*"],
+      "js": ["pokepixel-better-ui.user.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ]
+}

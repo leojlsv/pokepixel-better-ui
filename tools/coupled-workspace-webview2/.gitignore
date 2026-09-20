@@ -1,0 +1,5 @@
+bin/
+smoke/
+sdk/
+Microsoft.Web.WebView2.*.nupkg
+Microsoft.Web.WebView2.*.nupkg.zip
