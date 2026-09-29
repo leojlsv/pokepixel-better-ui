@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {JSDOM} from 'jsdom';
 import {mountHunts} from '../src/modules/hunts/controller.js';
+import {activeHuntZone,forgetActiveHuntZone,parts,rememberActiveHuntZone,zoneNode} from '../src/modules/hunts/dom.js';
+import {createHuntsModule} from '../src/modules/hunts/index.js';
 import {locateHunt} from '../src/modules/hunts/navigation.js';
 import {defensiveMultipliers} from '../src/modules/hunts/type-chart.js';
 
@@ -20,7 +22,7 @@ const markup=()=>`
   <div class="hunt-world-toolbar"><input type="search"><span class="hunt-world-level-label">Lv.</span><input type="number" min="1" max="100" value="1"><span class="hunt-world-level-label">to</span><input type="number" min="1" max="100" value="100"><button>Clear</button><strong class="hunt-world-count">2 areas</strong></div>
   <div class="hunt-element-filters hunt-world-elements"><button class="hunt-element-filter">All</button><button class="hunt-element-filter">Fire</button></div>
   <div class="hunt-world-viewport"><div class="hunt-world-stage">
-    <button class="hunt-map-marker" data-zone-index="0" style="left:80%;top:70%"><span class="hunt-map-marker__sprite"></span><strong class="hunt-map-marker__name">Pikachu Lv. 20–30</strong></button>
+    <button class="hunt-map-marker" data-zone-index="0" style="left:80%;top:70%"><span class="hunt-map-marker__sprite" style="background-image:url('/native-hunt/pikachu.png')"></span><strong class="hunt-map-marker__name">Pikachu Lv. 20–30</strong></button>
     <button class="hunt-map-marker" data-zone-index="1" style="left:10%;top:20%"><span class="hunt-map-marker__sprite"></span><strong class="hunt-map-marker__name">Abra Lv. 10–15</strong></button>
   </div></div>`;
 
@@ -47,7 +49,7 @@ function setup(t){
   dom.window.PokeIdle={
     Localization:{get:()=>"pt-BR"},
     t:(key,args)=>key==='hunt_selection.element_singular'?'Elemento':key==='hunt_selection.element_plural'?'Elementos':key==='hunt_selection.level_abbr'?`Lv. ${args.level}`:key==='hunt_selection.level_range'?`Lv. ${args.min}–${args.max}`:key,
-    ElementIcons:{definition:type=>({label:type,color:'#777'}),create:type=>{const i=doc.createElement('i');i.dataset.type=type;return i;}},
+    ElementIcons:{definition:type=>({label:type,color:'#777'}),create:type=>{const wrapper=doc.createElement('span'),image=doc.createElement('img');wrapper.className='native-element-circle';image.src=`/${type}.png`;image.dataset.type=type;wrapper.append(image);return wrapper;}},
     Currency:{element:(value,options)=>{const span=doc.createElement('span');span.textContent=`¤${value}${options.showName?' Gold':''}`;return span;}},
   };
 
@@ -78,6 +80,142 @@ function setup(t){
   return {dom,doc,root,body,scene,c,before,bind,select,locate,reset,dossier,choose,stats:()=>({nativeClicks,starts,hovers,focusInfos,saves,cleanups,setups,modeClicks})};
 }
 
+const currentListMarkup=()=>[
+  '<div class="hunt-list-header">',
+  '<nav class="hunt-list-world-tabs"><button class="pokeidle-ui-button hunt-list-world-tab is-active" aria-current="page">Kanto</button></nav>',
+  '<div class="hunt-presentation-toggle"><button class="hunt-presentation-toggle__button is-active" aria-pressed="true">Modo clássico</button></div>',
+  '</div>',
+  '<div class="hunt-list-toolbar">',
+  '<label class="hunt-list-field hunt-list-search-field"><span>Search</span><input type="search"></label>',
+  '<label class="hunt-list-field hunt-list-element-filter"><span>Element</span><select><option>All</option></select></label>',
+  '<label class="hunt-list-field hunt-list-sort-field"><span>Sort</span><select><option>Level</option></select></label>',
+  '<div class="hunt-list-field hunt-list-range-field"><span>Level</span><div class="hunt-list-range-inputs"><input type="number" value="1"><span>–</span><input type="number" value="100"></div></div>',
+  '<button class="pokeidle-ui-button hunt-list-clear">Clear</button>',
+  '</div>',
+  '<div class="hunt-list-summary"><strong>2 areas</strong><span>EXP note</span></div>',
+  '<div class="hunt-list-table-shell"><table class="hunt-list-table"><tbody>',
+  '<tr class="hunt-list-row"><td class="hunt-list-action-cell"><button class="pokeidle-ui-button hunt-list-hunt-button">Hunt</button><button class="pokeidle-ui-button hunt-list-details-button" aria-controls="hunt-list-details-0">Details</button></td><td class="hunt-list-name-cell"><div class="hunt-list-identity"><img class="hunt-list-sprite" src="/native-hunt/pikachu.png"><strong>Pikachu Forest</strong></div></td></tr>',
+  '<tr id="hunt-list-details-0" class="hunt-list-detail-row" hidden><td>Details</td></tr>',
+  '<tr class="hunt-list-row"><td class="hunt-list-action-cell"><button class="pokeidle-ui-button hunt-list-hunt-button">Hunt</button><button class="pokeidle-ui-button hunt-list-details-button" aria-controls="hunt-list-details-1">Details</button></td><td class="hunt-list-name-cell"><div class="hunt-list-identity"><canvas class="hunt-list-sprite" width="2" height="2"></canvas><strong>Abra Cave</strong></div></td></tr>',
+  '<tr id="hunt-list-details-1" class="hunt-list-detail-row" hidden><td>Details</td></tr>',
+  '</tbody></table></div>',
+].join('');
+
+function setupCurrentList(t,{startHunt,inheritedStartHunt=false}={}){
+  const dom=new JSDOM('<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunts</span><button type="button">×</button></div><div class="pokeidle-panel__body">'+currentListMarkup()+'</div></div>',{url:'https://test.local',pretendToBeVisual:true});
+  const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
+  const zones=[
+    {id:'pika',name:'Pikachu Forest',elements:['electric'],min:20,max:30},
+    {id:'abra',name:'Abra Cave',elements:['psychic'],min:10,max:15},
+  ];
+  let starts=0;
+  const nativeStartHunt=function(...args){starts++;return startHunt?startHunt.apply(this,args):Promise.resolve('native');};
+  const scene={
+    _panel:{body},_zones:zones,_selectedIndex:-1,
+    zoneName:zone=>zone.name,zoneElements:zone=>zone.elements,zoneMinMaxLevel:zone=>({min:zone.min,max:zone.max}),
+  };
+  if(inheritedStartHunt)Object.setPrototypeOf(scene,{startHunt:nativeStartHunt});
+  else Object.defineProperty(scene,'startHunt',{configurable:true,enumerable:false,writable:true,value:nativeStartHunt});
+  const nativeStartHuntDescriptor=Object.getOwnPropertyDescriptor(scene,'startHunt');
+  dom.window.SceneManager={_scene:scene};
+  dom.window.PokeIdle={Localization:{get:()=> 'pt-BR'}};
+  root.querySelectorAll('.hunt-list-hunt-button').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
+  const before=root.outerHTML,c=mountHunts(root);
+  t.after(()=>{c.cleanup();dom.window.close();});
+  return {dom,doc,root,body,scene,c,before,nativeStartHunt,nativeStartHuntDescriptor,stats:()=>({starts})};
+}
+
+test('current Hunt list contract mounts Better UI without reimplementing native Hunt actions',async t=>{
+  const s=setupCurrentList(t),current=parts(s.root);
+  const css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
+  assert.equal(current.mode,'list');
+  assert.equal(current.toolbar.classList.contains('hunt-list-toolbar'),true);
+  assert.equal(current.viewport.classList.contains('hunt-list-table-shell'),true);
+  assert.equal(s.root.classList.contains('ppbui-hunts-current-list'),true);
+  assert.equal(s.root.querySelector('.pokeidle-panel__title').textContent,'HUNT ATLAS');
+  assert.ok(s.root.querySelector('[data-ppbui-hunts-list-toolbar]'));
+  assert.ok(s.root.querySelector('[data-ppbui-hunts-list-surface]'));
+  assert.match(css,/@container \(max-width:780px\)[\s\S]*\[data-ppbui-hunts-list-surface\] \{ overflow-x:auto; overscroll-behavior-x:contain; \}/,'split Hunt list gets an explicit horizontal scroll owner instead of crushing table columns');
+  assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-table \{ width:max-content; min-width:100%; \}/,'split Hunt table preserves intrinsic row geometry while still filling wider panes');
+  assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-action-cell,[\s\S]*\.hunt-list-identity \{ white-space:nowrap; \}/,'Hunt actions and Pokémon identity do not wrap into unusable stacked fragments');
+  const button=s.root.querySelector('.hunt-list-hunt-button');
+  button.click();
+  await Promise.resolve();
+  assert.equal(s.stats().starts,1,'native Hunt start is delegated exactly once');
+  assert.equal(s.scene._selectedIndex,0);
+  const snapshot=activeHuntZone(s.dom.window);
+  assert.equal(snapshot.zoneId,'pika');
+  assert.equal(snapshot.sprite,'/native-hunt/pikachu.png');
+  assert.equal(snapshot.marker,zoneNode(s.root,0));
+});
+
+test('current Hunt list satisfies the module mount gate after upstream selector drift',t=>{
+  const s=setupCurrentList(t),previous=Object.getOwnPropertyDescriptor(globalThis,'document');
+  Object.defineProperty(globalThis,'document',{configurable:true,value:s.doc});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,'document',previous);else delete globalThis.document;});
+  assert.equal(createHuntsModule().shouldMount(),true);
+});
+
+test('current Hunt list captures a rendered native canvas without synthesizing a URL',t=>{
+  const s=setupCurrentList(t),canvas=s.root.querySelectorAll('.hunt-list-sprite')[1];
+  const pixels=new Uint8ClampedArray(16);pixels[3]=255;
+  canvas.getContext=()=>({getImageData:()=>({data:pixels})});
+  canvas.toDataURL=()=> 'data:image/png;base64,native-canvas';
+  const snapshot=rememberActiveHuntZone(s.root,1);
+  assert.equal(snapshot.sprite,'data:image/png;base64,native-canvas');
+});
+
+test('current Hunt list target art capture is fail-closed for a blank native canvas',t=>{
+  const s=setupCurrentList(t),canvas=s.root.querySelectorAll('.hunt-list-sprite')[1];
+  canvas.getContext=()=>({getImageData:()=>({data:new Uint8ClampedArray(16)})});
+  canvas.toDataURL=()=> 'data:image/png;base64,transparent-but-nonempty-string';
+  const snapshot=rememberActiveHuntZone(s.root,1);
+  assert.equal(snapshot.zoneId,'abra');
+  assert.equal(snapshot.sprite,'','blank native canvas must not become remembered target art');
+});
+
+test('current Hunt list rejected native start clears its remembered snapshot',async t=>{
+  const s=setupCurrentList(t,{startHunt:()=>Promise.reject(new Error('blocked'))});
+  s.scene._selectedIndex=0;
+  await assert.rejects(()=>s.scene.startHunt(),/blocked/);
+  assert.equal(s.stats().starts,1);
+  assert.equal(activeHuntZone(s.dom.window),null);
+});
+
+test('current Hunt list cleanup restores native DOM and original startHunt',t=>{
+  const s=setupCurrentList(t),wrapped=s.scene.startHunt;
+  assert.notEqual(s.root.outerHTML,s.before);
+  s.c.cleanup();
+  assert.notEqual(s.scene.startHunt,wrapped);
+  assert.equal(s.scene.startHunt,s.nativeStartHunt);
+  assert.deepEqual(Object.getOwnPropertyDescriptor(s.scene,'startHunt'),s.nativeStartHuntDescriptor,'cleanup restores the exact native own-property descriptor');
+  assert.equal(s.root.outerHTML,s.before);
+});
+
+test('current Hunt list cleanup deletes the wrapper when native startHunt was inherited',async t=>{
+  const s=setupCurrentList(t,{inheritedStartHunt:true}),wrapped=s.scene.startHunt;
+  assert.equal(Object.prototype.hasOwnProperty.call(s.scene,'startHunt'),true,'mount creates only the temporary instance wrapper');
+  s.c.cleanup();
+  assert.equal(Object.prototype.hasOwnProperty.call(s.scene,'startHunt'),false,'cleanup restores prototype ownership instead of leaving an own property');
+  assert.equal(s.scene.startHunt,s.nativeStartHunt);
+  s.scene._selectedIndex=0;
+  await wrapped.call(s.scene);
+  assert.equal(s.stats().starts,1,'a stale captured wrapper still delegates the native action exactly once');
+  assert.equal(activeHuntZone(s.dom.window),null,'a stale captured wrapper is inert after cleanup and cannot remember Hunt art');
+});
+
+test('current Hunt list cleanup preserves a later foreign wrapper and makes its captured PPBUI wrapper inert',async t=>{
+  const s=setupCurrentList(t),captured=s.scene.startHunt;
+  const foreign=function(...args){return captured.apply(this,args);};
+  s.scene.startHunt=foreign;
+  s.c.cleanup();
+  assert.equal(s.scene.startHunt,foreign,'cleanup must not clobber a wrapper installed after PPBUI');
+  s.scene._selectedIndex=1;
+  await s.scene.startHunt('foreign');
+  assert.equal(s.stats().starts,1,'foreign composition still reaches the native action exactly once');
+  assert.equal(activeHuntZone(s.dom.window),null,'captured PPBUI wrapper has no post-cleanup state side effects');
+});
+
 test('marker click selects and opens inspector without starting a hunt; explicit Hunt starts native flow',async t=>{
   const s=setup(t),marker=s.root.querySelector('.hunt-map-marker');
   marker.dispatchEvent(new s.dom.window.PointerEvent('pointerenter',{bubbles:false}));
@@ -97,6 +235,11 @@ test('marker click selects and opens inspector without starting a hunt; explicit
   assert.equal(s.stats().nativeClicks,0);
   assert.equal(s.stats().starts,1);
   assert.equal(s.scene._selectedIndex,0);
+  const activeZone=activeHuntZone(s.dom.window);
+  assert.equal(activeZone.zoneId,'pika');
+  assert.equal(activeZone.name,'Pikachu');
+  assert.equal(activeZone.sprite,'/native-hunt/pikachu.png');
+  assert.equal(activeZone.marker,marker);
 });
 
 test('pointer selection keeps marker focus while keyboard activation enters the inspector tab sequence',t=>{
@@ -164,13 +307,13 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   const title=s.root.querySelector('.pokeidle-panel__title');
   assert.equal(title.textContent,'HUNT ATLAS');
   assert.equal(title.classList.contains('ppbui-hunts-title'),true);
-  assert.equal(title.style.getPropertyPriority('font'),'important');
-  assert.match(title.style.getPropertyValue('font'),/Lucida Console/);
+  assert.equal(title.style.getPropertyValue('font-family'),'var(--ppbui-font-display)');
+  assert.equal(title.style.getPropertyValue('font-size'),'15px');
   assert.match(css,/--ppbui-bg-1/);assert.match(css,/--ppbui-accent/);assert.match(css,/--ppbui-focus/);
   assert.ok(s.root.querySelector('.hunt-world-header').classList.contains('ppbui-hunts-atlas-rail'));
   assert.match(css,/\.ppbui-hunts-enhanced\s*\{[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]+box-shadow:var\(--ppbui-shadow-raised\)/s);
-  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-2\) !important;/s);
-  assert.match(css,/\.ppbui-hunts-enhanced \.ppbui-hunts-title\s*\{[^}]+font:700 14px\/1 "Lucida Console", Monaco, "Courier New", monospace !important;[^}]+font-kerning:none !important;[^}]+font-variant-ligatures:none !important;[^}]+letter-spacing:1px !important;[^}]+text-transform:uppercase !important;[^}]+text-shadow:var\(--ppbui-pixel-unit\) var\(--ppbui-pixel-unit\) 0 var\(--ppbui-bg-0\) !important/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar\s*\{[^}]+border-radius:var\(--ppbui-radius\) !important;[^}]+background:var\(--ppbui-bg-2\) !important;/s);
+  assert.match(css,/\.ppbui-hunts-enhanced \.ppbui-hunts-title\s*\{[^}]+font-family:var\(--ppbui-font-display\) !important;[^}]+font-size:15px !important;[^}]+font-weight:500 !important;[^}]+line-height:1\.2 !important;[^}]+letter-spacing:normal !important;[^}]+text-shadow:none !important/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{/);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+appearance:none/s);
   assert.match(css,/\.ppbui-hunts-enhanced \.pokeidle-panel__titlebar button\s*\{[^}]+font-family:var\(--ppbui-font-body\) !important;[^}]+letter-spacing:normal;[^}]+text-shadow:none;/s);
@@ -180,15 +323,20 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.match(css,/@container \(max-width:780px\)/);
   assert.match(css,/@media \(pointer:coarse\)/);
   assert.match(css,/button:disabled[^}]+color:var\(--ppbui-text-subtle\)/s);
-  assert.match(css,/\.hunt-category-tab\.is-active[^{]*\{[^}]+color:var\(--ppbui-text\)/s);
+  assert.match(css,/\.hunt-category-tab\.is-active[^{]*\{[^}]+color:var\(--ppbui-selected\)/s);
   assert.match(css,/\.hunt-category-tab:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-selected="true"\]\)/);
   assert.match(css,/\.hunt-world-elements button:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-pressed="true"\]\)/);
   assert.match(css,/hunt-presentation-toggle button:hover:not\(:disabled\):not\(\.is-active\):not\(\[aria-pressed="true"\]\)/);
   assert.match(css,/\.hunt-map-marker__name\s*\{[^}]+--ppbui-hunt-location-rail:transparent/s);
+  assert.match(css,/\.hunt-map-marker,[\s\S]*\.hunt-map-marker:active\s*\{[^}]+border:0 !important;[^}]+background:transparent !important;[^}]+background-image:none !important;[^}]+box-shadow:none !important;/s,"Pokémon map sprites stay free of opaque card plates");
+  assert.doesNotMatch(css,/\.hunt-map-marker,[\s\S]*\.hunt-map-marker:active\s*\{[^}]*(?:margin|padding|transform|filter):/s,"sprite-first marker styling must not overwrite native map geometry/zoom compensation");
+  assert.match(css,/\.hunt-map-marker::before,[\s\S]*\.hunt-map-marker::after\s*\{[^}]*display:none !important;[^}]*content:none !important;/s,"native/decorative hover plates cannot reappear behind the Pokémon sprite");
+  assert.match(css,/\.hunt-map-marker:hover > \.hunt-map-marker__sprite\s*\{[^}]*drop-shadow\(0 0 2px var\(--ppbui-accent-hi\)\)/s,"hover emphasis belongs to the sprite rather than an opaque backing tile");
+  assert.match(css,/\.hunt-map-marker__name\s*\{[^}]+padding:1px var\(--ppbui-space-2\) !important;[^}]+background:var\(--ppbui-bg-0\) !important;[^}]+box-shadow:none!important/s,"marker state belongs to a flat compact caption rather than pixel-depth chrome");
   assert.match(css,/\.hunt-map-marker:hover \.hunt-map-marker__name:not\(\.ppbui-hunts-selected\)/);
   assert.doesNotMatch(css,/\.hunt-map-marker:hover \.hunt-map-marker__name\s*\{/);
   assert.match(css,/\.hunt-map-marker:active \.hunt-map-marker__name/);
-  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-located\s*\{[^}]+--ppbui-hunt-location-rail:var\(--ppbui-info\)/s);
+  assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-located\s*\{[^}]+--ppbui-hunt-location-rail:var\(--ppbui-info\)[^}]+border-bottom-color:var\(--ppbui-info\) !important/s);
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-selected\.ppbui-hunts-located/);
   assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\s*\{[^}]+outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\)/s);
   assert.match(css,/\.hunt-map-marker\.ppbui-hunts-dimmed-marker > \.hunt-map-marker__sprite\s*\{\s*opacity:\.10 !important;/);
@@ -196,17 +344,20 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:\.10/);
   assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:1/);
   assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none/s);
-  assert.match(css,/input\[type="number"\][^}]*\{[^}]+appearance:none !important;[^}]+border-radius:0 !important;[^}]+clip-path:none !important/s);
-  assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none !important;[^}]+border-radius:0 !important;[^}]+clip-path:none !important/s);
+  assert.match(css,/input\[type="number"\][^}]*\{[^}]+appearance:none !important;[^}]+border-radius:var\(--ppbui-radius\) !important;[^}]+clip-path:none !important/s);
+  assert.match(css,/input\[type="search"\][^}]*\{[^}]+appearance:none !important;[^}]+border-radius:var\(--ppbui-radius\) !important;[^}]+clip-path:none !important/s);
   assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+appearance:none/s);
   assert.match(css,/\.hunt-world-toolbar button\s*\{[^}]+appearance:none/s);
-  assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+border-radius:0 !important;[^}]+background:var\(--ppbui-bg-1\) !important;[^}]+box-shadow:none !important;/s);
-  assert.match(css,/\.hunt-world-header\.ppbui-hunts-atlas-rail\s*\{[^}]+box-sizing:border-box;[^}]+min-height:36px;[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
-  assert.match(css,/\.hunt-world-tabs\s*\{[^}]+align-items:stretch;[^}]+height:auto !important;[^}]+min-height:32px;[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
+  assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-world-zoom > button\s*\{[^}]+border-radius:var\(--ppbui-radius\) !important;[^}]+background:var\(--ppbui-bg-1\) !important;[^}]+box-shadow:none !important;/s);
+  assert.match(css,/\.hunt-world-header\.ppbui-hunts-atlas-rail\s*\{[^}]+box-sizing:border-box;[^}]+min-height:calc\(var\(--ppbui-control-height\) \+ 2 \* var\(--ppbui-border-width\)\);[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;[^}]+box-shadow:none;/s);
+  assert.match(css,/\.hunt-world-tabs\s*\{[^}]+align-items:stretch;[^}]+height:auto !important;[^}]+min-height:var\(--ppbui-control-height\);[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
   assert.match(css,/\.hunt-world-tabs > button,[\s\S]*\.hunt-category-tab\s*\{[^}]+flex:1 1 0 !important;[^}]+width:auto !important;[^}]+align-self:stretch !important;[^}]+padding:0 var\(--ppbui-control-padding-x\) !important;/s);
-  assert.match(css,/\.hunt-world-header-actions\s*\{[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;/s);
+  assert.match(css,/\.hunt-world-header-actions\s*\{[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;[^}]+border-left:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)/s);
+  assert.match(css,/\.hunt-world-tabs > :last-child \{ border-right:0 !important; \}/);
+  assert.match(css,/\.hunt-world-zoom > button:last-child \{ border-right:0 !important; \}/);
+  assert.match(css,/@container \(max-width:620px\)[\s\S]*\.hunt-world-header-actions \{[^}]*border-left:0;[^}]*border-top:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)/s);
   assert.match(css,/\.hunt-world-zoom\s*\{[^}]+margin:0 !important;[^}]+padding:0 !important;[^}]+gap:0 !important;[^}]+border:0 !important;/s);
-  assert.match(css,/\.hunt-world-toolbar input,[\s\S]*\.ppbui-hunts-results select\s*\{[^}]+border:[^}]+!important;[^}]+border-radius:0 !important;[^}]+color:var\(--ppbui-text\) !important;[^}]+box-shadow:none !important;/s);
+  assert.match(css,/\.hunt-world-toolbar input,[\s\S]*\.ppbui-hunts-results select\s*\{[^}]+border:[^}]+!important;[^}]+border-radius:var\(--ppbui-radius\) !important;[^}]+color:var\(--ppbui-text\) !important;[^}]+box-shadow:none !important;/s);
   assert.match(css,/\.hunt-world-toolbar button\s*\{[^}]+appearance:none !important;[^}]+background:var\(--ppbui-bg-2\) !important;[^}]+border-color:var\(--ppbui-border-strong\) !important;/s);
   assert.match(css,/\.ppbui-hunts-results select\s*\{[^}]+appearance:none !important;[^}]+background-image:none !important;/s);
   assert.match(css,/\.ppbui-hunts-select-wrap::after/);
@@ -214,15 +365,19 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.match(css,/\.hunt-world-notice:not\(:empty\)[^{]*\{[^}]+border-left:[^}]+var\(--ppbui-info\)[^}]+box-shadow:none/s);
   assert.match(css,/\.ppbui-hunts-inspector\s*\{[^}]+border-left:[^}]+box-shadow:none/s);
   assert.match(css,/\.ppbui-hunts-inspector__mode \.hunt-presentation-toggle\s*\{[^}]+gap:0/s);
-  assert.match(css,/\.ppbui-hunts-inspector__hunt\s*\{[^}]+min-height:48px;[^}]+margin-top:var\(--ppbui-space-5\);[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-accent\)[^}]+font:700 14px[^}]+box-shadow:var\(--ppbui-shadow\)/s);
-  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__hunt\s*\{\s*min-height:52px;\s*\}/);
+  assert.match(css,/\.ppbui-hunts-inspector__hunt\s*\{[^}]+min-height:var\(--ppbui-control-height\);[^}]+margin-top:var\(--ppbui-space-5\);[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-accent\)[^}]+background:var\(--ppbui-bg-0\) !important;[^}]+color:var\(--ppbui-accent-hi\) !important;[^}]+font:700 var\(--ppbui-font-size-body\)[^}]+box-shadow:none !important/s);
+  assert.match(css,/\.ppbui-hunts-inspector__hunt:active:not\(:disabled\)\s*\{[^}]+border-color:var\(--ppbui-accent-hi\) !important;[^}]+background:var\(--ppbui-action-bg\) !important/s);
+  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__hunt\s*\{\s*min-height:40px;\s*\}/);
   assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-inspector__close\s*\{[^}]+min-width:40px;[^}]+min-height:40px;/);
-  assert.match(css,/::-webkit-scrollbar\s*\{\s*width:10px;\s*height:10px;/);
-  assert.match(css,/::-webkit-scrollbar-thumb[^}]*\{[^}]+border:2px solid var\(--ppbui-bg-0\)[^}]+background:var\(--ppbui-border-strong\)/s);
+  assert.doesNotMatch(css,/::-webkit-scrollbar/, 'Hunts consumes the shared ppbui-scroll primitive instead of duplicating scrollbar chrome');
   assert.ok(css.lastIndexOf('.hunt-category-tab:disabled')>css.lastIndexOf('.hunt-category-tab.is-active'));
   assert.ok(css.lastIndexOf('.hunt-world-elements button:disabled')>css.lastIndexOf('.hunt-world-elements button.is-active'));
   assert.match(css,/button:disabled[^}]+cursor:default/s);
   assert.doesNotMatch(css,/(^|\})\s*(button|input|select)\s*\{/m);
+  assert.equal(s.root.classList.contains('ppbui-root'),false,"Hunt window must not opt native map marker buttons into the generic ppbui-root control reset");
+  assert.equal(s.root.querySelector('.hunt-map-marker').matches('.ppbui-root button'),false,"native map markers remain outside full-control ownership so hover cannot inherit an opaque PPBUI button background");
+  assert.equal(s.body.classList.contains('ppbui-scroll'),true);
+  assert.equal(s.dossier().querySelector('.ppbui-hunts-inspector__body').classList.contains('ppbui-scroll'),true);
   assert.equal(s.root.querySelector('.ppbui-hunts-results select').classList.contains('ppbui-select'),true);
   assert.equal(s.dossier().classList.contains('ppbui-dialog'),false);
   assert.equal(s.dossier().querySelector('.ppbui-hunts-inspector__hunt').classList.contains('ppbui-button--primary'),true);
@@ -328,6 +483,77 @@ test('inspector contains elements, exact defensive relations and valued drops in
     assert.equal(panel.querySelector(`.${className}`),null);
   }
   assert.ok(panel.querySelector('.hunt-drop-tooltip__icon'));
+  const elementItems=[...panel.querySelectorAll('.ppbui-hunts-element-badge')];
+  assert.ok(elementItems.length>0);
+  for(const item of elementItems){
+    const icon=item.querySelector(':scope > .ppbui-element-icon');
+    assert.ok(icon,"shared square Element primitive is a direct child of its semantic row");
+    assert.equal(icon.tagName,'SPAN');
+    assert.ok(icon.querySelector(':scope > img.ppbui-element-icon__image'),"native/domain PNG is retained inside the shared square well");
+    assert.equal(item.querySelector('.native-element-circle'),null,"native circular ornament is deliberately removed instead of being nested in another badge");
+  }
+  const css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
+  assert.doesNotMatch(css,/\.ppbui-hunts-element-icon\s*\{/,"Hunts no longer invents a module-specific Element icon primitive");
+  assert.match(css,/\.ppbui-hunts-element-badge,[\s\S]*\.ppbui-hunts-relation-badge\s*\{[^}]+border:0;[^}]+border-radius:var\(--ppbui-radius\);[^}]+background:transparent/s);
+});
+
+test('failed native Hunt start clears the remembered zone instead of leaking stale Cards art',async t=>{
+  const s=setup(t),marker=s.root.querySelector('.hunt-map-marker');
+  s.scene.startHunt=()=>Promise.reject(new Error('blocked'));
+  marker.click();
+  s.dossier().querySelector('.ppbui-hunts-inspector__hunt').click();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(activeHuntZone(s.dom.window),null);
+});
+
+test('deferred failed Hunt start cannot forget a newer remembered zone',async t=>{
+  const s=setup(t),marker=s.root.querySelector('.hunt-map-marker');
+  let rejectStart;
+  s.scene.startHunt=()=>new Promise((resolve,reject)=>{rejectStart=reject;});
+  marker.click();
+  s.dossier().querySelector('.ppbui-hunts-inspector__hunt').click();
+  const original=activeHuntZone(s.dom.window);
+  assert.ok(original);
+  const newer=rememberActiveHuntZone(s.root,1);
+  assert.notEqual(newer,original);
+  rejectStart(new Error('late failure'));
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(activeHuntZone(s.dom.window),newer,'old request failure cannot erase a newer zone');
+});
+
+test('remembered Hunt cleanup matches the exact start snapshot and ignores newer zones',t=>{
+  const s=setup(t);
+  const original=rememberActiveHuntZone(s.root,0);
+  forgetActiveHuntZone(s.dom.window,original);
+  assert.equal(activeHuntZone(s.dom.window),null,'the matching snapshot is forgotten');
+
+  const old=rememberActiveHuntZone(s.root,0);
+  const newer=rememberActiveHuntZone(s.root,1);
+  forgetActiveHuntZone(s.dom.window,old);
+  assert.equal(activeHuntZone(s.dom.window),newer,'cleanup for an older Hunt cannot delete a newer remembered zone');
+  forgetActiveHuntZone(s.dom.window,newer);
+  assert.equal(activeHuntZone(s.dom.window),null);
+});
+
+test('element rendering never reuses host ornament when no raw PNG is available',t=>{
+  const s=setup(t);
+  s.dom.window.PokeIdle.ElementIcons.create=()=>{
+    const native=s.doc.createElement('span');
+    native.className='native-element-circle';
+    native.style.cssText='border-radius:50%;background:white;padding:8px';
+    return native;
+  };
+  s.root.querySelectorAll('.hunt-map-marker')[1].click();
+  const icons=[...s.dossier().querySelectorAll('.ppbui-element-icon')];
+  assert.ok(icons.length>0);
+  for(const icon of icons){
+    assert.equal(icon.tagName,'SPAN');
+    assert.ok(icon.classList.contains('ppbui-element-icon--fallback'));
+    assert.equal(icon.classList.contains('native-element-circle'),false);
+    assert.doesNotMatch(icon.getAttribute('style')||'',/border-radius|background/i,"host inline circle/card ornament is not propagated into the controlled fallback");
+  }
 });
 
 test('search hiding the selected marker closes inspector, restores focus and does not fabricate zones',t=>{
@@ -434,6 +660,20 @@ test('cleanup with inspector open restores native-width map state and native str
   assert.equal(s.root.querySelector('.hunt-world-stage').style.transform,`translate3d(${restored.x}px,${restored.y}px,0) scale(${restored.scale})`);
   assert.equal(s.root.querySelector('[data-ppbui-module]'),null);assert.equal(s.root.classList.contains('ppbui-hunts-enhanced'),false);
   assert.equal(restoredViewport.parentElement,s.body);assert.equal(s.root.querySelector('.hunt-world-header-actions').contains(s.root.querySelector('.hunt-presentation-toggle')),true);
+});
+
+test('cleanup surfaces native navigation restoration failure after removing Better UI ownership',t=>{
+  const s=setup(t),staleLocate=s.locate();s.choose();s.root.querySelector('.hunt-map-marker').click();
+  const failure=Error('native navigation cleanup failed');s.scene._navigationCleanup=()=>{throw failure;};
+  assert.throws(()=>s.c.cleanup(),error=>error===failure);
+  assert.equal(s.root.querySelector('[data-ppbui-module]'),null);
+  assert.equal(s.root.classList.contains('ppbui-hunts-enhanced'),false);
+  assert.equal(s.root.querySelector('.hunt-world-viewport').parentElement,s.body);
+  assert.equal(s.root.querySelector('.hunt-world-header-actions').contains(s.root.querySelector('.hunt-presentation-toggle')),true);
+  assert.doesNotThrow(()=>s.c.sync());
+  assert.equal(s.root.querySelector('[data-ppbui-module]'),null,'failed cleanup leaves the disposed controller inert on later reconcile');
+  const setupsAfterCleanup=s.stats().setups;s.scene._navigationCleanup=()=>{};staleLocate.click();assert.equal(s.stats().setups,setupsAfterCleanup,'detached Locate control cannot call native navigation after cleanup');
+  assert.doesNotThrow(()=>s.c.cleanup(),'a retained lifecycle owner can retry cleanup without repeating the native restoration failure');
 });
 
 test('blocked, hidden, detached and unsupported navigation cannot start actions or mutate state',t=>{

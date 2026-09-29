@@ -20,7 +20,9 @@ artifact outside production paths.
 ## Output
 
 Facts, source locations, inferred constraints clearly labeled as inference, open
-questions and recommended next evidence.
+questions and recommended next evidence. Research must identify when a question
+cannot be answered from source and requires rendered or Product Owner live
+evidence; it must not fill that gap by inference.
 
 ## Must not
 

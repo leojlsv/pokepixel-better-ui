@@ -13,6 +13,29 @@ Use this Skill when the task involves **UI structure, visual design decisions, i
 
 Skip it for pure backend logic, API/database design, non-visual performance work, infrastructure/DevOps, or non-visual scripts — unless the task changes how something **looks, feels, moves, or is interacted with**.
 
+### Project authority and evidence boundary
+
+For PokePixel Better UI this skill is a **method**, not acceptance authority.
+`design-system/pokepixel-better-ui/MASTER.md`, approved module overrides and explicit
+Product Owner requirements control the design. Generic web/mobile defaults in this
+skill must not override the project's dense desktop-game decisions.
+
+In particular, do not mechanically enforce generic values such as 44×44 touch
+targets, 16px body text or mobile-first layout when the approved project context
+uses a different deliberate geometry. Apply those rules only when their actual
+interaction context is relevant.
+
+This skill also does not prove rendered correctness. When reviewing an
+implementation:
+
+- source/CSS/tokens/classes/tests prove implementation intent or contract
+  conformance, not appearance;
+- pixel-level/spacing/scrollbar/overflow/state claims require actual rendered
+  evidence;
+- if no representative render exists, report the visual evidence gap instead of
+  approving appearance;
+- follow `docs/roles/visual-regression-reviewer.md` for the project visual gate.
+
 ## Rule Categories by Priority
 
 *Follow priority 1→10 to decide which category to focus on first; use `--domain <Domain>` to query full details. The full rule text for every category lives in `references/quick-reference.md` — read it on demand rather than loading it every time.*
@@ -212,3 +235,8 @@ Then synthesize the design system + detailed searches and implement.
 ## Before Delivering App UI
 
 Read `references/pro-rules.md` and run through its canonical Pre-Delivery Checklist. It covers icon/visual-element discipline, interaction feedback, light/dark contrast, safe-area layout, and accessibility — scoped to native/mobile app UI (iOS/Android/React Native/Flutter).
+
+For PokePixel Better UI, those external/mobile-oriented checks are supplemental
+only and may be unavailable in the workspace. The project pre-delivery authority
+is `docs/PROJECT_WORKFLOW.md`. Every visible change must also pass the separate
+render-first Visual Regression gate or be labelled `VISUAL EVIDENCE INSUFFICIENT`.

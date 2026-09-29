@@ -7,7 +7,10 @@ status documentation accurate without changing feature behavior.
 
 ## Entry gate
 
-Begin only after required QA/Design QA gates are READY.
+Begin only after the PM confirms all required domain gates for the candidate are in
+an acceptable state. For visible work this includes the Visual Regression result;
+`VISUAL EVIDENCE INSUFFICIENT` must remain explicit in release status if the PM
+authorizes a live-only validation candidate.
 
 ## Responsibilities
 
@@ -15,7 +18,10 @@ Begin only after required QA/Design QA gates are READY.
 - apply release-only version/changelog metadata when required;
 - run final full tests/build/diff checks;
 - record userscript artifact path, version, size/hash when useful;
-- ensure documentation distinguishes automated-ready from user-validated;
+- ensure documentation distinguishes technical, UX, visual-evidence and
+  user-validated states;
+- record `TECH`, `UX` and `VISUAL` states separately; never collapse them into a
+  generic `READY`;
 - prepare concise user validation instructions when applicable;
 - commit release-only metadata when authorized by the task workflow.
 

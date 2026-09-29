@@ -1,8 +1,10 @@
 import { menuBarConfig as config } from "./config.js";
 import { groupLabel, isAvailable, isVisible } from "./dom.js";
+import styles from "./styles.js";
 
 export function mountMenuBar({ toolbar, actions, structure }) {
   const { classes, selectors } = config;
+  const doc = toolbar.ownerDocument;
   const undo = [];
   const positions = new Map();
   const created = [];
@@ -10,6 +12,14 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   const groups = [];
   const placements = new Map();
   const byId = new Map(actions.map(button => [button.dataset.menuId, button]));
+  const iconSignature = node => node?.outerHTML || "";
+  const cloneIcon = node => {
+    if (!node) return null;
+    const clone = node.cloneNode(true);
+    clone.removeAttribute?.("id");
+    clone.querySelectorAll?.("[id]").forEach(child => child.removeAttribute("id"));
+    return clone;
+  };
   const remember = node => {
     if (positions.has(node)) return;
     const anchor = document.createComment("ppbui-menu-bar-position");
@@ -37,6 +47,26 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     node.addEventListener(event, fn, capture);
     undo.push(() => node.removeEventListener(event, fn, capture));
   };
+  const styleProperty = (node, property, value, priority = "important") => {
+    if (!node) return;
+    const before = node.style.getPropertyValue(property);
+    const beforePriority = node.style.getPropertyPriority(property);
+    const hadStyle = node.hasAttribute("style");
+    node.style.setProperty(property, value, priority);
+    const applied = node.style.getPropertyValue(property);
+    const appliedPriority = node.style.getPropertyPriority(property);
+    undo.push(() => {
+      if (node.style.getPropertyValue(property) !== applied || node.style.getPropertyPriority(property) !== appliedPriority) return;
+      if (before) node.style.setProperty(property, before, beforePriority);
+      else node.style.removeProperty(property);
+      if (!hadStyle && !node.style.cssText) node.removeAttribute("style");
+    });
+  };
+  const style = doc.createElement("style");
+  style.dataset.ppbuiStyle = config.id;
+  style.textContent = styles;
+  doc.head.append(style);
+  attribute(toolbar, "data-ppbui-menu-bar", "");
   const mask = (node, hide) => {
     if (hide && !masks.has(node)) {
       masks.set(node, [node.style.display, node.style.getPropertyPriority("display"), node.hasAttribute("style")]);
@@ -66,16 +96,19 @@ export function mountMenuBar({ toolbar, actions, structure }) {
 
   config.groups.forEach((definition, index) => {
     const items = definition.items.map(id => byId.get(id)).filter(Boolean);
+    const source = items[0] || null;
     let group = structure.find(node => node?.dataset.menuGroup === definition.id);
+    let ownedTrigger = false;
     if (!group && !items.length) return;
     let trigger = group?.querySelector(selectors.trigger);
     let dropdown = group?.querySelector(selectors.dropdown);
     if (group && (!trigger || !dropdown)) return;
     if (!group) {
-      group = document.createElement("div");
+      group = doc.createElement("div");
       group.className = classes.group;
       // Only the passive presentation is copied; the trigger gets its own handler.
       trigger = items[0].cloneNode(true);
+      ownedTrigger = true;
       for (const name of trigger.getAttributeNames()) if (!["class", "style"].includes(name)) trigger.removeAttribute(name);
       for (const badge of trigger.querySelectorAll(selectors.badge)) badge.remove();
       trigger.type = "button";
@@ -84,7 +117,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       trigger.style.removeProperty("display");
       trigger.setAttribute("aria-haspopup", "menu");
       trigger.setAttribute("aria-expanded", "false");
-      dropdown = document.createElement("div");
+      dropdown = doc.createElement("div");
       dropdown.className = classes.dropdown;
       dropdown.id = `ppbui-menu-${definition.id}`;
       dropdown.setAttribute("role", "menu");
@@ -95,6 +128,31 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     }
     attribute(group, "data-ppbui-module", config.id);
     attribute(group, "data-ppbui-group", definition.id);
+    token(dropdown, "ppbui-menu-popup", true);
+    token(dropdown, "ppbui-scroll", true);
+    // Every grouped menu owns its physical anchor. The live Poké Hub can inject
+    // later positioning rules, so stylesheet specificity alone is insufficient.
+    // Keep the dropdown contiguous with the trigger to preserve pointer hover,
+    // and bound tall single-column host layouts to the visible viewport.
+    styleProperty(group, "position", "relative");
+    styleProperty(dropdown, "position", "absolute");
+    styleProperty(dropdown, "left", "50%");
+    styleProperty(dropdown, "right", "auto");
+    styleProperty(dropdown, "top", "auto");
+    styleProperty(dropdown, "bottom", "100%");
+    styleProperty(dropdown, "transform", "translateX(-50%)");
+    styleProperty(dropdown, "z-index", "2147483646");
+    styleProperty(dropdown, "display", "grid");
+    styleProperty(dropdown, "box-sizing", "border-box");
+    styleProperty(dropdown, "width", "min(282px, calc(100vw - 16px))");
+    styleProperty(dropdown, "min-width", "0px");
+    styleProperty(dropdown, "grid-template-columns", "repeat(3, minmax(0, 1fr))");
+    styleProperty(dropdown, "gap", "6px");
+    styleProperty(dropdown, "max-width", "calc(100vw - 16px)");
+    styleProperty(dropdown, "max-height", "calc(100dvh - 96px)");
+    styleProperty(dropdown, "overflow-x", "hidden");
+    styleProperty(dropdown, "overflow-y", "auto");
+    styleProperty(dropdown, "overscroll-behavior", "contain");
     // Native group-trigger wraps longer names into adjacent toolbar columns.
     token(trigger, "pokeidle-top-toolbar__group-trigger", false);
     const label = trigger.querySelector(selectors.label);
@@ -122,11 +180,22 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     for (const button of items) {
       token(button, classes.button, false);
       token(button, classes.item, true);
+      token(button, "ppbui-menu-popup-item", true);
       token(button.querySelector(selectors.label), classes.label, false);
+      styleProperty(button, "position", "relative");
+      styleProperty(button, "box-sizing", "border-box");
+      styleProperty(button, "width", "100%");
+      styleProperty(button, "min-width", "0px");
+      styleProperty(button, "min-height", "64px");
+      styleProperty(button, "flex-direction", "column");
+      styleProperty(button, "align-items", "center");
+      styleProperty(button, "justify-content", "center");
+      styleProperty(button, "gap", "3px");
+      styleProperty(button, "transform", "none");
       dropdown.append(button);
       placements.set(button, dropdown);
     }
-    groups.push({ id: definition.id, group, trigger, dropdown, rename });
+    groups.push({ id: definition.id, group, trigger, dropdown, rename, source, ownedTrigger, sourceIconSignature: iconSignature(source?.querySelector(selectors.icon)) });
   });
   const slots = new Map(groups.map(entry => [entry.id, entry.group]));
   for (const id of config.order) {
@@ -148,9 +217,10 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     entry.group.classList.toggle(classes.open, open);
     entry.trigger.setAttribute("aria-expanded", String(open));
   };
-  const close = entry => {
+  const close = (entry, restoreFocus = false) => {
     setOpen(entry, false);
-    if (entry.group.contains(document.activeElement)) document.activeElement.blur();
+    if (restoreFocus) entry.trigger.focus();
+    else if (entry.group.contains(document.activeElement)) document.activeElement.blur();
   };
   const closeOthers = own => {
     for (const entry of groups) if (entry !== own) close(entry);
@@ -174,7 +244,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        close(entry);
+        close(entry, true);
         return;
       }
       if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
@@ -198,6 +268,18 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   const sync = () => {
     for (const [button, parents] of sources) mask(button, !nativeVisible(button) || parents.some(parent => !nativeVisible(parent)));
     for (const entry of groups) {
+      if (entry.ownedTrigger) {
+        const sourceIcon = entry.source?.querySelector(selectors.icon) || null;
+        const nextSignature = iconSignature(sourceIcon);
+        if (nextSignature !== entry.sourceIconSignature) {
+          const currentIcon = entry.trigger.querySelector(selectors.icon);
+          const replacement = cloneIcon(sourceIcon);
+          if (currentIcon && replacement) currentIcon.replaceWith(replacement);
+          else if (currentIcon) currentIcon.remove();
+          else if (replacement) entry.trigger.insertBefore(replacement, entry.trigger.querySelector(selectors.label) || entry.trigger.firstChild);
+          entry.sourceIconSignature = nextSignature;
+        }
+      }
       entry.rename();
       const empty = ![...entry.dropdown.querySelectorAll(selectors.action)].some(isVisible);
       mask(entry.group, empty);
@@ -233,6 +315,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
         for (const button of group.querySelectorAll(selectors.action)) toolbar.append(button);
         group.remove();
       }
+      style.remove();
     },
   };
 }

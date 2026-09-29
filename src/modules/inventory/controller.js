@@ -1,13 +1,96 @@
 import { inventoryConfig as config } from "./config.js";
-import { findParts, inventoryText, locale, readCreatures, readItems, readSlot } from "./dom.js";
+import { categoryValue, findParts, inventoryText, locale, readCreatures, readItems, readSlot, resetCategory } from "./dom.js";
 import { mountSortControl } from "./toolbar.js";
 import { createInventoryViews, viewText } from "./views.js";
 import { createInventoryScroll } from "./scroll.js";
 
 export function mountInventory(root, preference) {
+  const doc=root.ownerDocument, hadWindowClass=root.classList.contains("ppbui-window");
+  root.classList.add("ppbui-window");
+  const shellStyle=doc.createElement("style");shellStyle.dataset.ppbuiInventoryShellStyle="";shellStyle.textContent=`
+    .inventory-window--slots.ppbui-window { container-type:inline-size; max-width:calc(100vw - 16px); border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-radius) !important; background:var(--ppbui-bg-1) !important; color:var(--ppbui-text) !important; box-shadow:var(--ppbui-shadow-raised) !important; font-family:var(--ppbui-font-body) !important; }
+    .inventory-window--slots.ppbui-window > .pokeidle-panel__titlebar { min-height:var(--ppbui-control-height); border:0!important; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window > .pokeidle-panel__titlebar .pokeidle-panel__title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display)!important; letter-spacing:normal!important; }
+    .inventory-window--slots.ppbui-window > .pokeidle-panel__titlebar button { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; color:var(--ppbui-text)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window > .pokeidle-panel__body { display:grid!important; grid-template-columns:minmax(0,1fr); align-content:start; gap:0; box-sizing:border-box; padding:0!important; background:var(--ppbui-bg-0) !important; color:var(--ppbui-text) !important; font-family:var(--ppbui-font-body) !important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] { box-sizing:border-box; width:100%; margin:0!important; padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window .inventory-category-tabs[data-ppbui-inventory-native-categories][hidden] { display:none!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] { box-sizing:border-box; width:100%; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); border:0; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-2); }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { display:grid; grid-template-columns:minmax(160px,235px) auto max-content; align-items:center; justify-content:start; gap:var(--ppbui-space-2); margin:0!important; padding:0!important; border:0!important; background:transparent!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-category-proxy] { min-width:140px; width:clamp(140px,24%,190px); max-width:190px; flex:0 1 190px; }
+    .inventory-window--slots.ppbui-window > select[data-ppbui-order] { width:235px!important; min-width:160px!important; max-width:235px!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] > input.game-window__search.ppbui-input { -webkit-appearance:none!important; appearance:none!important; box-sizing:border-box; min-height:var(--ppbui-control-height)!important; padding:0 var(--ppbui-control-padding-x)!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-0)!important; background-image:none!important; color:var(--ppbui-text)!important; box-shadow:none!important; font:400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; }
+    .inventory-window--slots.ppbui-window,
+    .inventory-window--slots.ppbui-window * { scrollbar-width:auto!important; scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track)!important; }
+    .inventory-window--slots.ppbui-window::-webkit-scrollbar,
+    .inventory-window--slots.ppbui-window *::-webkit-scrollbar { width:var(--ppbui-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
+    .inventory-window--slots.ppbui-window::-webkit-scrollbar-track,
+    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-track { border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window::-webkit-scrollbar-thumb,
+    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-thumb { border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-thumb)!important; background-clip:border-box!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window::-webkit-scrollbar-thumb:hover,
+    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-thumb:hover { background:var(--ppbui-scrollbar-thumb-hover)!important; }
+    .inventory-window--slots.ppbui-window::-webkit-scrollbar-corner,
+    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-corner { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; }
+    .inventory-window--slots.ppbui-window::-webkit-scrollbar-button,
+    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-button { display:none!important; width:0!important; height:0!important; }
+    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll],
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll] { scrollbar-width:auto!important; scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track)!important; scrollbar-gutter:stable!important; }
+    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar,
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar { width:var(--ppbui-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
+    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-track,
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-track { border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb,
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb { border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-thumb)!important; background-clip:border-box!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb:hover,
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb:hover { background:var(--ppbui-scrollbar-thumb-hover)!important; }
+    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-corner,
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-corner { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; }
+    @supports selector(::-webkit-scrollbar) {
+      .inventory-window--slots.ppbui-window,
+      .inventory-window--slots.ppbui-window *,
+      .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll],
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll] { scrollbar-color:auto!important; }
+    }
+    .inventory-window--slots.ppbui-window .ppbui-pokemon-tools { box-sizing:border-box; width:calc(100% - (var(--ppbui-space-4) + var(--ppbui-space-4)))!important; margin:0 var(--ppbui-space-4)!important; padding:var(--ppbui-space-3) 0!important; }
+    .inventory-window--slots.ppbui-window .inventory-slot-grid { box-sizing:border-box; width:100%; min-height:220px; margin:0!important; padding:var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-0)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window .inventory-slot { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window .inventory-slot:not(.is-empty):hover { background:var(--ppbui-bg-3)!important; }
+    .inventory-window--slots.ppbui-window .inventory-slot.is-empty { background:var(--ppbui-bg-0)!important; color:var(--ppbui-text-subtle)!important; opacity:1; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-row] { box-sizing:border-box; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-3); border:0; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius); background:transparent; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] { box-sizing:border-box; margin:0; padding:0; border:0; border-top:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius); background:transparent; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] > h3 { margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); background:var(--ppbui-bg-1); color:var(--ppbui-text); }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] > .inventory-slot-grid { padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; }
+    @container (max-width:519px) {
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { grid-template-columns:minmax(0,1fr) auto max-content; }
+      .inventory-window--slots.ppbui-window > select[data-ppbui-order] { min-width:0!important; }
+    }
+    @container (max-width:440px) {
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { grid-template-columns:minmax(0,1fr) auto; }
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { grid-column:1/-1; width:100%; }
+    }
+  `;doc.head.append(shellStyle);
+  const scrollOwnership=new Map();
+  const marker="data-ppbui-inventory-scroll";
+  const ownScrollSurface=node=>{
+    if(!node||scrollOwnership.has(node))return;
+    scrollOwnership.set(node,{hadClass:node.classList.contains("ppbui-scroll"),marker:node.getAttribute(marker)});
+    node.classList.add("ppbui-scroll");node.setAttribute(marker,"");
+  };
+  const releaseScrollSurface=node=>{
+    const original=scrollOwnership.get(node);if(!original)return;
+    if(!original.hadClass)node.classList.remove("ppbui-scroll");
+    if(original.marker===null)node.removeAttribute(marker);else node.setAttribute(marker,original.marker);
+    scrollOwnership.delete(node);
+  };
+  const syncScrollSurfaces=(body,grid)=>{
+    const desired=new Set([root,body,grid].filter(Boolean));
+    for(const node of [...scrollOwnership.keys()])if(!desired.has(node))releaseScrollSurface(node);
+    desired.forEach(ownScrollSurface);
+  };
   const hadStyle=root.hasAttribute("style");
   const minimum=root.style.getPropertyValue("min-width"), priority=root.style.getPropertyPriority("min-width");
-  root.style.setProperty("min-width","560px","important");
+  root.style.setProperty("min-width","min(520px, calc(100vw - 16px))","important");
   let parts = {};
   let baseline = [];
   let scope = null;
@@ -16,18 +99,19 @@ export function mountInventory(root, preference) {
   let viewMode = "grid";
   const views = createInventoryViews(root);
   const disclosure = document.createElement("div");
+  disclosure.className = "ppbui-root";
   disclosure.dataset.ppbuiInventoryTools = "";
   const bar = document.createElement("div");
   bar.className = "inventory-slots-toolbar";
   bar.dataset.ppbuiModule = config.id;
   const order = document.createElement("select");
-  order.className = "game-window__select";
+  order.className = "game-window__select ppbui-select";
   order.dataset.ppbuiOrder = "";
   for (const mode of config.modes) {
     const option = document.createElement("option"); option.value = mode; order.append(option);
   }
   const button = () => {
-    const node = document.createElement("button"); node.type = "button"; node.className = "pokeidle-btn"; return node;
+    const node = document.createElement("button"); node.type = "button"; node.className = "pokeidle-btn ppbui-button"; return node;
   };
   const apply = button();
   const clear = button();
@@ -39,7 +123,7 @@ export function mountInventory(root, preference) {
     const node = button(); node.dataset.ppbuiViewMode = mode; viewBar.append(node); return node;
   });
   const status = document.createElement("p");
-  status.className = "inventory-slots-hint";
+  status.className = "inventory-slots-hint ppbui-status";
   status.dataset.ppbuiInventoryStatus = "";
   status.setAttribute("role", "status");
   clear.dataset.ppbuiInventoryClear = "";
@@ -74,8 +158,11 @@ export function mountInventory(root, preference) {
   };
   const sync = () => {
     const next = findParts(root);
+    syncScrollSurfaces(next.body,next.grid);
     if (!next.toolbar || !next.search || !next.category || !next.grid) { disclosure.remove(); control.sync({}); return; }
-    const nextScope = JSON.stringify([next.search.value, next.category.value]);
+    const activeCategory = categoryValue(next.category);
+    if (!activeCategory) { disclosure.remove(); control.sync({}); return; }
+    const nextScope = JSON.stringify([next.search.value, activeCategory]);
     const sameScope = scope === nextScope;
     scroll.begin(next, nextScope, `${viewMode}:${preference.get()}`);
     if (!sameScope) ranks = new Map();
@@ -103,14 +190,14 @@ export function mountInventory(root, preference) {
     }
     content(apply, text.apply); content(clear, text.clear);
     const count = baseline.filter(node => node.nodeType === 1 && node.matches(config.selectors.slot)).length;
-    const filtered = Boolean(next.search.value) || next.category.value !== "all";
+    const filtered = Boolean(next.search.value) || activeCategory !== "all";
     const labels = viewText();
     if (viewBar.getAttribute("aria-label") !== labels.label) viewBar.setAttribute("aria-label", labels.label);
     viewButtons.forEach((node, index) => {
       content(node, labels.modes[index]);
       const active = config.views[index] === viewMode;
       if (node.getAttribute("aria-pressed") !== String(active)) node.setAttribute("aria-pressed", String(active));
-      const className = `pokeidle-btn${active ? " pokeidle-btn--primary" : ""}`;
+      const className = `pokeidle-btn ppbui-button${active ? " ppbui-button--primary" : ""}`;
       if (node.className !== className) node.className = className;
     });
     const disabled = !filtered;
@@ -121,7 +208,7 @@ export function mountInventory(root, preference) {
     const message = [!count && filtered ? text.empty : "", unavailable ? `${unavailable} ${warning}` : "", !preference.saved() ? text.unsaved : ""].filter(Boolean).join(" ");
     content(status, message);
     if (status.hidden !== !message) status.hidden = !message;
-    control.sync(next);
+    control.sync(next, text.scope);
     scroll.restore();
     control.position();
   };
@@ -139,10 +226,7 @@ export function mountInventory(root, preference) {
     }
     // Native input/change handlers rebuild the controls synchronously.
     current = findParts(root);
-    if (current.category && [...current.category.options].some(option => option.value === "all")) {
-      current.category.value = "all";
-      current.category.dispatchEvent(new root.ownerDocument.defaultView.Event("change", { bubbles: true }));
-    }
+    resetCategory(current.category);
     sync();
     findParts(root).search?.focus({ preventScroll: true });
   };
@@ -163,7 +247,7 @@ export function mountInventory(root, preference) {
       viewBar.removeEventListener("click", changeView);
       control.cleanup();
       views.cleanup(parts.grid, baseline.filter(node => parts.grid?.contains(node)));
-      disclosure.remove();
+      disclosure.remove();for(const node of [...scrollOwnership.keys()])releaseScrollSurface(node);shellStyle.remove();if(!hadWindowClass)root.classList.remove("ppbui-window");
     },
   };
 }

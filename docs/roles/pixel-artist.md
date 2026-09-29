@@ -27,7 +27,8 @@ maintainable DOM/CSS is the better implementation.
 - generate all required states/variants from one visual language;
 - avoid decorative detail that harms legibility;
 - provide filenames/manifest metadata and license/source notes when relevant;
-- hand assets to UX/A11y & Design QA before runtime integration.
+- hand assets to Visual Regression Reviewer before runtime integration; add
+  UX/A11y QA when the asset changes information/interaction accessibility.
 
 ## Must not
 

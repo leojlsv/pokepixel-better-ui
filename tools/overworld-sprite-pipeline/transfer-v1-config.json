@@ -1,0 +1,12 @@
+{
+  "006": {
+    "side_size": [56, 50],
+    "front_size": [58, 52],
+    "back_size": [58, 52]
+  },
+  "059": {
+    "side_size": [56, 56],
+    "front_size": [44, 58],
+    "back_size": [44, 60]
+  }
+}

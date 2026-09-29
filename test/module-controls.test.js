@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { createBetterUI } from "../src/core/bootstrap.js";
 import { createModulePreferences } from "../src/core/preferences.js";
+import { createAppearancePreferences } from "../src/core/appearance-preferences.js";
 import { createMenuBarModule } from "../src/modules/menu-bar/index.js";
 import { createModuleControls } from "../src/modules/module-controls/index.js";
 
@@ -23,8 +24,9 @@ function setup(t, stored, fail = false) {
     return window.localStorage;
   } };
   const preferences = createModulePreferences(options);
-  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }] });
-  const app = createBetterUI({ modules: [createMenuBarModule(), controls], preferences });
+  const appearance = createAppearancePreferences({ storage: options.storage, events: window, document: window.document });
+  const controls = createModuleControls({ preferences, appearance, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }] });
+  const app = createBetterUI({ modules: [createMenuBarModule(), controls], preferences, appearance });
   const doc = window.document;
   t.after(() => {
     app.stop(); dom.window.close();
@@ -33,11 +35,69 @@ function setup(t, stored, fail = false) {
       else delete globalThis[name];
     }
   });
-  return { app, doc, window, preferences, options,
+  return { app, doc, window, preferences, appearance, options,
     trigger: () => doc.querySelector('[aria-controls="ppbui-module-panel"]'),
     toggle: () => doc.querySelector('#ppbui-module-panel input[type="checkbox"]'),
   };
 }
+
+test("appearance selector exposes one persistent global Squared or Rounded mode", t => {
+  const { app, doc, window, trigger, appearance } = setup(t);
+  app.start(); trigger().click();
+  const select = doc.querySelector(".ppbui-module-appearance select");
+  assert.ok(select);
+  assert.equal(select.value, "square");
+  assert.deepEqual([...select.options].map(option => option.textContent), ["Squared", "Rounded"]);
+  assert.equal(doc.documentElement.dataset.ppbuiCorners, "square");
+  select.value = "rounded";
+  select.dispatchEvent(new window.Event("change", { bubbles: true }));
+  assert.equal(appearance.getCornerMode(), "rounded");
+  assert.equal(doc.documentElement.dataset.ppbuiCorners, "rounded");
+  assert.deepEqual(JSON.parse(window.localStorage.getItem("ppbui:appearance:v1")), { corners: "rounded" });
+});
+
+test("Better UI panel owns an upward anchor independently from hostile native dropdown CSS", t => {
+  const { app, doc, window } = setup(t);
+  const hostile = doc.createElement("style");
+  hostile.textContent = `
+    .pokeidle-top-toolbar__dropdown { top:54px !important; bottom:auto !important; transform:translateY(80px) !important; }
+    .pokeidle-top-toolbar__group > div { inset:54px auto auto 0 !important; transform:translateY(80px) !important; }
+  `;
+  doc.head.append(hostile);
+  app.start();
+  const group = doc.querySelector('[data-ppbui-module="module-controls"]');
+  const panel = doc.querySelector("#ppbui-module-panel");
+  const css = doc.querySelector('style[data-ppbui-style="module-controls"]').textContent.replace(/\s+/g, " ");
+  assert.ok(group);
+  assert.ok(panel);
+  assert.equal(panel.classList.contains("pokeidle-top-toolbar__dropdown"), false, "Better UI preferences must not inherit native dropdown positioning");
+  assert.equal(group.style.getPropertyValue("position"), "relative");
+  assert.equal(group.style.getPropertyPriority("position"), "important");
+  for (const [property, value] of [
+    ["position", "absolute"],
+    ["inset", "auto"],
+    ["left", "auto"],
+    ["right", "0px"],
+    ["top", "auto"],
+    ["bottom", "calc(100% + 4px)"],
+    ["transform", "none"],
+  ]) {
+    assert.equal(panel.style.getPropertyValue(property), value, `${property} has the owned physical anchor value`);
+    assert.equal(panel.style.getPropertyPriority(property), "important", `${property} is protected from late host !important rules`);
+  }
+  assert.equal(window.getComputedStyle(panel).top, "auto");
+  assert.equal(window.getComputedStyle(panel).bottom, "calc(100% + 4px)");
+  assert.equal(window.getComputedStyle(panel).transform, "none");
+  assert.match(css, /\[data-ppbui-module="module-controls"\] \{[^}]*position:relative !important;/);
+  assert.match(css, /> \.ppbui-module-panel \{[^}]*position:absolute !important;[^}]*inset:auto 0 calc\(100% \+ 4px\) auto !important;[^}]*display:grid;[^}]*transform:none !important;/);
+});
+
+test("Better UI panel title uses the shared game display typography", t => {
+  const { app, doc } = setup(t);
+  app.start();
+  const css = doc.querySelector('style[data-ppbui-style="module-controls"]').textContent.replace(/\s+/g, " ");
+  assert.match(css, /\.ppbui-module-panel > #ppbui-module-title \{[^}]*font:500 var\(--ppbui-font-size-title\)\/var\(--ppbui-line-height-tight\) var\(--ppbui-font-display\);[^}]*letter-spacing:normal;/);
+});
 
 test("controls survive disabling every optional module and preserve native actions", t => {
   const { app, doc, preferences, trigger, toggle } = setup(t);
@@ -50,6 +110,11 @@ test("controls survive disabling every optional module and preserve native actio
   pack.addEventListener("click", () => actions++);
   app.start();
   assert.equal(trigger().querySelector("img").alt, "Better UI");
+  assert.ok(trigger().classList.contains("ppbui-button"));
+  assert.ok(trigger().closest('[data-ppbui-module="module-controls"]').classList.contains("ppbui-root"));
+  assert.ok(doc.querySelector("#ppbui-module-panel").classList.contains("ppbui-panel"));
+  assert.ok(doc.querySelector(".ppbui-module-close").classList.contains("ppbui-button"));
+  assert.ok(doc.querySelector(".ppbui-module-list").classList.contains("ppbui-scroll"));
   trigger().click();
   toggle().click();
   assert.equal(preferences.isEnabled("menu-bar"), false);
@@ -68,6 +133,23 @@ test("controls survive disabling every optional module and preserve native actio
   assert.equal(toolbar.lastElementChild.dataset.ppbuiModule, 'module-controls');
   app.stop();
   assert.equal(toolbar.outerHTML, before);
+});
+
+test("Better UI trigger uses an owned image even when Settings is a host vector icon", t => {
+  const { app, doc, trigger } = setup(t);
+  const settings = doc.querySelector('[data-menu-id="settings"]');
+  const nativeIcon = settings.querySelector('.pokeidle-top-toolbar__icon');
+  const vector = doc.createElement('span');
+  vector.className = 'pokeidle-menu-vector-icon';
+  vector.textContent = 'build';
+  nativeIcon.replaceWith(vector);
+
+  app.start();
+  const image = trigger().querySelector(':scope > img.pokeidle-top-toolbar__icon');
+  assert.ok(image, "Better UI must not clone a vector/font-backed Settings glyph");
+  assert.equal(trigger().querySelector('.pokeidle-menu-vector-icon'), null);
+  assert.equal(image.alt, "Better UI");
+  assert.equal(image.draggable, false);
 });
 
 test("saved disabled preference is applied before mounting, persists, and ignores unknown settings", t => {

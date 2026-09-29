@@ -3,8 +3,54 @@ export const locale = () => document.defaultView?.PokeIdle?.Localization?.get?.(
 export const inventoryText = () => config.text[locale().split(/[-_]/)[0]] || config.text.en;
 export const findInventory = () => document.querySelector(config.selectors.root);
 export function findParts(root) {
+  const body = root.querySelector(config.selectors.body);
   const toolbar = root.querySelector(config.selectors.toolbar);
-  return { toolbar, search: toolbar?.querySelector(config.selectors.search), category: toolbar?.querySelector(config.selectors.category), grid: root.querySelector(config.selectors.grid), body: root.querySelector(config.selectors.body) };
+  const category = toolbar?.querySelector(config.selectors.categorySelect)
+    || body?.querySelector(config.selectors.categoryTabs)
+    || root.querySelector(config.selectors.categoryTabs);
+  return { toolbar, search: toolbar?.querySelector(config.selectors.search), category, grid: root.querySelector(config.selectors.grid), body };
+}
+export const isCategorySelect = category => Boolean(category?.matches?.(config.selectors.categorySelect));
+export function categoryValue(category) {
+  if (!category) return null;
+  if (isCategorySelect(category)) return category.value || null;
+  const selected = category.querySelector(`${config.selectors.categoryTab}[aria-selected="true"]`)
+    || category.querySelector(`${config.selectors.categoryTab}.is-active`)
+    || category.querySelector(`${config.selectors.categoryTab}[tabindex="0"]`);
+  return selected?.dataset?.category || null;
+}
+export function categoryEntries(category) {
+  if (!category) return [];
+  if (isCategorySelect(category)) {
+    return [...category.options].map(option => ({ value: option.value, label: option.textContent || option.value }));
+  }
+  return [...category.querySelectorAll(config.selectors.categoryTab)]
+    .map(tab => ({ value: tab.dataset.category, label: tab.textContent || tab.dataset.category }))
+    .filter(entry => entry.value);
+}
+export function categoryFocusTarget(category) {
+  if (!category) return null;
+  if (isCategorySelect(category)) return category;
+  return category.querySelector(`${config.selectors.categoryTab}[aria-selected="true"]`)
+    || category.querySelector(`${config.selectors.categoryTab}.is-active`)
+    || category.querySelector(`${config.selectors.categoryTab}[tabindex="0"]`)
+    || category.querySelector(config.selectors.categoryTab);
+}
+export function resetCategory(category) {
+  if (!category) return false;
+  if (isCategorySelect(category)) {
+    if (![...category.options].some(option => option.value === "all")) return false;
+    if (category.value !== "all") {
+      category.value = "all";
+      category.dispatchEvent(new category.ownerDocument.defaultView.Event("change", { bubbles: true }));
+    }
+    return true;
+  }
+  const all = [...category.querySelectorAll(config.selectors.categoryTab)]
+    .find(tab => tab.dataset.category === "all");
+  if (!all) return false;
+  if (categoryValue(category) !== "all") all.click();
+  return true;
 }
 export function readInventoryScene(body) {
   const view = document.defaultView;

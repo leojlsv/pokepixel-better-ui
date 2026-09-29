@@ -61,12 +61,35 @@ Each module owns:
 A module must not depend on DOM created by another feature unless that
 dependency is explicitly modeled.
 
+### Registration and runtime contracts
+
+`src/app/module-registry.js` is the one source for the ordered list of runtime
+modules, preference descriptors and persisted defaults. `src/index.js` only
+assembles the app dependencies and appends the non-configurable settings panel.
+An optional setting must correspond to a registered module ID; infrastructure
+modules such as standalone Card Mode and Coupled Workspace have no user toggle.
+The contract is checked in `test/app-module-registry.test.js`.
+
+Game-owned `PokeIdle.Bus` may change identity during rehydration. Feature
+consumers must detach listeners from the **exact** object they subscribed to,
+not whatever Bus happens to be current at cleanup. Shared
+`src/core/native-event-bus.js` supplies this lifecycle to Pokémon Profile and
+Auto Helper; other consumers with an existing identity-aware contract should
+retain their own equivalent guard until they are migrated with tests.
+
+Do not emit identical `textContent`, `hidden` or `disabled` mutations during
+an otherwise unchanged render. The central observer watches these, including
+all child-list mutations; a render that rewrites its own DOM can continuously
+schedule another reconciliation. The Card Mode quiescence regression is in
+`test/cards-render-idempotence.test.js`.
+
 ## Visual architecture
 
-The visual source of truth is
-`design-system/pokepixel-better-ui/MASTER.md`, with optional module-specific
-overrides under `design-system/pokepixel-better-ui/pages/`. UI/UX work must also
-pass the review process in `.skills/ui_ux_pro.md`.
+Visual decisions follow the functional and safety constraints in `AGENTS.md` and
+`docs/PROJECT_RULES.md`. When a task explicitly adopts art direction, shared
+visual rules live in `design-system/pokepixel-better-ui/MASTER.md`, with approved
+module overrides under `design-system/pokepixel-better-ui/pages/`. UI/UX work
+must pass the review process in `.skills/ui_ux_pro.md`.
 
 During the migration, legacy modules may continue injecting module-local styles.
 The approved shared Better UI tokens and component primitives are injected once

@@ -1,43 +1,103 @@
-.ppbui-button:hover:not(:disabled):not([aria-disabled="true"]) {
+.ppbui-button:hover:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-accent);
   background: var(--ppbui-bg-3);
+  filter: none;
+  transform: none;
 }
 
-.ppbui-button--primary:hover:not(:disabled):not([aria-disabled="true"]) {
+.pokeidle-btn.ppbui-button:hover:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-accent) !important;
+  background: var(--ppbui-bg-3) !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.ppbui-button--primary:hover:where(:not(:disabled):not([aria-disabled="true"])) {
   border-color: var(--ppbui-accent-hi);
+  background: var(--ppbui-action-bg);
+  color: var(--ppbui-accent-hi);
 }
 
-.ppbui-button--danger:hover:not(:disabled):not([aria-disabled="true"]) {
-  border-color: var(--ppbui-danger);
+.pokeidle-btn.ppbui-button.ppbui-button--primary:hover:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-accent-hi) !important;
+  background: var(--ppbui-action-bg) !important;
+  color: var(--ppbui-accent-hi) !important;
+}
+
+.ppbui-button--danger:hover:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-danger-hi);
+  background: var(--ppbui-danger-bg);
+  color: var(--ppbui-text);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--danger:hover:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-danger-hi) !important;
+  background: var(--ppbui-danger-bg) !important;
+  color: var(--ppbui-text) !important;
 }
 
 .ppbui-input:hover:not(:disabled),
+.ppbui-textarea:hover:not(:disabled),
 .ppbui-select:hover:not(:disabled) {
   border-color: var(--ppbui-border-strong);
 }
 
-.ppbui-button:active:not(:disabled):not([aria-disabled="true"]) {
-  background: var(--ppbui-bg-0);
-  box-shadow: inset var(--ppbui-pixel-unit) var(--ppbui-pixel-unit) 0 var(--ppbui-bg-0);
+.game-window__search.ppbui-input:hover:not(:disabled),
+.game-window__select.ppbui-select:hover:not(:disabled) {
+  border-color: var(--ppbui-border-strong) !important;
 }
 
-.ppbui-button--primary:active:not(:disabled):not([aria-disabled="true"]) {
-  border-color: var(--ppbui-accent);
+.ppbui-button:active:where(:not(:disabled):not([aria-disabled="true"])) {
+  background: var(--ppbui-bg-3);
+  box-shadow: none;
+  filter: none;
+  transform: none;
 }
 
-.ppbui-button--danger:active:not(:disabled):not([aria-disabled="true"]) {
+.pokeidle-btn.ppbui-button:active:where(:not(:disabled):not([aria-disabled="true"])) {
+  background: var(--ppbui-bg-3) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+.ppbui-button--primary:active:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-accent-hi);
+  background: var(--ppbui-action-bg);
+  color: var(--ppbui-accent-hi);
+  box-shadow: none;
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--primary:active:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-accent-hi) !important;
+  background: var(--ppbui-action-bg) !important;
+  color: var(--ppbui-accent-hi) !important;
+  box-shadow: none !important;
+}
+
+.ppbui-button--danger:active:where(:not(:disabled):not([aria-disabled="true"])) {
   border-color: var(--ppbui-danger);
+  background: var(--ppbui-danger-bg);
+  color: var(--ppbui-text);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--danger:active:where(:not(:disabled):not([aria-disabled="true"])) {
+  border-color: var(--ppbui-danger) !important;
+  background: var(--ppbui-danger-bg) !important;
+  color: var(--ppbui-text) !important;
 }
 
 .ppbui-button[aria-pressed="true"],
 .ppbui-button[aria-current="true"],
 .ppbui-button.ppbui-is-selected {
-  border-color: var(--ppbui-accent);
-  background: var(--ppbui-bg-3);
-  color: var(--ppbui-text);
+  border-color: var(--ppbui-selected) !important;
+  background: var(--ppbui-bg-3) !important;
+  color: var(--ppbui-text) !important;
 }
 
 .ppbui-button:focus-visible,
 .ppbui-input:focus-visible,
+.ppbui-textarea:focus-visible,
 .ppbui-select:focus-visible,
 .ppbui-dialog:focus-visible,
 .ppbui-focusable:focus-visible {
@@ -48,12 +108,37 @@
 .ppbui-button:disabled,
 .ppbui-button[aria-disabled="true"],
 .ppbui-input:disabled,
+.ppbui-textarea:disabled,
 .ppbui-select:disabled {
   cursor: default;
   border-color: var(--ppbui-border);
   background: var(--ppbui-bg-1);
   color: var(--ppbui-text-subtle);
   box-shadow: none;
+  filter: none;
+  opacity: 1;
+  transform: none;
+}
+
+.game-window__search.ppbui-input:disabled,
+.game-window__select.ppbui-select:disabled {
+  border-color: var(--ppbui-border) !important;
+  background: var(--ppbui-bg-1) !important;
+  color: var(--ppbui-text-subtle) !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+}
+
+.pokeidle-btn.ppbui-button:disabled,
+.pokeidle-btn.ppbui-button[aria-disabled="true"] {
+  cursor: default;
+  border-color: var(--ppbui-border) !important;
+  background: var(--ppbui-bg-1) !important;
+  color: var(--ppbui-text-subtle) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
 }
 
 .ppbui-button[aria-busy="true"],
@@ -61,27 +146,80 @@
   cursor: progress;
 }
 
+.ppbui-pokemon-card:is(button, [role="button"]):hover:not(:disabled):not([aria-disabled="true"]):not(.ppbui-pokemon-card--fainted) {
+  --ppbui-pokemon-card-border: var(--ppbui-accent);
+  border-color: var(--ppbui-pokemon-card-border) !important;
+  background: var(--ppbui-bg-3) !important;
+}
+
+.ppbui-pokemon-card:is(button, [role="button"]):active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--ppbui-bg-0) !important;
+}
+
+.ppbui-pokemon-card.ppbui-pokemon-card--selected,
+.ppbui-pokemon-card[aria-pressed="true"] {
+  --ppbui-pokemon-card-top-border: var(--ppbui-selected);
+}
+
+.ppbui-pokemon-card.ppbui-pokemon-card--active {
+  --ppbui-pokemon-card-right-border: var(--ppbui-success);
+}
+
+.ppbui-pokemon-card.ppbui-pokemon-card--fainted {
+  --ppbui-pokemon-card-border: var(--ppbui-danger);
+  --ppbui-pokemon-card-bottom-border: var(--ppbui-danger);
+  --ppbui-pokemon-card-top-border: var(--ppbui-danger);
+  --ppbui-pokemon-card-right-border: var(--ppbui-danger);
+  border-color: var(--ppbui-pokemon-card-border) !important;
+}
+
+.ppbui-pokemon-card:focus-visible {
+  outline: var(--ppbui-border-width) solid var(--ppbui-focus) !important;
+  outline-offset: var(--ppbui-pixel-unit);
+}
+
 .ppbui-is-error,
 .ppbui-input[aria-invalid="true"],
+.ppbui-textarea[aria-invalid="true"],
 .ppbui-select[aria-invalid="true"],
 .ppbui-field.ppbui-is-error .ppbui-input,
+.ppbui-field.ppbui-is-error .ppbui-textarea,
 .ppbui-field.ppbui-is-error .ppbui-select {
-  border-color: var(--ppbui-danger);
+  border-color: var(--ppbui-danger) !important;
 }
 
 .ppbui-is-success {
-  border-color: var(--ppbui-success);
+  border-color: var(--ppbui-success) !important;
 }
 
 .ppbui-is-warning {
-  border-color: var(--ppbui-warning);
+  border-color: var(--ppbui-warning) !important;
 }
 
 @media (pointer: coarse) {
   .ppbui-button,
   .ppbui-input,
+  .ppbui-textarea,
   .ppbui-select {
     min-height: 40px;
+  }
+
+  .game-window__search.ppbui-input,
+  .game-window__select.ppbui-select {
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
+  .pokeidle-btn.ppbui-button {
+    min-height: 40px !important;
+  }
+
+  .ppbui-button--compact {
+    min-height: 40px;
+  }
+
+  .pokeidle-btn.ppbui-button.ppbui-button--compact {
+    min-height: 40px !important;
   }
 
   .ppbui-icon-button {
@@ -89,6 +227,29 @@
     min-width: 40px;
     height: 40px;
     min-height: 40px;
+  }
+
+  .pokeidle-btn.ppbui-button.ppbui-icon-button {
+    width: 40px;
+    min-width: 40px;
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+
+  .ppbui-icon-button--compact {
+    flex-basis: 40px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
+  }
+
+  .pokeidle-btn.ppbui-button.ppbui-icon-button--compact {
+    flex-basis: 40px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px !important;
+    min-height: 40px !important;
   }
 }
 

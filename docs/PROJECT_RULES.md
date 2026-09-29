@@ -2,12 +2,13 @@
 
 ## Product definition
 
-PokePixel Idle Better UI is an independent UI/UX layer for PokePixel Idle with a
-project-wide pixel-art design system. It may redesign game surfaces while keeping
-the underlying game rules, permissions and authoritative state intact.
+PokePixel Idle Better UI is an independent functional UI/UX and QoL layer for
+PokePixel Idle. It may redesign game surfaces while keeping the underlying game
+rules, permissions and authoritative state intact.
 
-The native client is a functional integration target, not the visual source of
-truth.
+Current product priority is functional layout, usability, responsiveness,
+maintainability and native-contract compatibility. The historical pixel-art
+design system is optional legacy guidance rather than an acceptance requirement.
 
 ## Decision order
 
@@ -16,10 +17,10 @@ For a feature or redesign, decide in this order:
 1. explicit user requirement;
 2. gameplay/safety and architecture invariants in `AGENTS.md`, this file and
    `docs/ARCHITECTURE.md`;
-3. the global pixel-art design system, specialized by an approved module page
-   override when one exists;
-4. module functional contract;
-5. safest integration with the current game implementation.
+3. module functional contract;
+4. safest integration with the current game implementation;
+5. the global design system/module override only when visual or art-direction
+   work is explicitly part of the task.
 
 `.skills/ui_ux_pro.md` is mandatory review methodology throughout the process; it
 does not become a second visual source of truth.
@@ -28,13 +29,17 @@ Multi-agent responsibilities follow `docs/roles/README.md`. Domain ownership doe
 not change the source-of-truth order: roles execute and verify decisions; they do
 not create a parallel authority hierarchy.
 
+Task progression and gate states follow `docs/PROJECT_WORKFLOW.md`. Role methods
+and supplemental external skills are mapped in `docs/SKILLS_MATRIX.md`; skills do
+not create authority or bypass review/live-validation gates.
+
 Reuse native behavior when it reduces risk. Reuse native styling only when it is
 also the intended Better UI design.
 
 ## Design governance
 
-- `design-system/pokepixel-better-ui/MASTER.md` is the global visual source of
-  truth.
+- `design-system/pokepixel-better-ui/MASTER.md` documents the legacy/shared
+  visual system and is authoritative only for tasks that explicitly adopt it.
 - `design-system/pokepixel-better-ui/pages/<module>.md` may override MASTER only
   for that module, must state why, and has authority only when its status is
   explicitly `approved`.
@@ -47,12 +52,16 @@ also the intended Better UI design.
   `docs/DESIGN_TOOLING.md`.
 - Legacy module docs may describe native-looking implementations historically.
   They do not override current design governance.
-- A module that has not yet migrated may remain a legacy visual implementation;
-  migration is progressive, not an automatic whole-project rewrite.
+- Existing pixel-art styling may remain when harmless. Do not migrate or preserve
+  it merely for theme consistency; simplify it when it causes functional layout
+  or compatibility problems.
 
 ## Functional safety
 
-- Do not automate gameplay.
+- Gameplay automation requires explicit feature scope and acceptance criteria. It
+  must preserve server/client eligibility, permissions and authoritative state,
+  define bounded failure/retry behavior, and provide a clear user control or
+  override path appropriate to the feature.
 - Do not silently change game actions.
 - Preserve server/client eligibility, permissions and authoritative state.
 - Do not destroy original DOM/state without a safe lifecycle/cleanup strategy
@@ -69,24 +78,50 @@ also the intended Better UI design.
 - Do not globally redefine host game tokens or use broad element resets.
 - Keep dynamic gameplay/integration values local when they are not reusable
   design decisions.
-- Shared appearance should converge on the design system rather than being
-  duplicated independently across modules.
+- Shared appearance should remain scoped and maintainable; convergence on the
+  legacy design system is optional unless explicitly required by the task.
 
 ## Review gates
 
-### Automated-ready
+### Technical readiness
 
-A UI feature may be handed to the user when:
+A candidate may receive `TECH READY` when:
 
 - behavior covered by the task still works in automated/synthetic validation;
 - SPA rerenders do not duplicate the UI;
 - repeated reconciliation is safe;
 - cleanup/lifecycle behavior is covered where applicable;
 - keyboard/focus/ARIA behavior is covered where applicable;
-- styling is scoped and conforms to the design system or documented override;
-- relevant `.skills/ui_ux_pro.md` checks were considered;
-- relevant role-owned review gates in `docs/roles/README.md` are READY;
+- styling ownership is scoped and technically conforms to the design system or
+  documented override;
 - tests/build/static checks pass.
+
+Technical readiness does not prove rendered appearance.
+
+### UX/A11y readiness
+
+When interaction/accessibility/information behavior changes, an independent
+reviewer must return `UX READY`. Source-level conformance is not a visual-fidelity
+verdict.
+
+### Visual readiness
+
+Visual Regression QA is required when a change can materially affect layout,
+readability, clipping, reachability, control state or interaction. `VISUAL READY`
+requires representative rendered evidence for those claims. Pure theme fidelity
+to the legacy pixel-art system is not a release requirement.
+
+When the affected behavior can only be proven in the Product Owner's live game,
+the correct pre-live state is `VISUAL EVIDENCE INSUFFICIENT` / `live-only`, not a
+fabricated visual pass. The PM may hand off such a candidate only with the evidence
+gap explicitly named.
+
+### PM handoff authorization
+
+The PM audits the Acceptance & Evidence Matrix. A normal handoff requires no
+unresolved domain `NOT READY` finding, exact-candidate traceability and evidence
+appropriate to every claim. Reviewer quantity does not compensate for weak or
+duplicated evidence.
 
 ### User-validated
 

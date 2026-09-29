@@ -1,12 +1,20 @@
 # Hunts — Hunt Atlas Design Override
 
-Status: **approved**
+Status: **approved functional direction; Miyazaki 16 visual migration pending Product Owner live validation**
 Direction: **Hunt Atlas**
 Product Owner approval: **2026-09-12**
 Migration classification: **redesign**
-Validation status: **user validated**
+Validation status: **historical Hunt Atlas behavior user-validated; current Miyazaki 16 candidate pending fresh live validation**
 Product Owner live validation: **2026-09-12 — All green**
 Validated implementation: **`3faa712`**
+
+Master-style migration note (2026-09-16): the Product Owner explicitly rejected the
+intermediate white/warm master, later rejected the Sweetie 16 color distribution in live
+inspection, and selected official Miyazaki 16 as the project-wide palette. The older
+Hunts-only font, 32px utility-control and oversized 48/52px
+CTA treatments remain superseded by MASTER's shared geometry/type scale. All
+non-visual Hunt Atlas behavior, hierarchy, lifecycle and native-integration
+constraints remain frozen.
 
 This page specializes `../MASTER.md` for the Hunts window. Hunt Atlas replaces
 the previous four-zone/two-card composition with a map-first cartographic tool:
@@ -144,18 +152,17 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 - Main Hunt Map shell is Better UI-owned for the complete visible window chrome,
   including exposed native title/header framing inside `.hunt-window`: square
   geometry, `bg-1` body, `bg-2` title/header strip, 2px strong outer border and a
-  single 4px hard raised shadow. Host gradients, soft rounding and unrelated host
+  single shared restrained 2px hard raised shadow. Host gradients, soft rounding and unrelated host
   surface styling must not remain visible inside this scoped shell.
 - While Better UI is mounted, the visible native window title is presented as
   `HUNT ATLAS`; the original native title node is preserved and its exact text is
   restored during cleanup.
-- `HUNT ATLAS` is the module's display-title exception to MASTER body typography:
-  use a self-contained bitmap-like monospace stack (`Lucida Console` first),
-  14px/700, 1px tracking, no kerning/ligatures and a 2px hard shadow. Apply this
-  directly to the native element that owns the visible title text with authoritative
-  `!important` inline typography while mounted; restore its exact original `style`
-  and class state during cleanup. Do not apply this display treatment to body text,
-  controls or the titlebar close button.
+- `HUNT ATLAS` keeps its uppercase identity and 1px tracking, but consumes MASTER's
+  single monospace family and title size/weight. Apply the typography directly to
+  the native element that owns the visible title text with authoritative
+  `!important` inline properties while mounted because the host title may carry its
+  own important shorthand; restore its exact original `style` and class state during
+  cleanup. Do not introduce a Hunts-only font family or decorative title shadow.
 - Atlas/Finder supporting rails: `bg-2` only where separation from the shell is
   needed; avoid equal hard-shadow elevation on every group.
 - Map frame: `bg-0` boundary with a crisp 2px structural edge.
@@ -167,12 +174,12 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 ### World tabs
 
 - One continuous rail with one outer 2px frame and 1px internal dividers.
-- Desktop tab height is 32px; tabs are gapless inside the rail and must not retain
+- Desktop tab height is the MASTER `--ppbui-control-height` (28px); tabs are gapless inside the rail and must not retain
   native standalone-button chrome.
 - Every world tab must stretch to the full height of the rail and share the
   available navigation width evenly; the selected tab background/edge must fill
   its entire segment with no inset/native gap around the active surface.
-- The tab rail and zoom rail must share the same 32px inner row height and align
+- The tab rail and zoom rail must share the same 28px inner row height and align
   to the same top/bottom structural edges. Extra native margins/padding/gaps on
   either rail are suppressed.
 - Default: `bg-1`, muted text, neutral edge.
@@ -185,14 +192,14 @@ Empty relation groups remain explicit (`Nenhuma`/localized equivalent).
 ### Zoom utility
 
 Uses the same crisp rail grammar as world navigation but remains neutral. Zoom
-buttons are 32px high with 2px neutral borders, `bg-2` default surface, `bg-3`
+buttons are 28px high with 2px neutral borders, `bg-2` default surface, `bg-3`
 hover, inset/depth-shift pressed state, cyan focus and subtle disabled state. They
 must not retain native button bevels/rounding. Gold is not used unless a future
 zoom state has actual selected/current semantics.
 
 ### Search, level inputs and Hunt select
 
-- `bg-0` input well, 2px border, 32px desktop height.
+- `bg-0` input well, 2px border, 28px desktop height.
 - Search and number inputs use hard square geometry (`border-radius: 0`) with no
   residual UA/host rounding, clipping or inset treatment. This rule is
   authoritative even when the host supplies rounded input styles at higher
@@ -208,7 +215,7 @@ zoom state has actual selected/current semantics.
 
 ### Clear action
 
-Clear is a 32px secondary utility button with square 2px neutral border,
+Clear is a 28px secondary utility button with square 2px neutral border,
 `bg-2` default surface, `bg-3` hover, inset/depth-shift pressed state, cyan focus
 and subtle disabled state. It must read as part of Finder and must not retain
 native bevel/rounding/shadow treatment.
@@ -223,23 +230,23 @@ native bevel/rounding/shadow treatment.
 
 ### Marker and marker-label states
 
-Normal marker labels become Better UI-owned dark pixel plates instead of inheriting
-host visual chrome. Pokémon/domain sprites remain native domain assets.
+Pokémon/domain sprites remain the visually primary native assets. The marker root
+must stay transparent: no opaque tile, card, border or hard-shadow plate may sit
+behind the sprite. Better UI owns only a compact dark caption plus state cues.
 
-- **Base:** dark plate, crisp neutral border, readable text, small hard shadow.
-- **Hover:** keep the Base geometry, raise the plate to `bg-3` and strengthen the
-  neutral edge; do not introduce gold or blue semantic cues on hover alone.
-- **Pressed:** apply a brief inset/depth shift while the pointer/key activation is
-  held; pressed feedback must not create, clear or visually imply Selected or
-  Located state.
-- **Selected:** gold 2px border/edge + `bg-3`; clearly indicates the Hunt currently
-  shown in the inspector.
-- **Located:** retain the neutral outer plate and add one deterministic INFO-blue
-  2px bottom rail/underline inside the label plate; do not reuse the selected gold
-  outer border.
-- **Selected + Located:** retain the Selected gold outer border while also keeping
-  the INFO-blue 2px bottom rail inside the same plate, so both semantics remain
-  simultaneously visible.
+- **Base:** transparent sprite substrate + compact `bg-0` caption with a restrained
+  neutral separator and readable light text.
+- **Hover:** strengthen the caption edge/text and allow the shared cyan interaction
+  cue on the sprite/caption without introducing a backing card behind the sprite;
+  do not introduce gold selection or INFO-blue Located cues on hover alone.
+- **Pressed:** apply compact caption feedback only; pressed feedback must not create,
+  clear or visually imply Selected or Located state.
+- **Selected:** gold 2px caption/structural edge; clearly indicates the Hunt currently
+  shown in the inspector while leaving the sprite substrate transparent.
+- **Located:** keep the compact neutral caption and add one deterministic INFO-blue
+  2px bottom rail/underline; do not reuse the selected gold outer cue.
+- **Selected + Located:** retain the Selected gold cue while also keeping the INFO-blue
+  bottom rail inside the same compact caption, so both semantics remain visible.
 - **Focus-visible:** independent 2px cyan outline outside whichever state is
   active; focus must remain visible on selected and located markers.
 - **Dimmed while Locate is active:** every non-Located Pokémon sprite is reduced
@@ -292,14 +299,13 @@ standalone card.
 ### Hunts scrollbars
 
 All horizontal and vertical scrollbars exposed by Hunt Atlas-owned scroll
-containers receive one scoped pixel treatment; no host-wide scrollbar styling.
+containers consume the shared `.ppbui-scroll` pixel primitive; no descendant-wide
+or host-wide scrollbar styling.
 
-- thickness: 10px on both axes;
-- track: `bg-0`, square corners;
-- thumb: `border-strong` fill with a 2px `bg-0` inset edge so it reads as a pixel
-  handle rather than browser chrome;
-- thumb hover/active: gold accent edge/fill cue, without glow;
-- scrollbar corner: `bg-0`;
+- thickness: shared 10px token on both axes;
+- square shared track/thumb/corner treatment from MASTER;
+- only actual scroll containers opt into `.ppbui-scroll`; map descendants that do
+  not scroll are not styled merely because they are inside Hunts;
 - inspector/map/list scrolling must retain normal wheel, drag and keyboard
   behavior; styling is visual only.
 
@@ -316,18 +322,19 @@ segmented rail:
 
 ### Primary Hunt action
 
-`Entrar na Hunt` is the only primary action in the inspector and receives a much
-stronger action hierarchy than every utility control.
+`Entrar na Hunt` is the only primary action in the inspector. Its hierarchy comes
+from semantic primary styling, full-width placement and separation from utilities,
+not from a separate button-height system.
 
-- full-width minimum height: **48px desktop**;
-- coarse-pointer minimum height: **52px**;
-- minimum label treatment: 14px / 700, centered, with at least 12px horizontal
+- full-width MASTER action height: **28px desktop**;
+- coarse-pointer minimum height: **40px**;
+- MASTER body/control label treatment, 700 weight, centered, with shared horizontal
   padding;
-- `bg-3` surface, 2px gold primary edge and one 2px hard shadow for persistent
-  prominence;
+- dark Miyazaki 16 control surface with 2px blue/cyan primary action edge/text; no persistent
+  raised shadow;
 - hover uses accent-highlight edge/text without increasing geometry;
-- pressed uses a brief inset/depth shift and removes the raised shadow while held;
-- focus remains an independent 2px cyan outline outside the gold edge;
+- pressed uses the shared hard inset depth cue without translation/scale;
+- focus remains an independent 2px cyan outline outside the action edge;
 - keep at least 12px visual separation above the action so presentation/metadata
   controls cannot visually merge into its click target;
 - pending uses `aria-busy`, blocks duplicate submission and receives a visible
@@ -355,10 +362,10 @@ gameplay behavior.
    non-Located Pokémon sprites use exactly `opacity: 0.10` (90% dim). Label
    exceptions exist only to preserve a simultaneous Selected or Focus state as
    specified in the marker state family.
-5. **Primary entry action is deliberately oversized relative to utilities.**
-   `Entrar na Hunt` uses 48px desktop / 52px coarse-pointer minimum height and the
-   stronger gold + hard-shadow hierarchy above. No other action in the inspector
-   may match that visual weight.
+5. **Primary entry action remains semantically unique without a second geometry.**
+   `Entrar na Hunt` uses the MASTER 28px desktop action height / 40px coarse-pointer
+   minimum, full width and the primary blue/cyan action edge/text treatment. No other action in
+   the inspector may receive equal primary semantics.
 6. **Second live geometry correction.** Search and Level min/max must render with
    visibly square 0px corners; the world-tab rail and zoom rail must align to the
    same inner row edges; every world tab, including the selected Johto tab, must
@@ -474,8 +481,8 @@ reversible Better UI wrappers/anchors while preserving their identity and handle
     replacing their native behavior.
 15. Implement Locate dim exactly as specified: non-Located Pokémon sprites at
     `opacity: 0.10`, with only Selected/Focus label readability exceptions.
-16. Raise `Entrar na Hunt` to 48px desktop / 52px coarse-pointer minimum height
-    and preserve its exclusive primary-action hierarchy.
+16. Keep `Entrar na Hunt` full-width at the shared MASTER action geometry and
+    preserve its exclusive primary-action hierarchy through semantic primary styling.
 
 ## Design acceptance checks
 
@@ -491,8 +498,8 @@ below are true:
    Dimmed states are all visually distinct at runtime size and remain the same
    component family.
 6. Selected and Located can coexist without becoming visually ambiguous.
-7. Cyan is reserved for keyboard focus; gold remains the primary selected/action
-   accent; domain colors retain gameplay meaning.
+7. Blue/cyan communicates action/focus, gold communicates persistent selection/current
+   state, and domain colors retain gameplay meaning.
 8. The inspector reads as attached map intelligence rather than a floating dialog.
 9. Relations and Drops avoid nested-card/frame noise and remain fast to scan.
 10. `Entrar na Hunt` is the only visually primary action in the selected-Hunt
@@ -520,14 +527,14 @@ below are true:
     no longer exposes host gradients, soft rounding or untreated panel chrome.
 22. World tabs, Clear, zoom, Search, Level min/max and Hunt dropdown visibly belong
     to one Hunt Atlas component family across their complete applicable states.
-23. Horizontal and vertical Hunt Atlas scrollbars use the scoped 10px pixel track/
-    thumb treatment and preserve normal scrolling behavior.
+23. Horizontal and vertical Hunt Atlas scroll containers explicitly consume the
+    shared 10px `.ppbui-scroll` treatment and preserve normal scrolling behavior.
 24. With Locate active, every non-Located Pokémon sprite is visibly 90% dimmed
     (`opacity: 0.10`); the Located sprite remains fully visible, and Selected/Focus
     label exceptions do not cancel the sprite dim.
-25. `Entrar na Hunt` is full-width, at least 48px high on desktop and 52px on
-    coarse pointer, with a larger 14px/700 label and clearly greater visual/click
-    prominence than Locate, Reset, Clear, presentation or zoom controls.
+25. `Entrar na Hunt` is full-width, uses the 28px MASTER action height on desktop
+    and at least 40px on coarse pointer, and remains clearly primary through its
+    semantic blue/cyan action edge/text, placement and spacing rather than oversized geometry.
 
 ## Validation boundary
 

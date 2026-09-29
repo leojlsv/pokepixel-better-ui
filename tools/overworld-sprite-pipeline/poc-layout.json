@@ -1,0 +1,21 @@
+{
+  "sheet": [256, 256],
+  "grid": [4, 4],
+  "cell": [64, 64],
+  "rows": [
+    { "index": 0, "direction": "down", "view": "front" },
+    { "index": 1, "direction": "left", "view": "left-side" },
+    { "index": 2, "direction": "right", "view": "right-side" },
+    { "index": 3, "direction": "up", "view": "back" }
+  ],
+  "cycle": [
+    { "index": 0, "phase": "step-a" },
+    { "index": 1, "phase": "transition-a" },
+    { "index": 2, "phase": "step-b" },
+    { "index": 3, "phase": "transition-b" }
+  ],
+  "reference_motion": {
+    "expected_baseline_delta_px": 2,
+    "notes": "Frames 0/2 are the alternating primary poses; frames 1/3 are the vertically shifted transition phases observed in both Charizard and Arcanine."
+  }
+}

@@ -11,8 +11,12 @@ export function teamText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "pt";
   const [name, description, active, actions, fainted, search, element, all, rarity, clear, noResults] = copy[lang.split(/[-_]/)[0]] || copy.en;
   const remove = ({ pt: "Remover da equipe", en: "Remove from team", es: "Quitar del equipo", zh: "移出队伍" })[lang.split(/[-_]/)[0]] || "Remove from team";
+  const removeCompact = ({ pt: "Remover", en: "Remove", es: "Quitar", zh: "移除" })[lang.split(/[-_]/)[0]] || "Remove";
+  const activate = ({ pt: "Ativar", en: "Activate", es: "Activar", zh: "出战" })[lang.split(/[-_]/)[0]] || "Activate";
   const position = ({ pt: "Posição", en: "Position", es: "Posición", zh: "位置" })[lang.split(/[-_]/)[0]] || "Position";
-  return { position, remove, name, description, active, actions, fainted, search, element, all, rarity, clear, noResults };
+  const level = ({ pt: "Nível", en: "Level", es: "Nivel", zh: "等级" })[lang.split(/[-_]/)[0]] || "Level";
+  const state = ({ pt: "Estado", en: "State", es: "Estado", zh: "状态" })[lang.split(/[-_]/)[0]] || "State";
+  return { level, state, position, remove, removeCompact, activate, name, description, active, actions, fainted, search, element, all, rarity, clear, noResults };
 }
 
 export const findTeam = () => document.querySelector(config.selectors.root);

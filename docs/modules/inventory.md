@@ -1,19 +1,26 @@
 # Inventory — encontrar e organizar
 
-Status: módulo Inventory validado e aprovado pelo usuário no escopo atual,
-incluindo as três visualizações, controles em duas linhas, preservação de
-scroll, ordenações e preços de itens e Pokémon. Sem pendências de validação
-desse escopo. Sem redesign ou organização manual.
+Status: os contratos funcionais e a estrutura atual de Inventory estão validados pelo
+Product Owner. Em 2026-09-24, a navegação de categorias voltou ao formato dropdown à
+esquerda do Search, preservando os handlers nativos e o restante das duas utility rails.
+Freeze local: **Better UI 0.2.72 / candidate71**.
 
 ## Uso
 
-- A busca e as categorias continuam sendo os controles originais do jogo.
+- A busca continua sendo o controle original do jogo. Quando o jogo expõe categorias como
+  tabs, Better UI oculta somente a faixa visual e cria um dropdown proxy que espelha as
+  opções/seleção e delega cada mudança ao tab nativo correspondente. Os handlers e a
+  autoridade do jogo permanecem intactos; cleanup restaura a faixa original.
 - O placeholder da busca é **Search**; ao desativar o módulo, o original é restaurado.
-- Primeira linha: **Search · All · Clear Filters/Limpar**. A busca mantém
-  105,6 px; All ocupa o espaço disponível até 240 px.
-- Segunda linha: **Sort/Ordenar · Re-Sort/Aplicar · Grade · Lista · Categorias**,
-  com os botões nativos. O texto adicional de Sort e o
-  resumo Category/consulta/contagem foram removidos. O critério continua no seletor.
+- Primeira utility rail: **Categoria · Search · Clear Filters/Limpar**. O dropdown de
+  categoria ocupa 140–190px à esquerda; Search usa o espaço restante.
+- Segunda utility rail: **Sort/Ordenar · Re-Sort/Aplicar · Grade · Lista · Categorias**.
+  Sort ocupa um track limitado de 160–235px em vez de absorver todo o espaço livre;
+  o proxy absoluto reaplica essa largura com a mesma prioridade do primitive de select e
+  o próprio select mantém um fallback CSS escopado de 160–235px, evitando que o
+  `width:100%!important` compartilhado volte a expandi-lo no jogo;
+  Aplicar e o seletor segmentado de visualização ficam compactos e secundários. O texto adicional de Sort e o resumo Category/consulta/
+  contagem permanecem removidos; o critério continua no seletor.
 - Escolher ordem original, nome A–Z, quantidade decrescente de itens ou nível
   decrescente de Pokémon, **Highest IV**, **Highest Quality**, **Price: Highest First**
   ou **Rarity: Highest First**. Os rótulos de Sort usam capitalização por palavra
@@ -30,25 +37,40 @@ desse escopo. Sem redesign ou organização manual.
 - **Inventory** aparece no painel Better UI e pode ser desativado separadamente
   do menu-bar. Desativar remove os controles e restaura a ordem DOM nativa.
 
-As dimensões da janela e dos slots, fontes, paleta e ícones não são alterados.
-As visualizações extras alteram apenas a distribuição solicitada. CSS local reduz a busca conforme
-solicitado e organiza os controles em duas linhas, sem breakpoint novo.
-Em larguras pequenas, o seletor pode abreviar o texto conforme o comportamento
-nativo; o critério completo aparece ao abrir o seletor. Na janela de 300 px,
-a segunda linha excede a largura interna e usa a rolagem horizontal já nativa
-do corpo. Não se reduz a fonte, oculta botões ou aumenta a janela para forçar
-o encaixe. Na largura de 760 px todos os controles cabem.
+Validação 0.2.72: Inventory `28/28 PASS`; full suite `415/415 PASS`; build PASS.
+Userscript: `985705` bytes, SHA-256
+`48C1E54DBEBA6C4103D16577CE7842D545D4D47CF8D11D668FCEF521DD655205`.
+candidate71: `240640` bytes, SHA-256
+`C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`.
+Smokes normal / close-during-init / close-during-switch: PASS, exit `0`, stderr vazio.
+
+Os slots e ícones nativos não são alterados. Enquanto o módulo está montado, a janela
+usa mínimo visual de 520px para manter as duas rails legíveis; cleanup restaura a
+geometria nativa. Os fragmentos Better UI e a toolbar nativa explicitamente optada
+usam tipografia, campos, botões, estados e geometria quadrada do MASTER; slots nativos
+permanecem fora desse boundary. O corpo não recebe um card externo: rail de filtros,
+rail de organização e content bay formam uma única composição contínua.
+Search recebe um bridge local de especificidade para neutralizar `appearance`, box model,
+border/radius, background, background-image, color, shadow e font nativos mesmo quando o
+host usa regras `!important`. Root, body e grid ativo do Backpack continuam com ownership
+reversível de `ppbui-scroll`, mas a apresentação do scrollbar agora é escopada à janela
+Inventory inteira e a qualquer descendente que realmente role. Em Blink/WebKit,
+`scrollbar-color:auto` é reaplicado depois das regras mais específicas para não bloquear os
+pseudos quadrados de 10px; os botões/setas nativos do scrollbar também são removidos. O
+disclosure **More filters** usa margem física horizontal de 8px dentro do Inventory, sem
+alterar sua apresentação em Trade ou outros contextos.
 
 ## Visualizações
 
-- **Grade:** layout original, incluindo as células vazias nativas.
-- **Lista:** um slot original por linha, com nome e informações ao lado.
+- **Grade:** layout original dentro do content bay, incluindo as células vazias nativas.
+- **Lista:** um slot original por linha, com separadores simples em vez de cards por item.
   Itens mostram categoria, quantidade e preço unitário de venda ao NPC;
   Pokémon mostram seu preço de venda, nível, IV total,
   multiplicador de Quality e marcadores de equipe/shiny/bloqueio disponíveis.
   Dados ausentes são omitidos, sem estimativa. O texto não dispara ações;
   cliques, atalhos, duplo clique e tooltips continuam no slot original.
-- **Categorias:** um bloco por categoria, com título e uma grade nativa de slots.
+- **Categorias:** seções planas por categoria, com cabeçalho e grade nativa de slots;
+  não cria cards dentro de um card.
   Cabeçalhos contam entradas, não unidades. A sequência segue as opções do
   filtro nativo; Sort se aplica dentro de cada bloco. Voltar à grade recupera
   a ordem global do critério escolhido.
@@ -159,7 +181,8 @@ para minúsculas; sua semântica não foi substituída por uma busca só no DOM.
 - Reutilização do contrato histórico de `src/bridge/inventory-actions.ts`
   do Custom UI somente para leitura dos slots; nenhuma bridge foi importada.
 
-50 testes passaram: os 27 anteriores e 23 específicos de Inventory, cobrindo
+O candidato Backpack atual integra a suite completa de `251/251` testes. A cobertura
+específica de Inventory inclui
 ordenação por tipo, identidade/listeners, restauração, filtros com reconstrução
 síncrona, preferências, localização de rótulos, novos itens e estabilidade do
 observer, foco/seleção pendente durante refreshes, navegação por teclado e

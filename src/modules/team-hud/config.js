@@ -11,8 +11,11 @@ export const teamHudConfig = {
     activeXpBar: ".pokeidle-team-hud__active > .pokeidle-team-hud__active-info .pokeidle-team-hud__active-bar--xp, .pokeidle-team-hud__active > .pokeidle-team-hud__active-bar--xp",
     cardHpBar: ".pokeidle-team-card__hp-bar",
     activeHpBar: ".pokeidle-team-hud__active > .pokeidle-team-hud__active-info .pokeidle-team-hud__active-bar--hp, .pokeidle-team-hud__active > .pokeidle-team-hud__active-bar--hp",
+    activeElements: ".pokeidle-team-hud__active-elements",
     trainerXpBar: ".pokeidle-trainer-hud__xp-bar",
     trainerStaminaBar: ".pokeidle-trainer-hud__stamina-bar",
+    teamPanel: ".pokeidle-team-panel",
+    teamBody: ".pokeidle-panel__body",
     interactive: "button, input, select, textarea, a[href]",
   },
 };

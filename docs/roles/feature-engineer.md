@@ -16,6 +16,9 @@ module DOM/CSS/JavaScript with regression coverage.
 - keep Better UI ownership scoped and namespaced;
 - implement accessibility and complete component states specified by design;
 - add/update automated tests for changed behavior and regressions;
+- map implementation evidence back to the PM's `AC-*` criteria;
+- for visible work, prepare a deterministic local/representative render path when
+  practical instead of treating CSS assertions as visual proof;
 - update technical module documentation when implementation facts change;
 - run focused validation before requesting review.
 
@@ -32,11 +35,14 @@ requires such a change, stop and return a proposal to the owning role.
 - edit MASTER/page overrides merely to legitimize an implementation shortcut;
 - silently expand product scope;
 - weaken tests to make a failing behavior pass;
-- self-issue the final QA or Design QA verdict;
+- self-issue Technical QA, UX/A11y QA or Visual Regression QA verdicts for their
+  own diff;
+- claim visual correctness from tests/source/JSDOM alone;
 - install, open, reload, control, inspect or validate the live game, the user's
   browser or Tampermonkey.
 
 ## Handoff
 
-Summarize changed files, behavior preserved/changed, tests/checks run, known
-limitations and anything reviewers should inspect carefully.
+Summarize changed files, `AC-*` coverage, behavior preserved/changed, tests/checks
+run, render evidence prepared, known limitations and anything reviewers should
+inspect carefully.

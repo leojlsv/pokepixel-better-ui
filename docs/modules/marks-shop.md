@@ -1,44 +1,86 @@
-# Mark’s Shop — compras em lista e venda por espécie
+# Mark’s Shop — full Better UI overhaul
 
-Status: implementado; validação no jogo pendente.
+Status: overhaul validado localmente em Better UI 0.2.88; validação final no jogo pendente.
 
-## Compras
+## Direção
 
-- Lista é o modo inicial. Lista/Cards reutiliza a faixa e os botões de categorias nativos.
-- Cada linha mantém ícone, nome, descrição, categoria e todos os controles originais: 1/10/100, Max, quantidade personalizada, total e Comprar.
-- A mudança de modo altera somente a distribuição dos cards. Não recria inputs, handlers, cálculos, limites de estoque ou confirmações.
-- Nenhuma preferência nova de compra é salva. O modo escolhido dura enquanto o módulo está montado, inclusive em reconstruções do corpo.
-- A linha tem largura mínima local de 490 px. Janelas estreitas usam rolagem horizontal na lista; Cards permanece disponível. Não altera a largura da janela nem introduz breakpoints.
+Direção visual atual: superfície Better UI coerente — carvão/stone, arestas quadradas, tipografia e espaçamento do MASTER, cyan para interação/foco, dourado para estado persistente selecionado, verde para sucesso/valor e vermelho somente para venda destrutiva. A antiga camada conceitual de pixel-art/“field-counter ledger” não é mais requisito e não deve introduzir overlays, ornamentos ou `image-rendering` próprios do módulo.
 
-## Venda de Pokémon
+O redesign é de apresentação e fluxo visual. O cliente continua sendo a autoridade de compra, venda, estoque, saldo, seleção, filtros, confirmação, limites, lotes e erros. Better UI não cria um segundo executor transacional.
 
-- Grupos é o modo inicial, com alternativa Lista para a apresentação original.
-- Agrupa as linhas visíveis pela chave `species_id`, sem usar apelido ou tradução como identidade. Preserva a ordem de primeira aparição das espécies e a ordem nativa dos indivíduos.
-- O cabeçalho mostra espécie, selecionados/quantidade e valor total do grupo. Esse valor inclui todos os indivíduos do grupo visível, não somente os selecionados; dado ausente aparece como `—`.
-- O checkbox seleciona/desmarca somente os indivíduos visíveis daquele grupo, encaminhando o gesto aos checkboxes originais. O estado intermediário indica seleção parcial.
-- O botão de expansão mostra as próprias linhas nativas para revisão individual. Recolher não desmarca; expandir não seleciona.
-- Um resumo acima do rodapé informa a seleção total e quantos Pokémon estão fora dos filtros nativos. Pesquisa e raridades mantêm a semântica original, inclusive seleções ocultas.
-- O módulo não seleciona novos indivíduos por pertencerem a uma espécie já selecionada. Seleções previamente mantidas pelo jogo continuam sendo respeitadas.
-- O botão Vender, a confirmação, o processamento nativo em lotes de até 500 e o tratamento de erros permanecem com o cliente. Não existe um segundo executor de vendas.
+## Estrutura comum
 
-## Integração e limites
+- A janela, titlebar, body, busca, navegação, workspace, listas, scrollbars e rodapé entram no sistema Miyazaki 16.
+- As quatro abas nativas continuam sendo os mesmos botões e handlers: **Buy items**, **Sell items**, **Sell Pokémon** e **Buyback**.
+- A navegação deixa de funcionar visualmente como side rail e passa a uma faixa superior de quatro colunas; abaixo de aproximadamente 520 px de largura do container vira grade 2 × 2, sem rolagem horizontal como fluxo principal.
+- A busca continua sendo o input nativo e preserva valor, foco, filtro e renderer do jogo, agora dentro de um rótulo visual persistente derivado do próprio `aria-label`/placeholder nativo de cada aba.
+- Os conteúdos usam scroll vertical com o primitivo PPBUI de 10 px; o módulo não cria scroll horizontal como solução para layout estreito.
 
-A loja é o painel de `PokeIdle.NPC`, e não uma Scene. A montagem exige propriedade do corpo pelo controlador, shell da loja e as quatro abas. Outras janelas que compartilham `.npc-shop-window` não devem receber a extensão.
+## Comprar itens
 
-O renderer atual não publica IDs nas linhas de venda. O módulo relaciona a ordem original às criaturas filtradas já carregadas e verifica quantidade, IDs únicos, nome nativo, checkbox/seleção e localização inventário/storage. Não acrescenta indivíduos que o cliente excluiu, como bloqueados, shiny, Ditto e mega ativa; starter gift e localizações incompatíveis impedem o agrupamento. Se o contrato não corresponder, preserva a lista original e informa indisponibilidade.
+- **List / Cards** volta a existir como escolha de apresentação Better UI; **List é o padrão**. A troca apenas muda estado/classes PPBUI sobre os mesmos nós nativos e nunca clona/recria item, quantidade, total ou ação.
+- Cada item preserva ícone, nome, descrição, categoria, botões rápidos nativos, quantidade personalizada, total calculado e botão Buy originais.
+- A **quantidade personalizada + total + Buy** é o fluxo visual principal. Os botões rápidos nativos `1x / 10x / 100x / Max` permanecem no DOM com seus handlers para compatibilidade, mas não participam da apresentação Better UI.
+- O piso antigo de 490 px permanece removido. Em List cada item ocupa uma linha compacta com quantidade em destaque; Cards usa a mesma estrutura nativa em grade responsiva. Em largura estreita, a área de compra empilha sem scroll horizontal.
 
-Antes de selecionar um grupo, confere novamente o controlador, filtro, referências e checkboxes. Controles removidos, desabilitados, criaturas que se tornaram inelegíveis e venda já em andamento não recebem seleção do grupo. Essa verificação usa dados locais; não promete a revalidação fresca de servidor do script de referência. A confirmação e a validação transacional nativas continuam necessárias.
+## Vender itens
 
-O observer central reconcilia reconstruções; não há observer próprio, polling, escrita em APIs, patch de funções globais ou nova persistência de IDs. Preferências nativas podem ser salvas pelo jogo ao receber o gesto nos seus checkboxes. Desativar o módulo restaura a ordem e remove apenas wrappers, estilos e controles Better UI, sem ressuscitar linhas removidas pelo cliente.
+- As linhas nativas recebem a mesma gramática visual da loja sem serem recriadas.
+- Checkbox, quantidade, preço/total e botão Sell continuam nativos.
+- Seleção recebe estrutura dourada independente do foco cyan.
+- O rodapé de venda vira uma action rail única; `Select All` não recebe uma segunda moldura/linha própria. Sell é tratado visualmente como ação destrutiva e continua obedecendo `disabled`/pending do cliente.
+
+## Vender Pokémon
+
+- **Groups** permanece o modo inicial e **List** mantém a visão de linhas nativas.
+- Groups agrupa apenas as linhas visíveis por `species_id`, preservando a ordem nativa dos indivíduos e a ordem de primeira aparição das espécies.
+- Cada grupo mostra checkbox, uma região quieta de fatos da espécie (`selecionados/visíveis` + valor total dos indivíduos visíveis) e um disclosure quadrado independente. O botão de disclosure possui `aria-expanded` e `aria-controls`; expandir/recolher não altera seleção.
+- Inventários grandes não comprimem os cabeçalhos dos grupos para caber no viewport: a lista Pokémon usa tracks `max-content` e mantém scroll no owner nativo. Um grupo expandido com muitos indivíduos é limitado a `min(360px, 50vh)` e recebe scroll vertical interno.
+- A validação de seleção do modo Groups calcula o snapshot de criaturas visíveis uma única vez por ciclo de sincronização, em vez de refiltrar todo o inventário para cada espécie.
+- O checkbox do grupo encaminha exatamente um gesto a cada checkbox nativo ainda válido. Estado misto usa `indeterminate`. Nenhum ID selecionado paralelo é persistido pelo módulo.
+- As linhas expandidas são os próprios nós nativos. Seleções ocultas por filtro continuam selecionadas; novas capturas nunca herdam seleção de espécie.
+- O resumo de seleção informa selecionados totais e quantos estão fora do filtro atual **dentro do próprio rodapé nativo**, como texto quieto sem criar um segundo strip/divisor.
+- O botão Sell, confirmação, lote nativo e tratamento de erro continuam sendo a única execução de venda.
+- Mapeamento ambíguo, ID duplicado, localização insegura, linha/checkbox substituído ou outro desvio do contrato desativa apenas o agrupamento: a lista nativa permanece utilizável.
+
+## Buyback
+
+- Cada registro nativo vira uma linha compacta de ledger com sprite, identidade/metadados, preço e o mesmo botão Buyback.
+- Raridade mantém sua cor canônica. O botão Buyback é apresentado como ação primária, mas o handler e toda validação continuam nativos.
+
+## Lifecycle e ownership
+
+- A loja pertence a `PokeIdle.NPC` e não a uma Scene. O mount exige o body realmente pertencente ao controlador, shell da loja e as quatro abas.
+- O observer central reconcilia reconstruções; não há observer local, polling, patch global nem interceptação de rede.
+- Classes PPBUI adicionadas a nós nativos têm ownership reversível e são aplicadas de forma idempotente; `sync()` estável não gera mutations.
+- Linhas movidas para grupos recebem anchors reversíveis. Cleanup só devolve linhas que ainda pertencem a um wrapper PPBUI; se o host tiver reparentado uma linha, a posição do host vence e o anchor antigo é descartado.
+- `pt_BR`/locales com underscore são normalizados antes de `toLocaleLowerCase`/`toLocaleString`, com fallback fail-safe.
+
+## Acceptance & Evidence Matrix
+
+| ID | Requirement | Must preserve | Evidence | Status |
+| --- | --- | --- | --- | --- |
+| AC-01 | Loja inteira usa o shell Better UI atual, sem overlay pixel-art legado | nós/handlers nativos | source + browser render | em revisão |
+| AC-02 | Nenhuma compra/venda paralela é introduzida | confirmação, limites, batching, erros e APIs nativos | automated + technical QA | em revisão |
+| AC-03 | Buy funciona em largura normal/estreita sem piso de 490 px, List padrão e quantidade como foco | List/Cards + todos os controles originais | automated + browser render | em revisão |
+| AC-04 | Sell Items integra seleção/quantidade/ação ao novo sistema | input, checkbox e Sell originais | automated + browser render | em revisão |
+| AC-05 | Sell Pokémon mantém Groups/List seguro e fail-closed | seleção oculta, novas capturas, ordem e Sell nativo | automated + UX/technical QA | em revisão |
+| AC-06 | Buyback recebe o mesmo overhaul sem trocar o executor | botão/handler nativo | automated + browser render | em revisão |
+| AC-07 | Layout estreito empilha controles sem perder ações | foco, leitura, overflow e scrollbar | browser render + live | em revisão |
+| AC-08 | Reconcile/cleanup são reversíveis e mutation-free quando estáveis | host reparent, root replacement, disable/re-enable | automated + technical QA | em revisão |
+| AC-09 | Seleção, foco, disabled e ação destrutiva permanecem distinguíveis | keyboard/native semantics | UX QA + browser render | em revisão |
+
+## Verificação atual
+
+- Fixture determinística cobre as quatro abas e não executa transações reais.
+- Focused suite: **25/25 PASS**, incluindo List/Cards sem clonagem, quick-buy nativo preservado porém fora do fluxo visual, quantidade principal, rodapé único de Select All, identidade de nós/handlers, replacement repetido do Search com cleanup exato, reconciliação mutation-free, locale `pt_BR`, host reparent, stale checkbox, fail-closed, valores nativos sem piso local, Group ARIA, Sell Items, Buyback e inventário agrupado grande.
+- Full suite exact-current do repositório: **442/442 PASS**; build e `git diff --check` também PASS.
+- Preview local usa Chrome headless com CSS nativo snapshottado + design system atual em 880 px e 390 px. A regressão de inventário grande também verifica que a lista mantém scroll próprio e que o corpo expandido fica limitado a `min(360px, 50vh)`. É evidência representativa, não validação no jogo.
+- A única validação final no cliente real/Tampermonkey pertence ao Product Owner.
 
 ## Referências
 
-- Script anexado pelo usuário: **PokePixel - Safe Pokémon Seller v1.1.0**. Reaproveitadas as ideias de revisão por espécie, seleção parcial, IDs únicos e exclusão de novas capturas da seleção existente. Não foram portados painel externo, varredura de globais, chamadas diretas de API, timers de confirmação ou executor de lotes.
-- [NpcInteraction.js público](https://pokepixel.nietore.com/play/js/plugins/NpcInteraction.js), consultado em 2026-09-07: `openShop`, `renderShop`, compra/venda, filtros, seleção persistente, IDs e lote nativo.
-- [CSS nativo da loja](https://pokepixel.nietore.com/play/css/hud/npc-interaction.css): cards, linhas, categorias, botões e rodapé.
-
-## Verificação
-
-12 testes específicos: ações e quantidade de compra, modos, seleção parcial, preservação dos nós, cleanup exato, reconciliação estável, filtros/seleções ocultas, novas capturas, referências inválidas, proteção durante venda, espécies homônimas e integração com o lifecycle.
-
-Preview sintético com CSS nativo, janela de 880 × 580 e largura de 390 px em viewport de 1280 × 720. Conferidos modos, expansão, seleção por grupo, resumo ao filtrar e acesso às compras por rolagem horizontal. Ícones e dados são sintéticos; a fixture não reproduz todas as partes da loja ou uma sessão autenticada. Não foram feitas compras ou vendas no jogo. A validação visual e funcional final no cliente real permanece pendente.
+- `design-system/pokepixel-better-ui/MASTER.md` — autoridade visual global.
+- `NpcInteraction.js` público, reconferido em 2026-09-23 — estrutura atual de Buy (`1/10/100/Max` + custom quantity/total/Buy) e footers nativos de Sell Items/Pokémon.
+- CSS público de NPC/shop, reconferido em 2026-09-23 — constraints atuais do host usadas na validação de cascade.
+- Script de referência **PokePixel - Safe Pokémon Seller v1.1.0** — somente ideias de revisão por espécie/seleção parcial; não foram portados painel externo, varredura global, chamadas diretas de API, timers ou executor de lotes.

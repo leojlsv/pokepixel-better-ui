@@ -14,8 +14,8 @@ export function createLifecycle() {
       const cleanup = cleanups.get(id);
       if (!cleanup) return;
 
-      cleanups.delete(id);
       cleanup();
+      cleanups.delete(id);
     },
 
     destroy() {

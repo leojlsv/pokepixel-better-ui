@@ -15,14 +15,16 @@ them.
 interaction, feedback, accessibility, motion, responsiveness, typography, color
 or visual hierarchy.
 
-### Pixel-art direction
+### Game-integrated visual direction
 
-`.skills/pixel_art_direction.md` is mandatory when a task redesigns a module's
-pixel-art identity or introduces bespoke pixel artwork.
+Normal Better UI chrome follows the current game-integrated MASTER baseline; a
+separate pixel-art identity is no longer a product goal. `.skills/pixel_art_direction.md`
+is relevant only when a task explicitly introduces or edits domain pixel artwork
+(for example a sprite or illustrated game asset), not for ordinary panels,
+controls, typography or layout.
 
-The Lead UI/UX Designer / Pixel Art Director uses both methods. Neither skill
-overrides explicit user requirements, architecture/safety invariants, MASTER or
-an approved page override.
+No design method overrides explicit user requirements, architecture/safety
+invariants, MASTER or an approved page override.
 
 ## Concept-first rule
 
@@ -117,11 +119,48 @@ The Pixel Artist / Asset Producer returns:
 - provenance/license information when relevant;
 - hash/manifest metadata for adopted files.
 
-UX/A11y & Design QA reviews the asset family before Feature/Design-System
-Engineering integrates it.
+Visual Regression Reviewer reviews the rendered asset family before
+Feature/Design-System Engineering integrates it. UX/A11y QA is additionally
+required when the asset changes interaction semantics, labels or accessibility.
 
 ## Validation boundary
 
 Concept/asset review does not replace runtime validation. Automated/local checks
 remain agent-owned; live PokePixel/Tampermonkey validation remains exclusively
 user-owned under `AGENTS.md`.
+
+## Project-wide Game Palette baseline
+
+The Product Owner-approved Pokémon Profile palette is now the project-wide Better
+UI baseline for every owned module:
+
+- Window: `#161D20` at `92%` alpha;
+- Interactive: `#232C2E` at `96%` alpha;
+- Values: `#161D20` at `85%` alpha;
+- Lines: `#6B6543`, `1px`, `100%` opaque.
+
+Text and semantic gameplay colors remain opaque. Body/controls follow the current
+game stack `Inter, "Segoe UI", Arial, sans-serif`; display/window titles use
+`Cinzel, Georgia, serif`. Better UI exposes one global persisted corner preference:
+`Squared` (`0px`) or `Rounded` (8px windows, 5px controls/cards, 4px badges). Exactly
+one mode is active at a time. The preference changes geometry only; it never changes
+palette, alpha, typography or semantics.
+
+## Pokémon Profile Color Lab
+
+`tools/pokemon-profile-playground/pokemon-profile-playground.html` is the local design sandbox for Pokémon
+Profile and the augmented native PokémonCard. `Game Palette` starts from the
+Product Owner-approved production baseline; subsequent playground edits remain
+preview-only until a new export is explicitly approved for implementation.
+
+The Color Lab exposes role-based colors instead of one-off selector colors. Its
+Game Palette now mirrors the project-wide runtime baseline above. Pokémon type and
+rarity colors stay semantic/native rather than being flattened into the neutral
+palette.
+Surface transparency is controlled independently from color through three inherited
+alpha roles: Window `92%`, Interactive `96%`, Values `85%`. Alpha never applies to
+text, semantic type/rarity colors or the `1px` line system.
+
+Use **Copiar paleta** for the compact role/value handoff or **Copiar CSS** when an
+exact preview snapshot is needed. Current/Obsidian remain comparison skins; only an
+explicitly approved exported palette should be promoted to runtime CSS.

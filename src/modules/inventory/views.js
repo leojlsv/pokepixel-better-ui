@@ -1,5 +1,5 @@
 import { inventoryConfig as config } from "./config.js";
-import { locale, placeNodes, readCreatures, readInventoryScene, readItems, readSlot } from "./dom.js";
+import { categoryEntries, locale, placeNodes, readCreatures, readInventoryScene, readItems, readSlot } from "./dom.js";
 
 export const viewText = () => config.viewText[locale().split(/[-_]/)[0]] || config.viewText.en;
 const content = (node, value) => { if (node.textContent !== value) node.textContent = value; };
@@ -14,10 +14,10 @@ export function createInventoryViews(root) {
   const style = document.createElement("style");
   style.dataset.ppbuiInventoryViewsStyle = "";
   style.textContent = `
-    [data-ppbui-inventory-view="list"] { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; }
-    [data-ppbui-inventory-view="grouped"] { display: block; padding: 0; border: 0; background: none; box-shadow: none; }
+    [data-ppbui-inventory-view="list"] { grid-template-columns:minmax(0,1fr); grid-auto-rows:auto; gap:0!important; padding:0!important; }
+    [data-ppbui-inventory-view="grouped"] { display:block; padding:0!important; border:0!important; background:var(--ppbui-bg-0)!important; box-shadow:none!important; }
     [data-ppbui-inventory-view] > .is-empty { display: none; }
-    [data-ppbui-inventory-row] { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    [data-ppbui-inventory-row] { display: flex; align-items: center; gap: var(--ppbui-space-3); min-width: 0; }
     [data-ppbui-inventory-row] > .inventory-slot { flex: 0 0 56px; }
     [data-ppbui-inventory-info] { min-width: 0; overflow-wrap: anywhere; text-align: left; }
     [data-ppbui-inventory-info] p { margin: 0; text-align: left; }
@@ -48,7 +48,7 @@ export function createInventoryViews(root) {
         if (!itemCategories.has(item.name)) itemCategories.set(item.name, new Set());
         itemCategories.get(item.name).add(categoryOf(item) || "other");
       }
-      const categories = new Map([...parts.category.options].filter(option => option.value !== "all").map(option => [option.value, option.textContent]));
+      const categories = new Map(categoryEntries(parts.category).filter(entry => entry.value !== "all").map(entry => [entry.value, entry.label]));
       categories.set("pokemon", categories.get("pokemon") || "Pokémon");
       const slots = nodes.filter(node => node.nodeType === 1 && node.matches(config.selectors.slot));
       const data = slots.map(node => {
@@ -64,8 +64,8 @@ export function createInventoryViews(root) {
           if (!entry) {
             const wrapper = make("div", true), info = make("div"), name = make("strong"), detail = make("p"), price = make("p");
             wrapper.dataset.ppbuiInventoryRow = ""; info.dataset.ppbuiInventoryInfo = "";
-            info.className = "inventory-slots-hint"; detail.className = "inventory-slots-hint";
-            price.className = "inventory-slots-hint"; price.dataset.ppbuiInventoryPrice = "";
+            info.className = "inventory-slots-hint ppbui-data"; detail.className = "inventory-slots-hint ppbui-data";
+            price.className = "inventory-slots-hint ppbui-data"; price.dataset.ppbuiInventoryPrice = "";
             info.append(name, detail, price); wrapper.append(info);
             entry = { wrapper, info, name, detail, price, priceKey: null }; rows.set(row.node, entry);
           }
@@ -100,7 +100,7 @@ export function createInventoryViews(root) {
           if (!group) {
             const section = make("section", true), heading = make("h3"), body = make("div", true);
             section.dataset.ppbuiInventoryCategory = key;
-            heading.className = "inventory-slots-hint"; body.className = "inventory-slot-grid";
+            heading.className = "inventory-slots-hint ppbui-data"; body.className = "inventory-slot-grid";
             section.append(heading, body); group = { section, heading, body }; groups.set(key, group);
           }
           const bucket = buckets.get(key);

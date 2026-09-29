@@ -3,8 +3,14 @@ import assert from "node:assert/strict";
 import {JSDOM} from "jsdom";
 import {createTagStore,fixedTags,freshFilters,matchesPokemon,tagService} from "../src/modules/pokemon-tools/model.js";
 import {createPokemonTools} from "../src/modules/pokemon-tools/ui.js";
-import {mountInventoryPokemon,mountTradePokemon} from "../src/modules/pokemon-tools/adapters.js";
+import {createTradePokemonModule,mountInventoryPokemon,mountTradePokemon} from "../src/modules/pokemon-tools/adapters.js";
 const memory=()=>{const m=new Map();return {getItem:key=>m.get(key)||null,setItem:(key,value)=>m.set(key,value)};};
+const relativeLuminance=hex=>{const rgb=[1,3,5].map(index=>parseInt(hex.slice(index,index+2),16)/255).map(value=>value<=.04045?value/12.92:((value+.055)/1.055)**2.4);return .2126*rgb[0]+.7152*rgb[1]+.0722*rgb[2];};
+const contrast=(a,b)=>{const [lighter,darker]=[relativeLuminance(a),relativeLuminance(b)].sort((x,y)=>y-x);return (lighter+.05)/(darker+.05);};
+test('fixed tag colors remain readable across the Miyazaki 16 dark tag surfaces',()=>{
+ const neutral=new Set(['#ebecdc','#c3d5c7','#b8b095']);
+ for(const tag of fixedTags){assert.ok(neutral.has(tag.color),`${tag.id} must use a neutral organizational tag color`);for(const background of ['#232228','#284261'])assert.ok(contrast(tag.color,background)>=4.5,`${tag.id} ${tag.color} lacks contrast on ${background}`);}
+});
 test('fixed tags persist by creature and owner; assigning replaces and removing clears',()=>{
  const storage=memory(),a=createTagStore({storage,owner:'a'});a.assign('pokemon-1','keep');a.assign('pokemon-1','sell');
  const restored=createTagStore({storage,owner:'a'});assert.deepEqual(restored.get().assigned['pokemon-1'],['sell']);assert.deepEqual(createTagStore({storage,owner:'b'}).get().assigned,{});
@@ -37,6 +43,10 @@ test('UI tag edits are local and markers keep native clicks intact',async t=>{
  const slot=s.win.document.createElement('button');let clicked=0;slot.onclick=()=>clicked++;s.root.append(slot);tools.decorate(slot,{id:'1'});slot.click();assert.equal(clicked,1);assert.match(slot.title,/Sell/);assert.equal(slot.querySelectorAll('.ppbui-pokemon-marker').length,1);
  store.assign('1',null);await Promise.resolve();assert.equal(refreshes,1);tools.cleanup();assert.equal(slot.title,'');assert.equal(slot.querySelector('.ppbui-pokemon-marker'),null);
 });
+test('generic Pokémon tools styling does not leak into an unowned Trade window',t=>{
+ const s=setup(t),foreign=s.win.document.createElement('div');foreign.className='trade-session-window';foreign.innerHTML='<button class="trade-inventory-item is-pokemon"></button>';s.win.document.body.append(foreign);
+ const card=foreign.firstChild,tools=createPokemonTools(s.root,{getCreatures:()=>[],refresh(){}});assert.equal(s.win.getComputedStyle(card).position,'static');tools.cleanup();
+});
 test('inventory filters only Pokémon context and restores native methods',t=>{
  const s=setup(t),body=s.root.firstChild,c={id:'1',quality:'rare'},items=[{_isPokemon:true,creature:c},{_isPokemon:false}];
  const scene={_panel:{body},_creatures:[c],_category:'pokemon',filteredItems(){return items;},createSlot(){return s.win.document.createElement('button');},refresh(){body.innerHTML='<div class="inventory-slots-toolbar"></div>';}};s.win.SceneManager={_scene:scene};const original=scene.filteredItems;
@@ -47,17 +57,39 @@ test('trade filtering does not modify offers, source creatures or native add han
  const scene={_panel:{body},_creatures:creatures,_query:'',_inventoryTab:'pokemon',ownOffer:()=>offer,offerEntries:()=>[],renderSlots:()=>s.win.document.createElement('div'),pokemonTabPanel(list){for(const c of this._creatures){const card=s.win.document.createElement('button');card.className='trade-inventory-item is-pokemon';card.onclick=()=>added=c.id;list.append(card);}},inventoryPanel(){const panel=s.win.document.createElement('aside'),list=s.win.document.createElement('div');list.className='trade-inventory-list';this.pokemonTabPanel(list);panel.append(list);return panel;},render(){body.replaceChildren(this.inventoryPanel());}};
  const mounted=mountTradePokemon(s.root,scene);s.root.querySelector("[data-ppbui-trade-filters]").click();const rarity=s.win.document.querySelector('[data-ppbui-pokemon-filter=rarity]');rarity.value='epic';rarity.dispatchEvent(new s.win.Event('change'));const cards=s.root.querySelectorAll('.trade-inventory-item');assert.equal(cards.length,1);cards[0].click();assert.equal(added,'2');assert.equal(scene._creatures,creatures);assert.deepEqual(offer,{creatures:[{creature_id:'offered'}]});mounted.cleanup();
 });
+test('Trade module mount identity changes when the native window is replaced with the same scene',t=>{
+ const s=setup(t),previous=Object.getOwnPropertyDescriptor(globalThis,'document');Object.defineProperty(globalThis,'document',{configurable:true,value:s.win.document});t.after(()=>{if(previous)Object.defineProperty(globalThis,'document',previous);else delete globalThis.document;});
+ s.root.className='trade-session-window';const scene={_panel:{body:s.root.firstChild},pokemonTabPanel(){},inventoryPanel(){},renderSlots(){},render(){}};s.win.SceneManager={_scene:scene};
+ const module=createTradePokemonModule();assert.equal(module.shouldMount(),true);const first=module.getMountKey();
+ s.root.outerHTML='<div class="trade-session-window"><div class="pokeidle-panel__body"></div></div>';const replacement=s.win.document.querySelector('.trade-session-window');scene._panel.body=replacement.firstChild;
+ assert.equal(module.shouldMount(),true);assert.notEqual(module.getMountKey(),first);
+});
 
 test('catalog symbols and single More Filters disclosure match the fixed design',t=>{
  const s=setup(t),tools=createPokemonTools(s.root,{getCreatures:()=>[],refresh(){}});s.root.append(tools.render());
  assert.deepEqual(fixedTags.map(t=>t.icon),['^','!','+','#','>','=','$','~','@','%']);
- assert.equal(s.root.querySelectorAll('details').length,1);const gender=s.root.querySelector('[data-ppbui-pokemon-filter=gender]');assert.equal(gender.parentElement.nextElementSibling.querySelector('select').dataset.ppbuiPokemonFilter,'tags');tools.cleanup();
+ const panel=s.root.querySelector('details');assert.equal(s.root.querySelectorAll('details').length,1);assert.ok(panel.classList.contains('ppbui-root'));
+ for(const select of panel.querySelectorAll('select'))assert.ok(select.classList.contains('ppbui-select'));
+ for(const input of panel.querySelectorAll('input'))assert.ok(input.classList.contains('ppbui-input'));
+ const gender=s.root.querySelector('[data-ppbui-pokemon-filter=gender]');assert.equal(gender.parentElement.nextElementSibling.querySelector('select').dataset.ppbuiPokemonFilter,'tags');tools.cleanup();
+});
+test('More Filters uses Min Quality copy and module-scoped appearance-aware field chrome',t=>{
+ const s=setup(t),hostile=s.win.document.createElement('style');s.root.id='hostile-pokemon-tools';hostile.textContent='#hostile-pokemon-tools input.game-window__search,#hostile-pokemon-tools select.game-window__select{border-radius:12px!important;background-image:linear-gradient(#fff,#ddd)!important;box-shadow:inset 0 0 0 3px red!important}';s.win.document.head.append(hostile);
+ const tools=createPokemonTools(s.root,{getCreatures:()=>[],refresh(){}});s.root.append(tools.render());
+ const quality=s.root.querySelector('[data-ppbui-pokemon-filter=quality]'),label=quality.parentElement.querySelector('span'),style=s.win.document.querySelector('style[data-ppbui-style=pokemon-tools]').textContent;
+ assert.equal(label.textContent,'Min Quality');assert.equal(quality.type,'number');assert.equal(quality.step,'0.01');
+ assert.match(style,/\.ppbui-pokemon-field \{[^}]*border-radius:var\(--ppbui-radius\)/);
+ assert.match(style,/\.ppbui-pokemon-tools input\.game-window__search\.ppbui-input,[\s\S]*border-radius:var\(--ppbui-radius\)!important/);
+ assert.equal(quality.style.getPropertyPriority('border-radius'),'important');assert.equal(quality.style.borderRadius,'inherit');
+ assert.equal(s.win.getComputedStyle(quality).borderRadius,'var(--ppbui-radius)');assert.equal(s.win.getComputedStyle(quality).backgroundImage,'none');assert.equal(s.win.getComputedStyle(quality).boxShadow,'none');tools.cleanup();hostile.remove();
 });
 test('Alt-left-click opens attribution without native mouse actions; normal click survives',t=>{
  const s=setup(t);let clicked=0,doubled=0,down=0;const tools=createPokemonTools(s.root,{getCreatures:()=>[{id:'1',species_name:'Eevee'}],refresh(){}});
  const slot=s.win.document.createElement('button');slot.addEventListener('click',()=>clicked++);slot.addEventListener('dblclick',()=>doubled++);slot.addEventListener('mousedown',()=>down++);s.root.append(slot);tools.decorate(slot,{id:'1',species_name:'Eevee'});
  slot.dispatchEvent(new s.win.MouseEvent('mousedown',{bubbles:true,altKey:true,button:0}));slot.dispatchEvent(new s.win.MouseEvent('click',{bubbles:true,altKey:true,button:0,detail:1}));
  assert.equal(clicked,0);assert.equal(down,0);assert.equal(s.win.document.querySelectorAll('[data-ppbui-tag-choice]').length,11);
+ const dialog=s.win.document.querySelector('dialog');for(const cls of ['ppbui-dialog','ppbui-root','ppbui-scroll'])assert.ok(dialog.classList.contains(cls));
+ for(const action of dialog.querySelectorAll('button'))assert.ok(action.classList.contains('ppbui-button'));
  s.win.document.querySelector('[data-ppbui-tag-choice=pvp]').click();assert.deepEqual(tagService(s.win).get().get().assigned['1'],['pvp']);
  slot.dispatchEvent(new s.win.MouseEvent('dblclick',{bubbles:true,button:0,detail:2}));assert.equal(doubled,0);
  slot.click();assert.equal(clicked,1);tools.cleanup();slot.click();assert.equal(clicked,2);

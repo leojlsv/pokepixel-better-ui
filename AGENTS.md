@@ -2,13 +2,16 @@
 
 ## Project identity
 
-PokePixel Idle Better UI is a full UI/UX layer for PokePixel Idle with its own
-coherent pixel-art visual identity. The original game UI is a functional host and
-data/behavior reference; it is not the visual baseline for Better UI.
+PokePixel Idle Better UI is a functional UI/UX and QoL layer for PokePixel Idle.
+Its primary product goals are clear layout, usable controls, responsive behavior,
+maintainable native integration and accurate state. The original game UI is the
+authoritative functional host and data/behavior reference.
 
-Visual redesign is allowed when it improves the approved experience and follows
-the project design system. Functional game rules, permissions, state and server
-constraints remain authoritative.
+The historical pixel-art/Miyazaki design system may remain where it is harmless,
+but visual-theme fidelity is no longer a product requirement or acceptance gate.
+Simplify legacy styling when it interferes with layout, compatibility or
+maintainability. Functional game rules, permissions, state and server constraints
+remain authoritative.
 
 ## Source-of-truth order
 
@@ -17,11 +20,10 @@ For UI/UX work, resolve decisions in this order:
 1. explicit user requirements and approvals;
 2. safety, gameplay and architecture invariants in this file,
    `docs/PROJECT_RULES.md` and `docs/ARCHITECTURE.md`;
-3. `design-system/pokepixel-better-ui/MASTER.md`, specialized locally by a
-   module override in `design-system/pokepixel-better-ui/pages/` only when that
-   override is explicitly marked approved;
-4. the module contract/documentation;
-5. the current/native implementation as technical evidence.
+3. the module functional contract/documentation;
+4. the current/native implementation as technical evidence;
+5. `design-system/pokepixel-better-ui/MASTER.md` and approved module overrides
+   only when a task explicitly includes visual/art-direction work.
 
 `.skills/ui_ux_pro.md` is a mandatory review gate across this decision process,
 not a competing visual source of truth. Generic recommendations must be evaluated
@@ -31,34 +33,55 @@ against the game context and recorded in the design system when adopted.
 
 `docs/roles/README.md` defines the project roles, authority matrix, activation
 rules, write ownership and handoff contract for multi-agent work.
+`docs/PROJECT_WORKFLOW.md` defines the Project Manager lifecycle, gates and task
+states. `docs/SKILLS_MATRIX.md` maps approved project-native and supplemental
+external skills to each role without making third-party catalogs project
+authorities.
 
 - Every delegated task must name the active role.
+- The Project Manager / Coordinator owns the Acceptance & Evidence Matrix, task
+  orchestration, gate progression and **handoff authorization**. The PM is
+  accountable for false readiness and must reject evidence that does not prove
+  the claimed result.
 - One shared authority surface has one write owner per task/run.
-- Design authors do not approve their own design as Design QA.
+- Design authors do not approve their own design as UX/A11y QA or Visual
+  Regression QA.
 - Implementation authors do not provide the final QA verdict for their own diff.
 - Reviewers report findings back to the owning role rather than editing the work
   under review.
+- Visual Regression QA is required when a change can materially affect layout,
+  readability, clipping, reachability, control state or interaction. Theme/style
+  fidelity by itself is not a release blocker.
+- Generic `READY` is not a valid project status. Readiness must be domain-specific:
+  `TECH READY`, `UX READY`, `VISUAL READY`; missing representative visual evidence
+  is `VISUAL EVIDENCE INSUFFICIENT`.
 - Unresolved conflicts between valid authorities are escalated to the user.
 
 ## Mandatory UI/UX workflow
 
 For every task that changes how an interface looks, feels, moves or is operated:
 
-1. Read the global design-system MASTER and the module override, if one exists.
-2. Read `.skills/ui_ux_pro.md` and perform the relevant analysis/review.
-3. For pixel-art redesign/art-direction work, also read
+1. Project Manager records observable `AC-*` acceptance criteria and required
+   evidence before implementation.
+2. Read the global design-system MASTER/module override only when visual or
+   art-direction work is explicitly in scope.
+3. Read `.skills/ui_ux_pro.md` when design/UX judgment is required.
+4. For pixel-art redesign/art-direction work, also read
    `.skills/pixel_art_direction.md`.
-4. Separate functional/native constraints from visual choices.
-5. Record reusable product-wide decisions in MASTER; record module-only
+5. Separate functional/native constraints from visual choices.
+6. Record reusable product-wide decisions in MASTER; record module-only
    exceptions in the module page override.
-6. When bespoke artwork is justified, follow `docs/DESIGN_TOOLING.md`; external
+7. When bespoke artwork is justified, follow `docs/DESIGN_TOOLING.md`; external
    generators are optional production tools, never a required pipeline stage or
    a design authority.
-7. Implement with scoped Better UI ownership and preserve game behavior unless
+8. Implement with scoped Better UI ownership and preserve game behavior unless
    the approved feature explicitly changes an interaction.
-8. Run the independent review gates required by `docs/roles/README.md`.
-9. Run automated/local validation only.
-10. Deliver a build and stop for user-owned in-game validation.
+9. Run Technical QA and any triggered UX/A11y QA.
+10. When layout/readability/reachability/clipping/control-state risk is material,
+    run Visual Regression QA against qualifying rendered evidence. Do not block
+    functional compatibility work solely on legacy theme fidelity.
+11. PM audits criterion-level evidence and authorizes the handoff class.
+12. Deliver the exact candidate and stop for user-owned in-game validation.
 
 If the search data/tools or referenced checklists such as `pro-rules.md` are not
 available, use only the verified guidance present in `.skills/ui_ux_pro.md`,
@@ -76,7 +99,9 @@ checklist results.
   unmount repeatedly.
 - DOM selectors belong in module config/dom files, not scattered across logic.
 - Avoid monkey-patching game globals unless explicitly justified by the feature.
-- Never automate gameplay.
+- Gameplay automation is allowed only when it is explicitly in the approved feature
+  scope. It must preserve server/game permissions, eligibility and authoritative
+  state, define deterministic failure/retry behavior, and remain user-controllable.
 - Never intercept or modify network traffic unless explicitly scoped and
   approved for a feature.
 - Preserve server/game permissions, eligibility rules and authoritative state.
@@ -92,9 +117,9 @@ checklist results.
 
 ## Visual ownership rules
 
-- Better UI owns its pixel-art design system and may define its own palette,
-  typography, spacing, borders, shadows, component dimensions and responsive
-  behavior.
+- Better UI may define scoped palette, typography, spacing, borders, shadows,
+  component dimensions and responsive behavior when those choices improve the
+  current interface; no specific historical visual theme is mandatory.
 - Use `--ppbui-*` for Better UI design tokens.
 - Prefix Better UI-owned classes and attributes with `ppbui-` or
   `data-ppbui-*`.
@@ -138,7 +163,9 @@ visual and functional validation belongs exclusively to the user.
 Allowed agent validation includes unit/integration tests, synthetic DOM fixtures,
 static analysis, source inspection, build checks and other non-game local checks.
 A UI delivery remains `pending in-game validation` until the user explicitly
-reports a green light. Never infer in-game approval from automated tests.
+reports a green light. Never infer in-game approval from automated tests, local
+renders or reviewer verdicts. Likewise, never infer visual correctness from source
+inspection or test totals.
 
 ## Git workflow
 

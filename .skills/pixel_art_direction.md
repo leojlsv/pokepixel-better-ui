@@ -146,3 +146,24 @@ DESIGN ACCEPTANCE CHECKS
 
 The implementation brief must be concrete enough that an engineer does not need
 to invent the visual hierarchy while coding.
+
+## 10. Rendered-result verification boundary
+
+Art direction is a specification, not proof that the implementation rendered
+correctly. Never approve a visible implementation merely because its CSS uses the
+right palette, radius, spacing tokens or pixel classes.
+
+For every changed visible family, the implementation handoff should make a
+representative rendered comparison possible when practical. Visual Regression QA
+then checks the actual result at runtime scale for:
+
+- silhouette and pixel crispness;
+- exact geometry, seams and alignment;
+- spacing and hierarchy;
+- hover/pressed/selected/focus/disabled visuals;
+- clipping, overflow, wrapping and scrollbar treatment;
+- host-style leakage;
+- unintended changes to already-approved neighboring surfaces.
+
+If no representative render exists, the correct result is `VISUAL EVIDENCE
+INSUFFICIENT`, not approval inferred from source or automated tests.

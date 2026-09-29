@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -11,6 +14,20 @@ using Microsoft.Web.WebView2.WinForms;
 
 namespace PokePixel.CoupledWorkspace
 {
+    internal static class WorkspaceChrome
+    {
+        internal static readonly Color Window = Color.FromArgb(0x16, 0x1D, 0x20);
+        internal static readonly Color Interactive = Color.FromArgb(0x23, 0x2C, 0x2E);
+        internal static readonly Color Hover = Color.FromArgb(0x32, 0x3F, 0x40);
+        internal static readonly Color Line = Color.FromArgb(0x6B, 0x65, 0x43);
+        internal static readonly Color Text = Color.FromArgb(0xEB, 0xEC, 0xDC);
+        internal static readonly Color Subtle = Color.FromArgb(0xC3, 0xD5, 0xC7);
+        internal static readonly Color Disabled = Color.FromArgb(0x8C, 0x9B, 0x93);
+        internal static readonly Color Selected = Color.FromArgb(0xE3, 0xC0, 0x54);
+        internal static readonly Color Focus = Color.FromArgb(0x54, 0xBA, 0xD2);
+        internal static readonly Color Error = Color.FromArgb(0xE6, 0x92, 0x8A);
+    }
+
     internal sealed class BetterUiFlowLayoutPanel : FlowLayoutPanel
     {
         private const int LogicalScrollbarWidth = 10;
@@ -208,15 +225,15 @@ namespace PokePixel.CoupledWorkspace
         private void DrawBetterUiScrollbar(Graphics graphics)
         {
             var track = GetTrackRectangle();
-            using (var trackBrush = new SolidBrush(Color.FromArgb(0x23, 0x22, 0x28)))
+            using (var trackBrush = new SolidBrush(WorkspaceChrome.Window))
                 graphics.FillRectangle(trackBrush, track);
 
             if (!HasVerticalOverflow()) return;
 
             var thumb = GetThumbRectangle();
             var thumbColor = _hoveringThumb || _draggingThumb
-                ? Color.FromArgb(0x87, 0x85, 0x73)
-                : Color.FromArgb(0x5F, 0x58, 0x54);
+                ? WorkspaceChrome.Subtle
+                : WorkspaceChrome.Line;
             using (var thumbBrush = new SolidBrush(thumbColor))
                 graphics.FillRectangle(thumbBrush, thumb);
         }
@@ -240,9 +257,9 @@ namespace PokePixel.CoupledWorkspace
 
     internal sealed class BetterUiMenuRenderer : ToolStripRenderer
     {
-        private static readonly Color Base = Color.FromArgb(0x23, 0x22, 0x28);
-        private static readonly Color Stone = Color.FromArgb(0x5F, 0x58, 0x54);
-        private static readonly Color Strong = Color.FromArgb(0x87, 0x85, 0x73);
+        private static readonly Color Base = WorkspaceChrome.Interactive;
+        private static readonly Color Stone = WorkspaceChrome.Line;
+        private static readonly Color Strong = WorkspaceChrome.Focus;
 
         protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
         {
@@ -252,7 +269,7 @@ namespace PokePixel.CoupledWorkspace
 
         protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
         {
-            var edge = ScaleMetric(e.ToolStrip, 2);
+            var edge = ScaleMetric(e.ToolStrip, 1);
             using (var brush = new SolidBrush(Stone))
             {
                 e.Graphics.FillRectangle(brush, 0, 0, e.ToolStrip.Width, edge);
@@ -264,13 +281,13 @@ namespace PokePixel.CoupledWorkspace
 
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
         {
-            var color = e.Item.Selected || e.Item.Pressed ? Stone : Base;
+            var color = e.Item.Selected || e.Item.Pressed ? WorkspaceChrome.Hover : Base;
             using (var brush = new SolidBrush(color))
                 e.Graphics.FillRectangle(brush, new Rectangle(Point.Empty, e.Item.Size));
 
             if (e.Item.Selected)
             {
-                var edge = ScaleMetric(e.ToolStrip, 2);
+                var edge = ScaleMetric(e.ToolStrip, 1);
                 using (var pen = new Pen(Strong, edge))
                     e.Graphics.DrawRectangle(
                         pen,
@@ -305,6 +322,54 @@ namespace PokePixel.CoupledWorkspace
         }
     }
 
+    internal sealed class BetterUiButton : Button
+    {
+        private static readonly Color DisabledText = WorkspaceChrome.Disabled;
+
+        public void NotifyAccessibleStateChanged()
+        {
+            AccessibilityNotifyClients(AccessibleEvents.StateChange, -1);
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            if (Enabled)
+            {
+                base.OnPaint(e);
+                return;
+            }
+
+            var border = Math.Max(1, FlatAppearance.BorderSize);
+            using (var background = new SolidBrush(BackColor))
+                e.Graphics.FillRectangle(background, ClientRectangle);
+            using (var edge = new SolidBrush(FlatAppearance.BorderColor))
+            {
+                e.Graphics.FillRectangle(edge, 0, 0, Width, border);
+                e.Graphics.FillRectangle(edge, 0, Math.Max(0, Height - border), Width, border);
+                e.Graphics.FillRectangle(edge, 0, 0, border, Height);
+                e.Graphics.FillRectangle(edge, Math.Max(0, Width - border), 0, border, Height);
+            }
+            var textBounds = new Rectangle(
+                border,
+                border,
+                Math.Max(0, Width - border * 2),
+                Math.Max(0, Height - border * 2)
+            );
+            TextRenderer.DrawText(
+                e.Graphics,
+                Text,
+                Font,
+                textBounds,
+                DisabledText,
+                TextFormatFlags.HorizontalCenter
+                    | TextFormatFlags.VerticalCenter
+                    | TextFormatFlags.SingleLine
+                    | TextFormatFlags.EndEllipsis
+                    | TextFormatFlags.NoPadding
+            );
+        }
+    }
+
     internal sealed class BetterUiSelect : Control
     {
         private readonly List<object> _items = new List<object>();
@@ -326,8 +391,8 @@ namespace PokePixel.CoupledWorkspace
             TabStop = true;
             AccessibleRole = AccessibleRole.ComboBox;
             Cursor = Cursors.Hand;
-            BackColor = Color.FromArgb(0x23, 0x22, 0x28);
-            ForeColor = Color.FromArgb(0xEB, 0xEC, 0xDC);
+            BackColor = WorkspaceChrome.Interactive;
+            ForeColor = WorkspaceChrome.Text;
 
             _menu = new ContextMenuStrip();
             _menu.ShowImageMargin = false;
@@ -416,12 +481,9 @@ namespace PokePixel.CoupledWorkspace
 
         protected override void OnPaint(PaintEventArgs e)
         {
-            var stone = Color.FromArgb(0x5F, 0x58, 0x54);
-            var strong = Color.FromArgb(0x87, 0x85, 0x73);
-            var cyan = Color.FromArgb(0x54, 0xBA, 0xD2);
-            var surface = _hover || _pressed ? stone : BackColor;
-            var border = Focused ? cyan : (_hover ? strong : stone);
-            var edge = ScaleMetric(2);
+            var surface = _hover || _pressed ? WorkspaceChrome.Hover : BackColor;
+            var border = Focused ? WorkspaceChrome.Focus : WorkspaceChrome.Line;
+            var edge = ScaleMetric(Focused ? 2 : 1);
 
             using (var borderBrush = new SolidBrush(border))
                 e.Graphics.FillRectangle(borderBrush, ClientRectangle);
@@ -455,7 +517,7 @@ namespace PokePixel.CoupledWorkspace
                 TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis
             );
 
-            var arrowColor = Focused ? cyan : ForeColor;
+            var arrowColor = Focused ? WorkspaceChrome.Focus : ForeColor;
             using (var pen = new Pen(arrowColor, edge))
             {
                 var cx = Width - ScaleMetric(13);
@@ -659,7 +721,7 @@ namespace PokePixel.CoupledWorkspace
                 item.Margin = Padding.Empty;
                 item.BackColor = BackColor;
                 item.ForeColor = i == _selectedIndex
-                    ? Color.FromArgb(0xE3, 0xC0, 0x54)
+                    ? WorkspaceChrome.Selected
                     : ForeColor;
                 item.Checked = i == _selectedIndex;
                 item.Click += delegate { SelectedIndex = index; };
@@ -668,6 +730,14 @@ namespace PokePixel.CoupledWorkspace
             _menu.AccessibleName = string.IsNullOrWhiteSpace(AccessibleName)
                 ? "Options"
                 : AccessibleName + " options";
+            var workingArea = Screen.FromControl(this).WorkingArea;
+            var top = PointToScreen(Point.Empty).Y;
+            var bottom = PointToScreen(new Point(0, Height)).Y;
+            var availableHeight = Math.Max(top - workingArea.Top, workingArea.Bottom - bottom);
+            _menu.MaximumSize = new Size(
+                Math.Max(Width, ScaleMetric(96)),
+                Math.Min(ScaleMetric(320), Math.Max(ScaleMetric(96), availableHeight - ScaleMetric(8)))
+            );
             _menu.Show(this, new Point(0, Height));
         }
 
@@ -702,17 +772,46 @@ namespace PokePixel.CoupledWorkspace
 
     internal sealed class WorkspaceForm : Form
     {
+        private sealed class QuickSurfaceChoice
+        {
+            public string Id { get; set; }
+            public string Label { get; set; }
+            public override string ToString() { return Label; }
+        }
+
         private const string TargetUrl = "https://pokepixel.nietore.com/play/";
         private const string TargetOrigin = "https://pokepixel.nietore.com";
         private const int ExpandedDeckMinimumWidth = 1520;
         private const int CompactStatusWidth = 64;
         private const int ExpandedStatusWidth = 112;
+        private static readonly KeyValuePair<string, string>[] GameDockQuickSurfaces =
+            WorkspaceQuickSurfaceCatalog.Default;
+        private static readonly KeyValuePair<string, string>[] GameDockAllSurfaces =
+            WorkspaceQuickSurfaceCatalog.All;
 
         private readonly string _baseDir;
         private readonly bool _smokeMode;
+        private readonly bool _shutdownDuringInitSmoke;
+        private readonly bool _shutdownDuringSwitchSmoke;
+        private readonly bool _evidenceProbeEnabled;
         private readonly WorkspaceState _workspaceState;
         private readonly WorkspaceSettingsStore _settingsStore;
         private readonly string _dataRoot;
+        private readonly PptoolsBackgroundExecutor _pptoolsExecutor;
+        private readonly SemaphoreSlim _pptoolsEnvironmentGate = new SemaphoreSlim(2, 2);
+        private sealed class PptoolsPendingRequest
+        {
+            public AccountPane Pane;
+            public string RequestId;
+            public string LeaderId;
+            public string LeaderSpeciesId;
+            public string NativeProfileId;
+            public int LeaderLevel;
+            public ulong NavigationId;
+            public CancellationTokenSource Cancellation;
+        }
+        private readonly Dictionary<string, PptoolsPendingRequest> _pptoolsByProfile =
+            new Dictionary<string, PptoolsPendingRequest>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AccountPane> _panesByProfile =
             new Dictionary<string, AccountPane>(StringComparer.OrdinalIgnoreCase);
         private readonly SplitContainer _split;
@@ -724,7 +823,21 @@ namespace PokePixel.CoupledWorkspace
         private readonly System.Windows.Forms.Timer _smokeTimer;
         private readonly SemaphoreSlim _workspaceMutationGate = new SemaphoreSlim(1, 1);
         private readonly ToolTip _toolTip;
+        private readonly Dictionary<string, Button> _gameDockButtons =
+            new Dictionary<string, Button>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<Button> _gameDockQuickButtons = new List<Button>();
+        private readonly Dictionary<string, Button> _gameDockAccountButtons =
+            new Dictionary<string, Button>(StringComparer.OrdinalIgnoreCase);
         private Panel _commandDeck;
+        private Panel _gameDock;
+        private Panel _gameDockEdge;
+        private FlowLayoutPanel _gameDockGroup;
+        private Label _gameDockProfileLabel;
+        private Button _cardsViewButton;
+        private Button _gameViewButton;
+        private Button _gameDockOverflowButton;
+        private ContextMenuStrip _gameDockOverflowMenu;
+        private Label _gameDockAvailabilityLabel;
         private FlowLayoutPanel _leftCommandGroup;
         private FlowLayoutPanel _rightCommandGroup;
         private Button _singleModeButton;
@@ -739,7 +852,6 @@ namespace PokePixel.CoupledWorkspace
         private Button _layout21Button;
         private Button _swapButton;
         private Button _focusButton;
-        private Label _activeProfileLabel;
         private BetterUiSelect _scopeSelector;
         private Button _homeButton;
         private Button _reloadButton;
@@ -751,22 +863,51 @@ namespace PokePixel.CoupledWorkspace
         private Label _drawerBetterUiLabel;
         private Label _drawerRuntimeLabel;
         private Label _drawerErrorLabel;
+        private Label _drawerAccountsLabel;
+        private Label _drawerQuickProfileLabel;
+        private Button _drawerEditQuickButton;
+        private FlowLayoutPanel _drawerQuickEditor;
+        private readonly List<BetterUiSelect> _drawerQuickSelectors = new List<BetterUiSelect>();
+        private BetterUiSelect _drawerZoomSelector;
+        private Button _drawerZoomResetButton;
         private Button _drawerRecoverButton;
         private Button _drawerHomeButton;
         private Button _drawerReloadButton;
         private Button _drawerDevToolsButton;
         private Button _drawerCopyButton;
         private Button _drawerResetLayoutButton;
+        private bool _refreshingDrawerQuickEditor;
+        private bool _refreshingDrawerZoom;
+        private string _dockFeedbackProfileId;
+        private string _dockFeedbackText;
+        private readonly Dictionary<string, string> _latestDockUiRequestByProfile =
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         private string _betterUiScript;
+        private string _huntAnalyzerScript;
+        private string _evidenceProbeScript;
         private string _webViewFocusedProfileId;
+        private int _bridgeRequestSequence;
         private bool _applyingLayout;
         private bool _updatingCommandDeck;
+        private bool _isClosing;
+        private bool _shutdownCleanupCompleted;
+        private bool _shutdownSwitchProbeArmed;
         private DateTime _maintenanceDrawerAutoClosedAtUtc = DateTime.MinValue;
 
-        public WorkspaceForm(string baseDir, bool smokeMode)
+        public WorkspaceForm(
+            string baseDir,
+            bool smokeMode,
+            bool shutdownDuringInitSmoke,
+            bool shutdownDuringSwitchSmoke,
+            bool evidenceProbeEnabled,
+            bool pptoolsBackgroundEnabled
+        )
         {
             _baseDir = baseDir;
             _smokeMode = smokeMode;
+            _shutdownDuringInitSmoke = shutdownDuringInitSmoke;
+            _shutdownDuringSwitchSmoke = shutdownDuringSwitchSmoke;
+            _evidenceProbeEnabled = evidenceProbeEnabled && !smokeMode;
             ProfileRegistry.Validate();
             var stateRoot = _smokeMode
                 ? Path.Combine(_baseDir, "smoke", "runtime-state")
@@ -779,21 +920,22 @@ namespace PokePixel.CoupledWorkspace
                 ? Path.Combine(_baseDir, "smoke-user-data")
                 : stateRoot;
             Directory.CreateDirectory(_dataRoot);
+            _pptoolsExecutor = new PptoolsBackgroundExecutor(_baseDir, _dataRoot, pptoolsBackgroundEnabled);
             _settingsStore = new WorkspaceSettingsStore(Path.Combine(stateRoot, "workspace.json"));
             _workspaceState = _smokeMode
                 ? WorkspaceState.CreateBaseline()
                 : _settingsStore.LoadOrDefault();
 
-            Text = "PokePixel Coupled Workspace — WebView2";
-            BackColor = Color.FromArgb(0x23, 0x22, 0x28);
-            ForeColor = Color.FromArgb(0xEB, 0xEC, 0xDC);
+            Text = "PokePixel Coupled Workspace \u2014 WebView2";
+            BackColor = WorkspaceChrome.Window;
+            ForeColor = WorkspaceChrome.Text;
             AutoScaleDimensions = new SizeF(96.0f, 96.0f);
             AutoScaleMode = AutoScaleMode.Dpi;
             Width = 1600;
             Height = 960;
             MinimumSize = new Size(1180, 600);
             StartPosition = FormStartPosition.CenterScreen;
-            Font = new Font(FontFamily.GenericMonospace, 9.0f, FontStyle.Regular);
+            Font = new Font("Segoe UI", 9.0f, FontStyle.Regular);
             _toolTip = new ToolTip();
 
             if (_smokeMode)
@@ -807,10 +949,11 @@ namespace PokePixel.CoupledWorkspace
             root.Dock = DockStyle.Fill;
             root.Margin = Padding.Empty;
             root.Padding = Padding.Empty;
-            root.RowCount = 2;
+            root.RowCount = 3;
             root.ColumnCount = 1;
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
             root.BackColor = BackColor;
             Controls.Add(root);
 
@@ -825,7 +968,7 @@ namespace PokePixel.CoupledWorkspace
             _split.Margin = Padding.Empty;
             _split.Orientation = Orientation.Vertical;
             _split.SplitterWidth = 8;
-            _split.BackColor = Color.FromArgb(0x5F, 0x58, 0x54);
+            _split.BackColor = WorkspaceChrome.Line;
             _split.SplitterMoving += delegate(object sender, SplitterCancelEventArgs args)
             {
                 BoundSplitterMovement(args);
@@ -841,37 +984,35 @@ namespace PokePixel.CoupledWorkspace
             _split.Panel1.Controls.Add(_leftHost);
             _split.Panel2.Controls.Add(_rightHost);
 
+            _gameDock = BuildGameDock();
+            root.Controls.Add(_gameDock, 0, 2);
+            UpdateGameDock();
+
             Shown += async delegate
             {
                 ApplyWorkspaceDpiMetrics();
                 await RunWorkspaceMutationAsync(InitializeAsync);
             };
-            FormClosed += delegate
-            {
-                if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
-                    _maintenanceDrawer.Close();
-                _toolTip.Dispose();
-                if (!_smokeMode) PersistWorkspaceState();
-                foreach (var pane in new List<AccountPane>(_panesByProfile.Values))
-                    pane.Dispose();
-                _panesByProfile.Clear();
-            };
+            FormClosing += delegate { BeginShutdown(); };
+            FormClosed += delegate { CompleteShutdown(); };
             Resize += delegate
             {
+                if (_isClosing) return;
                 if (_maintenanceDrawer != null && _maintenanceDrawer.Visible)
                     PositionMaintenanceDrawer();
             };
             LocationChanged += delegate
             {
+                if (_isClosing) return;
                 if (_maintenanceDrawer != null && _maintenanceDrawer.Visible)
                     PositionMaintenanceDrawer();
             };
             DpiChanged += delegate
             {
-                if (!IsHandleCreated || IsDisposed) return;
+                if (_isClosing || !IsHandleCreated || IsDisposed || Disposing) return;
                 BeginInvoke(new Action(delegate
                 {
-                    if (IsDisposed) return;
+                    if (_isClosing || IsDisposed || Disposing) return;
                     ApplyWorkspaceDpiMetrics();
                     UpdateCommandDeck();
                     if (_maintenanceDrawer != null && _maintenanceDrawer.Visible)
@@ -894,6 +1035,114 @@ namespace PokePixel.CoupledWorkspace
                     Close();
                 }
             };
+
+        }
+
+        private void BeginShutdown()
+        {
+            if (_isClosing) return;
+            _isClosing = true;
+
+            foreach (var request in _pptoolsByProfile.Values)
+                request.Cancellation.Cancel();
+            _pptoolsByProfile.Clear();
+
+            _smokeTimer.Stop();
+
+            if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
+                _maintenanceDrawer.Hide();
+            if (_gameDockOverflowMenu != null && !_gameDockOverflowMenu.IsDisposed)
+                _gameDockOverflowMenu.Close(ToolStripDropDownCloseReason.CloseCalled);
+
+            // Detach ToolTip from controls while their handles/top-level owner are still valid.
+            // WebView2 and timer callbacks can run during teardown; _isClosing makes all later
+            // tooltip/UI refreshes no-ops until final disposal in FormClosed.
+            _toolTip.RemoveAll();
+        }
+
+        private void CompleteShutdown()
+        {
+            if (_shutdownCleanupCompleted) return;
+            _shutdownCleanupCompleted = true;
+            if (!_isClosing) BeginShutdown();
+
+            if (!_smokeMode) PersistWorkspaceState(true);
+
+            var panes = new List<AccountPane>(_panesByProfile.Values);
+            _panesByProfile.Clear();
+            foreach (var pane in panes)
+                pane.Dispose();
+
+            if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
+                _maintenanceDrawer.Dispose();
+            if (_gameDockOverflowMenu != null && !_gameDockOverflowMenu.IsDisposed)
+                _gameDockOverflowMenu.Dispose();
+
+            if (_smokeMode) RunShutdownLifecycleSmoke();
+
+            _smokeTimer.Dispose();
+            _toolTip.Dispose();
+
+            if (_shutdownDuringInitSmoke)
+            {
+                Console.WriteLine("WebView2 coupled workspace shutdown-during-init smoke: PASS");
+                Environment.ExitCode = 0;
+            }
+            else if (_shutdownDuringSwitchSmoke)
+            {
+                Console.WriteLine("WebView2 coupled workspace shutdown-during-switch smoke: PASS");
+                Environment.ExitCode = 0;
+            }
+        }
+
+        private void RunShutdownLifecycleSmoke()
+        {
+            if (!_isClosing)
+                throw new InvalidOperationException("Shutdown lifecycle guard was not active.");
+            if (_smokeTimer.Enabled)
+                throw new InvalidOperationException("Shutdown left a WinForms timer running.");
+
+            // Exercise the late UI-update sinks that can be reached by WebView2/timer callbacks.
+            // They must remain harmless after pane disposal and tooltip detachment.
+            UpdateGameDock();
+            UpdateCommandDeck();
+            RefreshMaintenanceDrawer();
+            ApplyHealthToLabel(
+                _leftStatus,
+                "Shutdown smoke",
+                PaneHealthState.Idle,
+                "Shutdown smoke",
+                false
+            );
+            SetToolTipSafe(_rightStatus, "Shutdown smoke");
+
+            var latePane = EnsurePaneAsync(
+                _workspaceState.ActiveProfileId,
+                _leftHost,
+                _leftStatus
+            ).GetAwaiter().GetResult();
+            RecoverActivePaneAsync().GetAwaiter().GetResult();
+            SwitchToSingleAsync(_workspaceState.ActiveProfileId).GetAwaiter().GetResult();
+            SwitchToDualAsync().GetAwaiter().GetResult();
+            if (latePane != null || _panesByProfile.Count != 0)
+                throw new InvalidOperationException("Shutdown allowed a late pane mutation.");
+        }
+
+        private void SetToolTipSafe(Control control, string text)
+        {
+            if (_isClosing
+                || IsDisposed
+                || Disposing
+                || control == null
+                || control.IsDisposed
+                || control.Disposing)
+            {
+                return;
+            }
+
+            var owner = control.FindForm();
+            if (owner == null || owner.IsDisposed || owner.Disposing) return;
+            _toolTip.SetToolTip(control, text ?? string.Empty);
         }
 
         private Panel BuildToolbar(out Label leftStatus, out Label rightStatus)
@@ -951,17 +1200,15 @@ namespace PokePixel.CoupledWorkspace
             _rightCommandGroup = rightGroup;
             rightGroup.Dock = DockStyle.Right;
 
-            _activeProfileLabel = MakeToolbarLabel("ACTIVE: RHYXUS", 116);
             _scopeSelector = MakeSelect(72);
-            _scopeSelector.AccessibleName = "Command scope";
+            _scopeSelector.AccessibleName = "Home and Reload command scope";
             _scopeSelector.Items.Add("Active");
             _scopeSelector.Items.Add("Both");
             _homeButton = MakeButton("Home", 56, 0);
             _reloadButton = MakeButton("Reload", 64, 0);
-            _maintenanceButton = MakeButton("⋯", 28, 0);
+            _maintenanceButton = MakeButton("...", 28, 0);
             _maintenanceButton.AccessibleName = "Maintenance";
 
-            rightGroup.Controls.Add(_activeProfileLabel);
             rightGroup.Controls.Add(_scopeSelector);
             rightGroup.Controls.Add(_homeButton);
             rightGroup.Controls.Add(_reloadButton);
@@ -1086,6 +1333,982 @@ namespace PokePixel.CoupledWorkspace
 
             return toolbar;
         }
+        private Panel BuildGameDock()
+        {
+            var dock = new Panel();
+            dock.Dock = DockStyle.Fill;
+            dock.Margin = Padding.Empty;
+            dock.Padding = new Padding(8, 6, 8, 6);
+            dock.BackColor = BackColor;
+
+            _gameDockEdge = new Panel();
+            _gameDockEdge.Dock = DockStyle.None;
+            _gameDockEdge.Height = 1;
+            _gameDockEdge.Location = Point.Empty;
+            _gameDockEdge.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            _gameDockEdge.Margin = Padding.Empty;
+            _gameDockEdge.BackColor = WorkspaceChrome.Line;
+            _gameDockEdge.TabStop = false;
+            dock.Controls.Add(_gameDockEdge);
+
+            var group = MakeToolbarGroup();
+            _gameDockGroup = group;
+            _gameDockProfileLabel = MakeToolbarLabel("ACTIVE: RHYXUS", 132);
+            _gameDockProfileLabel.ForeColor = WorkspaceChrome.Selected;
+            group.Controls.Add(_gameDockProfileLabel);
+
+            foreach (var profile in ProfileRegistry.All())
+            {
+                var profileId = profile.Id;
+                var accountButton = MakeButton(profile.DisplayName, 80, 0);
+                accountButton.AccessibleName = "Activate account " + profile.DisplayName;
+                accountButton.Click += async delegate
+                {
+                    await RunWorkspaceMutationAsync(delegate
+                    {
+                        SetActiveProfile(profileId);
+                        return Task.FromResult(0);
+                    });
+                };
+                _gameDockAccountButtons.Add(profileId, accountButton);
+                group.Controls.Add(accountButton);
+            }
+
+            _cardsViewButton = MakeButton("Cards", 64, 0);
+            _cardsViewButton.AccessibleName = "Show card dashboard";
+            _cardsViewButton.Click += delegate { SetContentView(true); };
+            group.Controls.Add(_cardsViewButton);
+
+            _gameViewButton = MakeButton("Game", 64, 0);
+            _gameViewButton.AccessibleName = "Show game view";
+            _gameViewButton.Click += delegate { SetContentView(false); };
+            group.Controls.Add(_gameViewButton);
+
+            _gameDockAvailabilityLabel = MakeToolbarLabel("MENUS OFFLINE", 112);
+            _gameDockAvailabilityLabel.ForeColor = WorkspaceChrome.Error;
+            _gameDockAvailabilityLabel.AccessibleName = "Native game menu unavailable";
+            group.Controls.Add(_gameDockAvailabilityLabel);
+
+            for (var slot = 0; slot < GameDockQuickSurfaces.Length; slot++)
+            {
+                var button = MakeButton("", 84, 0);
+                button.Enabled = false;
+                button.Click += delegate
+                {
+                    var surfaceId = button.Name;
+                    if (!string.IsNullOrWhiteSpace(surfaceId)) OpenGameSurface(surfaceId);
+                };
+                _gameDockQuickButtons.Add(button);
+                group.Controls.Add(button);
+            }
+
+            _gameDockOverflowMenu = new ContextMenuStrip();
+            _gameDockOverflowMenu.ShowImageMargin = false;
+            _gameDockOverflowMenu.ShowCheckMargin = false;
+            _gameDockOverflowMenu.Padding = new Padding(2);
+            _gameDockOverflowMenu.BackColor = BackColor;
+            _gameDockOverflowMenu.ForeColor = ForeColor;
+            _gameDockOverflowMenu.Renderer = new BetterUiMenuRenderer();
+            _gameDockOverflowMenu.AccessibleName = "Additional game menus";
+
+            _gameDockOverflowButton = MakeButton("Menus", 72, 0);
+            _gameDockOverflowButton.Enabled = false;
+            _gameDockOverflowButton.AccessibleName = "Additional game menus unavailable";
+            _gameDockOverflowButton.Click += delegate { ShowGameDockOverflowMenu(); };
+            group.Controls.Add(_gameDockOverflowButton);
+
+            dock.Controls.Add(group);
+            dock.Resize += delegate { LayoutGameDock(); };
+            return dock;
+        }
+
+        private void LayoutGameDock()
+        {
+            if (_gameDock == null || _gameDockGroup == null) return;
+            if (_gameDockEdge != null)
+            {
+                _gameDockEdge.Bounds = new Rectangle(
+                    0,
+                    0,
+                    _gameDock.ClientSize.Width,
+                    DpiMetric(1)
+                );
+                _gameDockEdge.BringToFront();
+            }
+            _gameDockGroup.PerformLayout();
+            _gameDockGroup.Top = DpiMetric(6);
+            _gameDockGroup.Left = Math.Max(
+                DpiMetric(8),
+                (_gameDock.ClientSize.Width - _gameDockGroup.Width) / 2
+            );
+        }
+
+        private List<string> GetQuickGameDockSurfaces(string profileId)
+        {
+            List<string> favorites;
+            if (_workspaceState.QuickSurfacesByProfile != null
+                && _workspaceState.QuickSurfacesByProfile.TryGetValue(profileId, out favorites)
+                && favorites != null && favorites.Count == GameDockQuickSurfaces.Length)
+                return favorites;
+            return WorkspaceQuickSurfaceCatalog.CreateDefault();
+        }
+
+        private string CompactGameDockLabel(string fullLabel)
+        {
+            var label = fullLabel;
+            var width = DpiMetric(84) - DpiMetric(12);
+            var flags = TextFormatFlags.NoPadding | TextFormatFlags.SingleLine;
+            if (TextRenderer.MeasureText(label, Font, Size.Empty, flags).Width <= width)
+                return label;
+            while (label.Length > 1 && TextRenderer.MeasureText(
+                label + "\u2026", Font, Size.Empty,
+                flags
+            ).Width > width)
+                label = label.Substring(0, label.Length - 1);
+            return label.TrimEnd() + "\u2026";
+        }
+
+        private void RefreshGameDockQuickButtons(ProfileDefinition profile, AccountPane pane, bool bridgeReady)
+        {
+            _gameDockButtons.Clear();
+            var favorites = GetQuickGameDockSurfaces(profile.Id);
+            for (var index = 0; index < _gameDockQuickButtons.Count; index++)
+            {
+                var button = _gameDockQuickButtons[index];
+                var surfaceId = favorites[index];
+                string label;
+                if (!WorkspaceQuickSurfaceCatalog.TryGetLabel(surfaceId, out label)) continue;
+                var available = bridgeReady && pane.AvailableSurfaces.Contains(surfaceId);
+                button.Name = surfaceId;
+                button.Text = CompactGameDockLabel(label);
+                button.Enabled = available;
+                button.AccessibleName = "Quick slot " + (index + 1) + ": open " + label
+                    + " for " + profile.DisplayName + (available ? "" : " (unavailable)");
+                SetToolTipSafe(button, label + " \u2014 " + profile.DisplayName);
+                SetButtonSelected(button, false);
+                _gameDockButtons[surfaceId] = button;
+            }
+        }
+
+        private void UpdateGameDock()
+        {
+            if (_isClosing || _gameDockProfileLabel == null) return;
+            var profile = ProfileRegistry.Get(_workspaceState.ActiveProfileId);
+            var pane = GetPaneForProfile(profile.Id);
+            var bridgeReady = pane != null && pane.WorkspaceBridgeReady;
+            var cardsViewActive = IsCardsViewActive(profile.Id);
+            if (_gameDock != null) _gameDock.Visible = true;
+            if (_rootLayout != null && _rootLayout.RowStyles.Count > 2)
+                _rootLayout.RowStyles[2].Height = DpiMetric(44);
+            var dual = _workspaceState.Mode == WorkspaceMode.Dual;
+            _gameDockProfileLabel.Visible = !dual;
+            _gameDockProfileLabel.Text = "ACTIVE: " + profile.DisplayName.ToUpperInvariant();
+            _gameDockProfileLabel.AccessibleName = "Game Dock target: " + profile.DisplayName;
+            foreach (var account in ProfileRegistry.All())
+            {
+                Button accountButton;
+                if (!_gameDockAccountButtons.TryGetValue(account.Id, out accountButton)) continue;
+                accountButton.Visible = dual;
+                accountButton.Enabled = dual;
+                var selected = string.Equals(account.Id, profile.Id, StringComparison.OrdinalIgnoreCase);
+                var selectionChanged = !(accountButton.Tag is bool)
+                    || (bool)accountButton.Tag != selected;
+                accountButton.Text = selected ? "\u2713 " + account.DisplayName : account.DisplayName;
+                accountButton.AccessibleName = selected
+                    ? "Active account " + account.DisplayName
+                    : "Activate account " + account.DisplayName;
+                SetButtonSelected(accountButton, selected);
+                if (selectionChanged)
+                    ((BetterUiButton)accountButton).NotifyAccessibleStateChanged();
+            }
+
+            if (_cardsViewButton != null)
+            {
+                _cardsViewButton.Enabled = true;
+                var accessibleName = cardsViewActive
+                    ? "Cards view, current"
+                    : "Show Cards view";
+                if (!bridgeReady)
+                    accessibleName += " (game menu unavailable)";
+                var accessibilityChanged = !string.Equals(
+                    _cardsViewButton.AccessibleName,
+                    accessibleName,
+                    StringComparison.Ordinal
+                );
+                _cardsViewButton.AccessibleName = accessibleName;
+                SetButtonSelected(_cardsViewButton, cardsViewActive);
+                if (accessibilityChanged)
+                {
+                    var cardsButton = _cardsViewButton as BetterUiButton;
+                    if (cardsButton != null) cardsButton.NotifyAccessibleStateChanged();
+                }
+            }
+            if (_gameViewButton != null)
+            {
+                _gameViewButton.Enabled = true;
+                var accessibleName = !cardsViewActive
+                    ? "Game view, current"
+                    : "Show Game view";
+                var accessibilityChanged = !string.Equals(
+                    _gameViewButton.AccessibleName,
+                    accessibleName,
+                    StringComparison.Ordinal
+                );
+                _gameViewButton.AccessibleName = accessibleName;
+                SetButtonSelected(_gameViewButton, !cardsViewActive);
+                if (accessibilityChanged)
+                {
+                    var gameButton = _gameViewButton as BetterUiButton;
+                    if (gameButton != null) gameButton.NotifyAccessibleStateChanged();
+                }
+            }
+            if (_gameDockAvailabilityLabel != null)
+            {
+                var failed = string.Equals(
+                    _dockFeedbackProfileId, profile.Id, StringComparison.OrdinalIgnoreCase
+                ) && !string.IsNullOrWhiteSpace(_dockFeedbackText);
+                _gameDockAvailabilityLabel.Visible = true;
+                _gameDockAvailabilityLabel.Text = failed ? "OPEN FAILED"
+                    : bridgeReady ? "MENUS READY" : "MENUS OFFLINE";
+                _gameDockAvailabilityLabel.ForeColor = !bridgeReady || failed
+                    ? WorkspaceChrome.Error : WorkspaceChrome.Subtle;
+                _gameDockAvailabilityLabel.AccessibleName = failed
+                    ? _dockFeedbackText + (bridgeReady ? "" : "; game menus offline")
+                    : bridgeReady ? "Native game menus ready for " + profile.DisplayName
+                    : "Native game menu unavailable for " + profile.DisplayName;
+                SetToolTipSafe(_gameDockAvailabilityLabel, _gameDockAvailabilityLabel.AccessibleName);
+            }
+            RefreshGameDockQuickButtons(profile, pane, bridgeReady);
+            RebuildGameDockOverflowMenu(pane, profile.DisplayName, bridgeReady);
+            LayoutGameDock();
+        }
+
+        private void RebuildGameDockOverflowMenu(AccountPane pane, string profileName, bool bridgeReady)
+        {
+            if (_gameDockOverflowMenu == null || _gameDockOverflowButton == null) return;
+            if (_gameDockOverflowMenu.Visible)
+                _gameDockOverflowMenu.Close(ToolStripDropDownCloseReason.AppClicked);
+
+            while (_gameDockOverflowMenu.Items.Count > 0)
+            {
+                var item = _gameDockOverflowMenu.Items[0];
+                _gameDockOverflowMenu.Items.RemoveAt(0);
+                item.Dispose();
+            }
+
+            var count = 0;
+            if (bridgeReady && pane != null)
+            {
+                foreach (var definition in GameDockAllSurfaces)
+                {
+                    var surfaceId = definition.Key;
+                    if (IsQuickGameDockSurface(surfaceId)
+                        || !pane.AvailableSurfaces.Contains(surfaceId))
+                        continue;
+
+                    var item = new ToolStripMenuItem(definition.Value);
+                    item.Tag = surfaceId;
+                    item.Font = Font;
+                    item.ForeColor = ForeColor;
+                    item.AccessibleName = "Open " + definition.Value + " for " + profileName;
+                    item.Click += delegate { QueueGameDockSurfaceOpen(surfaceId); };
+                    _gameDockOverflowMenu.Items.Add(item);
+                    count++;
+                }
+            }
+
+            _gameDockOverflowMenu.AccessibleName = "Additional game menus for " + profileName;
+            _gameDockOverflowButton.Enabled = bridgeReady && count > 0;
+            _gameDockOverflowButton.AccessibleName = _gameDockOverflowButton.Enabled
+                ? "Open additional game menus for " + profileName + ", " + count + " available"
+                : "Additional game menus for " + profileName + " unavailable";
+            SetButtonSelected(_gameDockOverflowButton, false);
+        }
+
+        private void ShowGameDockOverflowMenu()
+        {
+            if (_isClosing
+                || _gameDockOverflowButton == null
+                || !_gameDockOverflowButton.Enabled
+                || _gameDockOverflowMenu == null
+                || _gameDockOverflowMenu.IsDisposed
+                || _gameDockOverflowMenu.Items.Count == 0)
+                return;
+
+            var buttonBounds = _gameDockOverflowButton.RectangleToScreen(
+                _gameDockOverflowButton.ClientRectangle
+            );
+            var workingArea = Screen.FromControl(_gameDockOverflowButton).WorkingArea;
+            var availableAbove = Math.Max(
+                DpiMetric(96),
+                buttonBounds.Top - workingArea.Top - DpiMetric(8)
+            );
+            _gameDockOverflowMenu.MaximumSize = new Size(DpiMetric(320), availableAbove);
+            _gameDockOverflowMenu.Show(
+                _gameDockOverflowButton,
+                new Point(0, 0),
+                ToolStripDropDownDirection.AboveRight
+            );
+        }
+
+        private void QueueGameDockSurfaceOpen(string surfaceId)
+        {
+            if (_isClosing
+                || !IsGameDockSurface(surfaceId)
+                || !IsHandleCreated
+                || IsDisposed
+                || Disposing)
+                return;
+
+            // Let the native ContextMenuStrip finish its click/close lifecycle before a Cards -> Game
+            // transition rebuilds the overflow items. Pin the deferred action to the account that owned
+            // the menu at click time so a concurrent profile switch cannot retarget the action.
+            var expectedProfileId = _workspaceState.ActiveProfileId;
+            BeginInvoke(new Action(delegate
+            {
+                if (_isClosing || IsDisposed || Disposing) return;
+                if (!string.Equals(
+                    expectedProfileId,
+                    _workspaceState.ActiveProfileId,
+                    StringComparison.OrdinalIgnoreCase
+                ))
+                    return;
+                OpenGameSurface(surfaceId);
+            }));
+        }
+
+        private ToolStripItem FindGameDockOverflowItem(string surfaceId)
+        {
+            if (_gameDockOverflowMenu == null || string.IsNullOrWhiteSpace(surfaceId)) return null;
+            foreach (ToolStripItem item in _gameDockOverflowMenu.Items)
+            {
+                if (string.Equals(item.Tag as string, surfaceId, StringComparison.OrdinalIgnoreCase))
+                    return item;
+            }
+            return null;
+        }
+
+        private void SendContentView(AccountPane pane)
+        {
+            if (pane == null || !pane.WorkspaceBridgeReady) return;
+            TryPostWorkspaceBridgeMessage(
+                pane,
+                new WorkspaceBridgeMessage
+                {
+                    Type = WorkspaceBridgeProtocol.SetViewType,
+                    Protocol = WorkspaceBridgeProtocol.Version,
+                    ViewMode = pane.CardsViewActive ? "cards" : "game"
+                }
+            );
+        }
+
+        private void SetContentView(bool cards)
+        {
+            SetContentView(_workspaceState.ActiveProfileId, cards);
+        }
+
+        private void SetContentView(string profileId, bool cards)
+        {
+            ProfileDefinition profile;
+            if (!ProfileRegistry.TryGet(profileId, out profile)) return;
+            var pane = GetPaneForProfile(profileId);
+            if (_workspaceState.CardsViewByProfile == null)
+                _workspaceState.CardsViewByProfile = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            _workspaceState.CardsViewByProfile[profile.Id] = cards;
+            if (pane != null)
+            {
+                pane.CardsViewActive = cards;
+                SendContentView(pane);
+            }
+            if (!_smokeMode) PersistWorkspaceState();
+            if (string.Equals(
+                profile.Id,
+                _workspaceState.ActiveProfileId,
+                StringComparison.OrdinalIgnoreCase
+            ))
+                UpdateGameDock();
+        }
+
+        private void OpenGameSurface(string surfaceId)
+        {
+            if (!IsGameDockSurface(surfaceId)) return;
+            var pane = GetPaneForProfile(_workspaceState.ActiveProfileId);
+            if (pane == null
+                || !pane.WorkspaceBridgeReady
+                || !pane.AvailableSurfaces.Contains(surfaceId)
+                || pane.View == null
+                || pane.View.CoreWebView2 == null)
+                return;
+
+            if (pane.CardsViewActive) SetContentView(false);
+
+            var requestId = pane.Profile.Id + "-" + Interlocked.Increment(ref _bridgeRequestSequence);
+            ClearDockOpenFeedback();
+            _latestDockUiRequestByProfile[pane.Profile.Id] = requestId;
+            pane.PendingWorkspaceRequests[requestId] = surfaceId;
+            try
+            {
+                pane.View.CoreWebView2.PostWebMessageAsJson(
+                    WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.OpenSurfaceType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = requestId,
+                        SurfaceId = surfaceId
+                    })
+                );
+            }
+            catch
+            {
+                pane.PendingWorkspaceRequests.Remove(requestId);
+                pane.ResetWorkspaceBridge();
+                SetDockOpenFailure(pane, surfaceId, requestId);
+                UpdateGameDock();
+            }
+        }
+
+        private void ClearDockOpenFeedback()
+        {
+            _dockFeedbackProfileId = null;
+            _dockFeedbackText = null;
+        }
+
+        private bool IsLatestDockUiRequest(AccountPane pane, string requestId)
+        {
+            string latest;
+            return pane != null && !string.IsNullOrWhiteSpace(requestId)
+                && _latestDockUiRequestByProfile.TryGetValue(pane.Profile.Id, out latest)
+                && string.Equals(latest, requestId, StringComparison.Ordinal);
+        }
+
+        private void SetDockOpenFailure(AccountPane pane, string surfaceId, string requestId)
+        {
+            if (pane == null || !IsCurrentPane(pane) || !IsLatestDockUiRequest(pane, requestId)
+                || !string.Equals(pane.Profile.Id, _workspaceState.ActiveProfileId, StringComparison.OrdinalIgnoreCase))
+                return;
+            string label;
+            if (!WorkspaceQuickSurfaceCatalog.TryGetLabel(surfaceId, out label)) return;
+            _dockFeedbackProfileId = pane.Profile.Id;
+            _dockFeedbackText = "Could not open " + label + " for " + pane.Profile.DisplayName
+                + ". Check the game menu or try again manually.";
+        }
+
+        private bool TryPostWorkspaceBridgeMessage(AccountPane pane, WorkspaceBridgeMessage message)
+        {
+            if (pane == null
+                || !IsCurrentPane(pane)
+                || pane.View == null
+                || pane.View.CoreWebView2 == null
+                || message == null)
+                return false;
+            try
+            {
+                pane.View.CoreWebView2.PostWebMessageAsJson(
+                    WorkspaceBridgeProtocol.Serialize(message)
+                );
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private bool IsCurrentBridgeMessageSource(AccountPane pane, string source)
+        {
+            if (pane == null
+                || !IsCurrentPane(pane)
+                || string.IsNullOrWhiteSpace(source)
+                || string.IsNullOrWhiteSpace(pane.CurrentUrl))
+                return false;
+            if (!_smokeMode && !IsAllowedGameUrl(source)) return false;
+
+            Uri sourceUri;
+            Uri currentUri;
+            if (!Uri.TryCreate(source, UriKind.Absolute, out sourceUri)
+                || !Uri.TryCreate(pane.CurrentUrl, UriKind.Absolute, out currentUri))
+                return false;
+            var components = UriComponents.SchemeAndServer | UriComponents.PathAndQuery;
+            var sourceDocument = sourceUri.GetComponents(components, UriFormat.SafeUnescaped);
+            var currentDocument = currentUri.GetComponents(components, UriFormat.SafeUnescaped);
+            return string.Equals(
+                sourceDocument,
+                currentDocument,
+                StringComparison.OrdinalIgnoreCase
+            );
+        }
+
+        private void CancelPptoolsForProfile(string profileId, string requestId = null)
+        {
+            PptoolsPendingRequest active;
+            if (profileId == null || !_pptoolsByProfile.TryGetValue(profileId, out active)) return;
+            if (requestId != null && !string.Equals(active.RequestId, requestId, StringComparison.Ordinal)) return;
+            _pptoolsByProfile.Remove(profileId);
+            active.Cancellation.Cancel();
+        }
+
+        private static bool IsPptoolsRequestId(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length > 100 ||
+                !value.StartsWith("pptools-", StringComparison.Ordinal)) return false;
+            foreach (var symbol in value)
+                if (!char.IsLetterOrDigit(symbol) && symbol != '-' && symbol != '_') return false;
+            return true;
+        }
+
+        private static bool IsPptoolsLeaderId(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length > 128) return false;
+            foreach (var symbol in value)
+                if (char.IsControl(symbol)) return false;
+            return true;
+        }
+
+        [DataContract]
+        private sealed class PptoolsAttackerInput
+        {
+            [DataMember(Name = "pokemon", IsRequired = true)] public string Pokemon { get; set; }
+            [DataMember(Name = "level", IsRequired = true)] public int Level { get; set; }
+            [DataMember(Name = "trainerLevel", IsRequired = true)] public int TrainerLevel { get; set; }
+            [DataMember(Name = "qualityTier", IsRequired = true)] public string QualityTier { get; set; }
+            [DataMember(Name = "quality", IsRequired = true)] public string Quality { get; set; }
+            [DataMember(Name = "exactMultiplier", IsRequired = true)] public double ExactMultiplier { get; set; }
+            [DataMember(Name = "nature", IsRequired = true)] public string Nature { get; set; }
+            [DataMember(Name = "gender", IsRequired = true)] public string Gender { get; set; }
+            [DataMember(Name = "isShiny", IsRequired = true)] public bool IsShiny { get; set; }
+            [DataMember(Name = "isStarter", IsRequired = true)] public bool IsStarter { get; set; }
+            [DataMember(Name = "expBuff", IsRequired = true)] public double ExpBuff { get; set; }
+            [DataMember(Name = "ivs", IsRequired = true)] public PptoolsAttackerIvs Ivs { get; set; }
+        }
+
+        // Read dynamic JSON primitives before typed serialization: the serializer
+        // otherwise coerces e.g. "false" into bool false.
+        [DataContract]
+        private sealed class PptoolsWireInput
+        {
+            [DataMember(Name = "pokemon", IsRequired = true)] public object Pokemon { get; set; }
+            [DataMember(Name = "level", IsRequired = true)] public object Level { get; set; }
+            [DataMember(Name = "trainerLevel", IsRequired = true)] public object TrainerLevel { get; set; }
+            [DataMember(Name = "qualityTier", IsRequired = true)] public object QualityTier { get; set; }
+            [DataMember(Name = "quality", IsRequired = true)] public object Quality { get; set; }
+            [DataMember(Name = "exactMultiplier", IsRequired = true)] public object ExactMultiplier { get; set; }
+            [DataMember(Name = "nature", IsRequired = true)] public object Nature { get; set; }
+            [DataMember(Name = "gender", IsRequired = true)] public object Gender { get; set; }
+            [DataMember(Name = "isShiny", IsRequired = true)] public object IsShiny { get; set; }
+            [DataMember(Name = "isStarter", IsRequired = true)] public object IsStarter { get; set; }
+            [DataMember(Name = "expBuff", IsRequired = true)] public object ExpBuff { get; set; }
+            [DataMember(Name = "ivs", IsRequired = true)] public PptoolsWireIvs Ivs { get; set; }
+        }
+
+        [DataContract]
+        private sealed class PptoolsWireIvs
+        {
+            [DataMember(Name = "hp", IsRequired = true)] public object Hp { get; set; }
+            [DataMember(Name = "atk", IsRequired = true)] public object Atk { get; set; }
+            [DataMember(Name = "def", IsRequired = true)] public object Def { get; set; }
+            [DataMember(Name = "spAtk", IsRequired = true)] public object SpAtk { get; set; }
+            [DataMember(Name = "spDef", IsRequired = true)] public object SpDef { get; set; }
+            [DataMember(Name = "speed", IsRequired = true)] public object Speed { get; set; }
+        }
+
+        [DataContract]
+        private sealed class PptoolsAttackerIvs
+        {
+            [DataMember(Name = "hp", IsRequired = true)] public int Hp { get; set; }
+            [DataMember(Name = "atk", IsRequired = true)] public int Atk { get; set; }
+            [DataMember(Name = "def", IsRequired = true)] public int Def { get; set; }
+            [DataMember(Name = "spAtk", IsRequired = true)] public int SpAtk { get; set; }
+            [DataMember(Name = "spDef", IsRequired = true)] public int SpDef { get; set; }
+            [DataMember(Name = "speed", IsRequired = true)] public int Speed { get; set; }
+        }
+
+        private static bool IsPptoolsText(string value, int limit)
+        {
+            if (string.IsNullOrWhiteSpace(value) || value.Length > limit) return false;
+            foreach (var symbol in value)
+                if (char.IsControl(symbol)) return false;
+            return true;
+        }
+
+        private static bool TryPptoolsNumber(object raw, double min, double max, out double result)
+        {
+            result = 0;
+            if (!(raw is int || raw is long || raw is decimal || raw is double || raw is float))
+                return false;
+            result = Convert.ToDouble(raw, System.Globalization.CultureInfo.InvariantCulture);
+            return !double.IsNaN(result) && !double.IsInfinity(result) && result >= min && result <= max;
+        }
+
+        private static bool TryPptoolsInteger(object raw, int min, int max, out int result)
+        {
+            result = 0;
+            double number;
+            if (!TryPptoolsNumber(raw, min, max, out number) || Math.Truncate(number) != number)
+                return false;
+            result = (int)number;
+            return true;
+        }
+
+        private static bool IsPptoolsQuality(string value)
+        {
+            return value == "weak" || value == "common" || value == "uncommon" || value == "rare" ||
+                value == "epic" || value == "legendary" || value == "mythical";
+        }
+
+        private static string JsonStringForScript(string value)
+        {
+            var serializer = new DataContractJsonSerializer(typeof(string));
+            using (var stream = new MemoryStream())
+            {
+                serializer.WriteObject(stream, value);
+                return Encoding.UTF8.GetString(stream.ToArray());
+            }
+        }
+
+        internal static bool TryBuildCanonicalPptoolsInput(WorkspaceBridgeMessage message, out string canonicalJson)
+        {
+            canonicalJson = null;
+            if (message == null || message.LeaderLevel < 1 || message.LeaderLevel > 10000 ||
+                string.IsNullOrWhiteSpace(message.LeaderSpeciesId) ||
+                message.LeaderSpeciesId.Length > 80 || string.IsNullOrWhiteSpace(message.InputJson) ||
+                Encoding.UTF8.GetByteCount(message.InputJson) > PptoolsBackgroundExecutor.MaxInputBytes) return false;
+            try
+            {
+                // Read raw JSON types, then serialize a separate, explicitly allowed shape.
+                // Extras (including trainer buffs) never enter the third-party payload.
+                var settings = new DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true };
+                var reader = new DataContractJsonSerializer(typeof(PptoolsWireInput), settings);
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(message.InputJson)))
+                {
+                    var input = reader.ReadObject(stream) as PptoolsWireInput;
+                    int level, trainerLevel, hp, atk, def, spAtk, spDef, speed;
+                    double exactMultiplier, expBuff;
+                    if (input == null || !IsPptoolsText(input.Pokemon as string, 100) ||
+                        !string.Equals(input.Pokemon as string, message.LeaderSpeciesId, StringComparison.Ordinal) ||
+                        !TryPptoolsInteger(input.Level, 1, 10000, out level) || level != message.LeaderLevel ||
+                        !TryPptoolsInteger(input.TrainerLevel, 1, 10000, out trainerLevel) ||
+                        !IsPptoolsQuality(input.QualityTier as string) ||
+                        !string.Equals(input.Quality as string, input.QualityTier as string, StringComparison.Ordinal) ||
+                        !TryPptoolsNumber(input.ExactMultiplier, 0.01, 10, out exactMultiplier) ||
+                        !IsPptoolsText(input.Nature as string, 100) ||
+                        !(input.Gender is string) ||
+                        ((string)input.Gender != "male" && (string)input.Gender != "female" &&
+                            (string)input.Gender != "genderless") ||
+                        !(input.IsShiny is bool) || !(input.IsStarter is bool) ||
+                        !TryPptoolsNumber(input.ExpBuff, double.Epsilon, 1000000, out expBuff) ||
+                        input.Ivs == null ||
+                        !TryPptoolsInteger(input.Ivs.Hp, 0, 31, out hp) ||
+                        !TryPptoolsInteger(input.Ivs.Atk, 0, 31, out atk) ||
+                        !TryPptoolsInteger(input.Ivs.Def, 0, 31, out def) ||
+                        !TryPptoolsInteger(input.Ivs.SpAtk, 0, 31, out spAtk) ||
+                        !TryPptoolsInteger(input.Ivs.SpDef, 0, 31, out spDef) ||
+                        !TryPptoolsInteger(input.Ivs.Speed, 0, 31, out speed))
+                        return false;
+
+                    var clean = new PptoolsAttackerInput
+                    {
+                        Pokemon = (string)input.Pokemon,
+                        Level = level,
+                        TrainerLevel = trainerLevel,
+                        QualityTier = (string)input.QualityTier,
+                        Quality = (string)input.Quality,
+                        ExactMultiplier = exactMultiplier,
+                        Nature = (string)input.Nature,
+                        Gender = (string)input.Gender,
+                        IsShiny = (bool)input.IsShiny,
+                        IsStarter = (bool)input.IsStarter,
+                        ExpBuff = expBuff,
+                        Ivs = new PptoolsAttackerIvs
+                        {
+                            Hp = hp, Atk = atk, Def = def, SpAtk = spAtk, SpDef = spDef, Speed = speed
+                        }
+                    };
+                    using (var output = new MemoryStream())
+                    {
+                        new DataContractJsonSerializer(typeof(PptoolsAttackerInput), settings).WriteObject(output, clean);
+                        if (output.Length > PptoolsBackgroundExecutor.MaxInputBytes) return false;
+                        canonicalJson = Encoding.UTF8.GetString(output.ToArray());
+                        return true;
+                    }
+                }
+            }
+            catch (SerializationException) { return false; }
+            catch (FormatException) { return false; }
+            catch (OverflowException) { return false; }
+        }
+
+        private async Task<bool> IsSameNativePptoolsLeaderAsync(PptoolsPendingRequest request)
+        {
+            var pane = request == null ? null : request.Pane;
+            if (_isClosing || !IsCurrentPane(pane) || pane.View == null ||
+                pane.View.CoreWebView2 == null || request.NavigationId != pane.ActiveNavigationId ||
+                !IsAllowedGameUrl(pane.View.CoreWebView2.Source)) return false;
+            var source = @"(() => {
+                const doc = document, game = window.PokeIdle, hud = game?.PersistentHud?._teamHud;
+                const node = hud?.el, list = hud?._creatures;
+                if (!node?.isConnected || node.ownerDocument !== doc ||
+                    doc.querySelector('.pokeidle-team-hud') !== node || !Array.isArray(list)) return false;
+                const leaders = list.filter(creature => creature?.is_leader === true);
+                if (leaders.length !== 1) return false;
+                const item = leaders[0], id = String(item?.id ?? '').trim();
+                if (list.filter(creature => String(creature?.id ?? '').trim() === id).length !== 1) return false;
+                const species = String(item?.species_id ?? item?.species?.id ?? '').trim();
+                const teamBodies = new Set(doc.querySelectorAll('.pokeidle-team-panel > .pokeidle-panel__body, .pokeidle-team-panel .pokeidle-panel__body'));
+                const scenes = [...(game?.ReactiveWindows?.cached?.() || []),window.SceneManager?._scene];
+                for (const scene of scenes) {
+                    if (!teamBodies.has(scene?._panel?.body) || !Array.isArray(scene?._team?.member_ids)) continue;
+                    const roster = scene._team.member_ids.map(value => String(value ?? '').trim());
+                    if (roster.length !== list.length || roster.some(value => !list.some(item => String(item?.id ?? '').trim() === value))) continue;
+                    if (String(scene._team.leader_id ?? '').trim() !== id) return false;
+                }
+                const profileIds = [game?.WorldPresence?.getSelfTrainerId?.(),
+                    game?.Auth?.getTrainerSummary?.()?.id]
+                    .filter(value => value != null && String(value).trim()).map(value => String(value).trim());
+                if (!profileIds.length || profileIds.some(value => value !== profileIds[0])) return false;
+                return profileIds[0] === __PROFILE__ && id === __ID__ &&
+                    item.level === __LEVEL__ && species === __SPECIES__;
+            })()";
+            source = source.Replace("__ID__", JsonStringForScript(request.LeaderId))
+                .Replace("__LEVEL__", request.LeaderLevel.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                .Replace("__SPECIES__", JsonStringForScript(request.LeaderSpeciesId))
+                .Replace("__PROFILE__", JsonStringForScript(request.NativeProfileId));
+            try
+            {
+                var cancellation = request.Cancellation.Token;
+                cancellation.ThrowIfCancellationRequested();
+                var proof = pane.View.CoreWebView2.ExecuteScriptAsync(source);
+                using (var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
+                {
+                    var elapsed = Task.Delay(10000, limit.Token);
+                    if (await Task.WhenAny(proof, elapsed) != proof)
+                    {
+                        // WebView2 cannot cancel a running ExecuteScriptAsync; observe late faults.
+                        var faultObserver = proof.ContinueWith(task => { var ignored = task.Exception; },
+                            TaskContinuationOptions.OnlyOnFaulted);
+                        return false;
+                    }
+                    limit.Cancel();
+                }
+                var result = await proof;
+                return !cancellation.IsCancellationRequested && result == "true" &&
+                    IsCurrentPane(pane) && request.NavigationId == pane.ActiveNavigationId;
+            }
+            catch { return false; }
+        }
+
+        private void PostPptoolsResult(AccountPane pane, string requestId, bool ok,
+            string error = null, string resultJson = null)
+        {
+            if (_isClosing || !IsCurrentPane(pane)) return;
+            TryPostWorkspaceBridgeMessage(pane, new WorkspaceBridgeMessage
+            {
+                Type = WorkspaceBridgeProtocol.PptoolsResultType,
+                Protocol = WorkspaceBridgeProtocol.Version,
+                RequestId = requestId,
+                Ok = ok,
+                Error = error,
+                ResultJson = resultJson
+            });
+        }
+
+        private async Task ExecutePptoolsRequestAsync(AccountPane pane, WorkspaceBridgeMessage message)
+        {
+            if (!IsCurrentPane(pane)) return;
+            string canonicalInput;
+            if (!_pptoolsExecutor.Available || !IsPptoolsRequestId(message.RequestId) ||
+                !IsPptoolsLeaderId(message.LeaderId) ||
+                !IsPptoolsLeaderId(message.NativeProfileId) ||
+                !TryBuildCanonicalPptoolsInput(message, out canonicalInput))
+            {
+                PostPptoolsResult(pane, message.RequestId, false, "Executor ou dados do líder indisponíveis.");
+                return;
+            }
+
+            CancelPptoolsForProfile(pane.Profile.Id);
+            var request = new PptoolsPendingRequest
+            {
+                Pane = pane,
+                RequestId = message.RequestId,
+                LeaderId = message.LeaderId,
+                LeaderLevel = message.LeaderLevel,
+                LeaderSpeciesId = message.LeaderSpeciesId,
+                NativeProfileId = message.NativeProfileId,
+                NavigationId = pane.ActiveNavigationId,
+                Cancellation = new CancellationTokenSource()
+            };
+            _pptoolsByProfile[pane.Profile.Id] = request;
+            string result = null, error = null;
+            try
+            {
+                try
+                {
+                    await _pptoolsEnvironmentGate.WaitAsync(request.Cancellation.Token);
+                    try
+                    {
+                        if (!request.Cancellation.IsCancellationRequested &&
+                            !await IsSameNativePptoolsLeaderAsync(request))
+                            error = "Líder ou perfil alterado antes da consulta PPTools.";
+                        else if (!request.Cancellation.IsCancellationRequested)
+                            result = await _pptoolsExecutor.RunAsync(this, request.RequestId,
+                                canonicalInput, request.Cancellation.Token);
+                    }
+                    finally { _pptoolsEnvironmentGate.Release(); }
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception failure)
+                {
+                    error = failure is TimeoutException ? "Tempo de simulação esgotado." : failure.Message;
+                }
+                PptoolsPendingRequest active;
+                var isCurrent = _pptoolsByProfile.TryGetValue(pane.Profile.Id, out active)
+                    && object.ReferenceEquals(active, request);
+                if (isCurrent && !request.Cancellation.IsCancellationRequested &&
+                    !_isClosing && IsCurrentPane(pane) && request.NavigationId == pane.ActiveNavigationId)
+                {
+                    if (await IsSameNativePptoolsLeaderAsync(request))
+                    {
+                        if (!request.Cancellation.IsCancellationRequested &&
+                            _pptoolsByProfile.TryGetValue(pane.Profile.Id, out active) &&
+                            object.ReferenceEquals(active, request))
+                            PostPptoolsResult(pane, request.RequestId, result != null,
+                                result == null ? error ?? "Consulta PPTools indisponível." : null, result);
+                    }
+                    else if (!request.Cancellation.IsCancellationRequested &&
+                        _pptoolsByProfile.TryGetValue(pane.Profile.Id, out active) &&
+                        object.ReferenceEquals(active, request))
+                        PostPptoolsResult(pane, request.RequestId, false, "O líder mudou durante a simulação.");
+                }
+            }
+            finally
+            {
+                PptoolsPendingRequest active;
+                if (_pptoolsByProfile.TryGetValue(pane.Profile.Id, out active) &&
+                    object.ReferenceEquals(active, request)) _pptoolsByProfile.Remove(pane.Profile.Id);
+                request.Cancellation.Dispose();
+            }
+        }
+
+        private void HandleWorkspaceBridgeMessage(AccountPane pane, string json)
+        {
+            if (!IsCurrentPane(pane)) return;
+            var message = WorkspaceBridgeProtocol.Deserialize(json);
+            if (message == null || message.Protocol != WorkspaceBridgeProtocol.Version) return;
+
+            if (string.Equals(message.Type, WorkspaceBridgeProtocol.PptoolsRunType, StringComparison.Ordinal))
+            {
+                var pending = ExecutePptoolsRequestAsync(pane, message);
+                return;
+            }
+            if (string.Equals(message.Type, WorkspaceBridgeProtocol.PptoolsCancelType, StringComparison.Ordinal))
+            {
+                if (IsPptoolsRequestId(message.RequestId))
+                    CancelPptoolsForProfile(pane.Profile.Id, message.RequestId);
+                return;
+            }
+
+            if (string.Equals(
+                message.Type,
+                WorkspaceBridgeProtocol.CapabilitiesType,
+                StringComparison.Ordinal
+            ))
+            {
+                pane.ResetWorkspaceBridge();
+                var recognized = 0;
+                if (message.Surfaces != null)
+                {
+                    foreach (var surface in message.Surfaces)
+                    {
+                        if (surface == null || !IsGameDockSurface(surface.Id)) continue;
+                        recognized++;
+                        if (surface.Available) pane.AvailableSurfaces.Add(surface.Id);
+                    }
+                }
+                pane.WorkspaceBridgeReady = recognized > 0
+                    && !string.IsNullOrWhiteSpace(message.RequestId);
+                if (!TryPostWorkspaceBridgeMessage(
+                    pane,
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.CapabilitiesAcceptedType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = message.RequestId,
+                        Ok = pane.WorkspaceBridgeReady
+                    }
+                ))
+                {
+                    pane.ResetWorkspaceBridge();
+                }
+                else if (pane.WorkspaceBridgeReady)
+                {
+                    SendContentView(pane);
+                }
+                if (string.Equals(
+                    pane.Profile.Id,
+                    _workspaceState.ActiveProfileId,
+                    StringComparison.OrdinalIgnoreCase
+                ))
+                    UpdateGameDock();
+                return;
+            }
+
+            if (string.Equals(
+                message.Type,
+                WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                StringComparison.Ordinal
+            ))
+            {
+                string expectedSurface;
+                if (string.IsNullOrWhiteSpace(message.RequestId)
+                    || !pane.PendingWorkspaceRequests.TryGetValue(
+                        message.RequestId,
+                        out expectedSurface
+                    )
+                    || !string.Equals(
+                        expectedSurface,
+                        message.SurfaceId,
+                        StringComparison.OrdinalIgnoreCase
+                    ))
+                    return;
+                pane.PendingWorkspaceRequests.Remove(message.RequestId);
+                if (!message.Ok && IsGameDockSurface(message.SurfaceId))
+                {
+                    pane.AvailableSurfaces.Remove(message.SurfaceId);
+                    SetDockOpenFailure(pane, message.SurfaceId, message.RequestId);
+                    if (string.Equals(
+                        pane.Profile.Id,
+                        _workspaceState.ActiveProfileId,
+                        StringComparison.OrdinalIgnoreCase
+                    ))
+                        UpdateGameDock();
+                }
+                else if (message.Ok && IsLatestDockUiRequest(pane, message.RequestId)
+                    && string.Equals(
+                    pane.Profile.Id, _workspaceState.ActiveProfileId, StringComparison.OrdinalIgnoreCase
+                ))
+                {
+                    ClearDockOpenFeedback();
+                    UpdateGameDock();
+                }
+            }
+        }
+
+        private static bool IsGameDockSurface(string surfaceId)
+        {
+            if (string.IsNullOrWhiteSpace(surfaceId)) return false;
+            foreach (var definition in GameDockAllSurfaces)
+                if (string.Equals(definition.Key, surfaceId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            return false;
+        }
+
+        private bool IsQuickGameDockSurface(string surfaceId)
+        {
+            if (string.IsNullOrWhiteSpace(surfaceId)) return false;
+            foreach (var favorite in GetQuickGameDockSurfaces(_workspaceState.ActiveProfileId))
+                if (string.Equals(favorite, surfaceId, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            return false;
+        }
 
         private static FlowLayoutPanel MakeToolbarGroup()
         {
@@ -1173,27 +2396,11 @@ namespace PokePixel.CoupledWorkspace
             _rightAccountButton.Visible = dual && (!focusMode || !activeOnLeft);
             _leftStatus.Visible = dual && (!focusMode || activeOnLeft);
             _rightStatus.Visible = dual && (!focusMode || !activeOnLeft);
-            _activeProfileLabel.Visible = dual && !focusMode && expanded;
 
             var leftName = ProfileRegistry.Get(_workspaceState.LeftProfileId).DisplayName;
             var rightName = ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName;
-            var inlineActiveCue = !expanded || focusMode;
-            var leftActive = dual && string.Equals(
-                _workspaceState.ActiveProfileId,
-                _workspaceState.LeftProfileId,
-                StringComparison.OrdinalIgnoreCase
-            );
-            var rightActive = dual && string.Equals(
-                _workspaceState.ActiveProfileId,
-                _workspaceState.RightProfileId,
-                StringComparison.OrdinalIgnoreCase
-            );
-            _leftAccountButton.Text = inlineActiveCue && leftActive
-                ? "ACTIVE " + leftName
-                : leftName;
-            _rightAccountButton.Text = inlineActiveCue && rightActive
-                ? "ACTIVE " + rightName
-                : rightName;
+            _leftAccountButton.Text = leftName;
+            _rightAccountButton.Text = rightName;
 
             ArrangeDualLayoutGroup(focusMode, activeOnLeft);
             RefreshHealthLabelsForLayout(expanded);
@@ -1245,8 +2452,14 @@ namespace PokePixel.CoupledWorkspace
             MinimumSize = new Size(DpiMetric(1180), DpiMetric(600));
             if (_rootLayout != null && _rootLayout.RowStyles.Count > 0)
                 _rootLayout.RowStyles[0].Height = DpiMetric(44);
+            if (_rootLayout != null && _rootLayout.RowStyles.Count > 2)
+                _rootLayout.RowStyles[2].Height = _gameDock != null && _gameDock.Visible ? DpiMetric(44) : 0;
             if (_commandDeck != null)
                 _commandDeck.Padding = DpiPadding(8, 6, 8, 6);
+            if (_gameDock != null)
+                _gameDock.Padding = DpiPadding(8, 6, 8, 6);
+            if (_gameDockEdge != null)
+                _gameDockEdge.Height = DpiMetric(1);
             if (_split != null)
             {
                 _split.SplitterWidth = DpiMetric(8);
@@ -1256,7 +2469,7 @@ namespace PokePixel.CoupledWorkspace
             if (_leftHost != null) _leftHost.Padding = new Padding(0, DpiMetric(2), 0, 0);
             if (_rightHost != null) _rightHost.Padding = new Padding(0, DpiMetric(2), 0, 0);
 
-            var groups = new[] { _leftCommandGroup, _dualLayoutGroup, _rightCommandGroup };
+            var groups = new[] { _leftCommandGroup, _dualLayoutGroup, _rightCommandGroup, _gameDockGroup };
             foreach (var group in groups)
             {
                 if (group == null) continue;
@@ -1279,7 +2492,6 @@ namespace PokePixel.CoupledWorkspace
                 _focusButton,
                 _rightAccountButton,
                 _rightStatus,
-                _activeProfileLabel,
                 _scopeSelector,
                 _homeButton,
                 _reloadButton,
@@ -1291,12 +2503,55 @@ namespace PokePixel.CoupledWorkspace
                 control.Height = DpiMetric(28);
                 control.Margin = DpiPadding(3, 2, 3, 2);
                 var button = control as Button;
-                if (button != null) button.FlatAppearance.BorderSize = DpiMetric(2);
+                if (button != null) button.FlatAppearance.BorderSize = DpiMetric(button.Focused ? 2 : 1);
+            }
+
+            if (_gameDockProfileLabel != null)
+            {
+                _gameDockProfileLabel.Height = DpiMetric(28);
+                _gameDockProfileLabel.Width = DpiMetric(132);
+                _gameDockProfileLabel.Margin = DpiPadding(3, 2, 3, 2);
+            }
+            foreach (var accountButton in _gameDockAccountButtons.Values)
+            {
+                accountButton.Width = DpiMetric(80);
+                accountButton.Height = DpiMetric(28);
+                accountButton.Margin = DpiPadding(3, 2, 3, 2);
+                accountButton.FlatAppearance.BorderSize = DpiMetric(accountButton.Focused ? 2 : 1);
+            }
+            if (_gameDockAvailabilityLabel != null)
+            {
+                _gameDockAvailabilityLabel.Height = DpiMetric(28);
+                _gameDockAvailabilityLabel.Width = DpiMetric(112);
+                _gameDockAvailabilityLabel.Margin = DpiPadding(3, 2, 3, 2);
+            }
+            foreach (var viewButton in new[] { _cardsViewButton, _gameViewButton })
+            {
+                if (viewButton == null) continue;
+                viewButton.Width = DpiMetric(64);
+                viewButton.Height = DpiMetric(28);
+                viewButton.Margin = DpiPadding(3, 2, 3, 2);
+                viewButton.FlatAppearance.BorderSize = DpiMetric(viewButton.Focused ? 2 : 1);
+            }
+            foreach (var button in _gameDockQuickButtons)
+            {
+                button.Width = DpiMetric(84);
+                button.Height = DpiMetric(28);
+                button.Margin = DpiPadding(3, 2, 3, 2);
+                button.FlatAppearance.BorderSize = DpiMetric(button.Focused ? 2 : 1);
+            }
+            if (_gameDockOverflowButton != null)
+            {
+                _gameDockOverflowButton.Width = DpiMetric(72);
+                _gameDockOverflowButton.Height = DpiMetric(28);
+                _gameDockOverflowButton.Margin = DpiPadding(3, 2, 3, 2);
+                _gameDockOverflowButton.FlatAppearance.BorderSize = DpiMetric(_gameDockOverflowButton.Focused ? 2 : 1);
             }
 
             ApplyResponsiveCommandDeckState();
             PerformLayout();
             LayoutCommandDeck();
+            UpdateGameDock();
         }
 
         private void ArrangeDualLayoutGroup(bool focusMode, bool activeOnLeft)
@@ -1352,6 +2607,8 @@ namespace PokePixel.CoupledWorkspace
             _dualLayoutGroup.SuspendLayout();
             try
             {
+                for (var i = 0; i < order.Length; i++)
+                    order[i].TabIndex = i;
                 for (var i = order.Length - 1; i >= 0; i--)
                     _dualLayoutGroup.Controls.SetChildIndex(order[i], 0);
             }
@@ -1364,16 +2621,15 @@ namespace PokePixel.CoupledWorkspace
         private void SetButtonSelected(Button button, bool selected, bool externalFocusCue)
         {
             if (button == null) return;
-            var gold = Color.FromArgb(0xE3, 0xC0, 0x54);
-            var cyan = Color.FromArgb(0x54, 0xBA, 0xD2);
-            var stone = Color.FromArgb(0x5F, 0x58, 0x54);
+            var gold = WorkspaceChrome.Selected;
+            var cyan = WorkspaceChrome.Focus;
+            var stone = WorkspaceChrome.Line;
+            button.FlatAppearance.BorderSize = DpiMetric(button.Focused || externalFocusCue ? 2 : 1);
             button.Tag = selected;
             button.FlatAppearance.BorderColor = button.Focused || externalFocusCue
                 ? cyan
                 : selected ? gold : stone;
-            button.BackColor = selected
-                ? stone
-                : Color.FromArgb(0x23, 0x22, 0x28);
+            button.BackColor = WorkspaceChrome.Interactive;
             button.ForeColor = selected ? gold : ForeColor;
         }
 
@@ -1384,7 +2640,7 @@ namespace PokePixel.CoupledWorkspace
 
         private void UpdateCommandDeck()
         {
-            if (_singleModeButton == null) return;
+            if (_isClosing || _singleModeButton == null) return;
             _updatingCommandDeck = true;
             try
             {
@@ -1439,8 +2695,6 @@ namespace PokePixel.CoupledWorkspace
                 _focusButton.AccessibleName = _workspaceState.FocusMode
                     ? "Restore dual layout"
                     : "Focus active account";
-                var activeProfile = ProfileRegistry.Get(_workspaceState.ActiveProfileId);
-                _activeProfileLabel.Text = "ACTIVE: " + activeProfile.DisplayName.ToUpperInvariant();
                 _scopeSelector.SelectedIndex = _workspaceState.CommandScope == CommandScope.Both ? 1 : 0;
                 UpdatePaneRails();
             }
@@ -1449,6 +2703,7 @@ namespace PokePixel.CoupledWorkspace
                 _updatingCommandDeck = false;
             }
             LayoutCommandDeck();
+            UpdateGameDock();
         }
 
         private void SetActiveProfile(string profileId)
@@ -1479,6 +2734,8 @@ namespace PokePixel.CoupledWorkspace
                 return;
             }
 
+            if (!string.Equals(_workspaceState.ActiveProfileId, profile.Id, StringComparison.OrdinalIgnoreCase))
+                ClearDockOpenFeedback();
             _workspaceState.ActiveProfileId = profile.Id;
             if (_workspaceState.FocusMode) ApplyFocusLayout();
             if (!_smokeMode) PersistWorkspaceState();
@@ -1527,6 +2784,7 @@ namespace PokePixel.CoupledWorkspace
 
         private Form CreateMaintenanceDrawer()
         {
+            _drawerQuickSelectors.Clear();
             var drawer = new MaintenanceDrawerForm();
             drawer.AutoScaleDimensions = new SizeF(96.0f, 96.0f);
             drawer.AutoScaleMode = AutoScaleMode.Dpi;
@@ -1537,7 +2795,7 @@ namespace PokePixel.CoupledWorkspace
             drawer.Height = 430;
             drawer.MinimumSize = new Size(360, 220);
             drawer.MaximumSize = new Size(360, 480);
-            drawer.BackColor = Color.FromArgb(0x5F, 0x58, 0x54);
+            drawer.BackColor = WorkspaceChrome.Line;
             drawer.ForeColor = ForeColor;
             drawer.Font = Font;
             drawer.KeyPreview = true;
@@ -1545,8 +2803,8 @@ namespace PokePixel.CoupledWorkspace
 
             var surface = new Panel();
             surface.Dock = DockStyle.Fill;
-            surface.BackColor = Color.FromArgb(0x5F, 0x58, 0x54);
-            surface.Padding = new Padding(2);
+            surface.BackColor = WorkspaceChrome.Line;
+            surface.Padding = new Padding(1);
             drawer.Controls.Add(surface);
             _maintenanceDrawerSurface = surface;
 
@@ -1554,7 +2812,7 @@ namespace PokePixel.CoupledWorkspace
             body.Dock = DockStyle.Fill;
             body.FlowDirection = FlowDirection.TopDown;
             body.WrapContents = false;
-            body.BackColor = Color.FromArgb(0x23, 0x22, 0x28);
+            body.BackColor = WorkspaceChrome.Window;
             surface.Controls.Add(body);
             _maintenanceDrawerBody = body;
 
@@ -1610,9 +2868,76 @@ namespace PokePixel.CoupledWorkspace
             _drawerErrorLabel = MakeDrawerText(326, 70);
             body.Controls.Add(_drawerErrorLabel);
 
+            body.Controls.Add(MakeDrawerHeading("ACCOUNT HEALTH (READ ONLY)"));
+            _drawerAccountsLabel = MakeDrawerText(326, 100);
+            body.Controls.Add(_drawerAccountsLabel);
+
             _drawerCopyButton = MakeButton("Copy diagnostics", 146, 0);
             _drawerCopyButton.Click += delegate { CopyDiagnostics(); };
             body.Controls.Add(_drawerCopyButton);
+
+            body.Controls.Add(MakeDrawerHeading("ACTIVE ACCOUNT ZOOM"));
+            var zoomRow = MakeToolbarGroup();
+            _drawerZoomSelector = MakeDrawerCombo(154, "Zoom for active account");
+            foreach (var factor in WorkspaceZoomPresets.Factors)
+                _drawerZoomSelector.Items.Add((int)Math.Round(factor * 100) + "%");
+            _drawerZoomSelector.SelectedIndexChanged += delegate
+            {
+                if (_refreshingDrawerZoom || _drawerZoomSelector.SelectedIndex < 0) return;
+                var factor = WorkspaceZoomPresets.Factors[_drawerZoomSelector.SelectedIndex];
+                SetProfileZoom(_workspaceState.ActiveProfileId, factor);
+            };
+            _drawerZoomResetButton = MakeButton("Reset 100%", 104, 0);
+            _drawerZoomResetButton.AccessibleName = "Reset active account zoom to 100 percent";
+            _drawerZoomResetButton.Click += delegate { SetProfileZoom(_workspaceState.ActiveProfileId, 1.0); };
+            zoomRow.Controls.Add(_drawerZoomSelector);
+            zoomRow.Controls.Add(_drawerZoomResetButton);
+            body.Controls.Add(zoomRow);
+
+            body.Controls.Add(MakeDrawerHeading("GAME DOCK SHORTCUTS"));
+            _drawerQuickProfileLabel = MakeDrawerText(326, 20);
+            body.Controls.Add(_drawerQuickProfileLabel);
+            _drawerEditQuickButton = MakeButton("Edit 7 shortcuts", 148, 0);
+            _drawerEditQuickButton.AccessibleName = "Edit seven Game Dock shortcuts for active account";
+            _drawerEditQuickButton.Click += delegate
+            {
+                _drawerQuickEditor.Visible = !_drawerQuickEditor.Visible;
+                _drawerEditQuickButton.Text = _drawerQuickEditor.Visible
+                    ? "Close shortcuts" : "Edit 7 shortcuts";
+                if (_drawerQuickEditor.Visible && _drawerQuickSelectors.Count > 0)
+                    _drawerQuickSelectors[0].Focus();
+            };
+            body.Controls.Add(_drawerEditQuickButton);
+
+            _drawerQuickEditor = new FlowLayoutPanel();
+            _drawerQuickEditor.FlowDirection = FlowDirection.TopDown;
+            _drawerQuickEditor.WrapContents = false;
+            _drawerQuickEditor.AutoSize = true;
+            _drawerQuickEditor.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            _drawerQuickEditor.Margin = Padding.Empty;
+            _drawerQuickEditor.Visible = false;
+            for (var slot = 0; slot < GameDockQuickSurfaces.Length; slot++)
+            {
+                var index = slot;
+                var row = MakeToolbarGroup();
+                var slotLabel = MakeLabel("Slot " + (index + 1), 56);
+                slotLabel.Height = 28;
+                slotLabel.TextAlign = ContentAlignment.MiddleLeft;
+                row.Controls.Add(slotLabel);
+                var selector = MakeDrawerCombo(246, "Quick slot " + (index + 1) + " destination");
+                foreach (var definition in GameDockAllSurfaces)
+                    selector.Items.Add(new QuickSurfaceChoice { Id = definition.Key, Label = definition.Value });
+                selector.SelectedIndexChanged += delegate
+                {
+                    if (_refreshingDrawerQuickEditor) return;
+                    var option = selector.SelectedItem as QuickSurfaceChoice;
+                    if (option != null) SetGameDockQuickSlot(_workspaceState.ActiveProfileId, index, option.Id);
+                };
+                _drawerQuickSelectors.Add(selector);
+                row.Controls.Add(selector);
+                _drawerQuickEditor.Controls.Add(row);
+            }
+            body.Controls.Add(_drawerQuickEditor);
 
             body.Controls.Add(MakeDrawerHeading("WORKSPACE"));
             _drawerResetLayoutButton = MakeButton("Reset layout", 122, 0);
@@ -1645,10 +2970,10 @@ namespace PokePixel.CoupledWorkspace
             };
             drawer.DpiChanged += delegate
             {
-                if (!drawer.IsHandleCreated || drawer.IsDisposed) return;
+                if (_isClosing || !drawer.IsHandleCreated || drawer.IsDisposed) return;
                 drawer.BeginInvoke(new Action(delegate
                 {
-                    if (drawer.IsDisposed) return;
+                    if (_isClosing || drawer.IsDisposed) return;
                     ApplyMaintenanceDrawerDpiMetrics();
                     PositionMaintenanceDrawer();
                 }));
@@ -1683,10 +3008,15 @@ namespace PokePixel.CoupledWorkspace
 
         private void ExitMaintenanceDrawerTabBoundary(bool forward)
         {
+            if (_isClosing) return;
             HideMaintenanceDrawer();
             BeginInvoke(new Action(delegate
             {
-                if (IsDisposed || _maintenanceButton == null || _maintenanceButton.IsDisposed)
+                if (_isClosing
+                    || IsDisposed
+                    || Disposing
+                    || _maintenanceButton == null
+                    || _maintenanceButton.IsDisposed)
                     return;
                 SelectNextControl(_maintenanceButton, forward, true, true, true);
             }));
@@ -1698,7 +3028,7 @@ namespace PokePixel.CoupledWorkspace
             label.Height = 22;
             label.Margin = new Padding(0, 8, 0, 2);
             label.Font = new Font(Font, FontStyle.Bold);
-            label.ForeColor = Color.FromArgb(0x54, 0xBA, 0xD2);
+            label.ForeColor = WorkspaceChrome.Focus;
             return label;
         }
 
@@ -1711,9 +3041,131 @@ namespace PokePixel.CoupledWorkspace
             return label;
         }
 
+        private BetterUiSelect MakeDrawerCombo(int width, string accessibleName)
+        {
+            return new BetterUiSelect
+            {
+                Width = width,
+                Height = 28,
+                Margin = new Padding(3, 2, 3, 2),
+                BackColor = WorkspaceChrome.Interactive,
+                ForeColor = ForeColor,
+                Font = Font,
+                AccessibleName = accessibleName
+            };
+        }
+
+        private void SetGameDockQuickSlot(string profileId, int index, string surfaceId)
+        {
+            if (_isClosing || !string.Equals(
+                profileId, _workspaceState.ActiveProfileId, StringComparison.OrdinalIgnoreCase
+            )) return;
+            string canonicalId;
+            if (!WorkspaceQuickSurfaceCatalog.TryGetCanonicalId(surfaceId, out canonicalId)
+                || index < 0 || index >= GameDockQuickSurfaces.Length) return;
+
+            var favorites = new List<string>(GetQuickGameDockSurfaces(profileId));
+            var otherIndex = favorites.FindIndex(id => string.Equals(
+                id, canonicalId, StringComparison.OrdinalIgnoreCase
+            ));
+            if (otherIndex == index) return;
+            if (otherIndex >= 0) favorites[otherIndex] = favorites[index];
+            favorites[index] = canonicalId;
+            _workspaceState.QuickSurfacesByProfile[profileId] = favorites;
+            if (!_smokeMode) PersistWorkspaceState();
+            UpdateGameDock();
+            RefreshQuickEditor();
+        }
+
+        private void RefreshQuickEditor()
+        {
+            if (_drawerQuickProfileLabel == null || _isClosing) return;
+            var profile = ProfileRegistry.Get(_workspaceState.ActiveProfileId);
+            _drawerQuickProfileLabel.Text = profile.DisplayName + " \u00B7 7 slots \u00B7 duplicate choices swap";
+            _drawerQuickProfileLabel.AccessibleName = "Game Dock shortcuts for "
+                + profile.DisplayName + ". Selecting a destination already in another slot"
+                + " swaps those two slots, so each menu remains unique.";
+            SetToolTipSafe(_drawerQuickProfileLabel, _drawerQuickProfileLabel.AccessibleName);
+            var favorites = GetQuickGameDockSurfaces(profile.Id);
+            _refreshingDrawerQuickEditor = true;
+            try
+            {
+                for (var i = 0; i < _drawerQuickSelectors.Count && i < favorites.Count; i++)
+                {
+                    var combo = _drawerQuickSelectors[i];
+                    for (var choice = 0; choice < combo.Items.Count; choice++)
+                    {
+                        var option = combo.Items[choice] as QuickSurfaceChoice;
+                        if (option == null || !string.Equals(
+                            option.Id, favorites[i], StringComparison.OrdinalIgnoreCase
+                        )) continue;
+                        if (combo.SelectedIndex != choice) combo.SelectedIndex = choice;
+                        break;
+                    }
+                }
+            }
+            finally { _refreshingDrawerQuickEditor = false; }
+        }
+
+        private bool TryApplyPaneZoom(AccountPane pane)
+        {
+            if (_isClosing || pane == null || !IsCurrentPane(pane)
+                || pane.View == null || pane.View.IsDisposed || !pane.IsInitialized)
+                return false;
+            try
+            {
+                double value;
+                if (!_workspaceState.ZoomByProfile.TryGetValue(pane.Profile.Id, out value)) value = 1.0;
+                pane.View.ZoomFactor = WorkspaceZoomPresets.Normalize(value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                pane.LastErrorText = "Zoom failed: " + ex.GetType().Name;
+                return false;
+            }
+        }
+
+        private void SetProfileZoom(string profileId, double factor)
+        {
+            if (_isClosing || !string.Equals(
+                profileId, _workspaceState.ActiveProfileId, StringComparison.OrdinalIgnoreCase
+            )) return;
+            factor = WorkspaceZoomPresets.Normalize(factor);
+            _workspaceState.ZoomByProfile[profileId] = factor;
+            var pane = GetPaneForProfile(profileId);
+            if (pane != null) TryApplyPaneZoom(pane);
+            if (!_smokeMode) PersistWorkspaceState();
+            RefreshZoomEditor();
+        }
+
+        private void RefreshZoomEditor()
+        {
+            if (_drawerZoomSelector == null || _isClosing) return;
+            double factor;
+            if (!_workspaceState.ZoomByProfile.TryGetValue(_workspaceState.ActiveProfileId, out factor))
+                factor = 1.0;
+            factor = WorkspaceZoomPresets.Normalize(factor);
+            _refreshingDrawerZoom = true;
+            try
+            {
+                for (var i = 0; i < WorkspaceZoomPresets.Factors.Length; i++)
+                {
+                    if (Math.Abs(WorkspaceZoomPresets.Factors[i] - factor) < 0.001)
+                    {
+                        if (_drawerZoomSelector.SelectedIndex != i) _drawerZoomSelector.SelectedIndex = i;
+                        break;
+                    }
+                }
+                _drawerZoomSelector.AccessibleName = "Zoom for active account "
+                    + ProfileRegistry.Get(_workspaceState.ActiveProfileId).DisplayName;
+            }
+            finally { _refreshingDrawerZoom = false; }
+        }
+
         private void PositionMaintenanceDrawer()
         {
-            if (_maintenanceDrawer == null || _maintenanceButton == null) return;
+            if (_isClosing || _maintenanceDrawer == null || _maintenanceButton == null) return;
             var trigger = _maintenanceButton.PointToScreen(
                 new Point(_maintenanceButton.Width, _maintenanceButton.Height)
             );
@@ -1753,13 +3205,13 @@ namespace PokePixel.CoupledWorkspace
 
         private void ApplyMaintenanceDrawerDpiMetrics()
         {
-            if (_maintenanceDrawer == null || _maintenanceDrawer.IsDisposed) return;
+            if (_isClosing || _maintenanceDrawer == null || _maintenanceDrawer.IsDisposed) return;
             var width = DrawerDpiMetric(360);
             _maintenanceDrawer.MinimumSize = new Size(width, DrawerDpiMetric(220));
             _maintenanceDrawer.MaximumSize = new Size(width, DrawerDpiMetric(480));
             _maintenanceDrawer.Width = width;
             if (_maintenanceDrawerSurface != null)
-                _maintenanceDrawerSurface.Padding = new Padding(DrawerDpiMetric(2));
+                _maintenanceDrawerSurface.Padding = new Padding(DrawerDpiMetric(1));
 
             var drawerButtons = new[]
             {
@@ -1768,6 +3220,8 @@ namespace PokePixel.CoupledWorkspace
                 _drawerReloadButton,
                 _drawerDevToolsButton,
                 _drawerCopyButton,
+                _drawerEditQuickButton,
+                _drawerZoomResetButton,
                 _drawerResetLayoutButton
             };
             foreach (var button in drawerButtons)
@@ -1780,7 +3234,7 @@ namespace PokePixel.CoupledWorkspace
                     DrawerDpiMetric(3),
                     DrawerDpiMetric(2)
                 );
-                button.FlatAppearance.BorderSize = DrawerDpiMetric(2);
+                button.FlatAppearance.BorderSize = DrawerDpiMetric(button.Focused ? 2 : 1);
             }
 
             var browserRow = _drawerHomeButton == null
@@ -1791,12 +3245,32 @@ namespace PokePixel.CoupledWorkspace
                 browserRow.Height = DrawerDpiMetric(32);
                 browserRow.MinimumSize = new Size(0, DrawerDpiMetric(32));
             }
+            if (_drawerZoomSelector != null)
+            {
+                _drawerZoomSelector.Width = DrawerDpiMetric(154);
+                _drawerZoomSelector.Height = DrawerDpiMetric(28);
+            }
+            foreach (var combo in _drawerQuickSelectors)
+            {
+                combo.Width = DrawerDpiMetric(246);
+                combo.Height = DrawerDpiMetric(28);
+                combo.Margin = new Padding(
+                    DrawerDpiMetric(3), DrawerDpiMetric(2),
+                    DrawerDpiMetric(3), DrawerDpiMetric(2)
+                );
+                var row = combo.Parent as FlowLayoutPanel;
+                if (row != null)
+                {
+                    row.Height = DrawerDpiMetric(32);
+                    row.MinimumSize = new Size(0, DrawerDpiMetric(32));
+                }
+            }
             _maintenanceDrawer.PerformLayout();
         }
 
         private void HideMaintenanceDrawer()
         {
-            if (_maintenanceDrawer == null || !_maintenanceDrawer.Visible) return;
+            if (_isClosing || _maintenanceDrawer == null || !_maintenanceDrawer.Visible) return;
             _maintenanceDrawer.Hide();
             _workspaceState.MaintenanceDrawerExpanded = false;
             if (!_smokeMode) PersistWorkspaceState();
@@ -1806,7 +3280,7 @@ namespace PokePixel.CoupledWorkspace
 
         private void RefreshMaintenanceDrawer()
         {
-            if (_drawerSessionLabel == null) return;
+            if (_isClosing || _drawerSessionLabel == null) return;
             var active = GetPaneForProfile(_workspaceState.ActiveProfileId);
             var left = GetPaneForSide(PaneSide.Left);
             var right = GetPaneForSide(PaneSide.Right);
@@ -1815,8 +3289,8 @@ namespace PokePixel.CoupledWorkspace
                 "Mode: " + _workspaceState.Mode
                 + "  Active: " + ProfileRegistry.Get(_workspaceState.ActiveProfileId).DisplayName
                 + Environment.NewLine
-                + "Left: " + (left == null ? "—" : left.Profile.DisplayName)
-                + "  Right: " + (right == null ? "—" : right.Profile.DisplayName);
+                + "Left: " + (left == null ? "\u2014" : left.Profile.DisplayName)
+                + "  Right: " + (right == null ? "\u2014" : right.Profile.DisplayName);
 
             _drawerBetterUiLabel.Text =
                 "Active health: " + (active == null ? "Unavailable" : active.HealthText)
@@ -1841,10 +3315,31 @@ namespace PokePixel.CoupledWorkspace
             _drawerErrorLabel.Text = active == null || string.IsNullOrEmpty(active.LastErrorText)
                 ? "No active-pane error."
                 : active.LastErrorText;
+            if (_drawerAccountsLabel != null)
+            {
+                var diagnosticLines = new List<string>();
+                foreach (var account in ProfileRegistry.All())
+                {
+                    var accountPane = GetPaneForProfile(account.Id);
+                    var health = accountPane == null ? "Not initialized" : accountPane.HealthText;
+                    var error = accountPane == null || string.IsNullOrWhiteSpace(accountPane.LastErrorText)
+                        ? "None" : accountPane.LastErrorText;
+                    if (health.Length > 48) health = health.Substring(0, 48) + "\u2026";
+                    if (error.Length > 90) error = error.Substring(0, 90) + "\u2026";
+                    diagnosticLines.Add(account.DisplayName + ": " + health + " | Error: " + error);
+                }
+                _drawerAccountsLabel.Text = string.Join(Environment.NewLine, diagnosticLines.ToArray());
+                _drawerAccountsLabel.AccessibleName = "All account health and errors: "
+                    + _drawerAccountsLabel.Text;
+                SetToolTipSafe(_drawerAccountsLabel, _drawerAccountsLabel.Text);
+            }
+            RefreshZoomEditor();
+            RefreshQuickEditor();
         }
 
         private async Task RecoverActivePaneAsync()
         {
+            if (_isClosing) return;
             var profileId = _workspaceState.ActiveProfileId;
             var profile = ProfileRegistry.Get(profileId);
             var targetHost = _workspaceState.Mode == WorkspaceMode.Single
@@ -1859,6 +3354,7 @@ namespace PokePixel.CoupledWorkspace
                 targetHost,
                 GetStatusLabelForProfile(profile.Id)
             );
+            if (_isClosing) return;
             UpdateCommandDeck();
         }
 
@@ -1935,6 +3431,8 @@ namespace PokePixel.CoupledWorkspace
             _workspaceState.CommandScope = CommandScope.Active;
             _workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id] = 1.0;
             _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = 1.0;
+            TryApplyPaneZoom(GetPaneForProfile(ProfileRegistry.Rhyxus.Id));
+            TryApplyPaneZoom(GetPaneForProfile(ProfileRegistry.Rhyosa.Id));
 
             if (_workspaceState.Mode == WorkspaceMode.Dual)
             {
@@ -1957,7 +3455,7 @@ namespace PokePixel.CoupledWorkspace
 
         private Button MakeButton(string text, int width, int left)
         {
-            var button = new Button();
+            var button = new BetterUiButton();
             button.Text = text;
             button.Width = width;
             button.Height = 28;
@@ -1965,11 +3463,11 @@ namespace PokePixel.CoupledWorkspace
             button.Margin = new Padding(3, 2, 3, 2);
             button.Padding = Padding.Empty;
             button.FlatStyle = FlatStyle.Flat;
-            button.FlatAppearance.BorderSize = 2;
-            button.FlatAppearance.BorderColor = Color.FromArgb(0x5F, 0x58, 0x54);
-            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(0x5F, 0x58, 0x54);
-            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(0x28, 0x42, 0x61);
-            button.BackColor = BackColor;
+            button.FlatAppearance.BorderSize = 1;
+            button.FlatAppearance.BorderColor = WorkspaceChrome.Line;
+            button.FlatAppearance.MouseOverBackColor = WorkspaceChrome.Hover;
+            button.FlatAppearance.MouseDownBackColor = WorkspaceChrome.Window;
+            button.BackColor = WorkspaceChrome.Interactive;
             button.ForeColor = ForeColor;
             button.UseVisualStyleBackColor = false;
             button.GotFocus += delegate
@@ -2010,7 +3508,7 @@ namespace PokePixel.CoupledWorkspace
             var host = new Panel();
             host.Dock = DockStyle.Fill;
             host.Padding = new Padding(0, 2, 0, 0);
-            host.BackColor = Color.FromArgb(0x87, 0x85, 0x73);
+            host.BackColor = WorkspaceChrome.Line;
             return host;
         }
 
@@ -2020,6 +3518,32 @@ namespace PokePixel.CoupledWorkspace
             return profileId != null && _panesByProfile.TryGetValue(profileId, out pane)
                 ? pane
                 : null;
+        }
+
+        private bool GetCardsViewPreference(string profileId)
+        {
+            bool cards;
+            return profileId != null
+                && _workspaceState.CardsViewByProfile != null
+                && _workspaceState.CardsViewByProfile.TryGetValue(profileId, out cards)
+                    ? cards
+                    : true;
+        }
+
+        private bool IsCardsViewActive(string profileId)
+        {
+            var pane = GetPaneForProfile(profileId);
+            return pane != null ? pane.CardsViewActive : GetCardsViewPreference(profileId);
+        }
+
+        private bool AreAllVisibleProfilesCards()
+        {
+            if (_workspaceState.Mode == WorkspaceMode.Single)
+                return IsCardsViewActive(_workspaceState.SingleProfileId);
+            if (_workspaceState.FocusMode)
+                return IsCardsViewActive(_workspaceState.ActiveProfileId);
+            return IsCardsViewActive(_workspaceState.LeftProfileId)
+                && IsCardsViewActive(_workspaceState.RightProfileId);
         }
 
         private AccountPane GetPaneForSide(PaneSide side)
@@ -2057,8 +3581,8 @@ namespace PokePixel.CoupledWorkspace
         private void UpdatePaneRails()
         {
             if (_leftHost == null || _rightHost == null) return;
-            var gold = Color.FromArgb(0xE3, 0xC0, 0x54);
-            var neutral = Color.FromArgb(0x87, 0x85, 0x73);
+            var gold = WorkspaceChrome.Selected;
+            var neutral = WorkspaceChrome.Line;
 
             if (_workspaceState.Mode == WorkspaceMode.Single)
             {
@@ -2139,14 +3663,14 @@ namespace PokePixel.CoupledWorkspace
             bool expanded
         )
         {
-            if (status == null) return;
+            if (_isClosing || status == null || status.IsDisposed || status.Disposing) return;
             status.Text = HealthDeckText(state, expanded);
             status.ForeColor = HealthColor(state);
             var full = string.IsNullOrWhiteSpace(detail)
                 ? status.Text
                 : detail;
             status.AccessibleName = profileName + " health: " + full;
-            _toolTip.SetToolTip(status, full);
+            SetToolTipSafe(status, full);
         }
 
         private void RefreshHealthLabelsForLayout(bool expanded)
@@ -2192,7 +3716,7 @@ namespace PokePixel.CoupledWorkspace
 
         private void SetPaneHealth(AccountPane pane, PaneHealthState state, string text)
         {
-            if (!IsCurrentPane(pane)) return;
+            if (_isClosing || !IsCurrentPane(pane)) return;
             pane.HealthState = state;
             pane.HealthText = text;
             var status = GetStatusLabelForProfile(pane.Profile.Id);
@@ -2213,13 +3737,14 @@ namespace PokePixel.CoupledWorkspace
             if (pane.View.Parent != null && pane.View.Parent != host)
                 pane.View.Parent.Controls.Remove(pane.View);
             pane.View.Dock = DockStyle.Fill;
-            pane.View.DefaultBackgroundColor = Color.FromArgb(0x23, 0x22, 0x28);
+            pane.View.DefaultBackgroundColor = WorkspaceChrome.Window;
             if (pane.View.Parent != host)
                 host.Controls.Add(pane.View);
         }
 
         private void DisposePane(string profileId)
         {
+            CancelPptoolsForProfile(profileId);
             AccountPane pane;
             if (!_panesByProfile.TryGetValue(profileId, out pane)) return;
             if (pane.View != null && pane.View.Parent != null)
@@ -2234,11 +3759,13 @@ namespace PokePixel.CoupledWorkspace
             Label status
         )
         {
+            if (_isClosing) return null;
             var pane = GetPaneForProfile(profileId);
             var created = false;
             if (pane == null)
             {
                 pane = new AccountPane(ProfileRegistry.Get(profileId));
+                pane.CardsViewActive = GetCardsViewPreference(profileId);
                 _panesByProfile[profileId] = pane;
                 created = true;
             }
@@ -2265,13 +3792,45 @@ namespace PokePixel.CoupledWorkspace
 
             try
             {
-                await pane.InitializeAsync(_dataRoot);
-                ConfigureView(pane);
-
-                if (!_smokeMode)
+                var initializationTask = pane.InitializeAsync(_dataRoot);
+                if (_shutdownDuringInitSmoke || _shutdownSwitchProbeArmed)
                 {
+                    _shutdownSwitchProbeArmed = false;
+                    BeginInvoke(new Action(Close));
+                    // Force this lifecycle action to yield with pane initialization still in flight.
+                    // The queued Close runs on the UI thread before this continuation can proceed.
+                    await Task.Delay(50);
+                }
+                await initializationTask;
+                if (_isClosing || !IsCurrentPane(pane)) return null;
+
+                ConfigureView(pane);
+                if (_isClosing || !IsCurrentPane(pane)) return null;
+                TryApplyPaneZoom(pane);
+
+                if (_smokeMode)
+                {
+                    await pane.View.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                        BuildWorkspaceBridgeSmokeScript(pane.Profile.Id)
+                    );
+                    if (_isClosing || !IsCurrentPane(pane)) return null;
+                }
+                else
+                {
+                    if (_evidenceProbeEnabled)
+                    {
+                        if (_evidenceProbeScript == null) _evidenceProbeScript = LoadEvidenceProbeScript();
+                        await RegisterEvidenceProbeAsync(pane.View, _evidenceProbeScript);
+                        if (_isClosing || !IsCurrentPane(pane)) return null;
+                        pane.EvidenceCapture = await EvidenceDevToolsCapture.AttachAsync(pane.View.CoreWebView2);
+                        if (_isClosing || !IsCurrentPane(pane)) return null;
+                    }
+                    if (_huntAnalyzerScript == null) _huntAnalyzerScript = LoadHuntAnalyzerScript();
                     if (_betterUiScript == null) _betterUiScript = LoadBetterUiScript();
+                    await RegisterHuntAnalyzerAsync(pane.View, _huntAnalyzerScript);
+                    if (_isClosing || !IsCurrentPane(pane)) return null;
                     await RegisterBetterUiAsync(pane.View, _betterUiScript);
+                    if (_isClosing || !IsCurrentPane(pane)) return null;
                     NavigateHome(pane.View);
                 }
 
@@ -2279,6 +3838,7 @@ namespace PokePixel.CoupledWorkspace
             }
             catch
             {
+                if (_isClosing) return null;
                 if (created)
                 {
                     AccountPane current;
@@ -2312,6 +3872,7 @@ namespace PokePixel.CoupledWorkspace
                         _leftHost,
                         _leftStatus
                     );
+                    if (_isClosing) return;
                     ApplyHealthToLabel(
                         _rightStatus,
                         ProfileRegistry.Get(_workspaceState.RightProfileId).DisplayName,
@@ -2328,13 +3889,16 @@ namespace PokePixel.CoupledWorkspace
                         _leftHost,
                         _leftStatus
                     );
+                    if (_isClosing) return;
                     await EnsurePaneAsync(
                         _workspaceState.RightProfileId,
                         _rightHost,
                         _rightStatus
                     );
+                    if (_isClosing) return;
                 }
 
+                if (_isClosing) return;
                 if (_workspaceState.Mode == WorkspaceMode.Dual && _workspaceState.FocusMode)
                 {
                     ApplyFocusLayout();
@@ -2350,17 +3914,25 @@ namespace PokePixel.CoupledWorkspace
 
                 if (_smokeMode)
                 {
+                    if (_shutdownDuringInitSmoke) return;
+                    if (_shutdownDuringSwitchSmoke)
+                    {
+                        await RunShutdownDuringSwitchSmokeAsync();
+                        return;
+                    }
                     _smokeTimer.Start();
                     await RunSmokeAsync();
                     return;
                 }
 
+                if (_isClosing) return;
                 _commandDeck.Enabled = true;
                 if (_workspaceState.MaintenanceDrawerExpanded)
                     BeginInvoke(new Action(ToggleMaintenanceDrawer));
             }
             catch (Exception ex)
             {
+                if (_isClosing) return;
                 ApplyHealthToLabel(
                     _leftStatus,
                     ProfileRegistry.Get(_workspaceState.LeftProfileId).DisplayName,
@@ -2396,14 +3968,16 @@ namespace PokePixel.CoupledWorkspace
 
         private async Task RunWorkspaceMutationAsync(Func<Task> action)
         {
-            if (action == null) return;
+            if (_isClosing || action == null) return;
             await _workspaceMutationGate.WaitAsync();
             try
             {
+                if (_isClosing) return;
                 await action();
             }
             catch (Exception ex)
             {
+                if (_isClosing) return;
                 if (_smokeMode) throw;
 
                 var active = GetPaneForProfile(_workspaceState.ActiveProfileId);
@@ -2425,6 +3999,7 @@ namespace PokePixel.CoupledWorkspace
 
         private async Task SwitchToSingleAsync(string profileId)
         {
+            if (_isClosing) return;
             ProfileDefinition selectedProfile;
             if (!ProfileRegistry.TryGet(profileId, out selectedProfile))
                 throw new InvalidOperationException("Unknown single-account profile: " + profileId);
@@ -2458,12 +4033,14 @@ namespace PokePixel.CoupledWorkspace
             );
 
             await EnsurePaneAsync(selectedProfile.Id, _leftHost, _leftStatus);
+            if (_isClosing) return;
             if (!_smokeMode) PersistWorkspaceState();
             UpdateCommandDeck();
         }
 
         private async Task SwitchSingleProfileAsync(string profileId)
         {
+            if (_isClosing) return;
             if (_workspaceState.Mode != WorkspaceMode.Single)
                 throw new InvalidOperationException("Single-profile switching requires Single mode.");
 
@@ -2475,6 +4052,7 @@ namespace PokePixel.CoupledWorkspace
 
         private async Task SwitchToDualAsync()
         {
+            if (_isClosing) return;
             if (_workspaceState.Mode == WorkspaceMode.Dual)
                 return;
 
@@ -2492,11 +4070,25 @@ namespace PokePixel.CoupledWorkspace
 
             _split.Panel2Collapsed = false;
             await EnsurePaneAsync(_workspaceState.LeftProfileId, _leftHost, _leftStatus);
+            if (_isClosing) return;
             await EnsurePaneAsync(_workspaceState.RightProfileId, _rightHost, _rightStatus);
+            if (_isClosing) return;
             SetSplitRatio(_workspaceState.LastDualRatio);
 
             if (!_smokeMode) PersistWorkspaceState();
             UpdateCommandDeck();
+        }
+
+        private async Task RunShutdownDuringSwitchSmokeAsync()
+        {
+            await SwitchToSingleAsync(_workspaceState.RightProfileId);
+            if (_isClosing)
+                throw new InvalidOperationException("Switch shutdown smoke closed before probe arm.");
+
+            _shutdownSwitchProbeArmed = true;
+            await SwitchToDualAsync();
+            if (!_isClosing)
+                throw new InvalidOperationException("Switch shutdown smoke did not begin shutdown.");
         }
 
         private void ApplyLayoutPreset(double ratio)
@@ -2702,9 +4294,9 @@ namespace PokePixel.CoupledWorkspace
             return Math.Max(0.20, Math.Min(0.80, (double)_split.SplitterDistance / available));
         }
 
-        private void PersistWorkspaceState()
+        private void PersistWorkspaceState(bool allowDuringClosing = false)
         {
-            if (_smokeMode) return;
+            if (_smokeMode || (_isClosing && !allowDuringClosing)) return;
 
             if (_workspaceState.Mode == WorkspaceMode.Dual && !_split.Panel2Collapsed)
             {
@@ -2724,6 +4316,7 @@ namespace PokePixel.CoupledWorkspace
             var core = view.CoreWebView2;
             view.GotFocus += async delegate
             {
+                if (_isClosing) return;
                 await RunWorkspaceMutationAsync(delegate
                 {
                     if (IsCurrentPane(pane))
@@ -2736,6 +4329,7 @@ namespace PokePixel.CoupledWorkspace
             };
             view.LostFocus += delegate
             {
+                if (_isClosing) return;
                 if (string.Equals(
                     _webViewFocusedProfileId,
                     profileId,
@@ -2751,9 +4345,25 @@ namespace PokePixel.CoupledWorkspace
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.AreBrowserAcceleratorKeysEnabled = true;
 
+            core.WebMessageReceived += delegate(object sender, CoreWebView2WebMessageReceivedEventArgs args)
+            {
+                if (_isClosing) return;
+                if (!IsCurrentBridgeMessageSource(pane, args.Source)) return;
+                HandleWorkspaceBridgeMessage(pane, args.WebMessageAsJson);
+            };
+
             core.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs args)
             {
+                if (_isClosing) return;
                 if (!IsCurrentPane(pane)) return;
+                CancelPptoolsForProfile(profileId);
+                pane.ResetWorkspaceBridge();
+                if (string.Equals(
+                    pane.Profile.Id,
+                    _workspaceState.ActiveProfileId,
+                    StringComparison.OrdinalIgnoreCase
+                ))
+                    UpdateGameDock();
                 pane.ActiveNavigationId = args.NavigationId;
                 pane.CurrentUrl = args.Uri;
                 if (!_smokeMode && !IsAllowedGameUrl(args.Uri))
@@ -2772,6 +4382,7 @@ namespace PokePixel.CoupledWorkspace
 
             core.NavigationCompleted += async delegate(object sender, CoreWebView2NavigationCompletedEventArgs args)
             {
+                if (_isClosing) return;
                 if (!IsCurrentPane(pane) || args.NavigationId != pane.ActiveNavigationId) return;
                 pane.CurrentUrl = core.Source;
                 if (args.IsSuccess)
@@ -2819,7 +4430,11 @@ namespace PokePixel.CoupledWorkspace
 
             core.ProcessFailed += delegate(object sender, CoreWebView2ProcessFailedEventArgs args)
             {
+                if (_isClosing) return;
                 if (!IsCurrentPane(pane)) return;
+                CancelPptoolsForProfile(profileId);
+                pane.ResetWorkspaceBridge();
+                UpdateGameDock();
                 pane.LastErrorText = "Process failed: " + args.ProcessFailedKind;
                 SetPaneHealth(pane, PaneHealthState.ProcessFailed, "PROCESS FAILED");
                 Console.Error.WriteLine(
@@ -2839,14 +4454,17 @@ namespace PokePixel.CoupledWorkspace
                 var ready = await pane.View.CoreWebView2.ExecuteScriptAsync(
                     "Boolean(window.__PPBUI_WEBVIEW2_READY__)"
                 );
-                if (IsCurrentPane(pane)
+                if (!_isClosing
+                    && IsCurrentPane(pane)
                     && navigationId == pane.ActiveNavigationId
                     && string.Equals(ready, "true", StringComparison.Ordinal))
                     SetPaneHealth(pane, PaneHealthState.UiReady, "UI READY");
             }
             catch (Exception ex)
             {
-                if (IsCurrentPane(pane) && navigationId == pane.ActiveNavigationId)
+                if (!_isClosing
+                    && IsCurrentPane(pane)
+                    && navigationId == pane.ActiveNavigationId)
                     pane.LastErrorText = "Better UI health probe failed: " + ex.GetType().Name;
             }
         }
@@ -2854,12 +4472,106 @@ namespace PokePixel.CoupledWorkspace
         private async Task RegisterBetterUiAsync(WebView2 view, string script)
         {
             var guarded = BuildDocumentIdleScript(
-                script,
+                BuildCoupledWorkspaceBootstrapStatement() + script,
                 TargetOrigin,
                 "__PPBUI_WEBVIEW2_INJECTED__",
                 "__PPBUI_WEBVIEW2_READY__"
             );
             await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+        }
+
+        private async Task RegisterHuntAnalyzerAsync(WebView2 view, string script)
+        {
+            var guarded = BuildDocumentStartScript(
+                BuildHuntAnalyzerEmbedBootstrapStatement() + script,
+                TargetOrigin,
+                "__PPBUI_HUNT_ANALYZER_EMBED_INJECTED__"
+            );
+            await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+        }
+
+        private async Task RegisterEvidenceProbeAsync(WebView2 view, string script)
+        {
+            var guarded = BuildDocumentStartScript(
+                script,
+                TargetOrigin,
+                "__PPBUI_EVIDENCE_INJECTED__"
+            );
+            await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+        }
+
+        private string BuildCoupledWorkspaceBootstrapStatement()
+        {
+            return
+                "if(!window.__PPBUI_COUPLED_WORKSPACE__){"
+                + "Object.defineProperty(window,'__PPBUI_COUPLED_WORKSPACE__',{"
+                + "value:Object.freeze({protocol:" + WorkspaceBridgeProtocol.Version
+                + ",pptoolsBackground:" + (_pptoolsExecutor.Available ? "true" : "false") + "}),"
+                + "configurable:false,enumerable:false,writable:false});"
+                + "}\n";
+        }
+
+        private static string BuildHuntAnalyzerEmbedBootstrapStatement()
+        {
+            return
+                "if(!window.__POKEPIXEL_HUNT_ANALYZER_EMBED__){"
+                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_EMBED__',{"
+                + "value:Object.freeze({protocol:" + WorkspaceBridgeProtocol.Version + "}),"
+                + "configurable:false,enumerable:false,writable:false});"
+                + "}\n";
+        }
+
+        private static string BuildWorkspaceBridgeSmokeScript(string profileId)
+        {
+            var capabilityRequestId = "caps-" + profileId;
+            var surfaces = BuildGameDockSmokeSurfaces(profileId);
+            return
+                "(function(){"
+                + "window.__PPBUI_GAME_DOCK_OPENED__='';"
+                + "window.__PPBUI_GAME_DOCK_ACCEPTED__=false;"
+                + "window.__PPBUI_COUPLED_VIEW__='game';"
+                + "var capabilityRequestId=" + QuoteJs(capabilityRequestId) + ";"
+                + "var bridge=window.chrome&&window.chrome.webview;if(!bridge)return;"
+                + "bridge.addEventListener('message',function(event){"
+                + "var data=event.data;if(typeof data==='string'){try{data=JSON.parse(data);}catch(_){return;}}"
+                + "if(!data||data.protocol!==1)return;"
+                + "if(data.type==='ppbui.coupled.capabilities-accepted'){if(data.requestId===capabilityRequestId)window.__PPBUI_GAME_DOCK_ACCEPTED__=data.ok===true;return;}"
+                + "if(data.type==='ppbui.coupled.set-view'){window.__PPBUI_COUPLED_VIEW__=data.viewMode==='game'?'game':'cards';return;}"
+                + "if(data.type!=='ppbui.coupled.open-surface')return;"
+                + "window.__PPBUI_GAME_DOCK_OPENED__=data.surfaceId||'';"
+                + "bridge.postMessage({type:'ppbui.coupled.open-surface-result',protocol:1,requestId:data.requestId||'',surfaceId:data.surfaceId||'',ok:true,error:''});"
+                + "});"
+                + "function announce(){bridge.postMessage({type:'ppbui.coupled.capabilities',protocol:1,requestId:capabilityRequestId,surfaces:"
+                + surfaces + "});}"
+                + "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',announce,{once:true});else announce();"
+                + "})();";
+        }
+
+        private static string BuildGameDockSmokeSurfaces(string profileId)
+        {
+            var rhyosa = string.Equals(
+                profileId,
+                ProfileRegistry.Rhyosa.Id,
+                StringComparison.OrdinalIgnoreCase
+            );
+            var entries = new List<string>();
+            foreach (var definition in GameDockAllSurfaces)
+            {
+                var available = !(rhyosa && string.Equals(
+                    definition.Key,
+                    "inventory",
+                    StringComparison.OrdinalIgnoreCase
+                ));
+                entries.Add(
+                    "{id:" + QuoteJs(definition.Key)
+                    + ",label:" + QuoteJs(definition.Value)
+                    + ",available:" + (available ? "true" : "false") + "}"
+                );
+            }
+            // The page is untrusted input. Keep one synthetic surface in smoke so the host
+            // proves that capabilities outside the canonical allowlist are ignored.
+            entries.Add("{id:'not-allowed',label:'Not Allowed',available:true}");
+            return "[" + string.Join(",", entries.ToArray()) + "]";
         }
 
         private static string BuildDocumentIdleScript(
@@ -2893,6 +4605,26 @@ namespace PokePixel.CoupledWorkspace
                 + "})();";
         }
 
+        private static string BuildDocumentStartScript(
+            string script,
+            string expectedOrigin,
+            string markerName
+        )
+        {
+            var originGuard = expectedOrigin == null
+                ? ""
+                : "if(location.origin!==" + QuoteJs(expectedOrigin) + ")return;";
+            return
+                "(function(){"
+                + "if(window.top!==window)return;"
+                + originGuard
+                + "if(window[" + QuoteJs(markerName) + "])return;"
+                + "Object.defineProperty(window," + QuoteJs(markerName)
+                + ",{value:true,configurable:false});\n"
+                + script
+                + "\n})();";
+        }
+
         private string LoadBetterUiScript()
         {
             var bundle = Path.GetFullPath(
@@ -2903,6 +4635,32 @@ namespace PokePixel.CoupledWorkspace
                 throw new FileNotFoundException("Better UI bundle not found.", bundle);
             }
             return File.ReadAllText(bundle);
+        }
+
+        private string LoadHuntAnalyzerScript()
+        {
+            var bundle = Path.GetFullPath(
+                Path.Combine(_baseDir, "..", "..", "..", "dist", "pokepixel-hunt-analyzer.embed.js")
+            );
+            if (!File.Exists(bundle))
+            {
+                throw new FileNotFoundException(
+                    "Hunt Analyzer embed bundle not found. Run Prepare-HuntAnalyzerBundle.ps1 first.",
+                    bundle
+                );
+            }
+            return File.ReadAllText(bundle);
+        }
+
+        private string LoadEvidenceProbeScript()
+        {
+            var source = Path.GetFullPath(Path.Combine(
+                _baseDir, "..", "..", "..", "tools", "game-evidence",
+                "pokepixel-evidence-probe.user.js"
+            ));
+            if (!File.Exists(source))
+                throw new FileNotFoundException("Optional evidence probe not found.", source);
+            return File.ReadAllText(source);
         }
 
         private static string QuoteJs(string value)
@@ -2941,6 +4699,9 @@ namespace PokePixel.CoupledWorkspace
             var betterUi = LoadBetterUiScript();
             if (betterUi.Length < 1024)
                 throw new InvalidOperationException("Better UI bundle looks unexpectedly small.");
+            var huntAnalyzer = LoadHuntAnalyzerScript();
+            if (huntAnalyzer.Length < 1024)
+                throw new InvalidOperationException("Hunt Analyzer embed bundle looks unexpectedly small.");
 
             await leftPane.View.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
                 BuildDocumentIdleScript(
@@ -2958,7 +4719,6 @@ namespace PokePixel.CoupledWorkspace
                     "__PPBUI_WEBVIEW2_SMOKE_READY__"
                 )
             );
-
             var smokeDir = Path.Combine(_baseDir, "smoke");
             Directory.CreateDirectory(smokeDir);
             var leftFile = Path.Combine(smokeDir, "left.html");
@@ -3012,6 +4772,8 @@ namespace PokePixel.CoupledWorkspace
             if (!string.Equals(rightReady, "true", StringComparison.Ordinal))
                 throw new InvalidOperationException("Right post-success ready marker missing: " + rightReady);
 
+            await RunGameDockBridgeSmokeAsync(leftPane, rightPane);
+
             if (string.Equals(
                 leftPane.View.CoreWebView2.Environment.UserDataFolder,
                 rightPane.View.CoreWebView2.Environment.UserDataFolder,
@@ -3030,6 +4792,546 @@ namespace PokePixel.CoupledWorkspace
             Console.WriteLine("WebView2 coupled workspace smoke: PASS");
             Environment.ExitCode = 0;
             Close();
+        }
+
+        private async Task RunGameDockBridgeSmokeAsync(AccountPane rhyxusPane, AccountPane rhyosaPane)
+        {
+            await Task.Delay(60);
+            Application.DoEvents();
+            if (!rhyxusPane.WorkspaceBridgeReady || !rhyosaPane.WorkspaceBridgeReady)
+                throw new InvalidOperationException("Game Dock bridge capabilities were not received for both panes.");
+            var rhyxusAccepted = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_ACCEPTED__"
+            );
+            var rhyosaAccepted = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_ACCEPTED__"
+            );
+            if (!string.Equals(rhyxusAccepted, "true", StringComparison.Ordinal)
+                || !string.Equals(rhyosaAccepted, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("Game Dock capability handshake was not acknowledged by both panes.");
+            var rhyxusView = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            var rhyosaView = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            if (rhyxusView.IndexOf("cards", StringComparison.Ordinal) < 0
+                || rhyosaView.IndexOf("cards", StringComparison.Ordinal) < 0
+                || !rhyxusPane.CardsViewActive
+                || !rhyosaPane.CardsViewActive
+                || _rootLayout.RowStyles[2].Height != DpiMetric(44)
+                || _cardsViewButton.AccessibleName.IndexOf("current", StringComparison.OrdinalIgnoreCase) < 0
+                || _gameViewButton.AccessibleName.IndexOf("current", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                throw new InvalidOperationException("Card dashboard did not become the default accessible coupled view.");
+            }
+            if (!rhyxusPane.AvailableSurfaces.Contains("inventory")
+                || rhyosaPane.AvailableSurfaces.Contains("inventory")
+                || !rhyosaPane.AvailableSurfaces.Contains("hunts")
+                || !rhyxusPane.AvailableSurfaces.Contains("npc-shop")
+                || !rhyxusPane.AvailableSurfaces.Contains("hunt-analyzer")
+                || !rhyosaPane.AvailableSurfaces.Contains("hunt-analyzer")
+                || rhyxusPane.AvailableSurfaces.Contains("not-allowed")
+                || rhyosaPane.AvailableSurfaces.Contains("not-allowed"))
+            {
+                throw new InvalidOperationException("Game Dock capability filtering failed.");
+            }
+
+            var rhyxusAccountButton = _gameDockAccountButtons[ProfileRegistry.Rhyxus.Id];
+            var rhyosaAccountButton = _gameDockAccountButtons[ProfileRegistry.Rhyosa.Id];
+            if (!rhyxusAccountButton.Visible || !rhyosaAccountButton.Visible)
+                throw new InvalidOperationException("Dual Game Dock account selectors were hidden.");
+            // Smoke executes inside the workspace mutation gate; exercise its synchronous
+            // selection path here while the real button routes through the same gate.
+            SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+            if (!string.Equals(_workspaceState.ActiveProfileId, ProfileRegistry.Rhyosa.Id, StringComparison.OrdinalIgnoreCase)
+                || !(rhyosaAccountButton.Tag is bool && (bool)rhyosaAccountButton.Tag)
+                || !_gameDockButtons["hunts"].Enabled
+                || _gameDockButtons["inventory"].Enabled
+                || !rhyxusPane.CardsViewActive
+                || !rhyosaPane.CardsViewActive)
+            {
+                throw new InvalidOperationException(
+                    "Selecting Rhyosa in the Game Dock changed the wrong context or view: active="
+                    + _workspaceState.ActiveProfileId
+                    + " selected=" + rhyosaAccountButton.Tag
+                    + " hunts=" + _gameDockButtons["hunts"].Enabled
+                    + " inventory=" + _gameDockButtons["inventory"].Enabled
+                    + " view=" + rhyxusPane.CardsViewActive + "/" + rhyosaPane.CardsViewActive + "."
+                );
+            }
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            if (!string.Equals(_workspaceState.ActiveProfileId, ProfileRegistry.Rhyxus.Id, StringComparison.OrdinalIgnoreCase)
+                || !(rhyxusAccountButton.Tag is bool && (bool)rhyxusAccountButton.Tag)
+                || !_gameDockButtons["inventory"].Enabled)
+            {
+                throw new InvalidOperationException("Game Dock account selection did not return to Rhyxus.");
+            }
+
+            SetContentView(false);
+            await Task.Delay(20);
+            Application.DoEvents();
+            rhyxusView = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            rhyosaView = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            if (rhyxusView.IndexOf("game", StringComparison.Ordinal) < 0
+                || rhyosaView.IndexOf("cards", StringComparison.Ordinal) < 0
+                || rhyxusPane.CardsViewActive
+                || !rhyosaPane.CardsViewActive
+                || _gameViewButton.AccessibleName.IndexOf("current", StringComparison.OrdinalIgnoreCase) < 0
+                || _cardsViewButton.AccessibleName.IndexOf("current", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                throw new InvalidOperationException("Cards/Game view switching was not isolated to the active Rhyxus pane.");
+            }
+            AssertGameDockGeometry("mixed Cards/Game");
+
+            SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+            rhyxusView = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            rhyosaView = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            if (rhyxusView.IndexOf("game", StringComparison.Ordinal) < 0
+                || rhyosaView.IndexOf("cards", StringComparison.Ordinal) < 0
+                || _cardsViewButton.AccessibleName.IndexOf("current", StringComparison.OrdinalIgnoreCase) < 0
+                || _gameViewButton.AccessibleName.IndexOf("current", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                throw new InvalidOperationException("Changing Active profile mutated pane view state instead of only updating selector state.");
+            }
+            SetContentView(false);
+            await Task.Delay(20);
+            Application.DoEvents();
+            rhyxusView = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            rhyosaView = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW__"
+            );
+            if (rhyxusView.IndexOf("game", StringComparison.Ordinal) < 0
+                || rhyosaView.IndexOf("game", StringComparison.Ordinal) < 0
+                || rhyxusPane.CardsViewActive
+                || rhyosaPane.CardsViewActive)
+            {
+                throw new InvalidOperationException("Independent pane view toggles did not allow both panes to reach Game explicitly.");
+            }
+            AssertGameDockGeometry("dual Game");
+
+            if (!IsCurrentBridgeMessageSource(rhyxusPane, rhyxusPane.View.CoreWebView2.Source))
+                throw new InvalidOperationException("Current Game Dock bridge source was rejected.");
+            var staleSource = new Uri(Path.Combine(_baseDir, "smoke", "stale.html")).AbsoluteUri;
+            if (IsCurrentBridgeMessageSource(rhyxusPane, staleSource))
+                throw new InvalidOperationException("Stale Game Dock bridge source was accepted.");
+
+            HandleWorkspaceBridgeMessage(
+                rhyosaPane,
+                WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+                {
+                    Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                    Protocol = WorkspaceBridgeProtocol.Version,
+                    RequestId = "spoofed-result",
+                    SurfaceId = "hunts",
+                    Ok = false,
+                    Error = "spoof"
+                })
+            );
+            if (!rhyosaPane.AvailableSurfaces.Contains("hunts"))
+                throw new InvalidOperationException("Uncorrelated Game Dock result mutated capabilities.");
+
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            if (!_gameDockButtons["inventory"].Enabled
+                || !_gameDockButtons["hunts"].Enabled
+                || !_gameDockButtons["npc-shop"].Enabled
+                || _gameDockButtons.ContainsKey("hunt-analyzer"))
+                throw new InvalidOperationException("Rhyxus Game Dock did not enable advertised destinations.");
+            var analyzerOverflowItem = FindGameDockOverflowItem("hunt-analyzer");
+            if (_gameDockOverflowButton == null
+                || !_gameDockOverflowButton.Enabled
+                || analyzerOverflowItem == null
+                || !analyzerOverflowItem.Enabled
+                || FindGameDockOverflowItem("npc-shop") != null)
+            {
+                throw new InvalidOperationException("Game Dock quick/overflow partition is incorrect.");
+            }
+            foreach (ToolStripItem overflowItem in _gameDockOverflowMenu.Items)
+            {
+                if (IsQuickGameDockSurface(overflowItem.Tag as string))
+                    throw new InvalidOperationException("Game Dock overflow duplicated a quick-access destination.");
+            }
+            ShowGameDockOverflowMenu();
+            Application.DoEvents();
+            var overflowButtonTop = _gameDockOverflowButton.RectangleToScreen(
+                _gameDockOverflowButton.ClientRectangle
+            ).Top;
+            if (!_gameDockOverflowMenu.Visible
+                || _gameDockOverflowMenu.Bottom > overflowButtonTop + DpiMetric(2))
+            {
+                throw new InvalidOperationException("Game Dock overflow did not open above the bottom bar.");
+            }
+            _gameDockOverflowMenu.Close(ToolStripDropDownCloseReason.CloseCalled);
+            OpenGameSurface("inventory");
+            await Task.Delay(30);
+            Application.DoEvents();
+            var leftOpened = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            var rightOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (leftOpened.IndexOf("inventory", StringComparison.Ordinal) < 0
+                || rightOpened.IndexOf("inventory", StringComparison.Ordinal) >= 0)
+                throw new InvalidOperationException("Game Dock did not target only the active Rhyxus pane.");
+            if (rhyxusPane.PendingWorkspaceRequests.Count != 0)
+                throw new InvalidOperationException("Completed Game Dock request remained pending for Rhyxus.");
+
+            _gameDockButtons["npc-shop"].PerformClick();
+            await Task.Delay(30);
+            Application.DoEvents();
+            leftOpened = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            rightOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (leftOpened.IndexOf("npc-shop", StringComparison.Ordinal) < 0
+                || rightOpened.IndexOf("npc-shop", StringComparison.Ordinal) >= 0)
+                throw new InvalidOperationException("Mark's Shop quick action did not target only active Rhyxus.");
+            if (rhyxusPane.PendingWorkspaceRequests.Count != 0)
+                throw new InvalidOperationException("Completed Mark's Shop request remained pending for Rhyxus.");
+
+            SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+            SetContentView(true);
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            SetContentView(true);
+            analyzerOverflowItem = FindGameDockOverflowItem("hunt-analyzer");
+            if (analyzerOverflowItem == null)
+                throw new InvalidOperationException("Hunt Analyzer overflow item was lost before Cards-mode action smoke.");
+            analyzerOverflowItem.PerformClick();
+            await Task.Delay(30);
+            Application.DoEvents();
+            leftOpened = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            rightOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (leftOpened.IndexOf("hunt-analyzer", StringComparison.Ordinal) < 0
+                || rightOpened.IndexOf("hunt-analyzer", StringComparison.Ordinal) >= 0
+                || rhyxusPane.CardsViewActive
+                || !rhyosaPane.CardsViewActive)
+                throw new InvalidOperationException("Game Dock did not route Hunt Analyzer only to active Rhyxus pane.");
+            if (rhyxusPane.PendingWorkspaceRequests.Count != 0)
+                throw new InvalidOperationException("Completed Hunt Analyzer request remained pending for Rhyxus.");
+
+            SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+            if (_gameDockButtons["inventory"].Enabled || !_gameDockButtons["hunts"].Enabled)
+                throw new InvalidOperationException("Game Dock did not fail closed for Rhyosa capabilities.");
+            OpenGameSurface("hunts");
+            await Task.Delay(30);
+            Application.DoEvents();
+            rightOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (rightOpened.IndexOf("hunts", StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("Game Dock did not route Hunts to active Rhyosa pane.");
+            if (rhyosaPane.PendingWorkspaceRequests.Count != 0)
+                throw new InvalidOperationException("Completed Game Dock request remained pending for Rhyosa.");
+
+            OpenGameSurface("inventory");
+            await Task.Delay(20);
+            var unavailableOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (unavailableOpened.IndexOf("hunts", StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("Unavailable Game Dock destination was not blocked.");
+
+            var rhyxusCardsBeforeLayoutChanges = rhyxusPane.CardsViewActive;
+            var rhyosaCardsBeforeLayoutChanges = rhyosaPane.CardsViewActive;
+            SwapPanes();
+            if (rhyxusPane.CardsViewActive != rhyxusCardsBeforeLayoutChanges
+                || rhyosaPane.CardsViewActive != rhyosaCardsBeforeLayoutChanges)
+            {
+                throw new InvalidOperationException("Physical pane Swap mutated profile-owned Cards/Game state.");
+            }
+            OpenGameSurface("storage");
+            await Task.Delay(30);
+            Application.DoEvents();
+            rightOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (rightOpened.IndexOf("storage", StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("Game Dock target changed with physical pane Swap.");
+
+            EnterFocusMode();
+            if (rhyxusPane.CardsViewActive != rhyxusCardsBeforeLayoutChanges
+                || rhyosaPane.CardsViewActive != rhyosaCardsBeforeLayoutChanges)
+            {
+                throw new InvalidOperationException("Focus mode mutated profile-owned Cards/Game state.");
+            }
+            OpenGameSurface("auto-helper");
+            await Task.Delay(30);
+            Application.DoEvents();
+            rightOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_OPENED__"
+            );
+            if (rightOpened.IndexOf("auto-helper", StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("Game Dock target changed in Focus mode.");
+            RestoreFocusMode();
+            if (rhyxusPane.CardsViewActive != rhyxusCardsBeforeLayoutChanges
+                || rhyosaPane.CardsViewActive != rhyosaCardsBeforeLayoutChanges)
+            {
+                throw new InvalidOperationException("Focus Restore mutated profile-owned Cards/Game state.");
+            }
+            SwapPanes();
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            RunGameDockOfflineBridgeSmoke(rhyxusPane);
+            await RunHostQoLSmokeAsync(rhyxusPane, rhyosaPane);
+        }
+
+        private async Task RunHostQoLSmokeAsync(AccountPane rhyxusPane, AccountPane rhyosaPane)
+        {
+            var originalRhyxus = new List<string>(GetQuickGameDockSurfaces(ProfileRegistry.Rhyxus.Id));
+            var originalRhyosa = new List<string>(GetQuickGameDockSurfaces(ProfileRegistry.Rhyosa.Id));
+            var zoomRhyxus = _workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id];
+            var zoomRhyosa = _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id];
+            try
+            {
+                SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+                SetGameDockQuickSlot(ProfileRegistry.Rhyxus.Id, 0, "HuNt-AnAlYzEr");
+                if (GetQuickGameDockSurfaces(ProfileRegistry.Rhyxus.Id)[0] != "hunt-analyzer"
+                    || !_gameDockButtons.ContainsKey("hunt-analyzer")
+                    || _gameDockButtons["hunt-analyzer"].Name != "hunt-analyzer"
+                    || FindGameDockOverflowItem("inventory") == null
+                    || FindGameDockOverflowItem("hunt-analyzer") != null)
+                    throw new InvalidOperationException("Mixed-case quick slot did not normalize to the native bridge ID.");
+
+                SetGameDockQuickSlot(ProfileRegistry.Rhyxus.Id, 1, "team");
+                if (GetQuickGameDockSurfaces(ProfileRegistry.Rhyxus.Id)[1] != "team"
+                    || GetQuickGameDockSurfaces(ProfileRegistry.Rhyxus.Id)[3] != "hunts")
+                    throw new InvalidOperationException("Selecting an existing favorite did not swap unique slots.");
+
+                await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                    "window.__PPBUI_GAME_DOCK_OPENED__='';"
+                );
+                await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                    "window.__PPBUI_GAME_DOCK_OPENED__='';"
+                );
+                _gameDockButtons["hunt-analyzer"].PerformClick();
+                await Task.Delay(35);
+                Application.DoEvents();
+                var rhyxusOpened = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
+                    "window.__PPBUI_GAME_DOCK_OPENED__"
+                );
+                var rhyosaOpened = await rhyosaPane.View.CoreWebView2.ExecuteScriptAsync(
+                    "window.__PPBUI_GAME_DOCK_OPENED__"
+                );
+                if (rhyxusOpened.IndexOf("hunt-analyzer", StringComparison.Ordinal) < 0
+                    || rhyosaOpened.IndexOf("hunt-analyzer", StringComparison.Ordinal) >= 0)
+                    throw new InvalidOperationException("Customized quick slot did not retain active-only bridge routing.");
+
+                SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+                if (GetQuickGameDockSurfaces(ProfileRegistry.Rhyosa.Id)[0] != "inventory"
+                    || _gameDockButtons.ContainsKey("hunt-analyzer"))
+                    throw new InvalidOperationException("Quick slot customization leaked into the other profile.");
+                SetGameDockQuickSlot(ProfileRegistry.Rhyosa.Id, 2, "inventory");
+                if (GetQuickGameDockSurfaces(ProfileRegistry.Rhyosa.Id)[2] != "inventory"
+                    || GetQuickGameDockSurfaces(ProfileRegistry.Rhyosa.Id)[0] != "npc-shop"
+                    || _gameDockButtons["inventory"].Enabled)
+                    throw new InvalidOperationException("Unavailable customized shortcut was not fail-closed.");
+
+                SetProfileZoom(ProfileRegistry.Rhyosa.Id, 0.90);
+                SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+                SetProfileZoom(ProfileRegistry.Rhyxus.Id, 1.25);
+                if (Math.Abs(rhyxusPane.View.ZoomFactor - 1.25) > 0.001
+                    || Math.Abs(rhyosaPane.View.ZoomFactor - 0.90) > 0.001)
+                    throw new InvalidOperationException("Zoom was not isolated and applied to each WebView2 profile.");
+                SwapPanes();
+                EnterFocusMode();
+                if (Math.Abs(rhyxusPane.View.ZoomFactor - 1.25) > 0.001
+                    || Math.Abs(rhyosaPane.View.ZoomFactor - 0.90) > 0.001)
+                    throw new InvalidOperationException("Swap or Focus changed zoom ownership.");
+                RestoreFocusMode();
+                SwapPanes();
+
+                ResetWorkspaceLayout();
+                if (Math.Abs(rhyxusPane.View.ZoomFactor - 1.0) > 0.001
+                    || Math.Abs(rhyosaPane.View.ZoomFactor - 1.0) > 0.001
+                    || Math.Abs(_workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id] - 1.0) > 0.001
+                    || Math.Abs(_workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id] - 1.0) > 0.001)
+                    throw new InvalidOperationException("Reset layout must apply default zoom to both live WebView2 profiles.");
+
+                var requestId = "qol-correlated-failure";
+                _latestDockUiRequestByProfile[rhyxusPane.Profile.Id] = requestId;
+                rhyxusPane.PendingWorkspaceRequests[requestId] = "hunt-analyzer";
+                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = requestId,
+                        SurfaceId = "hunt-analyzer",
+                        Ok = false,
+                        Error = "surface-unavailable"
+                    }
+                ));
+                if (rhyxusPane.PendingWorkspaceRequests.ContainsKey(requestId)
+                    || _gameDockAvailabilityLabel.Text != "OPEN FAILED"
+                    || _gameDockAvailabilityLabel.AccessibleName.IndexOf("Hunt Analyzer", StringComparison.Ordinal) < 0
+                    || _gameDockButtons["hunt-analyzer"].Enabled)
+                    throw new InvalidOperationException("Correlated native menu failure was not visible and accessible.");
+
+                var oldRequest = "qol-out-of-order-old";
+                var newRequest = "qol-out-of-order-new";
+                rhyxusPane.PendingWorkspaceRequests[oldRequest] = "team";
+                rhyxusPane.PendingWorkspaceRequests[newRequest] = "storage";
+                _latestDockUiRequestByProfile[rhyxusPane.Profile.Id] = newRequest;
+                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = oldRequest, SurfaceId = "team", Ok = true
+                    }
+                ));
+                if (_gameDockAvailabilityLabel.Text != "OPEN FAILED"
+                    || _gameDockAvailabilityLabel.AccessibleName.IndexOf("Hunt Analyzer", StringComparison.Ordinal) < 0)
+                    throw new InvalidOperationException("Older correlated success cleared a newer failure message.");
+                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = newRequest, SurfaceId = "storage", Ok = false
+                    }
+                ));
+                if (_gameDockAvailabilityLabel.Text != "OPEN FAILED"
+                    || _gameDockAvailabilityLabel.AccessibleName.IndexOf("Storage", StringComparison.Ordinal) < 0)
+                    throw new InvalidOperationException("Newest correlated failure did not replace previous feedback.");
+
+                var oldSuccess = "qol-out-of-order-success-old";
+                var newSuccess = "qol-out-of-order-success-new";
+                rhyxusPane.PendingWorkspaceRequests[oldSuccess] = "team";
+                rhyxusPane.PendingWorkspaceRequests[newSuccess] = "inventory";
+                _latestDockUiRequestByProfile[rhyxusPane.Profile.Id] = newSuccess;
+                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = newSuccess, SurfaceId = "inventory", Ok = true
+                    }
+                ));
+                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = oldSuccess, SurfaceId = "team", Ok = false
+                    }
+                ));
+                if (_gameDockAvailabilityLabel.Text != "MENUS READY"
+                    || rhyxusPane.PendingWorkspaceRequests.ContainsKey(oldSuccess)
+                    || rhyxusPane.PendingWorkspaceRequests.ContainsKey(newSuccess))
+                    throw new InvalidOperationException("Older correlated failure replaced newer successful feedback.");
+                SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+                if (_gameDockAvailabilityLabel.Text == "OPEN FAILED")
+                    throw new InvalidOperationException("Native menu failure feedback leaked to inactive account.");
+            }
+            finally
+            {
+                _workspaceState.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id] = originalRhyxus;
+                _workspaceState.QuickSurfacesByProfile[ProfileRegistry.Rhyosa.Id] = originalRhyosa;
+                _latestDockUiRequestByProfile.Remove(ProfileRegistry.Rhyxus.Id);
+                _latestDockUiRequestByProfile.Remove(ProfileRegistry.Rhyosa.Id);
+                _workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id] = zoomRhyxus;
+                _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = zoomRhyosa;
+                TryApplyPaneZoom(rhyxusPane);
+                TryApplyPaneZoom(rhyosaPane);
+                ClearDockOpenFeedback();
+                SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+                var restoredSurfaces = new List<WorkspaceBridgeSurface>();
+                foreach (var definition in GameDockAllSurfaces)
+                    restoredSurfaces.Add(new WorkspaceBridgeSurface
+                    {
+                        Id = definition.Key, Label = definition.Value, Available = true
+                    });
+                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
+                    new WorkspaceBridgeMessage
+                    {
+                        Type = WorkspaceBridgeProtocol.CapabilitiesType,
+                        Protocol = WorkspaceBridgeProtocol.Version,
+                        RequestId = "qol-restored",
+                        Surfaces = restoredSurfaces
+                    }
+                ));
+                UpdateGameDock();
+            }
+        }
+
+        private void RunGameDockOfflineBridgeSmoke(AccountPane pane)
+        {
+            if (pane == null) throw new InvalidOperationException("Offline Game Dock smoke requires an active pane.");
+            pane.ResetWorkspaceBridge();
+            UpdateGameDock();
+            if (!_gameDock.Visible
+                || _rootLayout.RowStyles[2].Height != DpiMetric(44)
+                || _cardsViewButton == null
+                || !_cardsViewButton.Enabled
+                || _gameViewButton == null
+                || !_gameViewButton.Enabled
+                || _gameDockAvailabilityLabel == null
+                || !_gameDockAvailabilityLabel.Visible
+                || _gameDockAvailabilityLabel.Text.IndexOf("MENUS OFFLINE", StringComparison.Ordinal) < 0)
+            {
+                throw new InvalidOperationException("Bridge-unavailable state hid or trapped the persistent Game Dock.");
+            }
+            foreach (var button in _gameDockButtons.Values)
+            {
+                if (button.Enabled)
+                    throw new InvalidOperationException("Native module remained enabled while Game Dock bridge was unavailable.");
+            }
+            if (_gameDockOverflowButton == null
+                || _gameDockOverflowButton.Enabled
+                || _gameDockOverflowMenu == null
+                || _gameDockOverflowMenu.Items.Count != 0)
+            {
+                throw new InvalidOperationException("Game Dock overflow remained actionable while the bridge was unavailable.");
+            }
+
+            var restoredSurfaces = new List<WorkspaceBridgeSurface>();
+            foreach (var definition in GameDockAllSurfaces)
+            {
+                restoredSurfaces.Add(new WorkspaceBridgeSurface
+                {
+                    Id = definition.Key,
+                    Label = definition.Value,
+                    Available = true
+                });
+            }
+            HandleWorkspaceBridgeMessage(
+                pane,
+                WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+                {
+                    Type = WorkspaceBridgeProtocol.CapabilitiesType,
+                    Protocol = WorkspaceBridgeProtocol.Version,
+                    RequestId = "offline-restore",
+                    Surfaces = restoredSurfaces
+                })
+            );
+            if (!pane.WorkspaceBridgeReady
+                || !_gameDockAvailabilityLabel.Visible
+                || _gameDockAvailabilityLabel.Text != "MENUS READY"
+                || !_gameDockButtons["inventory"].Enabled
+                || !_gameDockButtons["hunts"].Enabled
+                || !_gameDockButtons["npc-shop"].Enabled
+                || !_gameDockOverflowButton.Enabled
+                || FindGameDockOverflowItem("hunt-analyzer") == null)
+            {
+                throw new InvalidOperationException("Game Dock did not recover after bridge capabilities returned.");
+            }
         }
 
         private void RunDpiMetricSmoke()
@@ -3089,6 +5391,7 @@ namespace PokePixel.CoupledWorkspace
                     "Cross-monitor drawer upper/left clamp failed: " + upperLeft + "."
                 );
             }
+
         }
 
         private async Task RunWorkspaceLifecycleSmokeAsync(
@@ -3098,6 +5401,15 @@ namespace PokePixel.CoupledWorkspace
         {
             var leftUdf = originalLeftPane.Environment.UserDataFolder;
             var rightUdf = originalRightPane.Environment.UserDataFolder;
+            var originalLeftZoom = _workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id];
+            var originalRightZoom = _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id];
+            _workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id] = 1.10;
+            _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = 0.90;
+            TryApplyPaneZoom(originalLeftPane);
+            TryApplyPaneZoom(originalRightPane);
+
+            SetContentView(ProfileRegistry.Rhyxus.Id, true);
+            SetContentView(ProfileRegistry.Rhyosa.Id, false);
 
             _workspaceState.ActiveProfileId = ProfileRegistry.Rhyosa.Id;
             await SwitchToSingleAsync(_workspaceState.ActiveProfileId);
@@ -3107,6 +5419,8 @@ namespace PokePixel.CoupledWorkspace
                 || !_split.Panel2Collapsed
                 || _panesByProfile.Count != 1
                 || !object.ReferenceEquals(singlePane, originalRightPane)
+                || singlePane.CardsViewActive
+                || Math.Abs(singlePane.View.ZoomFactor - 0.90) > 0.001
                 || GetPaneForProfile(ProfileRegistry.Rhyxus.Id) != null)
             {
                 throw new InvalidOperationException("Dual-to-Single lifecycle contract failed.");
@@ -3123,6 +5437,10 @@ namespace PokePixel.CoupledWorkspace
                 || restoredRight == null
                 || object.ReferenceEquals(restoredLeft, originalLeftPane)
                 || !object.ReferenceEquals(restoredRight, originalRightPane)
+                || !restoredLeft.CardsViewActive
+                || restoredRight.CardsViewActive
+                || Math.Abs(restoredLeft.View.ZoomFactor - 1.10) > 0.001
+                || Math.Abs(restoredRight.View.ZoomFactor - 0.90) > 0.001
                 || !string.Equals(
                     restoredLeft.Environment.UserDataFolder,
                     leftUdf,
@@ -3141,6 +5459,8 @@ namespace PokePixel.CoupledWorkspace
             var rhyXusSingle = GetPaneForProfile(ProfileRegistry.Rhyxus.Id);
             if (rhyXusSingle == null
                 || _panesByProfile.Count != 1
+                || !rhyXusSingle.CardsViewActive
+                || Math.Abs(rhyXusSingle.View.ZoomFactor - 1.10) > 0.001
                 || !string.Equals(
                     rhyXusSingle.Environment.UserDataFolder,
                     leftUdf,
@@ -3155,6 +5475,8 @@ namespace PokePixel.CoupledWorkspace
             if (rhyOsaSingle == null
                 || _panesByProfile.Count != 1
                 || GetPaneForProfile(ProfileRegistry.Rhyxus.Id) != null
+                || rhyOsaSingle.CardsViewActive
+                || Math.Abs(rhyOsaSingle.View.ZoomFactor - 0.90) > 0.001
                 || !string.Equals(
                     rhyOsaSingle.Environment.UserDataFolder,
                     rightUdf,
@@ -3168,6 +5490,10 @@ namespace PokePixel.CoupledWorkspace
             if (_panesByProfile.Count != 2
                 || GetPaneForSide(PaneSide.Left) == null
                 || GetPaneForSide(PaneSide.Right) == null
+                || !GetPaneForProfile(ProfileRegistry.Rhyxus.Id).CardsViewActive
+                || GetPaneForProfile(ProfileRegistry.Rhyosa.Id).CardsViewActive
+                || Math.Abs(GetPaneForProfile(ProfileRegistry.Rhyxus.Id).View.ZoomFactor - 1.10) > 0.001
+                || Math.Abs(GetPaneForProfile(ProfileRegistry.Rhyosa.Id).View.ZoomFactor - 0.90) > 0.001
                 || !string.Equals(
                     _workspaceState.ActiveProfileId,
                     ProfileRegistry.Rhyosa.Id,
@@ -3176,6 +5502,10 @@ namespace PokePixel.CoupledWorkspace
             {
                 throw new InvalidOperationException("Final Dual restore after profile switch failed.");
             }
+            _workspaceState.ZoomByProfile[ProfileRegistry.Rhyxus.Id] = originalLeftZoom;
+            _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = originalRightZoom;
+            TryApplyPaneZoom(GetPaneForProfile(ProfileRegistry.Rhyxus.Id));
+            TryApplyPaneZoom(GetPaneForProfile(ProfileRegistry.Rhyosa.Id));
         }
 
         private void RunLayoutEngineSmoke()
@@ -3355,6 +5685,8 @@ namespace PokePixel.CoupledWorkspace
                     Application.DoEvents();
                     AssertCommandDeckFirstPassStable("window-" + windowWidth);
                     AssertCommandDeckGeometry("window-" + windowWidth);
+                    AssertGameDockGeometry("window-" + windowWidth);
+                    AssertCurrentContentViewShellGeometry("window-" + windowWidth);
 
                     if (windowWidth == 1200 || windowWidth == 1280)
                     {
@@ -3371,6 +5703,8 @@ namespace PokePixel.CoupledWorkspace
                 SetSmokeDeckClientWidth(DpiMetric(ExpandedDeckMinimumWidth) - 1);
                 AssertCommandDeckFirstPassStable("compact-threshold");
                 AssertCommandDeckGeometry("compact-threshold");
+                AssertGameDockGeometry("compact-threshold");
+                AssertCurrentContentViewShellGeometry("compact-threshold");
                 if (_leftStatus.Width != DpiMetric(CompactStatusWidth)
                     || _rightStatus.Width != DpiMetric(CompactStatusWidth))
                 {
@@ -3386,6 +5720,8 @@ namespace PokePixel.CoupledWorkspace
                 SetSmokeDeckClientWidth(DpiMetric(ExpandedDeckMinimumWidth));
                 AssertCommandDeckFirstPassStable("expanded-threshold");
                 AssertCommandDeckGeometry("expanded-threshold");
+                AssertGameDockGeometry("expanded-threshold");
+                AssertCurrentContentViewShellGeometry("expanded-threshold");
                 if (_leftStatus.Width != DpiMetric(ExpandedStatusWidth)
                     || _rightStatus.Width != DpiMetric(ExpandedStatusWidth))
                 {
@@ -3465,7 +5801,6 @@ namespace PokePixel.CoupledWorkspace
                     ControlGeometrySignature(_focusButton),
                     ControlGeometrySignature(_rightAccountButton),
                     ControlGeometrySignature(_rightStatus),
-                    ControlGeometrySignature(_activeProfileLabel),
                     ControlGeometrySignature(_scopeSelector)
                 }
             );
@@ -3569,13 +5904,16 @@ namespace PokePixel.CoupledWorkspace
                 if (!account.Visible
                     || !status.Visible
                     || !_focusButton.Visible
-                    || !(account.Left < status.Left && status.Left < _focusButton.Left))
+                    || !(account.Left < status.Left && status.Left < _focusButton.Left)
+                    || !(account.TabIndex < _focusButton.TabIndex))
                 {
                     throw new InvalidOperationException(
                         "Focus hierarchy must be account -> health -> Restore at " + context
                         + ": account=" + account.Bounds
                         + " status=" + status.Bounds
-                        + " restore=" + _focusButton.Bounds + "."
+                        + " restore=" + _focusButton.Bounds
+                        + " accountTab=" + account.TabIndex
+                        + " restoreTab=" + _focusButton.TabIndex + "."
                     );
                 }
             }
@@ -3601,6 +5939,108 @@ namespace PokePixel.CoupledWorkspace
                     + ": " + group.Bounds + "."
                 );
             }
+        }
+
+        private void AssertGameDockGeometry(string context)
+        {
+            if (_gameDock == null || _gameDockGroup == null || _gameDockProfileLabel == null)
+                throw new InvalidOperationException("Game Dock is not initialized at " + context + ".");
+            if (_rootLayout.RowCount != 3
+                || _rootLayout.RowStyles.Count != 3
+                || Math.Abs(_rootLayout.RowStyles[2].Height - DpiMetric(44)) > 0.1f
+                || _gameDock.Top != _split.Bottom)
+            {
+                throw new InvalidOperationException(
+                    "Three-row workspace seam regression at " + context
+                    + ": root=" + _rootLayout.RowCount
+                    + " row2=" + (_rootLayout.RowStyles.Count > 2 ? _rootLayout.RowStyles[2].Height : -1)
+                    + " split=" + _split.Bounds
+                    + " dock=" + _gameDock.Bounds + "."
+                );
+            }
+            if (_gameDock.Height != DpiMetric(44))
+                throw new InvalidOperationException(
+                    "Game Dock height regression at " + context + ": " + _gameDock.Height
+                    + " visible=" + _gameDock.Visible
+                    + " root=" + _rootLayout.ClientSize
+                    + " split=" + _split.Bounds
+                    + " dock=" + _gameDock.Bounds + "."
+                );
+            if (_gameDockGroup.Height < DpiMetric(32))
+                throw new InvalidOperationException(
+                    "Game Dock group is clipped at " + context + ": " + _gameDockGroup.Bounds + "."
+                );
+            var edge = DpiMetric(8);
+            if (_gameDockGroup.Left < edge
+                || _gameDockGroup.Right > _gameDock.ClientSize.Width - edge)
+            {
+                throw new InvalidOperationException(
+                    "Game Dock overflow at " + context
+                    + ": group=" + _gameDockGroup.Bounds
+                    + " dock=" + _gameDock.ClientSize + "."
+                );
+            }
+            var dual = _workspaceState.Mode == WorkspaceMode.Dual;
+            if (_gameDockProfileLabel.Visible == dual
+                || _gameDockAccountButtons.Count != ProfileRegistry.All().Length)
+                throw new InvalidOperationException("Game Dock account selector mode regression at " + context + ".");
+            foreach (var profile in ProfileRegistry.All())
+            {
+                Button selector;
+                if (!_gameDockAccountButtons.TryGetValue(profile.Id, out selector))
+                    throw new InvalidOperationException("Missing Game Dock account selector at " + context + ".");
+                var selected = string.Equals(profile.Id, _workspaceState.ActiveProfileId, StringComparison.OrdinalIgnoreCase);
+                if (selector.Visible != dual
+                    || selector.Enabled != dual
+                    || !(selector.Tag is bool)
+                    || (bool)selector.Tag != selected
+                    || (dual && (selector.AccessibleName ?? "").IndexOf(
+                        selected ? "Active account " : "Activate account ", StringComparison.Ordinal) != 0))
+                {
+                    throw new InvalidOperationException("Game Dock account state/accessible name regression at " + context + ".");
+                }
+                if (dual) AssertToolbarControlGeometry(selector, DpiMetric(28), "game-dock-account-" + context);
+                if (dual && TextRenderer.MeasureText(
+                    selector.Text, selector.Font, Size.Empty,
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine
+                ).Width > selector.Width - DpiMetric(12))
+                    throw new InvalidOperationException("Game Dock account label is clipped at " + context + ".");
+            }
+            AssertToolbarControlGeometry(_gameDockProfileLabel, DpiMetric(28), "game-dock-" + context);
+            if (_gameDockAvailabilityLabel != null && _gameDockAvailabilityLabel.Visible)
+            {
+                AssertToolbarControlGeometry(_gameDockAvailabilityLabel, DpiMetric(28), "game-dock-offline-" + context);
+                if (TextRenderer.MeasureText(
+                    _gameDockAvailabilityLabel.Text, _gameDockAvailabilityLabel.Font, Size.Empty,
+                    TextFormatFlags.NoPadding | TextFormatFlags.SingleLine
+                ).Width > _gameDockAvailabilityLabel.Width)
+                    throw new InvalidOperationException("Game Dock offline label is clipped at " + context + ".");
+            }
+            foreach (var definition in GameDockQuickSurfaces)
+            {
+                Button button;
+                if (_gameDockButtons.TryGetValue(definition.Key, out button))
+                    AssertToolbarControlGeometry(button, DpiMetric(28), "game-dock-" + context);
+            }
+            if (_gameDockOverflowButton == null)
+                throw new InvalidOperationException("Game Dock overflow button is missing at " + context + ".");
+            AssertToolbarControlGeometry(
+                _gameDockOverflowButton,
+                DpiMetric(28),
+                "game-dock-overflow-" + context
+            );
+        }
+
+        private void AssertCardsModeShellGeometry(string context)
+        {
+            if (!AreAllVisibleProfilesCards())
+                throw new InvalidOperationException("Cards shell was not active at " + context + ".");
+            AssertGameDockGeometry(context);
+        }
+
+        private void AssertCurrentContentViewShellGeometry(string context)
+        {
+            AssertGameDockGeometry(context);
         }
 
         private static void AssertToolbarControlGeometry(
@@ -3670,7 +6110,7 @@ namespace PokePixel.CoupledWorkspace
                     || select.Height != DpiMetric(28)
                     || !select.TabStop
                     || select.AccessibleRole != AccessibleRole.ComboBox
-                    || select.BackColor.ToArgb() != Color.FromArgb(0x23, 0x22, 0x28).ToArgb())
+                    || select.BackColor.ToArgb() != WorkspaceChrome.Interactive.ToArgb())
                 {
                     throw new InvalidOperationException("Better UI select base contract failed.");
                 }
@@ -3785,9 +6225,20 @@ namespace PokePixel.CoupledWorkspace
             UpdateCommandDeck();
             Application.DoEvents();
             AssertCommandDeckGeometry("dual-1600");
+            AssertCardsModeShellGeometry("cards-dual-1600");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-dual-1600-left");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Right), "cards-dual-1600-right");
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-dual-1600.png")
+            );
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-dual-1600.png")
+            );
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-dual-1600.png"),
+                false
             );
 
             Width = DpiMetric(1180);
@@ -3796,10 +6247,153 @@ namespace PokePixel.CoupledWorkspace
             UpdateCommandDeck();
             Application.DoEvents();
             AssertCommandDeckGeometry("dual-1180");
+            AssertCardsModeShellGeometry("cards-dual-1180");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-dual-1180-left");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Right), "cards-dual-1180-right");
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-dual-1180.png")
             );
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-dual-1180.png")
+            );
+            SetActiveProfile(ProfileRegistry.Rhyosa.Id);
+            AssertGameDockGeometry("dual-1180-selected-rhyosa");
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-rhyosa-1180.png")
+            );
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            AssertGameDockGeometry("dual-1180-selected-rhyxus");
+            var offlinePane = GetPaneForProfile(_workspaceState.ActiveProfileId);
+            offlinePane.ResetWorkspaceBridge();
+            UpdateGameDock();
+            AssertGameDockGeometry("dual-1180-offline");
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-offline-1180.png")
+            );
+            RunGameDockOfflineBridgeSmoke(offlinePane);
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-dual-1180.png"),
+                false
+            );
+            await Task.WhenAll(
+                ScrollVisualCardsToHistoryAsync(GetPaneForSide(PaneSide.Left)),
+                ScrollVisualCardsToHistoryAsync(GetPaneForSide(PaneSide.Right))
+            );
+            await Task.Delay(40);
+            Application.DoEvents();
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-history-dual-1180.png"),
+                false
+            );
+            await Task.WhenAll(
+                SetVisualStoryTabAsync(GetPaneForSide(PaneSide.Left), "loot"),
+                SetVisualStoryTabAsync(GetPaneForSide(PaneSide.Right), "loot")
+            );
+            await Task.Delay(40);
+            Application.DoEvents();
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-loot-dual-1180.png"),
+                false
+            );
+            await Task.WhenAll(
+                SetVisualStoryTabAsync(GetPaneForSide(PaneSide.Left), "hunt"),
+                SetVisualStoryTabAsync(GetPaneForSide(PaneSide.Right), "hunt")
+            );
+            await Task.WhenAll(
+                RestoreVisualCardsTopAsync(GetPaneForSide(PaneSide.Left)),
+                RestoreVisualCardsTopAsync(GetPaneForSide(PaneSide.Right))
+            );
+            ApplyLayoutPreset(1.0 / 3.0);
+            PerformLayout();
+            UpdateCommandDeck();
+            Application.DoEvents();
+            AssertCardsModeShellGeometry("cards-dual-1-2-1180");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-dual-1-2-1180-left");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Right), "cards-dual-1-2-1180-right");
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-dual-1-2-1180.png"),
+                false
+            );
+            await Task.WhenAll(
+                ScrollVisualCardsToHistoryAsync(GetPaneForSide(PaneSide.Left)),
+                ScrollVisualCardsToHistoryAsync(GetPaneForSide(PaneSide.Right))
+            );
+            await Task.Delay(40);
+            Application.DoEvents();
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-history-dual-1-2-1180.png"),
+                false
+            );
+            await CaptureNarrowHuntStoryEvidenceAsync(GetPaneForSide(PaneSide.Left), outputDir);
+            await Task.WhenAll(
+                RestoreVisualCardsTopAsync(GetPaneForSide(PaneSide.Left)),
+                RestoreVisualCardsTopAsync(GetPaneForSide(PaneSide.Right))
+            );
+            ApplyLayoutPreset(2.0 / 3.0);
+            PerformLayout();
+            UpdateCommandDeck();
+            Application.DoEvents();
+            AssertCardsModeShellGeometry("cards-dual-2-1-1180");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-dual-2-1-1180-left");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Right), "cards-dual-2-1-1180-right");
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-dual-2-1-1180.png"),
+                false
+            );
+            await Task.WhenAll(
+                ScrollVisualCardsToHistoryAsync(GetPaneForSide(PaneSide.Left)),
+                ScrollVisualCardsToHistoryAsync(GetPaneForSide(PaneSide.Right))
+            );
+            await Task.Delay(40);
+            Application.DoEvents();
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-history-dual-2-1-1180.png"),
+                false
+            );
+            await Task.WhenAll(
+                RestoreVisualCardsTopAsync(GetPaneForSide(PaneSide.Left)),
+                RestoreVisualCardsTopAsync(GetPaneForSide(PaneSide.Right))
+            );
+            ApplyLayoutPreset(0.5);
+            PerformLayout();
+            UpdateCommandDeck();
+            Application.DoEvents();
+            var focusedAccountButton = _gameDockAccountButtons[ProfileRegistry.Rhyxus.Id];
+            focusedAccountButton.Focus();
+            Application.DoEvents();
+            UpdateGameDock();
+            if (!focusedAccountButton.Focused
+                || focusedAccountButton.FlatAppearance.BorderColor.ToArgb() != WorkspaceChrome.Focus.ToArgb()
+                || focusedAccountButton.ForeColor.ToArgb() != WorkspaceChrome.Selected.ToArgb())
+                throw new InvalidOperationException("Selected Game Dock account lost its independent keyboard focus cue.");
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-account-focus-1180.png")
+            );
+            var gameDockFocusButton = _gameDockButtons["hunts"];
+            gameDockFocusButton.Focus();
+            Application.DoEvents();
+            UpdateGameDock();
+            Application.DoEvents();
+            if (!gameDockFocusButton.Focused
+                || gameDockFocusButton.FlatAppearance.BorderColor.ToArgb()
+                    != Color.FromArgb(0x54, 0xBA, 0xD2).ToArgb())
+            {
+                throw new InvalidOperationException(
+                    "Game Dock keyboard focus cue did not use the cyan focus edge."
+                );
+            }
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-keyboard-focus-1180.png")
+            );
+            _leftAccountButton.Focus();
+            Application.DoEvents();
+            UpdateGameDock();
             CaptureControl(
                 _rootLayout,
                 Path.Combine(outputDir, "workspace-dual-1180.png")
@@ -3856,9 +6450,22 @@ namespace PokePixel.CoupledWorkspace
             UpdateCommandDeck();
             Application.DoEvents();
             AssertCommandDeckGeometry("single-1180");
+            AssertCardsModeShellGeometry("cards-single-1180");
+            await AssertVisualCardDashboardAsync(
+                GetPaneForProfile(_workspaceState.SingleProfileId),
+                "cards-single-1180"
+            );
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-single-1180.png")
+            );
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-single-1180.png")
+            );
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-single-1180.png"),
+                false
             );
 
             await SwitchToDualAsync();
@@ -3869,9 +6476,19 @@ namespace PokePixel.CoupledWorkspace
             UpdateCommandDeck();
             Application.DoEvents();
             AssertCommandDeckGeometry("focus-left-1180");
+            AssertCardsModeShellGeometry("cards-focus-left-1180");
+            await WaitForVisualCardDashboardAsync(GetPaneForProfile(_workspaceState.ActiveProfileId));
+            await AssertVisualCardDashboardAsync(
+                GetPaneForProfile(_workspaceState.ActiveProfileId),
+                "cards-focus-left-1180"
+            );
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-focus-left-1180.png")
+            );
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-focus-left-1180.png"),
+                false
             );
             RestoreFocusMode();
 
@@ -3881,9 +6498,19 @@ namespace PokePixel.CoupledWorkspace
             UpdateCommandDeck();
             Application.DoEvents();
             AssertCommandDeckGeometry("focus-right-1180");
+            AssertCardsModeShellGeometry("cards-focus-right-1180");
+            await WaitForVisualCardDashboardAsync(GetPaneForProfile(_workspaceState.ActiveProfileId));
+            await AssertVisualCardDashboardAsync(
+                GetPaneForProfile(_workspaceState.ActiveProfileId),
+                "cards-focus-right-1180"
+            );
             CaptureControl(
                 _commandDeck,
                 Path.Combine(outputDir, "command-deck-focus-1180.png")
+            );
+            CaptureControl(
+                _gameDock,
+                Path.Combine(outputDir, "game-dock-focus-right-1180.png")
             );
             CaptureControl(
                 _commandDeck,
@@ -3894,10 +6521,41 @@ namespace PokePixel.CoupledWorkspace
                 Path.Combine(outputDir, "workspace-focus-1180.png")
             );
             await CaptureWorkspaceCompositeAsync(
-                Path.Combine(outputDir, "workspace-focus-composite-1180.png"),
+                Path.Combine(outputDir, "workspace-cards-focus-right-1180.png"),
                 false
             );
             RestoreFocusMode();
+
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            ApplyLayoutPreset(0.5);
+            SetContentView(ProfileRegistry.Rhyxus.Id, false);
+            SetContentView(ProfileRegistry.Rhyosa.Id, false);
+            await Task.Delay(40);
+            Application.DoEvents();
+            AssertGameDockGeometry("game-dual-1180");
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-game-dual-1180.png"),
+                false
+            );
+            SetContentView(ProfileRegistry.Rhyxus.Id, true);
+            await Task.Delay(40);
+            Application.DoEvents();
+            if (!GetPaneForProfile(ProfileRegistry.Rhyxus.Id).CardsViewActive
+                || GetPaneForProfile(ProfileRegistry.Rhyosa.Id).CardsViewActive)
+            {
+                throw new InvalidOperationException("Mixed Cards/Game visual smoke lost its profile-owned view selection.");
+            }
+            AssertCurrentContentViewShellGeometry("mixed-cards-game-1180");
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-mixed-cards-game-1180.png"),
+                false
+            );
+            SetContentView(ProfileRegistry.Rhyosa.Id, true);
+            await Task.Delay(40);
+            Application.DoEvents();
+            AssertCardsModeShellGeometry("cards-restored-after-game-1180");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-restored-left");
+            await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Right), "cards-restored-right");
 
             if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
                 _maintenanceDrawer.Dispose();
@@ -3920,6 +6578,7 @@ namespace PokePixel.CoupledWorkspace
                 Path.Combine(outputDir, "workspace-drawer-composite-1180.png"),
                 true
             );
+            RunMaintenanceDrawerPreferencesSmoke(outputDir);
             RunMaintenanceDrawerKeyboardSmoke();
             _maintenanceDrawer.Dispose();
             _maintenanceDrawer = null;
@@ -3932,6 +6591,117 @@ namespace PokePixel.CoupledWorkspace
             PerformLayout();
             UpdateCommandDeck();
             Application.DoEvents();
+        }
+
+        private void RunMaintenanceDrawerPreferencesSmoke(string outputDir)
+        {
+            if (_drawerQuickSelectors.Count != GameDockQuickSurfaces.Length
+                || _drawerZoomSelector == null || _drawerZoomResetButton == null
+                || _drawerAccountsLabel == null || _drawerEditQuickButton == null
+                || _maintenanceDrawerBody == null)
+                throw new InvalidOperationException("Maintenance drawer preferences were not initialized.");
+
+            var profileId = _workspaceState.ActiveProfileId;
+            var originalFavorites = new List<string>(GetQuickGameDockSurfaces(profileId));
+            var originalZoom = _workspaceState.ZoomByProfile[profileId];
+            var pane = GetPaneForProfile(profileId);
+            try
+            {
+                if (_drawerAccountsLabel.Text.IndexOf("Rhyxus:", StringComparison.Ordinal) < 0
+                    || _drawerAccountsLabel.Text.IndexOf("Rhyosa:", StringComparison.Ordinal) < 0)
+                    throw new InvalidOperationException("Read-only two-account diagnostics are missing.");
+                if (_drawerZoomSelector.Items.Count != WorkspaceZoomPresets.Factors.Length
+                    || _drawerZoomSelector.AccessibilityObject.Role != AccessibleRole.ComboBox
+                    || !_drawerZoomSelector.TabStop
+                    || _drawerZoomSelector.AccessibleName.IndexOf(
+                        ProfileRegistry.Get(profileId).DisplayName, StringComparison.Ordinal
+                    ) < 0)
+                    throw new InvalidOperationException("Active-account zoom selector is inaccessible.");
+
+                _maintenanceDrawerBody.ScrollControlIntoView(_drawerAccountsLabel);
+                Application.DoEvents();
+                CaptureControl(_maintenanceDrawerSurface,
+                    Path.Combine(outputDir, "maintenance-drawer-health-zoom.png"));
+
+                _drawerEditQuickButton.PerformClick();
+                if (!_drawerQuickEditor.Visible)
+                    throw new InvalidOperationException("Game Dock shortcut editor did not expand.");
+                foreach (var selector in _drawerQuickSelectors)
+                {
+                    if (selector.Items.Count != GameDockAllSurfaces.Length
+                        || !(selector is BetterUiSelect)
+                        || selector.AccessibilityObject.Role != AccessibleRole.ComboBox
+                        || !selector.TabStop
+                        || string.IsNullOrWhiteSpace(selector.AccessibleName))
+                        throw new InvalidOperationException("Game Dock shortcut controls are incomplete.");
+                }
+
+                var firstSelector = _drawerQuickSelectors[0];
+                firstSelector.Focus();
+                Application.DoEvents();
+                if (!firstSelector.Focused)
+                    throw new InvalidOperationException("Shortcut editor could not receive keyboard focus.");
+                var closeReason = "none";
+                firstSelector.MenuForSmoke.Closed += delegate(object sender, ToolStripDropDownClosedEventArgs args)
+                { closeReason = args.CloseReason.ToString(); };
+                firstSelector.OpenMenuForSmoke();
+                if (!firstSelector.MenuForSmoke.Visible
+                    || firstSelector.MenuForSmoke.Items.Count != GameDockAllSurfaces.Length
+                    || firstSelector.MenuForSmoke.Height > DrawerDpiMetric(320) + DrawerDpiMetric(4))
+                    throw new InvalidOperationException("Dark shortcut dropdown did not open a bounded native-menu list: visible="
+                        + firstSelector.MenuForSmoke.Visible
+                        + " items=" + firstSelector.MenuForSmoke.Items.Count
+                        + " height=" + firstSelector.MenuForSmoke.Height
+                        + " bound=" + (DrawerDpiMetric(320) + DrawerDpiMetric(4))
+                        + " parent=" + firstSelector.Visible
+                        + " drawer=" + _maintenanceDrawer.Visible
+                        + " close=" + closeReason + ".");
+                using (var dropdownImage = new Bitmap(
+                    firstSelector.MenuForSmoke.Width, firstSelector.MenuForSmoke.Height))
+                {
+                    firstSelector.MenuForSmoke.DrawToBitmap(dropdownImage,
+                        new Rectangle(Point.Empty, dropdownImage.Size));
+                    dropdownImage.Save(Path.Combine(outputDir, "maintenance-shortcut-dropdown.png"),
+                        System.Drawing.Imaging.ImageFormat.Png);
+                }
+                firstSelector.MenuForSmoke.Close(ToolStripDropDownCloseReason.CloseCalled);
+                firstSelector.Focus();
+                for (var i = 0; i < firstSelector.Items.Count; i++)
+                {
+                    var choice = firstSelector.Items[i] as QuickSurfaceChoice;
+                    if (choice == null || choice.Id != "hunt-analyzer") continue;
+                    firstSelector.SelectedIndex = i;
+                    break;
+                }
+                if (GetQuickGameDockSurfaces(profileId)[0] != "hunt-analyzer"
+                    || !_gameDockButtons.ContainsKey("hunt-analyzer")
+                    || _drawerQuickSelectors[0].SelectedItem == null)
+                    throw new InvalidOperationException("Shortcut editor did not update profile-owned buttons.");
+
+                _drawerZoomSelector.SelectedIndex = 2;
+                if (Math.Abs(_workspaceState.ZoomByProfile[profileId] - 1.10) > 0.001
+                    || pane == null || Math.Abs(pane.View.ZoomFactor - 1.10) > 0.001)
+                    throw new InvalidOperationException("Zoom selector did not update active WebView2.");
+                _drawerZoomResetButton.PerformClick();
+                if (Math.Abs(_workspaceState.ZoomByProfile[profileId] - 1.00) > 0.001
+                    || Math.Abs(pane.View.ZoomFactor - 1.00) > 0.001)
+                    throw new InvalidOperationException("Zoom reset did not restore active WebView2.");
+
+                _maintenanceDrawerBody.ScrollControlIntoView(_drawerQuickSelectors[3]);
+                Application.DoEvents();
+                CaptureControl(_maintenanceDrawerSurface,
+                    Path.Combine(outputDir, "maintenance-drawer-shortcuts-expanded.png"));
+            }
+            finally
+            {
+                _workspaceState.QuickSurfacesByProfile[profileId] = originalFavorites;
+                _workspaceState.ZoomByProfile[profileId] = originalZoom;
+                TryApplyPaneZoom(pane);
+                _drawerQuickEditor.Visible = false;
+                _drawerEditQuickButton.Text = "Edit 7 shortcuts";
+                UpdateGameDock();
+                RefreshMaintenanceDrawer();
+            }
         }
 
         private void RunMaintenanceDrawerKeyboardSmoke()
@@ -3992,10 +6762,41 @@ namespace PokePixel.CoupledWorkspace
             if (left == null || right == null)
                 throw new InvalidOperationException("Visual smoke requires both profile panes.");
 
+            SetContentView(ProfileRegistry.Rhyxus.Id, true);
+            SetContentView(ProfileRegistry.Rhyosa.Id, true);
+
             await Task.WhenAll(
                 NavigateSmokePaneAsync(left, new Uri(leftPath).AbsoluteUri),
                 NavigateSmokePaneAsync(right, new Uri(rightPath).AbsoluteUri)
             );
+            await Task.WhenAll(
+                InstallVisualCardDashboardAsync(left),
+                InstallVisualCardDashboardAsync(right)
+            );
+            await Task.WhenAll(
+                WaitForVisualCardDashboardAsync(left),
+                WaitForVisualCardDashboardAsync(right)
+            );
+            var handshakeReady = false;
+            for (var attempt = 0; attempt < 40; attempt++)
+            {
+                Application.DoEvents();
+                if (left.WorkspaceBridgeReady && right.WorkspaceBridgeReady)
+                {
+                    handshakeReady = true;
+                    break;
+                }
+                await Task.Delay(50);
+            }
+            if (!handshakeReady)
+            {
+                throw new InvalidOperationException(
+                    "Visual smoke bridge handshake did not settle after navigation:"
+                    + " leftBridge=" + left.WorkspaceBridgeReady
+                    + " rightBridge=" + right.WorkspaceBridgeReady + "."
+                );
+            }
+            UpdateCommandDeck();
         }
 
         private static string BuildVisualSmokeHtml(string profileName, string context)
@@ -4007,8 +6808,300 @@ namespace PokePixel.CoupledWorkspace
                 + ".name{color:#ebecdc;font-weight:700;letter-spacing:1px;}"
                 + ".context{margin-top:8px;color:#878573;font-size:12px;}"
                 + "</style><title>" + profileName + " Visual Smoke</title></head><body>"
+                + "<nav class=\"pokeidle-top-toolbar\">"
+                + "<button data-menu-id=\"inventory\">Inventory</button>"
+                + "<button data-menu-id=\"hunts\">Hunts</button>"
+                + "<button data-menu-id=\"hunt-analyzer\">Hunt Analyzer</button>"
+                + "<button data-menu-id=\"team\">Team</button>"
+                + "<button data-menu-id=\"storage\">Storage</button>"
+                + "<button data-menu-id=\"auto-helper\">Auto Helper</button>"
+                + "<button data-menu-id=\"settings\">Settings</button>"
+                + "</nav>"
+                + "<div class=\"pokeidle-team-hud\"><div class=\"pokeidle-team-hud__active\"><div class=\"pokeidle-team-hud__active-portrait\"><canvas class=\"pokeidle-team-card__charset\" width=\"48\" height=\"48\"></canvas></div></div><div class=\"pokeidle-team-card\" data-creature-id=\"visual-player\"><canvas class=\"pokeidle-team-card__charset\" width=\"48\" height=\"48\"></canvas>"
+                + "<span class=\"pokeidle-team-card__name\">" + profileName + " ACTIVE</span>"
+                + "</div></div>"
                 + "<div class=\"frame\"><div class=\"name\">" + profileName + "</div>"
                 + "<div class=\"context\">" + context + "</div></div></body></html>";
+        }
+
+        private async Task InstallVisualCardDashboardAsync(AccountPane pane)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null)
+                throw new InvalidOperationException("Visual card dashboard pane is unavailable.");
+            if (_betterUiScript == null) _betterUiScript = LoadBetterUiScript();
+            var isRhyxus = string.Equals(
+                pane.Profile.Id,
+                ProfileRegistry.Rhyxus.Id,
+                StringComparison.OrdinalIgnoreCase
+            );
+            var playerName = isRhyxus ? "Rhydon" : "Gyarados";
+            var playerSpeciesId = isRhyxus ? "rhydon" : "gyarados";
+            var playerLevel = isRhyxus ? 195 : 183;
+            var playerHp = isRhyxus ? 4603 : 3891;
+            var playerMaxHp = isRhyxus ? 4603 : 4210;
+            var targetName = isRhyxus ? "Charizard" : "Dragonite";
+            var targetSpeciesId = isRhyxus ? "charizard" : "dragonite";
+            var targetLevel = isRhyxus ? 90 : 88;
+            var playerPortraitDraw = isRhyxus
+                ? "ctx.clearRect(0,0,48,48);"
+                  + "ctx.fillStyle='#161920';ctx.fillRect(0,0,48,48);"
+                  + "ctx.fillStyle='#667487';ctx.fillRect(15,10,19,13);ctx.fillRect(12,20,25,17);ctx.fillRect(9,25,7,8);ctx.fillRect(34,23,7,7);ctx.fillRect(14,36,8,8);ctx.fillRect(29,36,8,8);"
+                  + "ctx.fillStyle='#8997a8';ctx.fillRect(18,12,13,8);ctx.fillRect(18,24,15,10);ctx.fillRect(13,27,4,5);"
+                  + "ctx.fillStyle='#3c4655';ctx.fillRect(12,21,5,6);ctx.fillRect(33,20,5,8);ctx.fillRect(15,35,7,3);ctx.fillRect(29,35,7,3);"
+                  + "ctx.fillStyle='#d9c69b';ctx.fillRect(22,4,5,7);ctx.fillRect(23,2,3,4);ctx.fillRect(17,8,4,4);ctx.fillRect(30,8,4,4);"
+                  + "ctx.fillStyle='#f0e3bd';ctx.fillRect(23,1,2,3);"
+                  + "ctx.fillStyle='#d84a4a';ctx.fillRect(20,14,3,3);ctx.fillRect(28,14,3,3);"
+                  + "ctx.fillStyle='#20242d';ctx.fillRect(21,15,1,1);ctx.fillRect(29,15,1,1);ctx.fillRect(22,19,7,2);"
+                  + "ctx.fillStyle='#506074';ctx.fillRect(37,29,5,4);ctx.fillRect(40,31,5,3);"
+                : "ctx.clearRect(0,0,48,48);";
+            var setup = BuildCoupledWorkspaceBootstrapStatement()
+                + "(function(){"
+                + "var hud=document.querySelector('.pokeidle-team-hud');"
+                + "var canvas=hud.querySelector('.pokeidle-team-hud__active-portrait canvas');canvas.width=48;canvas.height=48;"
+                + "var ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;"
+                + playerPortraitDraw
+                + "var compactCanvas=hud.querySelector('.pokeidle-team-card[data-creature-id=\"visual-player\"] canvas');compactCanvas.width=48;compactCanvas.height=48;compactCanvas.getContext('2d').clearRect(0,0,48,48);"
+                + "function nativeSprite(base,accent){var c=document.createElement('canvas');c.width=48;c.height=48;var x=c.getContext('2d');x.imageSmoothingEnabled=false;x.clearRect(0,0,48,48);x.fillStyle=base;x.fillRect(12,8,24,30);x.fillRect(7,16,9,16);x.fillRect(32,14,9,18);x.fillStyle=accent;x.fillRect(17,12,14,9);x.fillRect(18,25,12,8);x.fillRect(12,35,8,8);x.fillRect(29,35,8,8);x.fillStyle='#17161b';x.fillRect(19,15,3,3);x.fillRect(27,15,3,3);return c.toDataURL('image/png');}"
+                + "window.POKEIDLE_MOVE_ICON_MAP={earthquake:nativeSprite('#6b6543','#e3c054'),'rock-slide':nativeSprite('#878573','#c3d5c7'),'drill-run':nativeSprite('#8a684a','#e6928a'),'ice-fang':nativeSprite('#2485a6','#54bad2')};"
+                + "window.__visualSpecies={gyarados:{id:'gyarados',name:'Gyarados',normal_sprite_url:nativeSprite('#2485a6','#54bad2'),shiny_sprite_url:nativeSprite('#e6928a','#e3c054')},charizard:{id:'charizard',name:'Charizard',normal_sprite_url:nativeSprite('#b66b3d','#e3c054'),shiny_sprite_url:nativeSprite('#4a4b55','#e6928a')},dragonite:{id:'dragonite',name:'Dragonite',normal_sprite_url:nativeSprite('#c69a68','#c3d5c7'),shiny_sprite_url:nativeSprite('#55a058','#e3c054')}};"
+                + "window.PokeIdle=window.PokeIdle||{};window.PokeIdle.Localization={get:function(){return 'en-US';}};window.PokeIdle.PersistentHud=window.PokeIdle.PersistentHud||{};"
+                + "window.PokeIdle.PersistentHud._teamHud={el:hud,_creatures:[{id:'visual-player',species_id:"
+                + QuoteJs(playerSpeciesId) + ",name:" + QuoteJs(playerName) + ",level:" + playerLevel + ",hp:" + playerHp + ",max_hp:" + playerMaxHp
+                + ",exp:" + (isRhyxus ? 195000 : 183000) + ",exp_current_level:" + (isRhyxus ? 190000 : 180000) + ",exp_next_level:" + (isRhyxus ? 200000 : 186000)
+                + ",elements:" + (isRhyxus ? "['rock','ground']" : "['water','flying']")
+                + ",is_leader:true},{id:'visual-bench',species_id:'visual-bench',name:'Umbreon',level:160,hp:3200,max_hp:3600,elements:['dark'],is_leader:false}]};"
+                + "window.__visualLeader='visual-player';window.__visualSettings={auto_capture:{enabled:true,common_enabled:true,shiny_enabled:true,common_capsule_item_id:'capsule_ultra',shiny_capsule_item_id:'capsule_master',species_filter:[],min_quality:'common',mode:'split'},auto_potion:{enabled:true,hp_threshold:40,potion_item_id:'potion_hyper',auto_revive:false,revive_item_id:''},auto_sell:{enabled:false,qualities:[]},auto_extract:{enabled:false,qualities:[]}};"
+                + "window.PokeIdle.Bus={on:function(){},off:function(){},emit:function(){}};"
+                + "window.PokeIdle.Api={getSpecies:function(id){return Promise.resolve({data:window.__visualSpecies[String(id)]||{id:String(id),name:String(id)}});},getMoveset:function(id){return Promise.resolve({creature_id:String(id),mode:'manual',selected:[{id:'earthquake',name:'Earthquake',element:'ground'},{id:'rock-slide',name:'Rock Slide',element:'rock'},{id:'drill-run',name:'Drill Run',element:'ground'},{id:'ice-fang',name:'Ice Fang',element:'ice'}]});},getTeam:function(){return Promise.resolve({team:{leader_id:window.__visualLeader}});},setTeamLeader:function(id){window.__visualLeader=String(id);window.PokeIdle.PersistentHud._teamHud._creatures.forEach(function(c){c.is_leader=String(c.id)===window.__visualLeader;});return Promise.resolve({xp_share:null});},getHuntSettings:function(){return Promise.resolve(JSON.parse(JSON.stringify(window.__visualSettings)));},getInventory:function(){return Promise.resolve({inventory:[{item_id:'capsule_master',name:'Master Ball',type:'capsule',qty:2,catch_multiplier:10},{item_id:'capsule_ultra',name:'Ultra Ball',type:'capsule',qty:12,catch_multiplier:2},{item_id:'capsule_great',name:'Great Ball',type:'capsule',qty:30,catch_multiplier:1.5},{item_id:'potion_hyper',name:'Hyper Potion',type:'potion',qty:8},{item_id:'potion_max',name:'Max Potion',type:'potion',qty:3},{item:{id:'reference_straw',name:'Reference Straw',rarity:'rare'},qty:4},{item:{id:'oran_berry',name:'Oran Berry',quality:'common'},qty:9}]});},updateHuntSettings:function(capture,potion,unused,sell,extract){window.__visualSettings={auto_capture:capture,auto_potion:potion,auto_sell:sell,auto_extract:extract};return Promise.resolve({});}};"
+                + "var rarities=['epic','legendary','mythical','rare'];"
+                + "var now=Date.now();var attempts=[];for(var i=0;i<40;i++){attempts.push({atMs:now-(i+1)*47000,speciesId:i%2===0?'dragonite':'gengar',species:i%2===0?'Dragonite':'Gengar',rarity:rarities[i%rarities.length],shiny:i%4===3,qualityMultiplier:1.25+(i%7)*0.08,chance:i===0?0.00875:0.015+(i*0.001),result:i===3?'captured':'fled',ball:i%2===0?'Ultra Ball':'Great Ball',ivTotal:i===0?176:i===3?151:null,captureDetails:i===3?{gender:'female',nature:'adamant',ivTotal:151,ivs:{hp:31,atk:31,def:25,spa:20,spd:22,spe:22}}:null});}"
+                + "var lootHistory=[];for(var j=0;j<16;j++){var direct=37+j;var lootValue=j*11;var sold=j===2;var autoValue=sold?2500:0;lootHistory.push({atMs:now-(j+1)*53000,species:j%2===0?'Dragonite':'Gengar',directGold:direct,lootSellValue:lootValue,autoSold:sold,autoSellValue:autoValue,totalValue:direct+lootValue+autoValue,items:[{itemId:j%2===0?'reference_straw':'oran_berry',qty:(j%3)+1}]});}"
+                + "var rarityCounts={unknown:{captured:0,seen:1,shinyCaptured:0,shinySeen:0},weak:{captured:1,seen:3,shinyCaptured:0,shinySeen:0},common:{captured:4,seen:10,shinyCaptured:0,shinySeen:0},uncommon:{captured:3,seen:8,shinyCaptured:0,shinySeen:0},rare:{captured:3,seen:7,shinyCaptured:1,shinySeen:2},epic:{captured:3,seen:6,shinyCaptured:1,shinySeen:1},legendary:{captured:2,seen:5,shinyCaptured:0,shinySeen:0},mythical:{captured:1,seen:3,shinyCaptured:0,shinySeen:0}};"
+                + "var summary={protocol:1,available:true,appVersion:'1.13.4',leadershipActive:true,status:"
+                + QuoteJs("running")
+                + ",activeMs:" + (isRhyxus ? 754000 : 260000)
+                + ",seen:" + (isRhyxus ? 42 : 31)
+                + ",seenPerHour:" + (isRhyxus ? "200.5" : "180")
+                + ",captured:" + (isRhyxus ? 17 : 9)
+                + ",failed:" + (isRhyxus ? 25 : 22)
+                + ",captureRate:" + (isRhyxus ? "0.4047619" : "0.2903226")
+                + ",trainerExp:" + (isRhyxus ? 258400 : 120500)
+                + ",trainerExpPerHour:" + (isRhyxus ? 123400 : 85000)
+                + ",pokemonExp:" + (isRhyxus ? 512900 : 230100)
+                + ",pokemonExpPerHour:" + (isRhyxus ? 345600 : 210000)
+                + ",directGold:" + (isRhyxus ? 12000000 : 6200000)
+                + ",lootSellValue:" + (isRhyxus ? 2250000 : 1420000)
+                + ",autoSellValue:" + (isRhyxus ? 750000 : 400000)
+                + ",revenue:" + (isRhyxus ? 15000000 : 8020000)
+                + ",revenuePerHour:" + (isRhyxus ? 12960000 : 7550000)
+                + ",dollar:" + (isRhyxus ? 15000000 : 8020000)
+                + ",dollarPerHour:" + (isRhyxus ? 12960000 : 7550000)
+                + ",expenses:" + (isRhyxus ? 3000000 : 1270000)
+                + ",expensesPerHour:" + (isRhyxus ? 2592000 : 1180000)
+                + ",profit:" + (isRhyxus ? 12000000 : 6750000)
+                + ",profitPerHour:" + (isRhyxus ? 10368000 : 6370000)
+                + ",rarePlusFailed:" + (isRhyxus ? 2 : 3)
+                + ",epicPlusFailed:" + (isRhyxus ? 1 : 2)
+                + ",shinySeen:" + (isRhyxus ? 1 : 0)
+                + ",shinyCaptured:" + (isRhyxus ? 1 : 0)
+                + ",seenUnknown:1,seenWeak:3,seenCommon:10,seenUncommon:8,seenRare:7,seenEpic:6,seenLegendary:5,seenMythical:3,rarityCounts:rarityCounts,"
+                + "latestCaptureChance:" + (isRhyxus ? "0.033936651583710405" : "0.004")
+                + ",currentTarget:{speciesId:" + QuoteJs(targetSpeciesId) + ",zoneId:" + QuoteJs(isRhyxus ? "visual-zone-left" : "visual-zone-right") + ",species:" + QuoteJs(targetName) + ",level:" + targetLevel + ",rarity:'epic',shiny:"
+                + (isRhyxus ? "true" : "false") + ",elements:" + (isRhyxus ? "['fire','flying']" : "['dragon','flying']") + ",pokemonExp:" + (isRhyxus ? 4305 : 3920) + "},attemptHistory:attempts.slice(0,32),specialHistory:attempts,lootHistory:lootHistory};"
+                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_PUBLIC__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,getSummary:function(){return Object.assign({},summary,{capturedAtMs:Date.now(),currentTarget:Object.assign({},summary.currentTarget),rarityCounts:Object.fromEntries(Object.entries(summary.rarityCounts).map(function(entry){return [entry[0],Object.assign({},entry[1])];})),attemptHistory:summary.attemptHistory.map(function(item){return Object.assign({},item);}),specialHistory:summary.specialHistory.map(function(item){return Object.assign({},item);}),lootHistory:summary.lootHistory.map(function(item){return Object.assign({},item,{items:(item.items||[]).map(function(entry){return Object.assign({},entry);})});})});}})});"
+                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_CONTROL__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,act:function(action){return Promise.resolve({ok:action==='pause'||action==='resume'||action==='reset'});}})});"
+                + "})();\n";
+            await pane.View.CoreWebView2.ExecuteScriptAsync(setup + _betterUiScript);
+        }
+
+        private async Task WaitForVisualCardDashboardAsync(AccountPane pane)
+        {
+            for (var attempt = 0; attempt < 40; attempt++)
+            {
+                var visible = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');var player=document.querySelector('[data-card-sprite=\"player\"]');var target=document.querySelector('[data-card-sprite=\"target\"]');var loot=document.querySelector('.ppbui-cards-loot-item[data-rarity=\"rare\"],.ppbui-cards-loot-item[data-rarity=\"common\"]');var moves=document.querySelectorAll('[data-card-player-moves] .ppbui-cards-move');var attempts=document.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt');return Boolean(root&&!root.hidden&&player&&!player.hidden&&target&&!target.hidden&&loot&&moves.length===4&&attempts.length===40);})()"
+                );
+                if (string.Equals(visible, "true", StringComparison.Ordinal)) return;
+                await Task.Delay(50);
+                Application.DoEvents();
+            }
+            throw new InvalidOperationException("Real Better UI card dashboard did not become visible in visual smoke.");
+        }
+
+        private async Task AssertVisualCardDashboardAsync(AccountPane pane, string context)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null)
+                throw new InvalidOperationException("Missing visual card pane at " + context + ".");
+            var visible = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');return Boolean(root&&!root.hidden);})()"
+            );
+            var battleHeightRaw = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var node=document.querySelector('.ppbui-cards-battle');return node?Math.round(node.getBoundingClientRect().height):-1;})()"
+            );
+            var overflow = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');return Boolean(root&&root.scrollWidth>root.clientWidth+1);})()"
+            );
+            var dataContract = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "(function(){"
+                    + "var player=document.querySelector('[data-card-sprite=player]');var playerCard=document.querySelector('[data-card-combat=player]');var targetImg=document.querySelector('[data-card-sprite=target]');"
+                    + "var rarityFilters=document.querySelectorAll('[data-card-attempt-rarity]');var rarityTiles=document.querySelectorAll('[data-rarity-key]');var shinyRarity=document.querySelector('[data-rarity-shiny]:not([hidden])');var shinyFilter=document.querySelector('[data-card-attempt-shiny]');var resultFilter=document.querySelector('[data-card-attempt-result]');"
+                    + "var huntTab=document.querySelector('[data-card-story-tab=hunt]');var lootTab=document.querySelector('[data-card-story-tab=loot]');var huntPanel=document.querySelector('[data-card-story-panel=hunt]');var lootPanel=document.querySelector('[data-card-story-panel=loot]');var lootRarity=document.querySelector('[data-card-loot-rarity]');"
+                    + "var loot=document.querySelector('[data-card-field=loot-value]');var profit=document.querySelector('[data-card-field=profit]');var revenue=document.querySelector('[data-card-field=revenue]');var epicFailed=document.querySelector('[data-card-field=epic-failed]');var xpHour=document.querySelector('[data-card-field=pokemon-xp-hour]');"
+                    + "var targetMeta=document.querySelector('[data-card-field=target-meta]');var playerTypes=document.querySelector('[data-card-elements=player]');var targetTypes=document.querySelector('[data-card-elements=target]');var playerMoves=document.querySelector('[data-card-player-moves]');var captured=document.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-result=captured]');var capturedDetails=captured&&captured.querySelector('.ppbui-cards-attempt-details');var captureToggle=document.querySelector('[data-card-genetics-toggle]');"
+                    + "var lootRows=document.querySelectorAll('[data-card-loot-body] .ppbui-cards-loot-row');var firstLoot=lootRows.length?lootRows[0]:null;var firstLootItem=firstLoot&&firstLoot.querySelector('.ppbui-cards-loot-item:not(.ppbui-cards-loot-item--empty)');var firstLootTotal=firstLoot&&firstLoot.querySelector('[data-card-loot-total]');var history=document.querySelector('.ppbui-cards-attempt-table');var attemptScroll=document.querySelector('[data-card-attempt-scroll]');var attemptLabels=document.querySelector('.ppbui-cards-attempt-labels');var economy=document.querySelector('.ppbui-cards-economy');"
+                    + "var summaryCard=document.querySelector('.ppbui-cards-card--summary');var captureCard=document.querySelector('.ppbui-cards-card--capture');var rarityCard=document.querySelector('.ppbui-cards-card--rarity');var teamRoster=document.querySelector('[data-card-team-list]');var teamButtons=teamRoster?teamRoster.querySelectorAll('[data-card-team-member]'):[];var activeTeam=teamRoster?teamRoster.querySelector('[data-card-team-member][aria-pressed=true]'):null;"
+                    + "var pause=document.querySelector('[data-card-session-pause]');var reset=document.querySelector('[data-card-session-reset]');var target=document.querySelector('[data-card-combat=target]');var shiny=document.querySelector('[data-card-shiny-badge]');var rarityBadge=document.querySelector('[data-card-target-rarity]');var hpRow=document.querySelector('[data-card-player-hp-row]');var expRow=document.querySelector('[data-card-player-exp-row]');var expMeter=document.querySelector('[data-card-player-exp-meter]');var style=history?getComputedStyle(history):null;"
+                    + "var playerSrc=player?player.getAttribute('src')||'':'';var targetSrc=targetImg?targetImg.getAttribute('src')||'':'';var nativeAsset=function(src){return src.indexOf('data:image/png;base64,')===0&&src.length>300&&src.indexOf('pokemondb')<0;};var targetVisualReady=targetImg&&!targetImg.hidden&&nativeAsset(targetSrc);var targetShiny=target&&target.dataset.shiny==='true';"
+                    + "var teamLevels=teamButtons.length===2&&Array.from(teamButtons).every(function(button){var name=button.querySelector('strong');var level=button.querySelector('span');return name&&name.textContent&&level&&level.textContent.indexOf('Lv.')===0;});var sixTeamRows=teamRoster&&teamRoster.children.length===6;var teamBeforePlayer=teamRoster&&playerCard&&Boolean(teamRoster.compareDocumentPosition(playerCard)&Node.DOCUMENT_POSITION_FOLLOWING);"
+                    + "var legacyControlsRemoved=!document.querySelector('[data-card-matchup]')&&!document.querySelector('[data-card-ball-scope]')&&!document.querySelector('[data-card-ball-select]')&&!document.querySelector('[data-card-potion-select]')&&!document.querySelector('[data-card-ball-label]');var row=history&&history.querySelector('[data-card-attempt-body] .ppbui-cards-attempt');var timelineReady=history&&history.getAttribute('role')==='list'&&!history.querySelector('.ppbui-cards-attempt-head');var rowHeight=row?row.getBoundingClientRect().height:0;var denseRow=rowHeight>0&&rowHeight<=48;var labelsReady=attemptLabels&&attemptLabels.children.length===8&&attemptLabels.textContent.indexOf('Quality')>=0&&attemptLabels.textContent.indexOf('Chance')>=0&&attemptLabels.textContent.indexOf('IV Total')>=0;var fields=row?Array.from(row.children).filter(function(node){return node.hasAttribute&&node.hasAttribute('data-attempt-column');}):[];var centers=fields.map(function(node){var r=node.getBoundingClientRect();return (r.top+r.bottom)/2;});var singleLineReady=centers.length===8&&Math.max.apply(Math,centers)-Math.min.apply(Math,centers)<=2;var chanceCell=row&&row.querySelector('[data-attempt-column=\"6\"]');var historyRect=history?history.getBoundingClientRect():null;var chanceRect=chanceCell?chanceCell.getBoundingClientRect():null;var chanceVisible=Boolean(chanceRect&&historyRect&&chanceRect.width>0&&chanceRect.left>=historyRect.left-1&&chanceRect.right<=historyRect.right+1);var storyScrollReady=attemptScroll&&getComputedStyle(attemptScroll).overflowX==='auto'&&attemptScroll.scrollWidth>=attemptScroll.clientWidth;"
+                    + "var resultButtons=Array.from(document.querySelectorAll('button[data-card-attempt-result]'));var resultReady=resultButtons.length===3&&resultButtons.map(function(b){return b.dataset.cardAttemptResult;}).join(',')===',captured,fled'&&resultButtons.filter(function(b){return b.getAttribute('aria-pressed')==='true';}).length===1&&resultButtons.filter(function(b){return b.tabIndex===0;}).length===1;var storyReady=false;if(huntTab&&lootTab&&huntPanel&&lootPanel&&huntTab.getAttribute('aria-selected')==='true'&&!huntPanel.hidden&&lootPanel.hidden){lootTab.click();storyReady=lootTab.getAttribute('aria-selected')==='true'&&huntPanel.hidden&&!lootPanel.hidden;huntTab.click();storyReady=storyReady&&huntTab.getAttribute('aria-selected')==='true'&&!huntPanel.hidden&&lootPanel.hidden;}"
+                    + "var lootTotalReady=firstLootTotal&&firstLootTotal.textContent.indexOf('Total ')===0&&firstLootTotal.getAttribute('aria-label')&&firstLootTotal.getAttribute('aria-label').indexOf('Total: ')===0;var lootStoryReady=lootRows.length===16&&firstLoot&&firstLootItem&&lootTotalReady&&firstLoot.querySelector('.ppbui-cards-loot-finance');var lootFilterReady=lootRarity&&lootRarity.options.length===9&&Array.from(lootRarity.options).map(function(o){return o.value;}).join(',')===',weak,common,uncommon,rare,epic,legendary,mythical,none';var lootFilterFunctional=false;if(lootFilterReady){lootTab.click();lootRarity.value='rare';lootRarity.dispatchEvent(new Event('change'));var filteredLoot=Array.from(document.querySelectorAll('[data-card-loot-body] .ppbui-cards-loot-item:not(.ppbui-cards-loot-item--empty)'));lootFilterFunctional=filteredLoot.length>0&&filteredLoot.every(function(item){return item.dataset.rarity==='rare';})&&!document.querySelector('[data-card-loot-body] .ppbui-cards-loot-item[data-rarity=common]');lootRarity.value='';lootRarity.dispatchEvent(new Event('change'));huntTab.click();}var narrowStory=innerWidth<=640;var rowRect=row?row.getBoundingClientRect():null;var allFieldsVisible=fields.length===8&&rowRect&&historyRect&&fields.every(function(cell){var r=cell.getBoundingClientRect();return r.width>0&&r.height>0&&r.left>=historyRect.left-1&&r.right<=historyRect.left+history.clientLeft+history.clientWidth+1&&r.top>=rowRect.top-1&&r.bottom<=rowRect.bottom+1;});var bandsReady=fields.length===8&&fields[2].getBoundingClientRect().top+4<fields[0].getBoundingClientRect().top&&fields[3].getBoundingClientRect().top>fields[0].getBoundingClientRect().top+4;var compactLabels=fields.length===8&&fields.every(function(cell){var content=getComputedStyle(cell,'::before').content;return content&&content!=='none'&&content!=='normal';});var responsiveTimelineReady=narrowStory?(rowHeight>=65&&rowHeight<=220&&bandsReady&&allFieldsVisible&&compactLabels&&!attemptLabels.offsetParent&&getComputedStyle(attemptScroll).overflowX==='hidden'):(denseRow&&labelsReady&&singleLineReady&&storyScrollReady);var historyBounded=history&&history.clientHeight<=(narrowStory?252:190)+2&&history.scrollHeight>history.clientHeight;"
+                    + "var cvReady=rarityTiles.length===7&&!document.querySelector('[data-rarity-key=unknown]')&&Array.from(rarityTiles).every(function(tile){var value=tile.querySelector('strong');return value&&value.textContent.indexOf('/')>0;});var compactReady=revenue&&/[kMB]/.test(revenue.textContent)&&revenue.title.indexOf('Exact value:')===0;var rarityFilterReady=rarityFilters.length===3&&Array.from(rarityFilters).map(function(i){return i.value;}).join(',')==='epic,legendary,mythical'&&Array.from(rarityFilters).every(function(i){return i.checked;});"
+                    + "var typeReady=playerTypes&&!playerTypes.hidden&&targetTypes&&!targetTypes.hidden;var targetMetaReady=targetMeta&&targetMeta.textContent.indexOf('Lv.')===0&&targetMeta.textContent.indexOf('XP')<0;var moveNodes=playerMoves?playerMoves.querySelectorAll('.ppbui-cards-move'):[];var movesReady=playerMoves&&!playerMoves.hidden&&moveNodes.length===4&&Array.from(moveNodes).every(function(node){var image=node.querySelector('img');return node.title&&image&&nativeAsset(image.getAttribute('src')||'');});var captureDetailsReady=capturedDetails&&capturedDetails.textContent.indexOf('Gender')>=0&&capturedDetails.textContent.indexOf('Nature')>=0&&capturedDetails.textContent.indexOf('IV 151')>=0;var qualityReady=captured&&captured.querySelector('[data-attempt-column=\"3\"]')&&captured.querySelector('[data-attempt-column=\"3\"]').textContent.indexOf('×')===0;var geneticsReady=!captureToggle&&capturedDetails&&!capturedDetails.hidden&&captureDetailsReady;"
+                    + "var overviewOrderReady=summaryCard&&captureCard&&rarityCard&&Boolean(summaryCard.compareDocumentPosition(captureCard)&Node.DOCUMENT_POSITION_FOLLOWING)&&Boolean(captureCard.compareDocumentPosition(rarityCard)&Node.DOCUMENT_POSITION_FOLLOWING);var targetRect=target?target.getBoundingClientRect():null;var rarityRect=rarityCard?rarityCard.getBoundingClientRect():null;var targetCropAligned=innerWidth<900||Boolean(targetRect&&rarityRect&&Math.abs(targetRect.left-rarityRect.left)<=2&&Math.abs(targetRect.right-rarityRect.right)<=2);var xpPrimary=xpHour&&xpHour.parentElement&&xpHour.parentElement.classList.contains('ppbui-cards-kpi-primary');var expReady=expRow&&!expRow.hidden&&expMeter&&Number(expMeter.getAttribute('aria-valuenow'))>0&&Number(expMeter.getAttribute('aria-valuemax'))>Number(expMeter.getAttribute('aria-valuenow'));var lastChanceToolbarRemoved=!document.querySelector('[data-card-field=battle-last-chance]')&&!document.querySelector('.ppbui-cards-battle-readout');"
+                    + "var ok=Boolean(player&&!player.hidden&&nativeAsset(playerSrc)&&targetVisualReady&&rarityFilterReady&&shinyFilter&&shinyFilter.options.length===3&&resultReady&&storyReady&&timelineReady&&responsiveTimelineReady&&lootStoryReady&&lootFilterReady&&lootFilterFunctional&&geneticsReady&&qualityReady&&overviewOrderReady&&targetCropAligned&&loot&&loot.textContent.indexOf('$')>=0&&profit&&profit.textContent.indexOf('$')>=0&&compactReady&&targetMetaReady&&movesReady&&typeReady&&epicFailed&&epicFailed.textContent!=='—'&&xpPrimary&&cvReady&&shinyRarity&&shinyRarity.textContent.indexOf('✦')===0&&economy&&history&&Boolean(economy.compareDocumentPosition(history)&Node.DOCUMENT_POSITION_FOLLOWING)&&historyBounded&&style&&style.overflowY==='auto'&&teamRoster&&sixTeamRows&&teamButtons.length===2&&teamLevels&&activeTeam&&activeTeam.dataset.cardTeamMember==='visual-player'&&teamBeforePlayer&&legacyControlsRemoved&&pause&&!pause.disabled&&reset&&!reset.disabled&&target&&shiny&&shiny.hidden===!targetShiny&&rarityBadge&&!rarityBadge.hidden&&hpRow&&!hpRow.hidden&&expReady&&lastChanceToolbarRemoved);"
+                    + "window.__PPBUI_SMOKE_DIAG__={innerWidth:innerWidth,rowHeight:rowHeight,resultReady:!!resultReady,storyReady:!!storyReady,timelineReady:!!timelineReady,denseRow:!!denseRow,labelsReady:!!labelsReady,singleLineReady:!!singleLineReady,bandsReady:!!bandsReady,allFieldsVisible:!!allFieldsVisible,compactLabels:!!compactLabels,responsiveTimelineReady:!!responsiveTimelineReady,storyScrollReady:!!storyScrollReady,chanceVisible:!!chanceVisible,lootStoryReady:!!lootStoryReady,lootTotalReady:!!lootTotalReady,lootFilterReady:!!lootFilterReady,lootFilterFunctional:!!lootFilterFunctional,geneticsReady:!!geneticsReady,qualityReady:!!qualityReady,overviewOrderReady:!!overviewOrderReady,targetCropAligned:!!targetCropAligned,targetVisualReady:!!targetVisualReady,historyBounded:!!historyBounded,rarityFilterReady:!!rarityFilterReady,captureDetailsReady:!!captureDetailsReady,compactReady:!!compactReady,typeReady:!!typeReady,targetMetaReady:!!targetMetaReady,movesReady:!!movesReady,expReady:!!expReady};return ok;})()"
+                );
+            var attemptRowsRaw = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "document.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt').length"
+            );
+            // The Cards poll may reconcile between separate WebView2 script evaluations.
+            // Retry only the transient row-count sample after the full contract was validated.
+            for (var retry = 0;
+                 retry < 6 && string.Equals(dataContract, "true", StringComparison.Ordinal) && attemptRowsRaw != "40";
+                 retry++)
+            {
+                await Task.Delay(50);
+                attemptRowsRaw = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "document.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt').length"
+                );
+            }
+            var dataDiagnostics = string.Equals(dataContract, "true", StringComparison.Ordinal)
+                ? string.Empty
+                : await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "JSON.stringify(window.__PPBUI_SMOKE_DIAG__||{})"
+                );
+            int battleHeight;
+            int attemptRows;
+            if (!string.Equals(visible, "true", StringComparison.Ordinal)
+                || !int.TryParse(battleHeightRaw, out battleHeight)
+                || battleHeight <= 0
+                || battleHeight > 164
+                || !string.Equals(overflow, "false", StringComparison.Ordinal)
+                || !int.TryParse(attemptRowsRaw, out attemptRows)
+                || attemptRows != 40
+                || !string.Equals(dataContract, "true", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Card dashboard geometry/data regression at " + context
+                    + ": visible=" + visible
+                    + " battle=" + battleHeightRaw
+                    + " overflow=" + overflow
+                    + " attempts=" + attemptRowsRaw
+                    + " dataContract=" + dataContract
+                    + " diag=" + dataDiagnostics + "."
+                );
+            }
+        }
+
+        private async Task ScrollVisualCardsToHistoryAsync(AccountPane pane)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null)
+                throw new InvalidOperationException("Missing visual card pane for History evidence.");
+            var result = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');var history=document.querySelector('.ppbui-cards-history');var table=document.querySelector('.ppbui-cards-attempt-table');var shiny=document.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-shiny=\"true\"]');var normal=document.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-shiny=\"false\"]');if(!root||!history||!table||!shiny||!normal)return false;var rootRect=root.getBoundingClientRect();var historyRect=history.getBoundingClientRect();root.scrollTop=Math.max(0,root.scrollTop+historyRect.top-rootRect.top-8);table.scrollTop=Math.min(72,Math.max(1,table.scrollHeight-table.clientHeight));return Boolean(root.scrollTop>0&&table.scrollTop>0&&table.scrollHeight>table.clientHeight);})()"
+            );
+            if (!string.Equals(result, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("History visual evidence could not be positioned with an internal scroll.");
+        }
+
+        private async Task CaptureNarrowHuntStoryEvidenceAsync(AccountPane pane, string outputDir)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null)
+                throw new InvalidOperationException("Missing local visual pane for compact Hunt Story evidence.");
+            var configured = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "if(!root)return false;root.style.width='235px';root.style.right='auto';return true;})()"
+            );
+            if (!string.Equals(configured, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("Could not constrain synthetic Hunt Story to 235px.");
+            await ScrollVisualCardsToHistoryAsync(pane);
+            await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "document.querySelector('.ppbui-cards-attempt-table').scrollTop=0"
+            );
+            await Task.Delay(40);
+            var verified = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var table=document.querySelector('.ppbui-cards-attempt-table');"
+                + "var rows=table&&Array.from(table.querySelectorAll('.ppbui-cards-attempt'));"
+                + "if(!rows||!rows.length||table.clientWidth>=235)return false;"
+                + "var samples=[rows[0],rows.find(function(r){return r.dataset.shiny==='true';}),"
+                + "rows.find(function(r){return r.dataset.result==='captured';})];"
+                + "if(samples.some(function(r){return !r;}))return false;"
+                + "var bounds=table.getBoundingClientRect(),right=bounds.left+table.clientLeft+table.clientWidth;"
+                + "return samples.every(function(sample){var cells=Array.from(sample.querySelectorAll('[data-attempt-column]'));"
+                + "if(cells.length!==8||getComputedStyle(sample).gridTemplateColumns.split(' ').length!==2)return false;"
+                + "return cells.every(function(cell){var box=cell.getBoundingClientRect();"
+                + "var before=getComputedStyle(cell,'::before');return box.width>0&&box.height>0"
+                + "&&box.left>=bounds.left-1&&box.right<=right+1"
+                + "&&before.content!=='none'&&before.content!=='normal'&&parseFloat(before.fontSize)>=9;});});})()"
+            );
+            if (!string.Equals(verified, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("Hunt Story 235px dropped, clipped or unlabeled a required field.");
+            var fullPath = Path.Combine(outputDir, "workspace-cards-history-235-composite.png");
+            await CaptureWorkspaceCompositeAsync(fullPath, false);
+            using (var full = new Bitmap(fullPath))
+            using (var crop = full.Clone(new Rectangle(
+                0, DpiMetric(114), DpiMetric(252), DpiMetric(394)
+            ), full.PixelFormat))
+            {
+                crop.Save(Path.Combine(outputDir, "workspace-cards-history-235.png"),
+                    System.Drawing.Imaging.ImageFormat.Png);
+            }
+            await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var table=document.querySelector('.ppbui-cards-attempt-table');"
+                + "var shiny=table&&table.querySelector('.ppbui-cards-attempt[data-shiny=\"true\"]');"
+                + "if(!shiny)return false;table.scrollTop+=shiny.getBoundingClientRect().top"
+                + "-table.getBoundingClientRect().top;return true;})()"
+            );
+            await Task.Delay(30);
+            var shinyPath = Path.Combine(outputDir, "workspace-cards-history-235-shiny-composite.png");
+            await CaptureWorkspaceCompositeAsync(shinyPath, false);
+            using (var full = new Bitmap(shinyPath))
+            using (var crop = full.Clone(new Rectangle(
+                0, DpiMetric(114), DpiMetric(252), DpiMetric(394)
+            ), full.PixelFormat))
+            {
+                crop.Save(Path.Combine(outputDir, "workspace-cards-history-235-shiny.png"),
+                    System.Drawing.Imaging.ImageFormat.Png);
+            }
+            await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "if(root){root.style.removeProperty('width');root.style.removeProperty('right');}return true;})()"
+            );
+        }
+
+        private async Task SetVisualStoryTabAsync(AccountPane pane, string tab)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null)
+                throw new InvalidOperationException("Missing visual card pane for Story evidence.");
+            var requested = string.Equals(tab, "loot", StringComparison.OrdinalIgnoreCase)
+                ? "loot"
+                : "hunt";
+            var result = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var button=document.querySelector('[data-card-story-tab=\"" + requested + "\"]');"
+                + "var panel=document.querySelector('[data-card-story-panel=\"" + requested + "\"]');"
+                + "if(!button||!panel)return false;button.click();return button.getAttribute('aria-selected')==='true'&&!panel.hidden;})()"
+            );
+            if (!string.Equals(result, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("Story tab could not switch to " + requested + " for visual evidence.");
+        }
+
+        private async Task RestoreVisualCardsTopAsync(AccountPane pane)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null) return;
+            await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');var table=document.querySelector('.ppbui-cards-attempt-table');if(root)root.scrollTop=0;if(table)table.scrollTop=0;return true;})()"
+            );
         }
 
         private async Task NavigateSmokePaneAsync(AccountPane pane, string uri)
@@ -4165,6 +7258,7 @@ namespace PokePixel.CoupledWorkspace
             var beforeRecovery = GetPaneForProfile(activeProfileId);
             if (beforeRecovery == null)
                 throw new InvalidOperationException("Active pane missing before recovery smoke.");
+            var expectedCardsView = beforeRecovery.CardsViewActive;
             var activeUdf = beforeRecovery.Environment.UserDataFolder;
             beforeRecovery.CurrentUrl =
                 "https://user:secret@pokepixel.nietore.com/play/?token=must-not-leak#private";
@@ -4188,9 +7282,10 @@ namespace PokePixel.CoupledWorkspace
                     activeUdf,
                     StringComparison.OrdinalIgnoreCase
                 )
+                || afterRecovery.CardsViewActive != expectedCardsView
                 || _panesByProfile.Count != 2)
             {
-                throw new InvalidOperationException("Active pane recovery violated profile/UDF isolation.");
+                throw new InvalidOperationException("Active pane recovery violated profile/UDF/view isolation.");
             }
         }
 
@@ -4231,7 +7326,11 @@ namespace PokePixel.CoupledWorkspace
             state.LastDualRatio = 0.67;
             state.CommandScope = CommandScope.Both;
             state.ZoomByProfile[ProfileRegistry.Rhyxus.Id] = 1.25;
-            state.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = 0.80;
+            state.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = 0.90;
+            state.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id][0] = "hunt-analyzer";
+            state.QuickSurfacesByProfile[ProfileRegistry.Rhyosa.Id][0] = "guild";
+            state.CardsViewByProfile[ProfileRegistry.Rhyxus.Id] = false;
+            state.CardsViewByProfile[ProfileRegistry.Rhyosa.Id] = true;
             state.MaintenanceDrawerExpanded = true;
 
             store.Save(state);
@@ -4243,7 +7342,12 @@ namespace PokePixel.CoupledWorkspace
                 || Math.Abs(loaded.LayoutRatio - 0.33) > 0.0001
                 || Math.Abs(loaded.LastDualRatio - 0.67) > 0.0001
                 || Math.Abs(loaded.ZoomByProfile[ProfileRegistry.Rhyxus.Id] - 1.25) > 0.0001
-                || Math.Abs(loaded.ZoomByProfile[ProfileRegistry.Rhyosa.Id] - 0.80) > 0.0001
+                || Math.Abs(loaded.ZoomByProfile[ProfileRegistry.Rhyosa.Id] - 0.90) > 0.0001
+                || loaded.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id][0] != "hunt-analyzer"
+                || loaded.QuickSurfacesByProfile[ProfileRegistry.Rhyosa.Id][0] != "guild"
+                || loaded.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id].Count != 7
+                || loaded.CardsViewByProfile[ProfileRegistry.Rhyxus.Id]
+                || !loaded.CardsViewByProfile[ProfileRegistry.Rhyosa.Id]
                 || !loaded.MaintenanceDrawerExpanded)
             {
                 throw new InvalidOperationException("Workspace settings round-trip failed.");
@@ -4253,15 +7357,67 @@ namespace PokePixel.CoupledWorkspace
             malformed.LayoutRatio = double.NaN;
             malformed.LastDualRatio = 9.0;
             malformed.ZoomByProfile[ProfileRegistry.Rhyxus.Id] = 99.0;
+            malformed.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id] =
+                new List<string> { "hunts", "hunts", "unsafe-unknown", "guild" };
+            malformed.CardsViewByProfile.Remove(ProfileRegistry.Rhyosa.Id);
             malformed.ActiveProfileId = "unknown-profile";
             var normalized = store.Normalize(malformed);
             if (Math.Abs(normalized.LayoutRatio - 0.5) > 0.0001
                 || Math.Abs(normalized.LastDualRatio - 0.8) > 0.0001
-                || Math.Abs(normalized.ZoomByProfile[ProfileRegistry.Rhyxus.Id] - 2.0) > 0.0001
+                || Math.Abs(normalized.ZoomByProfile[ProfileRegistry.Rhyxus.Id] - 1.25) > 0.0001
+                || normalized.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id].Count != 7
+                || normalized.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id][0] != "hunts"
+                || normalized.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id][1] != "guild"
+                || normalized.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id].Contains("unsafe-unknown")
+                || !normalized.CardsViewByProfile[ProfileRegistry.Rhyosa.Id]
                 || !string.Equals(normalized.ActiveProfileId, normalized.LeftProfileId, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Workspace settings normalization failed.");
             }
+
+            File.WriteAllText(settingsPath,
+                "{\"version\":2,\"mode\":\"dual\",\"activeProfileId\":\"rhyxus\","
+                + "\"quickSurfacesByProfile\":["
+                + "{\"profileId\":\"rhyxus\",\"surfaceIds\":["
+                + "\"HUNT-ANALYZER\",\"HuNt-AnAlYzEr\",\"InVeNtOrY\",\"gUiLd\","
+                + "\"TEAM\",\"STORAGE\",\"AUTO-HELPER\",\"settings\"]},"
+                + "{\"profileId\":\"rhyosa\",\"surfaceIds\":["
+                + "\"NPC-SHOP\",\"hunts\",\"TeAm\",\"STORAGE\",\"settings\","
+                + "\"auto-helper\",\"GUILD\"]}]}"
+            );
+            var mixedCase = store.LoadOrDefault();
+            var rhyxusQuick = mixedCase.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id];
+            var rhyosaQuick = mixedCase.QuickSurfacesByProfile[ProfileRegistry.Rhyosa.Id];
+            if (string.Join(",", rhyxusQuick.ToArray())
+                    != "hunt-analyzer,inventory,guild,team,storage,auto-helper,settings"
+                || string.Join(",", rhyosaQuick.ToArray())
+                    != "npc-shop,hunts,team,storage,settings,auto-helper,guild"
+                || rhyxusQuick.Count != 7 || rhyosaQuick.Count != 7)
+                throw new InvalidOperationException("Version-2 mixed-case quick destinations were not canonicalized.");
+            store.Save(mixedCase);
+            var persistedJson = File.ReadAllText(settingsPath);
+            var reloaded = store.LoadOrDefault();
+            if (persistedJson.IndexOf("HUNT-ANALYZER", StringComparison.Ordinal) >= 0
+                || persistedJson.IndexOf("NPC-SHOP", StringComparison.Ordinal) >= 0
+                || string.Join(",", reloaded.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id].ToArray())
+                    != string.Join(",", rhyxusQuick.ToArray())
+                || string.Join(",", reloaded.QuickSurfacesByProfile[ProfileRegistry.Rhyosa.Id].ToArray())
+                    != string.Join(",", rhyosaQuick.ToArray()))
+                throw new InvalidOperationException("Version-2 mixed-case quick destinations regressed after round-trip.");
+
+            File.WriteAllText(settingsPath,
+                "{\"version\":1,\"mode\":\"single\",\"singleProfileId\":\"rhyosa\","
+                + "\"activeProfileId\":\"rhyosa\",\"zoomByProfile\":[{\"profileId\":\"rhyxus\",\"factor\":1.25}],"
+                + "\"cardsViewByProfile\":[{\"profileId\":\"rhyxus\",\"cards\":false}]}"
+            );
+            var legacy = store.LoadOrDefault();
+            if (legacy.Version != WorkspaceSettingsStore.CurrentVersion
+                || legacy.Mode != WorkspaceMode.Single
+                || legacy.ActiveProfileId != ProfileRegistry.Rhyosa.Id
+                || Math.Abs(legacy.ZoomByProfile[ProfileRegistry.Rhyxus.Id] - 1.25) > 0.0001
+                || legacy.CardsViewByProfile[ProfileRegistry.Rhyxus.Id]
+                || legacy.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id][0] != "inventory")
+                throw new InvalidOperationException("Version-1 settings migration lost existing user preferences.");
 
             File.WriteAllText(settingsPath, "{ this is not valid json");
             var fallback = store.LoadOrDefault();
@@ -4325,9 +7481,73 @@ namespace PokePixel.CoupledWorkspace
             EnableDpiAwareness();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            var smoke = args != null && Array.IndexOf(args, "--smoke") >= 0;
+            if (args != null && Array.IndexOf(args, "--pptools-privacy-smoke") >= 0)
+            {
+                PptoolsRunnerSmoke.RunPrivacySmoke();
+                return;
+            }
+            if (args != null && Array.IndexOf(args, "--pptools-runner-smoke") >= 0)
+            {
+                PptoolsRunnerSmoke.Run();
+                return;
+            }
+            if (args != null && Array.IndexOf(args, "--pptools-full-input-smoke") >= 0)
+            {
+                PptoolsRunnerSmoke.Run(true);
+                return;
+            }
+            if (args != null && Array.IndexOf(args, "--pptools-smoke") >= 0)
+            {
+                PptoolsHiddenSmoke.Run();
+                return;
+            }
+            var shutdownDuringInitSmoke =
+                args != null && Array.IndexOf(args, "--smoke-close-during-init") >= 0;
+            var shutdownDuringSwitchSmoke =
+                args != null && Array.IndexOf(args, "--smoke-close-during-switch") >= 0;
+            var smoke =
+                shutdownDuringInitSmoke
+                || shutdownDuringSwitchSmoke
+                || (args != null && Array.IndexOf(args, "--smoke") >= 0);
+            var evidenceProbe =
+                args != null && Array.IndexOf(args, "--evidence-probe") >= 0;
+            var pptoolsBackgroundEnabled =
+                args != null && Array.IndexOf(args, "--pptools-oneclick") >= 0 ||
+                string.Equals(Path.GetFileName(Application.ExecutablePath),
+                    "PokePixelCoupledWorkspace.pptools.candidate.exe", StringComparison.OrdinalIgnoreCase);
+            ThreadExceptionEventHandler smokeThreadException = null;
+            if (smoke)
+            {
+                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+                smokeThreadException = delegate(object sender, ThreadExceptionEventArgs eventArgs)
+                {
+                    Console.Error.WriteLine(
+                        "WebView2 smoke UI-thread exception: " + eventArgs.Exception
+                    );
+                    Environment.ExitCode = 1;
+                    Application.Exit();
+                };
+                Application.ThreadException += smokeThreadException;
+            }
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            Application.Run(new WorkspaceForm(baseDir, smoke));
+            try
+            {
+                Application.Run(
+                    new WorkspaceForm(
+                        baseDir,
+                        smoke,
+                        shutdownDuringInitSmoke,
+                        shutdownDuringSwitchSmoke,
+                        evidenceProbe,
+                        pptoolsBackgroundEnabled
+                    )
+                );
+            }
+            finally
+            {
+                if (smokeThreadException != null)
+                    Application.ThreadException -= smokeThreadException;
+            }
         }
 
         private static void EnableDpiAwareness()

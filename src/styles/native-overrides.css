@@ -1,0 +1,27 @@
+/*
+ * Narrow native compatibility override.
+ *
+ * PokePixel paints an animated conic border on generic buttons by inheriting
+ * --ui-border-start / --ui-border-end into a shared ::after rule. Neutralize
+ * only those effect tokens on the native button surfaces that receive it.
+ * Geometry is no longer rewritten globally: the host keeps its own current
+ * radius/layout, while Better UI-owned surfaces use the Rounded / 0px tokens.
+ */
+:where(
+  .pokeidle-panel,
+  .pokeidle-form-box,
+  .pokeidle-dialog,
+  .pokeidle-mobile-sheet,
+  .world-servers-window,
+  .pokeidle-persistent-chat,
+  .pokeidle-top-toolbar,
+  .pokeidle-mobile-menu,
+  .pokeidle-ui-window,
+  .pokeidle-mini-view .mini
+) button:where(
+  :not([class*="slot"]):not([class*="sprite"]):not([class*="close"])
+),
+:where(.pokeidle-btn, .rubinot-btn, .pokeidle-ui-button) {
+  --ui-border-start: transparent !important;
+  --ui-border-end: transparent !important;
+}

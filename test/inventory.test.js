@@ -5,7 +5,8 @@ import { createBetterUI } from '../src/core/bootstrap.js';
 import { createInventoryModule } from '../src/modules/inventory/index.js';
 import { createInventoryOrder } from '../src/modules/inventory/preferences.js';
 const slot = (name, quantity, pokemon = false) => `<button class="inventory-slot${pokemon ? ' inventory-slot--pokemon' : ''}" aria-label="${name}, ${pokemon ? 1 : quantity} units"><span class="${pokemon ? 'inventory-slot__pokemon-level' : 'inventory-slot__quantity'}">${pokemon ? 'Lv.' : ''}${quantity}</span></button>`;
-const body = (query = '', category = 'all') => `<div class="inventory-slots-toolbar"><input class="game-window__search" value="${query}"><select class="game-window__select"><option value="all" ${category === 'all' ? 'selected' : ''}>All</option><option value="pokemon" ${category === 'pokemon' ? 'selected' : ''}>Pokémon</option></select></div><div class="inventory-slot-grid">${slot('Zubat',10,true)}${slot('Abra',25,true)}${slot('Potion',7)}${slot('Ball',15)}<div class="inventory-slot is-empty"></div></div>`;
+const tabs = (category = 'all', extra = '') => `<div class="inventory-category-tabs" role="tablist" aria-label="Categories"><button type="button" class="inventory-category-tab${category === 'all' ? ' is-active' : ''}" data-category="all" role="tab" aria-selected="${category === 'all'}" tabindex="${category === 'all' ? 0 : -1}">All</button><button type="button" class="inventory-category-tab${category === 'pokemon' ? ' is-active' : ''}" data-category="pokemon" role="tab" aria-selected="${category === 'pokemon'}" tabindex="${category === 'pokemon' ? 0 : -1}">Pokémon</button>${extra}</div>`;
+const body = (query = '', category = 'all', extraTabs = '') => `${tabs(category, extraTabs)}<div class="inventory-slots-toolbar"><input type="search" class="game-window__search" value="${query}"></div><div class="inventory-slot-grid">${slot('Zubat',10,true)}${slot('Abra',25,true)}${slot('Potion',7)}${slot('Ball',15)}<div class="inventory-slot is-empty"></div></div>`;
 function setup(t, saved = 'original', denied = false) {
   const dom = new JSDOM(`<div class="inventory-window--slots"><div class="pokeidle-panel__body">${body()}</div></div>`, {pretendToBeVisual:true,url:'https://local.test'});
   const { window } = dom;
@@ -28,7 +29,7 @@ test('sort moves original slots, preserves empty cells and actions, and restores
   const root=doc.querySelector('.inventory-window--slots'); const before=root.outerHTML;
   const originals=[...doc.querySelectorAll('button.inventory-slot')];let actions=0;
   originals.forEach(n=>n.addEventListener('click',()=>actions++));
-  app.start();assert.deepEqual(names(),['Zubat','Abra','Potion','Ball']);
+  app.start();assert.deepEqual(names(),['Zubat','Abra','Potion','Ball']);assert.ok(root.classList.contains('ppbui-window'));assert.ok(root.querySelector('.pokeidle-panel__body').classList.contains('ppbui-scroll'));assert.ok(doc.querySelector('[data-ppbui-inventory-shell-style]'));
   order('quantity');assert.deepEqual(names(),['Zubat','Abra','Ball','Potion']);
   order('level');assert.deepEqual(names(),['Abra','Zubat','Potion','Ball']);
   order('name');assert.deepEqual(names(),['Abra','Ball','Potion','Zubat']);
@@ -49,10 +50,21 @@ test('quantity updates and full native body rerenders retain order until explici
 test('clear filters reacquires controls after synchronous native rebuild without invoking slots', t=>{
   const {app,doc,window}=setup(t);const container=doc.querySelector('.pokeidle-panel__body');
   let query='potion',category='pokemon',searchEvents=0,categoryEvents=0;
-  const render=()=>{container.innerHTML=body(query,category);const search=container.querySelector('input');search.addEventListener('input',()=>{searchEvents++;query=search.value;render();});const select=container.querySelector('select');select.addEventListener('change',()=>{categoryEvents++;category=select.value;render();});};
+  const render=()=>{container.innerHTML=body(query,category);const search=container.querySelector('input');search.addEventListener('input',()=>{searchEvents++;query=search.value;render();});for(const tab of container.querySelectorAll('.inventory-category-tab'))tab.addEventListener('click',()=>{categoryEvents++;category=tab.dataset.category;render();});};
   render();app.start();doc.querySelector('[data-ppbui-inventory-clear]').click();
   assert.equal(query,'');assert.equal(category,'all');assert.equal(searchEvents,1);assert.equal(categoryEvents,1);
   assert.equal(doc.activeElement,container.querySelector('input'));app.reconcile();assert.equal(doc.querySelectorAll('[data-ppbui-order]').length,1);
+});
+test('category dropdown delegates to the original native category tab handler', t=>{
+  const {app,doc,window}=setup(t);let clicks=0;
+  const pokemon=doc.querySelector('.inventory-category-tab[data-category="pokemon"]');
+  pokemon.addEventListener('click',()=>{clicks++;for(const tab of doc.querySelectorAll('.inventory-category-tab')){const active=tab===pokemon;tab.classList.toggle('is-active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;}});
+  app.start();
+  const proxy=doc.querySelector('[data-ppbui-inventory-category-proxy]');
+  proxy.value='pokemon';proxy.dispatchEvent(new window.Event('change',{bubbles:true}));app.reconcile();
+  assert.equal(clicks,1);
+  assert.equal(proxy.value,'pokemon');
+  assert.equal(pokemon.getAttribute('aria-selected'),'true');
 });
 test('saved criterion loads and invalid or denied preferences fail safely',t=>{
   const {app,names,preference}=setup(t,'level');app.start();assert.deepEqual(names(),['Abra','Zubat','Potion','Ball']);
@@ -139,16 +151,18 @@ test('unknown advanced values remain unavailable, including partial IVs and miss
   }
 });
 
-test('keyboard tab order follows category, persistent sort and visible enabled actions', t => {
+test('keyboard tab order follows current tab/search contract, persistent sort and visible enabled actions', t => {
   const { app, doc, window, order } = setup(t); app.start();
-  const category = doc.querySelector('.inventory-slots-toolbar select');
+  const search = doc.querySelector('.inventory-slots-toolbar input');
+  const category = doc.querySelector('.inventory-category-tab[aria-selected="true"]');
   const select = doc.querySelector('[data-ppbui-order]');
   const firstView = doc.querySelector('[data-ppbui-view-mode=grid]');
   const tab = (node, shiftKey = false) => node.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
-  category.focus(); tab(category); assert.equal(doc.activeElement, select);
+  assert.equal(category.dataset.category, 'all');
+  search.focus(); tab(search); assert.equal(doc.activeElement, select);
   tab(select); assert.equal(doc.activeElement, firstView);
   tab(firstView, true); assert.equal(doc.activeElement, select);
-  tab(select, true); assert.equal(doc.activeElement, category);
+  tab(select, true); assert.equal(doc.activeElement, search);
   order('name');
   const apply = [...doc.querySelectorAll('[data-ppbui-module=inventory] button')].find(node => node.textContent === 'Aplicar');
   assert.equal(apply.closest('details'), null);
@@ -178,8 +192,8 @@ test('list adds read-only facts beside original slots and removes the old summar
 test('category blocks use unambiguous native categories and preserve item actions and sort order', t => {
   const { app, doc, window, order } = setup(t);
   const bodyNode = doc.querySelector('.pokeidle-panel__body');
-  const category = bodyNode.querySelector('select');
-  category.insertAdjacentHTML('beforeend', '<option value="potion">Healing</option><option value="boost">Boosters</option>');
+  const category = bodyNode.querySelector('.inventory-category-tabs');
+  category.insertAdjacentHTML('beforeend', '<button type="button" class="inventory-category-tab" data-category="potion" role="tab" aria-selected="false" tabindex="-1">Healing</button><button type="button" class="inventory-category-tab" data-category="boost" role="tab" aria-selected="false" tabindex="-1">Boosters</button>');
   window.PokeIdle = { ReactiveWindows: { cached: () => [{ _panel: { body: bodyNode }, _items: [{ name: 'Potion', category: 'potion' }, { name: 'Ball', type: 'boost_xp' }] }] } };
   app.start(); order('level'); doc.querySelector('[data-ppbui-view-mode=grouped]').click();
   assert.deepEqual([...doc.querySelectorAll('[data-ppbui-inventory-category] h3')].map(n => n.textContent), ['Pokémon (2)', 'Healing (1)', 'Boosters (1)']);
@@ -256,11 +270,24 @@ test('refresh preserves the unique visible slot offset when its position moves',
 
 test('two rows keep Clear with filters and keyboard navigation follows the visible order', t => {
   const { app, doc, window } = setup(t); app.start();
-  const category = doc.querySelector('.inventory-slots-toolbar select');
-  category.value = 'pokemon'; app.reconcile();
+  const category = doc.querySelector('.inventory-category-tabs');
+  const categoryProxy = doc.querySelector('[data-ppbui-inventory-category-proxy]');
+  const search = doc.querySelector('.inventory-slots-toolbar input');
+  assert.ok(categoryProxy,'native category tabs are represented by one compact dropdown');
+  assert.equal(category.hidden,true,'native category tab strip is removed from the visible layout while Better UI is active');
+  assert.equal(categoryProxy.nextElementSibling,search,'category dropdown sits directly to the left of Search');
+  assert.deepEqual([...categoryProxy.options].map(option=>[option.value,option.textContent]),[['all','All'],['pokemon','Pokémon']]);
+  for (const tabNode of category.querySelectorAll('.inventory-category-tab')) {
+    const active = tabNode.dataset.category === 'pokemon';
+    tabNode.classList.toggle('is-active', active);
+    tabNode.setAttribute('aria-selected', String(active));
+    tabNode.tabIndex = active ? 0 : -1;
+  }
+  app.reconcile();
   const clear = doc.querySelector('[data-ppbui-inventory-clear]');
   const order = doc.querySelector('[data-ppbui-order]');
-  assert.equal(category.nextElementSibling, clear);
+  assert.equal(categoryProxy.value,'pokemon','category dropdown mirrors the authoritative native selection');
+  assert.equal(search.nextElementSibling, clear);
   const bar = doc.querySelector('[data-ppbui-module=inventory]');
   assert.equal(bar.firstElementChild.dataset.ppbuiOrderAnchor, '');
   assert.ok(bar.contains(doc.querySelector('[data-ppbui-inventory-views]')));
@@ -268,6 +295,86 @@ test('two rows keep Clear with filters and keyboard navigation follows the visib
   clear.focus(); tab(clear); assert.equal(doc.activeElement, order);
   tab(order, true); assert.equal(doc.activeElement, clear);
   assert.equal(order.tabIndex, -1);
+  assert.ok(doc.querySelector('[data-ppbui-inventory-tools]').classList.contains('ppbui-root'));
+  assert.ok(search.closest('.inventory-slots-toolbar').classList.contains('ppbui-root'));
+  assert.ok(doc.querySelector('.game-window__search').classList.contains('ppbui-input'));
+  assert.equal(category.classList.contains('ppbui-select'), false); assert.ok(categoryProxy.classList.contains('ppbui-select')); assert.ok(order.classList.contains('ppbui-select'));
+  for (const button of doc.querySelectorAll('[data-ppbui-inventory-tools] button')) assert.ok(button.classList.contains('ppbui-button'));
+  const shellCss=doc.querySelector('[data-ppbui-inventory-shell-style]').textContent;
+  const toolsCss=doc.querySelector('style[data-ppbui-inventory-style]')?.textContent||'';
+  const viewsCss=doc.querySelector('style[data-ppbui-inventory-views-style]')?.textContent||'';
+  assert.match(shellCss,/> \.pokeidle-panel__body \{[^}]*padding:0!important[^}]*background:var\(--ppbui-bg-0\)/s,"Backpack body is a content bay rather than a padded outer card");
+  assert.match(shellCss,/\[data-ppbui-inventory-toolbar\] \{[^}]*border:0!important[^}]*border-bottom:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)!important[^}]*background:var\(--ppbui-bg-1\)!important/s,"native filters form the first continuous utility rail");
+  assert.match(shellCss,/\[data-ppbui-inventory-tools\] \{[^}]*border:0[^}]*border-bottom:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]*background:var\(--ppbui-bg-2\)/s,"sort and view controls form a second organization rail");
+  assert.match(shellCss,/\[data-ppbui-inventory-tools\] > \.inventory-slots-toolbar \{[^}]*grid-template-columns:minmax\(160px,235px\) auto max-content[^}]*justify-content:start/s,"Sort gains exactly 15px of normal width while keeping the validated bounded control track");
+  assert.match(shellCss,/> select\[data-ppbui-order\] \{[^}]*width:235px!important[^}]*min-width:160px!important[^}]*max-width:235px!important/s,"Sort has the same +15px hard scoped fallback even if proxy measurement is delayed in the live host");
+  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \{[^}]*container-type:inline-size[^}]*max-width:calc\(100vw - 16px\)/s,"Backpack establishes module-local responsive ownership instead of depending on whole-window media queries");
+  assert.match(shellCss,/\.inventory-category-tabs\[data-ppbui-inventory-native-categories\]\[hidden\] \{[^}]*display:none!important/s,"native category tabs leave the visual layout while their handlers remain authoritative");
+  assert.match(shellCss,/\[data-ppbui-inventory-category-proxy\] \{[^}]*min-width:140px[^}]*max-width:190px[^}]*flex:0 1 190px/s,"category dropdown stays compact to the left of the flexible Search field");
+  assert.match(shellCss,/@container \(max-width:519px\)[\s\S]*\.inventory-slots-toolbar \{ grid-template-columns:minmax\(0,1fr\) auto max-content; \}/,"Sort contracts only after the pane falls below the validated 520px desktop minimum");
+  assert.match(shellCss,/@container \(max-width:440px\)[\s\S]*\[data-ppbui-inventory-views\] \{ grid-column:1\/-1; width:100%; \}/,"view controls move to their own row before they can force outer horizontal overflow");
+  assert.match(toolsCss,/@container \(max-width:519px\)[\s\S]*\[data-ppbui-inventory-toolbar\] \{ flex-wrap:wrap!important; \}/,"native Search/Category/Clear controls wrap only when the pane is narrower than the validated desktop minimum");
+  const responsiveMinimum=doc.querySelector('.inventory-window--slots').style.getPropertyValue('min-width');
+  assert.ok(responsiveMinimum.startsWith('min(520px,')&&responsiveMinimum.includes('100vw')&&responsiveMinimum.includes('16px'),'the browser may canonicalize calc() ordering, but the runtime minimum must remain viewport bounded');
+  assert.match(shellCss,/\[data-ppbui-inventory-toolbar\] > input\.game-window__search\.ppbui-input \{[^}]*appearance:none!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background-image:none!important[^}]*box-shadow:none!important/s,"native search chrome cannot restore rounded input treatment inside Backpack");
+  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \* \{[^}]*scrollbar-width:auto!important[^}]*scrollbar-color:var\(--ppbui-scrollbar-thumb\) var\(--ppbui-scrollbar-track\)!important/s,"every descendant live scroller inside Backpack receives the Miyazaki scrollbar bridge");
+  assert.match(shellCss,/@supports selector\(::-webkit-scrollbar\) \{[\s\S]*\.inventory-window--slots\.ppbui-window\[data-ppbui-inventory-scroll\],[\s\S]*\.inventory-window--slots\.ppbui-window \[data-ppbui-inventory-scroll\] \{ scrollbar-color:auto!important; \}/,"Blink/WebKit override includes the higher-specificity owned scrollers so standardized scrollbar-color cannot re-suppress square webkit geometry");
+  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \*::-webkit-scrollbar-thumb \{[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-scrollbar-thumb\)!important/s,"unknown nested host scrollers cannot retain rounded native scrollbar chrome");
+  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \*::-webkit-scrollbar-button \{[^}]*display:none!important[^}]*width:0!important[^}]*height:0!important/s,"Backpack removes native scrollbar arrow buttons instead of mixing them with pixel thumb chrome");
+  assert.match(shellCss,/\[data-ppbui-inventory-scroll\] \{[^}]*scrollbar-gutter:stable!important/s,"Backpack reserves stable pixel-scroll geometry on every owned scroll surface");
+  assert.match(shellCss,/\[data-ppbui-inventory-scroll\]::-webkit-scrollbar \{[^}]*width:var\(--ppbui-scrollbar-size\)!important[^}]*height:var\(--ppbui-scrollbar-size\)!important/s,"Backpack bridges the actual native scroller to the shared pixel size");
+  assert.match(shellCss,/\[data-ppbui-inventory-scroll\]::-webkit-scrollbar-thumb \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-scrollbar-thumb\)!important/s,"Backpack vertical scroll keeps square Miyazaki thumb chrome even against host CSS");
+  assert.match(shellCss,/\.ppbui-pokemon-tools \{[^}]*width:calc\(100% - \(var\(--ppbui-space-4\) \+ var\(--ppbui-space-4\)\)\)!important[^}]*margin:0 var\(--ppbui-space-4\)!important[^}]*padding:var\(--ppbui-space-3\) 0!important/s,"More filters uses physical horizontal inset instead of relying only on internal padding");
+  assert.match(shellCss,/\.inventory-slot-grid \{[^}]*border:0!important[^}]*background:var\(--ppbui-bg-0\)!important[^}]*box-shadow:none!important/s,"slot content no longer sits inside an extra generic framed box");
+  assert.match(toolsCss,/\[data-ppbui-inventory-views\] \{[^}]*gap:0/s,"view switching reads as one compact segmented control");
+  assert.match(viewsCss,/\[data-ppbui-inventory-view="grouped"\] \{[^}]*padding:0!important[^}]*border:0!important[^}]*background:var\(--ppbui-bg-0\)!important/s,"grouped inventory uses sections, not cards inside a card");
+});
+
+test('Sort proxy width beats shared native-select width ownership and stays bounded to its measured anchor', t=>{
+  const {app,doc}=setup(t);app.start();
+  const root=doc.querySelector('.inventory-window--slots'),body=doc.querySelector('.pokeidle-panel__body');
+  const anchor=doc.querySelector('[data-ppbui-order-anchor]'),order=doc.querySelector('[data-ppbui-order]');
+  root.getBoundingClientRect=()=>({left:0,top:0,right:760,bottom:600,width:760,height:600,x:0,y:0,toJSON(){}});
+  body.getBoundingClientRect=()=>({left:0,top:0,right:760,bottom:600,width:760,height:600,x:0,y:0,toJSON(){}});
+  anchor.getBoundingClientRect=()=>({left:8,top:36,right:243,bottom:64,width:235,height:28,x:8,y:36,toJSON(){}});
+  app.reconcile();
+  assert.equal(order.style.getPropertyValue('width'),'235px');
+  assert.equal(order.style.getPropertyPriority('width'),'important');
+  assert.equal(order.style.getPropertyValue('max-width'),'235px');
+  assert.equal(order.style.getPropertyPriority('max-width'),'important');
+});
+
+test('Backpack owns root body and active grid as reversible pixel-scroll surfaces',t=>{
+  const {app,doc}=setup(t);const root=doc.querySelector('.inventory-window--slots'),body=doc.querySelector('.pokeidle-panel__body'),grid=doc.querySelector('.inventory-slot-grid');
+  app.start();
+  for(const node of [root,body,grid]){assert.ok(node.classList.contains('ppbui-scroll'));assert.ok(node.hasAttribute('data-ppbui-inventory-scroll'));}
+  app.stop();
+  for(const node of [root,body,grid]){assert.equal(node.classList.contains('ppbui-scroll'),false);assert.equal(node.hasAttribute('data-ppbui-inventory-scroll'),false);}
+});
+
+test('same-toolbar child replacement reacquires master field primitives without leaking old ownership', t=>{
+  const {app,doc}=setup(t);app.start();
+  const toolbar=doc.querySelector('.inventory-slots-toolbar');
+  const previousSearch=toolbar.querySelector('input'),previousCategory=doc.querySelector('.inventory-category-tabs');
+  const search=doc.createElement('input');search.className='game-window__search';
+  const category=doc.createElement('select');category.className='game-window__select';category.innerHTML='<option value="all">All</option><option value="pokemon">Pokémon</option>';
+  toolbar.replaceChildren(search,category,doc.querySelector('[data-ppbui-inventory-clear]'));
+  app.reconcile();
+  assert.equal(toolbar.classList.contains('ppbui-root'),true);
+  assert.equal(search.classList.contains('ppbui-input'),true);assert.equal(category.classList.contains('ppbui-select'),true);
+  assert.equal(previousSearch.classList.contains('ppbui-input'),false);assert.equal(previousCategory.classList.contains('ppbui-select'),false);
+});
+
+test('Backpack search bridge owns field chrome while corner geometry follows the global preference', t => {
+  const {app,doc}=setup(t);
+  const hostile=doc.createElement('style');hostile.textContent='.inventory-window--slots input.game-window__search{appearance:auto!important;-webkit-appearance:auto!important;border:5px solid red!important;border-radius:18px!important;background:red!important;background-image:linear-gradient(red,red)!important;color:red!important;box-shadow:0 0 4px red!important}';doc.head.append(hostile);
+  app.start();
+  const search=doc.querySelector('input.game-window__search'),computed=doc.defaultView.getComputedStyle(search);
+  assert.equal(search.type,'search');
+  assert.equal(computed.backgroundImage,'none');
+  assert.equal(computed.boxShadow,'none');
+  const shellCss=doc.querySelector('[data-ppbui-inventory-shell-style]').textContent;
+  assert.match(shellCss,/input\.game-window__search\.ppbui-input \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-bg-0\)!important[^}]*color:var\(--ppbui-text\)!important/s,"hostile important fill/border/text cannot bypass the scoped Search bridge and radius remains preference-driven");
 });
 
 test('price sorting uses unit NPC prices, preserves Pokémon and updates on explicit re-sort', t => {

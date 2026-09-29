@@ -96,15 +96,39 @@ test("one observer coalesces bursts and reconciliation mounts/unmounts once", (t
   assert.equal(cleanups, 2);
 });
 
-test("destroy cleans every module even if one cleanup throws", () => {
+test("destroy cleans healthy modules and retains failed cleanup ownership for retry", () => {
   const lifecycle = createLifecycle();
   const failure = new Error("fixture cleanup failed");
-  let cleaned = false;
-  lifecycle.mount("broken", () => { throw failure; });
+  let cleaned = false, attempts = 0;
+  lifecycle.mount("broken", () => { if (++attempts === 1) throw failure; });
   lifecycle.mount("healthy", () => { cleaned = true; });
   assert.throws(() => lifecycle.destroy(), (error) => error === failure);
   assert.equal(cleaned, true);
-  assert.equal(lifecycle.isMounted("broken"), false);
+  assert.equal(lifecycle.isMounted("broken"), true, "failed cleanup keeps ownership so reconcile cannot mount over leaked state");
   assert.equal(lifecycle.isMounted("healthy"), false);
   assert.doesNotThrow(() => lifecycle.destroy());
+  assert.equal(attempts, 2);
+  assert.equal(lifecycle.isMounted("broken"), false);
+});
+
+test("failed module cleanup cannot trigger a duplicate mount on later reconcile", (t) => {
+  mockBrowser(t);
+  t.mock.method(console, "error", () => {});
+  let enabled = true, mounts = 0, cleanupAttempts = 0;
+  const app = createBetterUI({ modules: [{
+    id: "fixture",
+    shouldMount: () => enabled,
+    getMountKey: () => "stable-root",
+    mount() {
+      mounts++;
+      return () => { cleanupAttempts++; throw new Error("fixture cleanup failed"); };
+    },
+  }] });
+  app.start();
+  enabled = false;
+  app.reconcile();
+  assert.equal(cleanupAttempts, 1);
+  enabled = true;
+  app.reconcile();
+  assert.equal(mounts, 1, "failed cleanup retains module ownership instead of mounting a second instance");
 });

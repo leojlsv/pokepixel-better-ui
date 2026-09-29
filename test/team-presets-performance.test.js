@@ -64,6 +64,21 @@ test("saved sprites bypass native extraction; explicit capture refreshes changin
   assert.equal(teamPresetVisualReader(root)({ ...snapshot.members[0] }).sprite, "data:image/png;base64,NEW");
 });
 
+test("known Shared Stone saved sprites are rejected without adding work to stable sync", t => {
+  const { root, calls } = fixture(t);
+  const card = root.querySelector('[data-creature-id="a"]');
+  const badge = root.ownerDocument.createElement("span"); badge.className = "pokeidle-team-card__xp-share";
+  const image = root.ownerDocument.createElement("img"); image.src = "/img/items/shared-stone-kanto.png"; badge.append(image); card.append(badge);
+  calls.canvas = 0; calls.style = 0; calls.scan = 0;
+  const stale = { id: "a", sprite: "/img/items/shared-stone-kanto.png" };
+  const resolved = teamPresetVisualReader(root, { resolveSprites: true })(stale);
+  assert.ok(resolved.sprite.startsWith("data:image/png;base64,"));
+  assert.notEqual(resolved.sprite, stale.sprite);
+  const afterResolve = { ...calls };
+  for (let index = 0; index < 20; index++) teamPresetVisualReader(root)(stale);
+  assert.equal(calls.canvas, afterResolve.canvas, "stable reads must not reserialize the Pokémon canvas");
+});
+
 test("relative sprite URLs do not cause repeated image writes", t => {
   const { dom, doc, root, controller, entries } = fixture(t);
   entries.forEach(p => p.members.forEach(m => { m.sprite = "/sprites/a.png"; }));

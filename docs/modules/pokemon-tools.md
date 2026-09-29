@@ -9,24 +9,24 @@ One tag per individual Pokémon, shared across Backpack, Storage and the player'
 
 | ID | Name | Symbol | Color |
 |---|---|---|---|
-| leveling | Leveling | ^ | blue |
-| pvp | PvP | ! | red |
-| pve | PvE | + | green |
-| boss | Boss | # | purple |
-| dungeons | Dungeons | > | dark purple |
-| gyms | Gyms | = | orange |
-| farm | Farm | $ | yellow |
-| build | Build | ~ | gray |
-| keep | Keep | @ | gold |
-| sell | Sell | % | light orange |
+| leveling | Leveling | ^ | mist |
+| pvp | PvP | ! | sand |
+| pve | PvE | + | ivory |
+| boss | Boss | # | sand |
+| dungeons | Dungeons | > | mist |
+| gyms | Gyms | = | ivory |
+| farm | Farm | $ | sand |
+| build | Build | ~ | mist |
+| keep | Keep | @ | ivory |
+| sell | Sell | % | sand |
 
-Alt + left click opens a compact native-styled modal with the Pokémon name, current tag and ten options in two columns. Selecting replaces the existing tag; Remove clears it. Close/Escape cancels. The handler captures mouse/pointer events before native slot actions and suppresses a chained double-click, so tagging does not equip, transfer or add an offer. Normal clicks and right clicks retain native behavior. Only decorated own-Pokémon nodes are eligible in Trade.
+Alt + left click opens a compact MASTER v2 PPBUI modal with the Pokémon name, current tag and ten options in two columns. Selecting replaces the existing tag; Remove clears it. Close/Escape cancels. The handler captures mouse/pointer events before native slot actions and suppresses a chained double-click, so tagging does not equip, transfer or add an offer. Normal clicks and right clicks retain native behavior. Only decorated own-Pokémon nodes are eligible in Trade.
 
-Slots show a single colored symbol without changing the rarity border; the title and Backpack list include the tag name. Dark purple and gray use legible values against the native dark background. The modal is bounded by the viewport and scrolls internally.
+Slots show a single neutral symbol without changing the rarity border; the title and Backpack list include the tag name. Organizational tags use only Miyazaki 16 mist/sand/ivory so they do not consume the reserved blue/cyan action, gold selection, green success/active or red danger semantics. Each tag color maintains at least 4.5:1 contrast on the dark tag surfaces. The modal is bounded by the viewport and uses the shared pixel scrollbar.
 
 ## Filters
 
-Only More Filters remains as the added disclosure. Tag is directly after Gender and offers All, Untagged and the ten fixed tags. Rarity/element are inside that disclosure in Backpack and Trade; Storage retains its native independent controls. Existing level, IV, quality multiplier and status filters remain. Different filter types combine with AND. Native eligibility and offer payloads are untouched.
+Only More Filters remains as the added disclosure. Tag is directly after Gender and offers All, Untagged and the ten fixed tags. Rarity/element are inside that disclosure in Backpack and Trade; Storage retains its native independent controls. Existing level, IV, quality-multiplier and status filter behavior remains; the user-facing quality label is **`Min Quality`**. Better UI-created More Filters inputs/selects use the square PPBUI field chrome even when hostile host rules attempt to restore rounded fields. Different filter types combine with AND. Native eligibility and offer payloads are untouched.
 
 ## Persistence and migration
 

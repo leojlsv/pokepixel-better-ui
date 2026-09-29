@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pokémon Profile UI Playground</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --lab-window:rgba(22,29,32,.92);
+      --lab-interactive:rgba(35,44,46,.96);
+      --lab-values:rgba(22,29,32,.85);
+      --lab-line:#6b6543;
+      --lab-text:#eef1df;
+      --lab-text-muted:#a6aa9f;
+      --lab-text-subtle:#777b73;
+      --lab-accent:#d2b45d;
+      --lab-focus:#37b4d1;
+      --lab-danger:#e17a72;
+      --lab-window-radius:0px;
+      --lab-control-radius:0px;
+      --lab-badge-radius:0px;
+      font-family:Inter, "Segoe UI", Arial, sans-serif;
+      background:#161d20;
+      color:var(--lab-text);
+    }
+    :root[data-playground-corners="rounded"] {
+      --lab-window-radius:8px;
+      --lab-control-radius:5px;
+      --lab-badge-radius:4px;
+    }
+    * { box-sizing:border-box; }
+    html,body { min-height:100%; margin:0; background:#161d20; color:var(--lab-text); }
+    button,input,select,textarea { font:inherit; }
+    button { cursor:pointer; }
+    .playground {
+      display:grid;
+      grid-template-columns:280px minmax(0,1fr);
+      min-height:100vh;
+    }
+    .panel {
+      position:sticky;
+      top:0;
+      align-self:start;
+      height:100vh;
+      overflow:auto;
+      padding:14px;
+      border-right:1px solid var(--lab-line);
+      background:var(--lab-window);
+    }
+    .panel h1 {
+      margin:0 0 4px;
+      color:#e0c46d;
+      font-family:Cinzel, Georgia, serif;
+      font-size:14px;
+      line-height:1.2;
+      text-transform:uppercase;
+    }
+    .panel .subtitle {
+      margin:0 0 14px;
+      color:var(--lab-text-muted);
+      font-size:10px;
+      line-height:1.35;
+    }
+    .group {
+      display:grid;
+      gap:8px;
+      margin:0 0 14px;
+      padding:10px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-window-radius);
+      background:var(--lab-values);
+    }
+    .group h2 {
+      margin:0;
+      color:#e0c46d;
+      font-family:Cinzel, Georgia, serif;
+      font-size:10px;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+    .button-grid {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:5px;
+    }
+    .button-grid[data-cols="3"] { grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .button-grid button,
+    .actions button,
+    [data-layout-reset] {
+      min-height:28px;
+      padding:4px 6px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-interactive);
+      color:var(--lab-text);
+      font-size:10px;
+      font-weight:700;
+    }
+    .button-grid button[aria-pressed="true"],
+    [data-grid-toggle][aria-pressed="true"] {
+      border-color:var(--lab-focus);
+      color:var(--lab-focus);
+      box-shadow:none;
+    }
+    [data-layout-reset] { width:100%; }
+    .field {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 74px;
+      gap:8px;
+      align-items:center;
+    }
+    .field label {
+      color:var(--lab-text-muted);
+      font-size:10px;
+      line-height:1.2;
+    }
+    .field input,
+    .field select {
+      width:100%;
+      height:26px;
+      padding:3px 5px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-text);
+    }
+    .field input {
+      text-align:right;
+    }
+    .field select { text-align:left; }
+    .color-groups { display:grid; gap:8px; }
+    .color-group {
+      display:grid;
+      gap:5px;
+      padding-top:7px;
+      border-top:1px solid var(--lab-line);
+    }
+    .color-group:first-child { padding-top:0; border-top:0; }
+    .color-group > strong {
+      color:var(--lab-text-muted);
+      font-size:9px;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+    .color-field {
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 30px 72px;
+      gap:5px;
+      align-items:center;
+      min-height:28px;
+    }
+    .color-field label {
+      min-width:0;
+      overflow:hidden;
+      color:var(--lab-text-muted);
+      font-size:9px;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .color-field input[type="color"] {
+      width:30px;
+      height:24px;
+      padding:1px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+    }
+    .color-field input[type="text"] {
+      width:72px;
+      height:24px;
+      padding:3px 4px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-text);
+      font-size:9px;
+      text-transform:uppercase;
+    }
+    .palette-rule {
+      display:flex;
+      justify-content:space-between;
+      gap:8px;
+      padding:5px 6px;
+      border:1px solid #6b6543;
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-text-muted);
+      font-size:9px;
+    }
+    .palette-rule strong { color:#e8dfba; }
+    .actions {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:5px;
+    }
+    .actions .primary { border-color:var(--lab-focus); color:var(--lab-focus); }
+    .layout-list {
+      display:grid;
+      gap:5px;
+      margin:0;
+      padding:0;
+      list-style:none;
+    }
+    .layout-item {
+      display:grid;
+      grid-template-columns:24px minmax(0,1fr) 26px 26px;
+      gap:4px;
+      align-items:center;
+      min-height:30px;
+      padding:3px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-text);
+      user-select:none;
+    }
+    .layout-item[draggable="true"] { cursor:grab; }
+    .layout-item[data-dragging="true"] {
+      opacity:.52;
+      border-color:var(--lab-focus);
+    }
+    .layout-item[data-drop-before="true"] { outline:1px solid var(--lab-focus); outline-offset:-1px; }
+    .layout-item[data-drop-after="true"] { outline:1px solid var(--lab-focus); outline-offset:-1px; }
+    .layout-grip {
+      display:grid;
+      width:22px;
+      height:22px;
+      place-items:center;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      color:var(--lab-text-subtle);
+      background:var(--lab-values);
+      font-size:12px;
+      line-height:1;
+    }
+    .layout-label {
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      font-size:10px;
+      font-weight:700;
+    }
+    .layout-item button {
+      width:26px;
+      height:24px;
+      padding:0;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-interactive);
+      color:var(--lab-text-muted);
+      font:700 11px/1 Inter, "Segoe UI", Arial, sans-serif;
+    }
+    .layout-item button:disabled { opacity:.35; cursor:default; }
+    .layout-help {
+      margin:0;
+      color:var(--lab-text-subtle);
+      font-size:9px;
+      line-height:1.35;
+    }
+    .grid-toolbar {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:5px;
+    }
+    .grid-toolbar button,
+    [data-grid-reset] {
+      min-height:28px;
+      padding:4px 6px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-interactive);
+      color:var(--lab-text);
+      font-size:10px;
+      font-weight:700;
+    }
+    .grid-presets {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:4px;
+    }
+    .grid-presets button {
+      min-height:26px;
+      padding:3px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-text-muted);
+      font-size:9px;
+      font-weight:700;
+    }
+    .grid-fields {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:6px 8px;
+    }
+    .grid-fields .field {
+      grid-template-columns:minmax(0,1fr) 48px;
+      gap:5px;
+    }
+    .grid-editor {
+      --grid-cols:1;
+      --grid-rows:1;
+      position:relative;
+      display:grid;
+      grid-template-columns:repeat(var(--grid-cols),minmax(32px,1fr));
+      grid-template-rows:repeat(var(--grid-rows),36px);
+      gap:3px;
+      min-height:36px;
+      padding:4px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      overflow:auto;
+    }
+    .grid-cell {
+      z-index:0;
+      display:grid;
+      place-items:start;
+      padding:2px;
+      border:1px dashed var(--lab-line);
+      color:var(--lab-text-subtle);
+      font-size:8px;
+      line-height:1;
+      pointer-events:auto;
+    }
+    .grid-cell[data-drop="true"] {
+      border-color:var(--lab-focus);
+      background:var(--lab-interactive);
+    }
+    .grid-object {
+      z-index:1;
+      display:grid;
+      place-items:center;
+      min-width:0;
+      padding:3px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-badge-radius);
+      background:var(--lab-interactive);
+      color:var(--lab-text);
+      font-size:9px;
+      font-weight:700;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      cursor:grab;
+    }
+    .grid-object[aria-pressed="true"] {
+      border-color:var(--lab-accent);
+      box-shadow:none;
+      color:var(--lab-accent);
+    }
+    .grid-object[data-dragging="true"] { opacity:.55; }
+    .grid-status {
+      min-height:24px;
+      color:var(--lab-text-subtle);
+      font-size:9px;
+      line-height:1.35;
+    }
+    .grid-status[data-error="true"] { color:var(--lab-danger); }
+    .summary {
+      width:100%;
+      min-height:126px;
+      resize:vertical;
+      padding:8px;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-text-muted);
+      font:10px/1.35 Inter, "Segoe UI", Arial, sans-serif;
+    }
+    .copy-fallback {
+      width:100%;
+      min-height:96px;
+      padding:8px;
+      border:1px solid #d7b75b;
+      border-radius:var(--lab-control-radius);
+      background:var(--lab-values);
+      color:var(--lab-accent);
+      font:10px/1.35 Inter, "Segoe UI", Arial, sans-serif;
+      resize:vertical;
+    }
+    .status {
+      min-height:30px;
+      color:var(--lab-text-subtle);
+      font-size:9px;
+      line-height:1.35;
+      overflow-wrap:anywhere;
+    }
+    .stage-shell {
+      min-width:0;
+      overflow:auto;
+      padding:18px;
+      background:var(--lab-values);
+    }
+    .stage-toolbar {
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      align-items:center;
+      max-width:1100px;
+      margin:0 auto 10px;
+      color:var(--lab-text-muted);
+      font-size:10px;
+    }
+    .stage {
+      width:760px;
+      min-height:720px;
+      margin:0 auto;
+      overflow:hidden;
+      border:1px solid var(--lab-line);
+      border-radius:var(--lab-window-radius);
+      background:var(--lab-window);
+      box-shadow:none;
+    }
+    .stage[data-fill="true"] { width:100%; max-width:1100px; }
+    .stage iframe {
+      display:block;
+      width:100%;
+      height:900px;
+      border:0;
+      background:var(--lab-window);
+    }
+    @media (max-width:860px) {
+      .playground { grid-template-columns:1fr; }
+      .panel { position:relative; height:auto; border-right:0; border-bottom:1px solid var(--lab-line); }
+      .stage-shell { padding:10px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="playground">
+    <aside class="panel">
+      <h1>Profile UI Playground</h1>
+      <p class="subtitle">Preview real + CSS temporário. Nada daqui altera o runtime até você aprovar.</p>
+
+      <section class="group">
+        <h2>Estado</h2>
+        <div class="button-grid" data-playground-modes></div>
+      </section>
+
+      <section class="group">
+        <h2>Skin experimental</h2>
+        <div class="button-grid" data-playground-skins></div>
+        <p class="layout-help">Game Palette é o laboratório editável. Current/Obsidian ficam disponíveis apenas para comparação.</p>
+      </section>
+
+      <section class="group">
+        <h2>Geometria</h2>
+        <div class="button-grid" data-playground-corners></div>
+        <p class="layout-help">Um modo global por vez: Squared ou Rounded. A geometria muda; paleta, alpha e cores semânticas permanecem iguais.</p>
+      </section>
+
+      <section class="group">
+        <h2>Color Lab</h2>
+        <div class="palette-rule"><span>Espessura de todas as linhas</span><strong>1px fixo</strong></div>
+        <p class="layout-help">A paleta inicia no padrão pedido do jogo: Window/Values #161D20, Interactive #232C2E, Line #6B6543. Alpha controla somente superfícies; textos, linhas, tipos e raridades continuam opacos e semânticos.</p>
+        <div class="field"><label for="alpha-window">Window alpha</label><input id="alpha-window" data-alpha-setting="window" type="number" min="0" max="100" step="1"></div>
+        <div class="field"><label for="alpha-interactive">Interactive alpha</label><input id="alpha-interactive" data-alpha-setting="interactive" type="number" min="0" max="100" step="1"></div>
+        <div class="field"><label for="alpha-value">Values alpha</label><input id="alpha-value" data-alpha-setting="value" type="number" min="0" max="100" step="1"></div>
+        <div class="color-groups" data-color-groups></div>
+        <div class="actions">
+          <button type="button" data-palette-reset>Reset cores</button>
+          <button type="button" data-palette-copy>Copiar paleta</button>
+        </div>
+      </section>
+
+      <section class="group">
+        <h2>Viewport</h2>
+        <div class="button-grid" data-cols="3" data-playground-viewports></div>
+      </section>
+
+      <section class="group">
+        <h2>Ajustes live</h2>
+        <div class="field"><label for="search-width">Search card</label><input id="search-width" data-setting="searchCardWidth" type="number" min="90" max="180" step="1"></div>
+        <div class="field"><label for="move-width">Move card min</label><input id="move-width" data-setting="moveCardMinWidth" type="number" min="110" max="220" step="1"></div>
+        <div class="field"><label for="power-width">Power chip</label><input id="power-width" data-setting="powerWidth" type="number" min="36" max="80" step="1"></div>
+        <div class="field"><label for="meta-gap">Move meta gap</label><input id="meta-gap" data-setting="moveMetaGap" type="number" min="0" max="12" step="1"></div>
+        <div class="field"><label for="hover-width">Hover width</label><input id="hover-width" data-setting="hoverWidth" type="number" min="320" max="720" step="1"></div>
+      </section>
+
+      <section class="group">
+        <h2>Rearranjar objetos</h2>
+        <div class="button-grid" data-layout-targets></div>
+        <p class="layout-help">Arraste os itens ou use ↑/↓. A ordem afeta apenas o preview.</p>
+        <ol class="layout-list" data-layout-list></ol>
+        <button type="button" data-layout-reset>Reset ordem desta área</button>
+      </section>
+
+      <section class="group">
+        <h2>Grid / quadrantes</h2>
+        <div class="grid-toolbar">
+          <button type="button" data-grid-toggle aria-pressed="false">Grid desligado</button>
+          <button type="button" data-grid-reset>Reset grid</button>
+        </div>
+        <div class="grid-presets" data-grid-presets>
+          <button type="button" data-grid-preset="1x4">1×4</button>
+          <button type="button" data-grid-preset="2x4">2×4</button>
+          <button type="button" data-grid-preset="3x3">3×3</button>
+          <button type="button" data-grid-preset="4x4">4×4</button>
+        </div>
+        <div class="grid-fields">
+          <div class="field"><label for="grid-cols">Colunas</label><input id="grid-cols" data-grid-setting="cols" type="number" min="1" max="8" step="1"></div>
+          <div class="field"><label for="grid-rows">Linhas</label><input id="grid-rows" data-grid-setting="rows" type="number" min="1" max="8" step="1"></div>
+        </div>
+        <div class="field">
+          <label for="grid-item">Objeto</label>
+          <select id="grid-item" data-grid-item></select>
+        </div>
+        <div class="grid-fields">
+          <div class="field"><label for="grid-x">X / coluna</label><input id="grid-x" data-grid-placement="x" type="number" min="1" max="8" step="1"></div>
+          <div class="field"><label for="grid-y">Y / linha</label><input id="grid-y" data-grid-placement="y" type="number" min="1" max="8" step="1"></div>
+          <div class="field"><label for="grid-w">W / span</label><input id="grid-w" data-grid-placement="w" type="number" min="1" max="8" step="1"></div>
+          <div class="field"><label for="grid-h">H / span</label><input id="grid-h" data-grid-placement="h" type="number" min="1" max="8" step="1"></div>
+        </div>
+        <p class="layout-help">C×L. Ex.: 2×4; X=1/Y=3; W=2 ocupa a linha inteira. Arraste um bloco para outra célula para snap mantendo o span.</p>
+        <div class="grid-editor" data-grid-editor role="group" aria-label="Editor visual de quadrantes"></div>
+        <div class="grid-status" data-grid-status aria-live="polite">Grid desligado para esta área.</div>
+      </section>
+
+      <section class="group">
+        <h2>Workflow</h2>
+        <div class="actions">
+          <button type="button" data-reset>Reset</button>
+          <button type="button" data-reload>Reload preview</button>
+          <button type="button" class="primary" data-copy>Copiar ajustes</button>
+          <button type="button" data-copy-css>Copiar CSS</button>
+        </div>
+        <textarea class="summary" readonly data-summary></textarea>
+        <textarea class="copy-fallback" readonly hidden data-copy-fallback aria-label="Conteúdo de export para cópia manual"></textarea>
+        <div class="status" data-status>Carregando preview…</div>
+      </section>
+    </aside>
+
+    <section class="stage-shell">
+      <div class="stage-toolbar">
+        <span>Preview real do módulo · dados simulados</span>
+        <span data-stage-label>760px · Profile</span>
+      </div>
+      <div class="stage" data-stage>
+        <iframe title="Pokémon Profile preview" data-preview src="pokemon-profile-preview.html"></iframe>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="pokemon-profile-playground.js"></script>
+</body>
+</html>

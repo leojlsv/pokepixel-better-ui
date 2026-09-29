@@ -1,248 +1,223 @@
 # Project Roles
 
-## Purpose
+## Principle
 
-This project uses explicit roles so product decisions, design direction,
-architecture, implementation and approval do not collapse into one agent.
+Roles exist to create **different kinds of evidence**, not more copies of the same
+review. A role is activated only when its domain is needed. More reviewers are not
+better if they all inspect the same tests and source.
 
-Roles are **responsibility boundaries**, not permanent identities. One agent may
-cover more than one role on a small task only when that does not create a review
-conflict. An author must never provide the final independent approval of their
-own design or implementation.
+The Product Owner is the final product authority and only live validator. The
+Project Manager is the delivery gatekeeper and is accountable for whether the
+evidence justifies progression.
 
-The user's explicit requirements and approvals remain above every role.
-
-## Role model
+## Canonical roles
 
 ### Product authority
 
-| Role | Type | Owns |
+| Role | Owns |
+| --- | --- |
+| Product Owner / Live Validator | product intent, priorities, material behavior/design approval, live validation, merge/publish authorization |
+
+### Delivery authority
+
+| Role | Owns | Cannot substitute for |
 | --- | --- | --- |
-| Product Owner / Live Validator | human authority | product intent, scope/design approval, in-game validation, merge/publish authorization |
+| Project Manager / Coordinator | acceptance matrix, scope, role activation, evidence audit, gate progression, handoff authorization | Product Owner live approval or domain review evidence |
 
-### Standing agent roles
+### Contract / implementation roles
 
-These are the stable responsibilities used repeatedly across development. A task
-activates only the standing roles that are relevant.
-
-| Role | Owns | Must not own |
+| Role | Activate when | Owns |
 | --- | --- | --- |
-| Project Lead / Coordinator | planning, decomposition, scope, role activation, handoffs, conflict escalation | silently override architecture/design/QA |
-| Architecture & Integration Lead | functional/native integration, core/runtime architecture, lifecycle/state boundaries | product or aesthetic decisions |
-| Lead UI/UX Designer / Pixel Art Director | information hierarchy, UX presentation, design-system/art direction, component treatment | production feature code or self-approval |
-| Feature / Module Engineer | module production code, module tests, local integration/layout implementation | redefine requirements/design to justify code |
-| Independent QA Reviewer | read-only technical gate, regression evidence, automated-ready verdict | edit the implementation under review |
+| Requirements Analyst | behavior is new/ambiguous/complex | observable acceptance criteria, states, invariants, edge cases |
+| Technical Researcher | native/runtime facts are uncertain | read-only evidence and uncertainty reduction |
+| Architecture & Integration Lead | core/lifecycle/shared state/native integration risk | lifecycle, state ownership, integration mechanism, failure modes |
+| Lead UI/UX Designer / Pixel Art Director | a visual/interaction decision must be invented or materially redesigned | rendered design contract, hierarchy, states, art direction |
+| Design-System Engineer | shared visual primitive/runtime changes | shared `src/styles/**` / design-system implementation |
+| Feature / Module Engineer | module implementation changes | production module code and author regression tests |
+| Pixel Artist / Asset Producer | approved brief says `ASSET NEEDED` | bespoke pixel/raster assets |
 
-### Specialist roles
+### Independent review roles
 
-Specialists solve a specific class of risk. Do not activate them mechanically on
-every task.
+These roles must produce distinct evidence.
 
-| Role | Trigger | Owns |
+| Role | Gate | Primary evidence |
 | --- | --- | --- |
-| Requirements Analyst | new/ambiguous/high-complexity workflow | detailed functional contract and acceptance criteria |
-| UX/A11y & Design QA Reviewer | major redesign, accessibility risk, design-conformance uncertainty | independent visual/UX/accessibility gate |
-| Design-System Engineer | shared `src/styles/**` or design-system runtime changes | implementation of approved shared visual primitives |
-| Technical Researcher | evidence is incomplete or disputed | read-only source/fixture investigation |
-| Pixel Artist / Asset Producer | approved brief says `ASSET NEEDED` | bespoke pixel/raster asset production |
-| Release / Docs Integrator | candidate/release/merge preparation | version/changelog/build metadata and final handoff |
+| Independent QA Reviewer | `TECH READY / TECH NOT READY` | code/diff, lifecycle, behavior, independent edge checks, builds/tests |
+| UX/A11y QA Reviewer | `UX READY / UX NOT READY` | interaction semantics, focus/keyboard/ARIA, responsive information behavior |
+| Visual Regression Reviewer | `VISUAL READY / VISUAL NOT READY / VISUAL EVIDENCE INSUFFICIENT` | actual rendered screenshots/recordings/previews; never source/tests alone |
+| Release / Docs Integrator | exact candidate traceability | version, artifact/hash, reproducible checks, status docs |
 
-## Authority matrix
+## Critical separation of duties
 
-`F` = final human approval/validation, `O` = domain decision owner inside already
-approved authorities, `E` = executor, `C` = consulted, `V` = independent verifier.
-`O*` means the owner is conditional: activate only one contract owner for that
-task stage.
+1. **Implementation author != Technical QA.**
+2. **Design author != UX/A11y QA or Visual QA.**
+3. **Visual QA is a separate discipline.** Technical QA and UX/A11y QA cannot
+   issue `VISUAL READY` unless explicitly acting as a separate Visual Regression
+   Reviewer and using qualifying rendered evidence. For visible changes, prefer a
+   different reviewer to avoid confirmation bias.
+4. **PM does not manufacture evidence.** The PM may reject a gate as insufficient
+   even if the reviewer wrote `READY`.
+5. **Release does not fix code.** Any feature finding invalidates the relevant
+   downstream review and returns to the owning engineer.
+6. **No agent performs live validation.** Product Owner only.
 
-| Decision / activity | Product Owner | Project Lead | Req. Analyst | Architect | Lead Designer | Feature Eng. | Design-System Eng. | UX/Design QA | QA | Release |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Product scope / feature intent | F | O/E | C | C | C | C | - | - | - | - |
-| Functional contract | F for semantic change | O* ordinary | O* when activated | C/O for native constraints | C | C | - | V | V | - |
-| Architecture / integration | F for material product tradeoff | C | C | O | C | E | C | - | V | - |
-| Global/module visual direction | F for material new direction | C | C | C | O | C | C | V | C | - |
-| Module implementation | - | C | C | C | C | O/E | - | V | V | - |
-| Shared visual runtime implementation | - | C | - | C | C | C | O/E | V | V | - |
-| Automated-ready verdict | - | C | - | C | C | - | - | V | O/V | - |
-| In-game validation | F/E | - | - | - | - | - | - | - | - | - |
-| Version/build/release candidate | F for publish/merge | C | - | - | - | C | C | - | V | O/E |
+## Minimal role activation
 
-No role may use this matrix to override the source-of-truth order in `AGENTS.md`.
-The matrix uses shortened column labels only for width; delegated tasks must use
-the exact canonical role names listed above.
+### Exact visual polish, no behavior change
 
-## Standard workflow
+Example: "Sort +15px", "make this icon square", "fix scrollbar chrome".
+
+Required:
 
 ```text
-Product Owner request
-        |
-        v
-Project Lead: scope + role activation
-        |
-        v
-Functional contract
-(Project Lead, or Requirements Analyst when triggered)
-        |
-        +--------------------+
-        |                    |
-        v                    v
-Architecture & Integration Lead    Lead UI/UX Designer / Pixel Art Director
-(when triggered)         (UI/UX work)
-        |                    |
-        +----------+---------+
-                   v
-         Feature / Module Engineer
-        (+ Design-System Engineer when shared runtime changes)
-                   |
-          +--------+--------+
-          v                 v
- UX/A11y & Design QA Reviewer   Independent QA Reviewer
-        (when triggered)          (technical)
-          +--------+--------+
-                   v
-       [Release / Docs Integrator]
-        (only for an actual release candidate)
-                   |
-                   v
-        Product Owner in-game validation
-                   |
-                   v
-           merge/publish when authorized
+PM -> Feature Engineer (+ Design-System Engineer if shared primitive)
+   -> Technical QA -> Visual Regression QA -> PM handoff
 ```
 
-The Technical Researcher may be inserted before any decision role when evidence
-is incomplete. The Pixel Artist / Asset Producer is inserted under the Lead UI/UX
-Designer / Pixel Art Director only when an approved asset brief calls for bespoke
-raster artwork.
+Lead Designer is **not** reactivated when the Product Owner requirement and
+approved design system already determine the visual answer. UX/A11y QA is added
+only if interaction/accessibility/information behavior changes.
 
-## Activation rules
+### Visual decision or redesign required
 
-### New module or major redesign
+```text
+PM -> Lead Designer -> Engineer(s)
+   -> Technical QA + UX/A11y QA (if interaction/semantics) + Visual Regression QA
+   -> PM handoff
+```
 
-Use Project Lead / Coordinator, Architecture & Integration Lead, Lead UI/UX
-Designer / Pixel Art Director, Feature / Module Engineer and Independent QA
-Reviewer. Add Requirements Analyst only when the
-workflow/behavior contract is ambiguous or unusually complex. Major redesigns
-also require UX/A11y & Design QA Reviewer. Add Design-System Engineer only if shared
-runtime/primitives change. Add Release/Docs Integrator only when preparing an
-actual release candidate/version/changelog/merge or publish handoff.
+### Functional bug, no visible change
 
-### Existing-module visual refinement with no behavior change
+```text
+PM -> Feature Engineer -> Technical QA -> PM handoff
+```
 
-Use Project Lead / Coordinator, Lead UI/UX Designer / Pixel Art Director,
-Feature / Module Engineer and Independent QA Reviewer.
-Requirements Analyst is needed only when the existing functional contract is
-unclear. Use a separate UX/A11y & Design QA Reviewer when the refinement is
-high-risk, accessibility-sensitive or substantial enough to warrant a distinct
-design gate; otherwise the Independent QA Reviewer may perform the documented
-dual-lens review. Release/Docs Integrator is activated only for release-candidate
-preparation.
-
-### Functional bug fix with no visual change
-
-Use Project Lead / Coordinator, Feature / Module Engineer and Independent QA
-Reviewer. Add Requirements
-Analyst for ambiguous expected behavior and Architecture & Integration Lead when
-lifecycle/core/native-integration boundaries are involved.
+Add Requirements Analyst if expected behavior is ambiguous. Add Architecture Lead
+for lifecycle/core/native integration risk.
 
 ### Core/runtime/cross-module change
 
-Architecture & Integration Lead is mandatory before implementation. Lead UI/UX
-Designer / Pixel Art Director is needed only when the change alters visible or
-interactive behavior. Shared
-design-system runtime changes additionally activate Design-System Engineer.
+```text
+PM -> Architecture Lead -> owning Engineer -> Technical QA
+```
 
-### Asset-only task
+Add design/visual gates only when user-visible output changes.
 
-Use Lead UI/UX Designer / Pixel Art Director -> Pixel Artist / Asset Producer ->
-UX/A11y & Design QA Reviewer. Add Feature / Module Engineer only when the asset
-must be integrated into a module; add Design-System
-Engineer only when it becomes a shared visual primitive.
+### Shared visual primitive
 
-### Documentation/governance-only change
+```text
+PM -> existing approved design contract OR Lead Designer if new decision needed
+   -> Architecture Lead when src/core/**, injection/lifecycle or cross-module
+      runtime behavior is touched
+   -> Design-System Engineer (+ module engineer for adoption)
+   -> Technical QA -> Visual Regression QA -> PM handoff
+```
 
-Use Project Lead / Coordinator plus the owner of the affected domain and an Independent QA
-Reviewer. Do not activate implementation roles mechanically.
+### Asset-only
 
-## Non-negotiable separation of duties
+```text
+PM -> Lead Designer -> Pixel Artist -> Visual Regression QA
+```
 
-- Product Owner approval cannot be inferred from an agent verdict.
-- A Lead UI/UX Designer / Pixel Art Director may not approve their own design as
-  UX/A11y & Design QA Reviewer.
-- A Feature/Design-System Engineer may not provide the final QA verdict for their
-  own diff.
-- An Independent QA Reviewer is read-only for the work under review. Findings go back to an
-  implementation role for correction.
-- A Project Lead / Coordinator coordinates disagreements; they do not silently
-  overrule the Architecture & Integration Lead, Lead UI/UX Designer / Pixel Art
-  Director or Independent QA Reviewer. Escalate unresolved conflicts to the user.
-- A Release/Docs Integrator must not fix feature code opportunistically.
-  Release-blocking code findings return to the owning Engineer.
-- No agent role may install, open, reload, control, inspect or validate Better UI
-  in the live game, the user's browser or Tampermonkey. This applies to research,
-  debugging, design review and validation alike; live interaction is exclusively
-  user-owned.
+Feature Engineer is added only for runtime integration.
+
+### Governance/documentation-only
+
+```text
+PM -> relevant domain owner/reviewer -> Independent QA
+```
+
+No implementation roles are activated mechanically.
+
+## Authority matrix
+
+`F` final human authority, `O` domain owner, `E` executor, `V` independent
+verifier, `G` gatekeeper, `C` consulted.
+
+| Activity | PO | PM | Req | Arch | Designer | Feature Eng | DS Eng | Tech QA | UX/A11y QA | Visual QA | Release |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Product intent/scope | F | G/O | C | C | C | C | - | - | - | - | - |
+| Acceptance matrix | F for semantic change | O/G | C/E when activated | C | C | C | C | V | V | V | - |
+| Architecture/integration | F for material tradeoff | G | C | O | C | E | C | V | - | - | - |
+| New visual direction | F | G | C | C | O | C | C | - | V | V | - |
+| Module implementation | - | G | - | C | C | O/E | - | V | V if triggered | V if visible | - |
+| Shared visual implementation | - | G | - | C | C | C | O/E | V | V if triggered | V | - |
+| Technical readiness | - | G | - | C | - | - | - | O/V | - | - | - |
+| UX/A11y readiness | - | G | - | C | C | - | - | - | O/V | - | - |
+| Visual readiness | - | G | - | - | C | - | - | - | C | O/V | - |
+| Handoff authorization | F may reject | O/G | - | - | - | - | - | C | C | C | C |
+| Live validation | F/E | - | - | - | - | - | - | - | - | - | - |
+| Release metadata | F for publish/merge | G | - | - | - | C | C | V | - | - | O/E |
+
+## Reviewer verdict vocabulary
+
+Generic `READY` is prohibited in final project status. Reviewers return only their
+domain-specific verdict:
+
+- `TECH READY` / `TECH NOT READY`
+- `UX READY` / `UX NOT READY`
+- `VISUAL READY` / `VISUAL NOT READY` / `VISUAL EVIDENCE INSUFFICIENT`
+
+P0-P3 severity is still reported. A visible violation of an explicit Product Owner
+requirement is normally blocking for the visual gate even when technically harmless.
+
+## Evidence independence
+
+Independent review means more than a different agent name.
+
+- Technical QA must add at least one reviewer-selected adversarial/edge check for
+  non-trivial work rather than only re-run author tests.
+- Visual QA starts from criteria + renders, not implementation source.
+- UX/A11y QA tests semantics/operation, not whether token names appear in CSS.
+- Reviewers must state what evidence they did **not** have.
+- If two reviewers rely on the same evidence, the PM must not count them as two
+  independent proofs of the same claim.
 
 ## Shared-surface write ownership
 
-Concurrent agents must not write the same shared authority surface. For each
-task/run, the Project Lead assigns one write owner for:
+One write owner per task/run:
 
-- `design-system/**` — Lead UI/UX Designer / Pixel Art Director;
-- `src/core/**` except `src/core/design-system.js` — Architecture & Integration
-  Lead or an explicitly assigned Engineer working under its approved plan;
-- `src/styles/**` and `src/core/design-system.js` — Design-System Engineer, with
-  Architecture & Integration Lead review when injection/lifecycle changes;
+- `design-system/**` — Lead Designer when a design decision must be invented;
+  Project Manager may record an explicit Product Owner-approved visual decision;
+  Design-System Engineer may update implementation-facing primitive documentation
+  for an already-approved decision, but neither may invent new visual direction
+  through documentation;
+- `src/core/**` — Architecture Lead or assigned Engineer under approved architecture;
+- `src/styles/**`, shared visual runtime — Design-System Engineer;
 - `src/modules/<feature>/**` — Feature / Module Engineer;
-- release/status files such as `CHANGELOG.md`/README status — Release/Docs
-  Integrator.
+- release metadata/status — Release / Docs Integrator or PM when no separate
+  release role is needed.
 
-Other roles may review these surfaces but do not write them concurrently.
+Review roles are read-only for the work they judge.
 
 ## Role switching
 
-An agent may switch roles only when the switch is explicit in the task record.
-For tiny low-risk work, Designer/Engineer or Architect/Engineer may be sequential
-hats, but the independent review must remain separate.
-
-The following combinations are prohibited for the same work item:
-
-- implementation author + final Independent QA Reviewer;
-- design author + final UX/A11y & Design QA Reviewer;
-- feature author + Release/Docs Integrator when release work would require judging
-  the author's own unresolved findings.
-
-A single independent reviewer may perform both Design QA and technical QA for a
-small UI task if that reviewer authored neither the design direction nor the
-implementation and reports both review lenses explicitly.
+An agent may sequentially cover compatible author roles when explicit, but it
+cannot later independently approve that work. For visible changes, the Visual
+Regression Reviewer should be separate from the design and implementation authors.
 
 ## Conflict resolution
 
-1. User requirement/approval wins.
-2. Hard safety/gameplay/architecture invariant beats a visual preference.
-3. Inside the safe solution set, approved MASTER/page direction controls visual
-   decisions.
-4. Interaction-contract changes return to the Product Owner.
-5. QA reports noncompliance; QA does not redesign the feature to make it pass.
-6. If two role owners cannot resolve a legitimate conflict from existing
-   authorities, Project Lead escalates the decision to the user.
+1. Product Owner requirement/approval wins.
+2. Safety/gameplay/architecture invariants constrain the solution space.
+3. Approved design system controls visual decisions inside that safe space.
+4. Reviewer findings are not design authority; they identify failed criteria.
+5. PM coordinates but cannot override a domain `NOT READY` into a pass.
+6. Unresolvable authority conflict returns to Product Owner.
 
 ## Canonical handoff
 
-Every role handoff should be concise and use these sections when applicable:
-
 ```text
 ROLE
-TASK / SCOPE
+TASK / AC-* SCOPE
 AUTHORITIES READ
-RESULT
-CHANGES
-VALIDATION / EVIDENCE
-FINDINGS OR RISKS
-DECISIONS NEEDED
-BLOCKERS
+EVIDENCE USED
+EVIDENCE NOT AVAILABLE
+RESULT / DOMAIN VERDICT
+FINDINGS P0-P3
+RISKS / GAPS
 NEXT ROLE
 ```
 
-Review roles additionally return `P0 / P1 / P2 / P3` findings and a
-`READY / NOT READY` verdict. The verdict refers only to that review gate, never
-to user-owned in-game validation.
+Every handoff must distinguish observed facts from inference. Review counts and
+test totals never stand in for criterion-level evidence.

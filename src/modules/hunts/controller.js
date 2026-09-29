@@ -1,8 +1,10 @@
-import {parts,results,markers,markerLabel,huntsText,huntScene,selectors} from './dom.js';
-import {locateHunt} from './navigation.js';
+import {parts,results,markers,markerLabel,huntsText,huntScene,rememberActiveHuntZone,forgetActiveHuntZone,selectors} from './dom.js';
+import {canLocateHunt,locateHunt} from './navigation.js';
 import {createHuntInspector} from './dossier.js';
 import {createHuntMarkerInteractions} from './interaction.js';
 import {huntsStyles} from './styles.js';
+import {createPptoolsOneclickWidget} from './pptools-oneclick-widget.js';
+import {resolvePptoolsHunt} from './pptools-recommendations.js';
 
 function findTitleText(node,NodeCtor) {
   for(const child of node?.childNodes||[]){
@@ -14,7 +16,105 @@ function findTitleText(node,NodeCtor) {
   return null;
 }
 
-export function mountHunts(root) {
+function mountCurrentListHunts(root) {
+  const doc=root.ownerDocument,view=doc.defaultView;
+  const titlebar=root.querySelector('.pokeidle-panel__titlebar');
+  const titleNode=findTitleText(titlebar,view.Node);
+  const nativeTitle=titleNode?.textContent??null,titleOwner=titleNode?.parentElement||null;
+  const nativeTitleStyle=titleOwner?.getAttribute('style')??null,hadTitleClass=titleOwner?.classList.contains('ppbui-hunts-title')||false;
+  if(titleNode)titleNode.textContent='HUNT ATLAS';
+  if(titleOwner){
+    titleOwner.classList.add('ppbui-hunts-title');
+    titleOwner.style.removeProperty('font');
+    titleOwner.style.setProperty('font-family','var(--ppbui-font-display)','important');
+    titleOwner.style.setProperty('font-size','15px','important');
+    titleOwner.style.setProperty('font-weight','500','important');
+    titleOwner.style.setProperty('line-height','1.2','important');
+    titleOwner.style.setProperty('letter-spacing','normal','important');
+    titleOwner.style.setProperty('text-shadow','none','important');
+  }
+  root.classList.add('ppbui-hunts-enhanced','ppbui-hunts-current-list');
+  const body=parts(root).body,hadBodyScroll=body?.classList.contains('ppbui-scroll')||false;
+  body?.classList.add('ppbui-scroll');
+  const style=doc.createElement('style');style.dataset.ppbuiModule='hunts';style.textContent=huntsStyles;root.append(style);
+  const scene=huntScene(root),startHuntDescriptor=scene?Object.getOwnPropertyDescriptor(scene,'startHunt'):undefined,originalStart=scene?.startHunt;
+  let wrappedStart=null,active=true;
+  if(scene&&typeof originalStart==='function'){
+    wrappedStart=function(...args){
+      const owner=this&&typeof this==='object'?this:scene,index=Number(owner?._selectedIndex);
+      if(!active)return originalStart.apply(owner,args);
+      const snapshot=Number.isInteger(index)&&index>=0?rememberActiveHuntZone(root,index):null;
+      let result;
+      try {result=originalStart.apply(owner,args);}
+      catch(error){if(snapshot)forgetActiveHuntZone(view,snapshot);throw error;}
+      if(result&&typeof result.then==='function'){
+        return Promise.resolve(result).catch(error=>{if(snapshot)forgetActiveHuntZone(view,snapshot);throw error;});
+      }
+      return result;
+    };
+    scene.startHunt=wrappedStart;
+  }
+  const listSearchTarget=()=>{
+    const currentParts=parts(root),target=currentParts.mode==='list'?currentParts.search:null;
+    if(!target||!root.contains(target)||!target.isConnected||target.tagName!=='INPUT'||
+        target.type!=='search'||target.disabled||target.readOnly||
+        currentParts.toolbar?.querySelectorAll('input[type="search"]').length!==1)return null;
+    for(let current=target;current;current=current.parentElement){
+      if(current.disabled||current.hidden||current.inert||current.hasAttribute?.('inert')||
+        current.getAttribute?.('aria-hidden')==='true'||current.getAttribute?.('aria-disabled')==='true'||
+        current.style?.display==='none'||current.style?.visibility==='hidden')return null;
+      const style=doc.defaultView.getComputedStyle?.(current);
+      if(style?.display==='none'||style?.visibility==='hidden'||style?.visibility==='collapse')return null;
+      if(current===root)return target;
+    }
+    return null;
+  };
+  const pptools=createPptoolsOneclickWidget(root,{mode:'list',canLocate:()=>Boolean(listSearchTarget()),locate(_match,entry){
+    if(!active)return false;
+    const scene=huntScene(root),world=scene?._tab;
+    const search=listSearchTarget();
+    if(!search)return false;
+    search.value=entry.huntName;
+    search.dispatchEvent(new view.Event('input',{bubbles:true}));
+    const current=listSearchTarget();
+    if(!active||!current||current.value!==entry.huntName||
+        huntScene(root)!==scene||scene?._tab!==world)return false;
+    current.focus();
+    return doc.activeElement===current;
+  }});
+  const sync=()=>{
+    if(!active)return;
+    const next=parts(root);
+    if(next.mode!=='list')return;
+    next.header?.classList.add('ppbui-hunts-atlas-rail');
+    next.toolbar?.setAttribute('data-ppbui-hunts-list-toolbar','');
+    next.viewport?.setAttribute('data-ppbui-hunts-list-surface','');
+    if(pptools.element.previousElementSibling!==next.toolbar)next.toolbar.after(pptools.element);
+    pptools.sync();
+  };
+  sync();
+  return {sync,cleanup(){
+    if(!active)return;active=false;
+    pptools.cleanup();
+    if(scene&&wrappedStart&&scene.startHunt===wrappedStart){
+      if(startHuntDescriptor)Object.defineProperty(scene,'startHunt',startHuntDescriptor);
+      else delete scene.startHunt;
+    }
+    root.querySelectorAll('[data-ppbui-hunts-list-toolbar]').forEach(node=>node.removeAttribute('data-ppbui-hunts-list-toolbar'));
+    root.querySelectorAll('[data-ppbui-hunts-list-surface]').forEach(node=>node.removeAttribute('data-ppbui-hunts-list-surface'));
+    root.querySelectorAll('.hunt-list-header.ppbui-hunts-atlas-rail').forEach(node=>node.classList.remove('ppbui-hunts-atlas-rail'));
+    style.remove();
+    if(body&&!hadBodyScroll)body.classList.remove('ppbui-scroll');
+    root.classList.remove('ppbui-hunts-current-list','ppbui-hunts-enhanced');
+    if(titleNode&&nativeTitle!==null)titleNode.textContent=nativeTitle;
+    if(titleOwner){
+      if(nativeTitleStyle===null)titleOwner.removeAttribute('style');else titleOwner.setAttribute('style',nativeTitleStyle);
+      if(!hadTitleClass)titleOwner.classList.remove('ppbui-hunts-title');
+    }
+  }};
+}
+
+function mountLegacyHunts(root) {
   const doc=root.ownerDocument;
   const titlebar=root.querySelector('.pokeidle-panel__titlebar');
   const titleNode=findTitleText(titlebar,doc.defaultView.Node);
@@ -23,15 +123,20 @@ export function mountHunts(root) {
   if(titleNode)titleNode.textContent='HUNT ATLAS';
   if(titleOwner){
     titleOwner.classList.add('ppbui-hunts-title');
-    titleOwner.style.setProperty('font','700 14px/1 "Lucida Console", Monaco, "Courier New", monospace','important');
-    titleOwner.style.setProperty('font-kerning','none','important');
-    titleOwner.style.setProperty('font-variant-ligatures','none','important');
-    titleOwner.style.setProperty('letter-spacing','1px','important');
-    titleOwner.style.setProperty('text-transform','uppercase','important');
-    titleOwner.style.setProperty('text-shadow','var(--ppbui-pixel-unit) var(--ppbui-pixel-unit) 0 var(--ppbui-bg-0)','important');
+    titleOwner.style.removeProperty('font');
+    titleOwner.style.setProperty('font-family','var(--ppbui-font-display)','important');
+    titleOwner.style.setProperty('font-size','15px','important');
+    titleOwner.style.setProperty('font-weight','500','important');
+    titleOwner.style.setProperty('line-height','1.2','important');
+    titleOwner.style.setProperty('letter-spacing','normal','important');
+    titleOwner.style.setProperty('text-shadow','none','important');
   }
+  // Hunts contains native map markers whose margin/padding/transform are part of map geometry.
+  // Do not put the whole native window behind the generic ppbui-root native-control reset.
   root.classList.add('ppbui-hunts-enhanced');
   const focusTarget=parts(root).body;
+  const hadBodyScroll=focusTarget?.classList.contains('ppbui-scroll')||false;
+  focusTarget?.classList.add('ppbui-scroll');
   const focusTargetTabIndex=focusTarget?.getAttribute('tabindex');
   if(focusTarget&&!focusTarget.hasAttribute('tabindex'))focusTarget.setAttribute('tabindex','-1');
   const row=doc.createElement('div'),selectWrap=doc.createElement('span'),select=doc.createElement('select'),button=doc.createElement('button'),reset=doc.createElement('button'),status=doc.createElement('span');
@@ -130,6 +235,7 @@ export function mountHunts(root) {
     setInspectorLayout(false);
   }
   function closeDossier(returnFocus=true) {
+    if(!active)return;
     const marker=selectedMarker();clearSelectionState();select.value='';message='';sync();
     if(returnFocus&&marker?.isConnected)marker.focus({preventScroll:true});
   }
@@ -137,9 +243,11 @@ export function mountHunts(root) {
     const scene=huntScene(root),resolved=resolveState(selected,scene,results(root));
     if(!active||!scene||!resolved||typeof scene.startHunt!=='function')return;
     const {index}=resolved;
+    const activeZone=rememberActiveHuntZone(root,index);
     scene.hideDropTooltip?.();scene._selectedIndex=index;dossier.huntButton.disabled=true;dossier.huntButton.setAttribute('aria-busy','true');
     const done=()=>{if(!active)return;dossier.huntButton.disabled=false;dossier.huntButton.removeAttribute('aria-busy');};
-    try {Promise.resolve(scene.startHunt()).then(done,done);} catch {done();}
+    const failed=()=>{if(activeZone)forgetActiveHuntZone(doc.defaultView,activeZone);done();};
+    try {Promise.resolve(scene.startHunt()).then(done,failed);} catch {failed();}
   }
   dossier=createHuntInspector(doc,{onClose:()=>closeDossier(true),onHunt:startSelectedHunt});
 
@@ -172,13 +280,17 @@ export function mountHunts(root) {
     wrapper.remove();controls=null;
   }
   function ensureControls(toolbar,elements) {
-    if(controls?.toolbar===toolbar&&controls?.elements===elements&&controls.wrapper.isConnected)return;
+    if(controls?.toolbar===toolbar&&controls?.elements===elements&&controls.wrapper.isConnected){
+      if(pptools.element.previousElementSibling!==controls.wrapper)controls.wrapper.after(pptools.element);
+      return;
+    }
     teardownControls(true);
     const toolbarAnchor=doc.createComment('ppbui-hunts-toolbar'),elementsAnchor=elements?doc.createComment('ppbui-hunts-elements'):null,wrapper=doc.createElement('div');
     wrapper.className='ppbui-hunts-finder';wrapper.dataset.ppbuiModule='hunts';
     toolbar.before(toolbarAnchor);if(elements)elements.before(elementsAnchor);toolbarAnchor.after(wrapper);
     wrapper.append(toolbar);if(elements)wrapper.append(elements);wrapper.append(row);
     controls={wrapper,toolbar,elements,toolbarAnchor,elementsAnchor};
+    wrapper.after(pptools.element);
   }
 
   function teardownWorkspace(restore=true) {
@@ -231,6 +343,21 @@ export function mountHunts(root) {
     return true;
   }
   const interactions=createHuntMarkerInteractions(root,selectMarker,selectors.marker);
+  const pptools=createPptoolsOneclickWidget(root,{mode:'map',canLocate:match=>canLocateHunt(root,match.node),locate(match,entry){
+    if(!active)return false;
+    const latest=resolvePptoolsHunt(root,huntScene(root),entry,'map');
+    if(latest.state!=='matched'||latest.node!==match.node||latest.zone!==match.zone)return false;
+    const marker=latest.node;
+    if(!canLocateHunt(root,marker))return false;
+    if(!selectMarker(marker))return false;
+    let success=false;
+    try {success=Boolean(locateHunt(root,marker));}catch{success=false;}
+    message=success?'located':'unavailable';
+    located=success?stateForMarker(huntScene(root),marker):null;
+    sync();
+    if(success)flash(marker);else clearFlash();
+    return success;
+  }});
 
   function focusAfterAutoClose(previousState,previousMarker,scene,nodes) {
     const validMarker=previousMarker?.isConnected&&resolveState(previousState,scene,nodes)?.marker===previousMarker?previousMarker:null;
@@ -239,6 +366,7 @@ export function mountHunts(root) {
   }
 
   function sync() {
+    if(!active)return;
     const next=parts(root),text=huntsText(doc),scene=huntScene(root),world=scene?._tab;
     if(!next.toolbar||!next.viewport){row.remove();interactions.sync([]);return;}
     if(next.header&&!next.header.classList.contains('ppbui-hunts-atlas-rail'))next.header.classList.add('ppbui-hunts-atlas-rail');
@@ -295,35 +423,46 @@ export function mountHunts(root) {
     if(select.disabled!==!nodes.length)select.disabled=!nodes.length;
     const feedback=!nodes.length?text.empty:(message?text[message]:disabled?text.choose:'');if(status.textContent!==feedback)status.textContent=feedback;
     if(autoCloseFocus)focusAfterAutoClose(autoCloseFocus.state,autoCloseFocus.node,scene,nodes);
+    pptools.sync();
   }
 
-  function update(){message='';sync();}
-  select.addEventListener('change',update);
-  button.addEventListener('click',()=>{
+  function update(){if(!active)return;message='';sync();}
+  const onLocate=()=>{
+    if(!active)return;
     const entry=options.find(item=>item.option.value===select.value);if(!entry)return;
     selectMarker(entry.node);
     let success=false;try{success=Boolean(locateHunt(root,entry.node));}catch{success=false;}
     message=success?'located':'unavailable';located=success?stateForMarker(huntScene(root),entry.node):null;sync();
     if(success)flash(entry.node);else clearFlash();doc.defaultView.cancelAnimationFrame(focusFrame);
-    if(success)focusFrame=doc.defaultView.requestAnimationFrame(()=>{focusFrame=0;if(results(root).includes(entry.node))entry.node.focus({preventScroll:true});});
-  });
-  reset.addEventListener('click',()=>{clearFlash();located=null;message='';select.value='';clearSelectionState();sync();select.focus({preventScroll:true});});
+    if(success)focusFrame=doc.defaultView.requestAnimationFrame(()=>{focusFrame=0;if(active&&results(root).includes(entry.node))entry.node.focus({preventScroll:true});});
+  };
+  const onReset=()=>{if(!active)return;clearFlash();located=null;message='';select.value='';clearSelectionState();sync();select.focus({preventScroll:true});};
+  select.addEventListener('change',update);
+  button.addEventListener('click',onLocate);
+  reset.addEventListener('click',onReset);
   const onKeydown=event=>{if(event.key==='Escape'&&selected){event.stopPropagation();closeDossier(true);}};
   root.addEventListener('input',remember,true);root.addEventListener('select',remember,true);root.addEventListener('focusin',focus);root.addEventListener('input',update);root.addEventListener('click',sync);root.addEventListener('keydown',onKeydown);
   sync();
 
   return {sync,cleanup(){
-    active=false;clearFlash();try{setInspectorLayout(false);}catch{}layoutBaseline=null;doc.defaultView.cancelAnimationFrame(focusFrame);interactions.cleanup();
+    if(!active)return;active=false;clearFlash();let restoreError=null;try{setInspectorLayout(false);}catch(error){restoreError=error;}layoutBaseline=null;doc.defaultView.cancelAnimationFrame(focusFrame);interactions.cleanup();
+    pptools.cleanup();
+    select.removeEventListener('change',update);button.removeEventListener('click',onLocate);reset.removeEventListener('click',onReset);
     root.removeEventListener('input',remember,true);root.removeEventListener('select',remember,true);root.removeEventListener('focusin',focus);root.removeEventListener('input',update);root.removeEventListener('click',sync);root.removeEventListener('keydown',onKeydown);
     root.querySelectorAll('.ppbui-hunts-atlas-rail').forEach(node=>node.classList.remove('ppbui-hunts-atlas-rail'));
     root.querySelectorAll('.ppbui-hunts-selected-marker').forEach(node=>node.classList.remove('ppbui-hunts-selected-marker'));root.querySelectorAll('.ppbui-hunts-located-marker').forEach(node=>node.classList.remove('ppbui-hunts-located-marker'));root.querySelectorAll('.ppbui-hunts-dimmed-marker').forEach(node=>node.classList.remove('ppbui-hunts-dimmed-marker'));
     root.querySelectorAll('.ppbui-hunts-selected').forEach(node=>node.classList.remove('ppbui-hunts-selected'));root.querySelectorAll('.ppbui-hunts-located').forEach(node=>node.classList.remove('ppbui-hunts-located'));root.querySelectorAll('.ppbui-hunts-dimmed').forEach(node=>node.classList.remove('ppbui-hunts-dimmed'));
-    restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');
+    restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');if(focusTarget&&!hadBodyScroll)focusTarget.classList.remove('ppbui-scroll');
     if(titleNode?.isConnected&&nativeTitle!==null)titleNode.textContent=nativeTitle;
     if(titleOwner){
       if(nativeTitleStyle===null)titleOwner.removeAttribute('style');else titleOwner.setAttribute('style',nativeTitleStyle);
       if(!hadTitleClass)titleOwner.classList.remove('ppbui-hunts-title');
     }
     if(focusTarget){if(focusTargetTabIndex===null)focusTarget.removeAttribute('tabindex');else focusTarget.setAttribute('tabindex',focusTargetTabIndex);}
+    if(restoreError)throw restoreError;
   }};
+}
+
+export function mountHunts(root) {
+  return parts(root).mode==='list'?mountCurrentListHunts(root):mountLegacyHunts(root);
 }

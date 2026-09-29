@@ -1,10 +1,12 @@
 export const fixedTags = Object.freeze([
-  ["leveling","Leveling","^","#71b7ff"], ["pvp","PvP","!","#f08080"],
-  ["pve","PvE","+","#8fd67c"], ["boss","Boss","#","#b98ae4"],
-  ["dungeons","Dungeons",">","#9474c4"], ["gyms","Gyms","=","#ff8d32"],
-  ["farm","Farm","$","#f0d45c"], ["build","Build","~","#b0b5bb"],
-  ["keep","Keep","@","#eccf94"], ["sell","Sell","%","#ffba78"]
+  ["leveling","Leveling","^","#c3d5c7"], ["pvp","PvP","!","#b8b095"],
+  ["pve","PvE","+","#ebecdc"], ["boss","Boss","#","#b8b095"],
+  ["dungeons","Dungeons",">","#c3d5c7"], ["gyms","Gyms","=","#ebecdc"],
+  ["farm","Farm","$","#b8b095"], ["build","Build","~","#c3d5c7"],
+  ["keep","Keep","@","#ebecdc"], ["sell","Sell","%","#b8b095"]
 ].map(([id,name,icon,color])=>Object.freeze({id,name,icon,color})));
+export const pokemonRarities = Object.freeze(["weak","common","uncommon","rare","epic","legendary","mythical"]);
+export const pokemonElements = Object.freeze(["normal","fire","water","electric","grass","ice","fighting","poison","ground","flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy"]);
 export const freshFilters = () => ({tags:[], rarity:"", element:"", minLevel:"", maxLevel:"", iv:"", quality:"", shiny:"", locked:"", team:"", nature:"", gender:""});
 const number=value=>value!==null && value!==undefined && String(value).trim()!=="" && Number.isFinite(Number(value)) ? Number(value) : null;
 export function matchesPokemon(c,f,assigned=[]) {

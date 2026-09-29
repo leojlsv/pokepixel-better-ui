@@ -44,12 +44,12 @@ export function mountBuffStrip(target) {
     .pokeidle-buff-strip[data-ppbui-buff-strip][data-ppbui-buff-strip-dock="above"] {
       transform:translate(-50%,-100%) !important;
       border-bottom:0 !important;
-      border-radius:4px 4px 0 0 !important;
+      border-radius:var(--ppbui-radius) !important;
     }
     .pokeidle-buff-strip[data-ppbui-buff-strip][data-ppbui-buff-strip-dock="below"] {
       transform:translate(-50%,0) !important;
       border-top:0 !important;
-      border-radius:0 0 4px 4px !important;
+      border-radius:var(--ppbui-radius) !important;
     }
     .pokeidle-buff-strip[data-ppbui-buff-strip] .pokeidle-buff-pill,
     .pokeidle-buff-strip[data-ppbui-buff-strip] .pokeidle-event-ticker__pill {
@@ -64,7 +64,7 @@ export function mountBuffStrip(target) {
       max-width:160px !important;
       min-height:22px !important;
       padding:2px 8px !important;
-      border-left:1px solid rgba(217,184,114,.18) !important;
+      border-left:var(--ppbui-separator-width) solid var(--ppbui-border) !important;
     }
     .pokeidle-buff-strip[data-ppbui-buff-strip] .pokeidle-buff-list > .pokeidle-buff-pill:first-child {
       border-left:0 !important;
@@ -86,7 +86,7 @@ export function mountBuffStrip(target) {
     .pokeidle-buff-strip[data-ppbui-buff-strip] .pokeidle-buff-pill time,
     .pokeidle-buff-strip[data-ppbui-buff-strip] .pokeidle-event-ticker__time {
       grid-column:auto !important;
-      font-size:8px !important;
+      font-size:var(--ppbui-font-size-meta) !important;
     }
   `;
   doc.head.append(style);

@@ -2,7 +2,8 @@
 
 ## Mission
 
-Provide the independent technical gate for automated readiness.
+Provide the independent **technical** gate. This role does not approve visual
+appearance.
 
 ## Mode
 
@@ -20,12 +21,22 @@ but do not repair the diff.
 - accessibility semantics that can be verified locally;
 - build/static/syntax/diff checks;
 - documentation/status accuracy;
-- security/safety constraints, including no gameplay automation.
+- security/safety constraints, including whether any gameplay automation stays
+  inside its explicitly approved scope and preserves authoritative game rules.
+
+For non-trivial changes, select and execute at least one adversarial/negative/edge
+check that was not merely the implementation author's primary proof. Re-running
+the author's full suite is useful reproducibility evidence but is not sufficient by
+itself for independent review.
+
+For visible UI changes, this role may verify that visual ownership is technically
+scoped and reversible, but must not infer rendered correctness from CSS, classes,
+tokens, JSDOM or passing tests. That belongs to Visual Regression Reviewer.
 
 ## Severity
 
 - **P0** — unsafe/catastrophic: bypass, destructive corruption, security boundary
-  break, gameplay automation, or project-wide unusability.
+  break, unauthorized/out-of-scope gameplay automation, or project-wide unusability.
 - **P1** — release-blocking functional/architecture/accessibility regression or
   incorrect authoritative behavior.
 - **P2** — material quality/maintainability/coverage problem that should be fixed
@@ -34,15 +45,16 @@ but do not repair the diff.
 
 ## Verdict
 
-`READY` requires no unresolved P0/P1/P2. A P2 may remain only when it is
+`TECH READY` requires no unresolved P0/P1/P2. A P2 may remain only when it is
 explicitly accepted as known debt by the Product Owner or the applicable domain
 authority and that acceptance is recorded in the handoff. The verdict means
-**automated-ready only**; it never means user-validated.
+technical readiness only; it never means visual-ready or user-validated.
 
 ## Must not
 
 - edit the reviewed implementation;
 - reinterpret the user's requirement to excuse a finding;
+- issue `VISUAL READY` from source/test evidence;
 - install, open, reload, control, inspect or validate the live game, the user's
   browser or Tampermonkey;
 - merge or release the reviewed change.

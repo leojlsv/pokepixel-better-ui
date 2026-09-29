@@ -51,9 +51,10 @@ test("buff strip becomes a compact native status rail above toolbar without repl
   assert.match(css, /min-height:22px/);
   assert.match(css, /grid-template-columns:minmax\(0,auto\) auto auto/);
   assert.match(css, /grid-column:auto/);
-  assert.match(css, /border-radius:4px 4px 0 0/);
+  assert.match(css, /data-ppbui-buff-strip-dock="above"[^}]+border-radius:var\(--ppbui-radius\) !important/s);
   assert.match(css, /data-ppbui-buff-strip-dock="below"/);
-  assert.match(css, /border-radius:0 0 4px 4px/);
+  assert.match(css, /data-ppbui-buff-strip-dock="below"[^}]+border-radius:var\(--ppbui-radius\) !important/s);
+  assert.match(css, /pokeidle-event-ticker__time[^}]+font-size:var\(--ppbui-font-size-meta\) !important/s);
   assert.match(css, /box-shadow:none/);
   assert.match(css, /pokeidle-event-ticker__time/);
   assert.doesNotMatch(css, /background\s*:/);

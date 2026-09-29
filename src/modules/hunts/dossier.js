@@ -1,4 +1,5 @@
 import {defensiveMultipliers} from './type-chart.js';
+import {createElementIcon} from '../../core/element-icons.js';
 
 const copyByLanguage={
   pt:{weakness:'Fraq.',resistance:'Res.',immunity:'Imu.',drops:'Drops',none:'Nenhuma',value:'Valor de venda',close:'Fechar dossiê',hunt:'Entrar na Hunt'},
@@ -15,9 +16,8 @@ const languageCopy=doc=>{
 function badge(doc,icons,{type,multiplier}) {
   const definition=icons?.definition?.(type), node=doc.createElement('span');
   node.className='ppbui-hunts-element-badge ppbui-hunts-relation-badge';
-  node.style.setProperty('--hunt-element-color',definition?.color||'#777');
-  const icon=icons?.create?.(type,{size:18});
-  if(icon)node.append(icon);
+  node.style.setProperty('--hunt-element-color',definition?.color||'#c3d5c7');
+  node.append(createElementIcon(doc,icons,type,{small:true}));
   const locale=doc.defaultView?.PokeIdle?.Localization?.get?.()||doc.documentElement.lang||undefined;
   const formatted=`×${new Intl.NumberFormat(locale,{maximumFractionDigits:2}).format(multiplier)}`, name=definition?.label||type;
   const value=doc.createElement('b');value.textContent=formatted;
@@ -55,8 +55,8 @@ function renderElements(doc,scene,zone) {
   const values=doc.createElement('div');values.className='ppbui-hunts-badge-list';
   types.forEach(type=>{
     const definition=icons?.definition?.(type), item=doc.createElement('span');item.className='ppbui-hunts-element-badge';
-    item.style.setProperty('--hunt-element-color',definition?.color||'#777');
-    const icon=icons?.create?.(type,{size:21});if(icon)item.append(icon);
+    item.style.setProperty('--hunt-element-color',definition?.color||'#c3d5c7');
+    item.append(createElementIcon(doc,icons,type));
     item.append(doc.createTextNode(definition?.label||type));values.append(item);
   });
   if(!types.length){const empty=doc.createElement('span');empty.className='ppbui-hunts-empty';empty.textContent='—';values.append(empty);}
@@ -93,7 +93,7 @@ export function createHuntInspector(doc,{onClose,onHunt}) {
   const body=doc.createElement('div');body.className='ppbui-scroll ppbui-hunts-inspector__body';
   const footer=doc.createElement('div');footer.className='ppbui-hunts-inspector__footer';
   const modeSlot=doc.createElement('div');modeSlot.className='ppbui-hunts-inspector__mode';
-  const hunt=doc.createElement('button');hunt.type='button';hunt.className='ppbui-button ppbui-button--primary ppbui-hunts-inspector__hunt';
+  const hunt=doc.createElement('button');hunt.type='button';hunt.className='ppbui-button ppbui-button--action ppbui-button--primary ppbui-hunts-inspector__hunt';
   footer.append(modeSlot,hunt);aside.append(header,body,footer);
   close.addEventListener('click',()=>onClose?.());hunt.addEventListener('click',()=>onHunt?.());
   let key='';

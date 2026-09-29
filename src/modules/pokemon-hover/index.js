@@ -5,6 +5,7 @@ export function hoverText(doc=document) {
 export function createPokemonHoverModule(doc=globalThis.document) {
   return {id:"disable-pokemon-hover",shouldMount:()=>!!doc.body,mount(){
     const style=doc.createElement("style");style.dataset.ppbuiStyle="pokemon-hover";
+    doc.body.setAttribute("data-ppbui-pokemon-hover-disabled", "");
     // The native pinned card is a separate surface and must remain visible.
     style.textContent=".pokemon-card--hover { display:none !important; }";doc.head.append(style);
     doc.defaultView.PokeIdle?.PokemonCard?.hideHover?.();
@@ -16,6 +17,6 @@ export function createPokemonHoverModule(doc=globalThis.document) {
     // Stop bound hover work before rendering; CSS also covers imperative hover callers.
     const events=["pointerenter","pointermove","focus"];
     events.forEach(type=>doc.addEventListener(type,suppress,true));
-    return ()=>{events.forEach(type=>doc.removeEventListener(type,suppress,true));style.remove();doc.defaultView.PokeIdle?.PokemonCard?.hideHover?.();};
+    return ()=>{events.forEach(type=>doc.removeEventListener(type,suppress,true));style.remove();doc.body.removeAttribute("data-ppbui-pokemon-hover-disabled");doc.defaultView.PokeIdle?.PokemonCard?.hideHover?.();};
   }};
 }

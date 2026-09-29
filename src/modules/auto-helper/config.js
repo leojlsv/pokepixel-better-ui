@@ -4,7 +4,7 @@ export const autoHelperConfig = {
     root: ".auto-helper-panel", body: ".pokeidle-panel__body", grid: ".auto-helper-grid",
     section: ":scope > .auto-helper-section", heading: ":scope > h3", notes: ":scope > .auto-helper-note", check: 'input[type="checkbox"]',
     select: "select", names: 'input[type="text"]', picker: ".auto-capsule-grid",
-    quality: '.auto-sell-qualities input', qualityGrid: ".auto-sell-qualities",
+    quality: '.auto-sell-qualities input', qualityGrid: ".auto-sell-qualities", rarityGrid: ".auto-helper-rarity-grid",
     status: ":scope > .auto-helper-save-state", time: ".auto-sell-time", lock: ".auto-capture-lock",
   },
 };
@@ -18,10 +18,10 @@ export function autoHelperText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "en";
   const keys = ["name", "description", "support", "capture", "destination", "saved", "pending", "saving", "error", "retry", "refresh", "enabled", "disabled", "unavailable", "empty", "selected", "quality", "keep", "sell", "extract", "destinationNote", "missing", "refreshed", "refreshError", "loading"];
   const extra = {
-    pt: {function:"Função", resource:"Consumível", condition:"Condição", paused:"pausado", details:"Como funciona"},
-    en: {function:"Function", resource:"Consumable", condition:"Condition", paused:"paused", details:"How it works"},
-    es: {function:"Función", resource:"Consumible", condition:"Condición", paused:"en pausa", details:"Cómo funciona"},
-    zh: {function:"功能", resource:"消耗品", condition:"条件", paused:"已暂停", details:"说明"},
+    pt: {function:"Função", resource:"Consumível", condition:"Condição", paused:"pausado", details:"Como funciona", ballFallback:"Normal", ballFallbackHint:"Fallback", ballMissing:"Sem estoque"},
+    en: {function:"Function", resource:"Consumable", condition:"Condition", paused:"paused", details:"How it works", ballFallback:"Normal", ballFallbackHint:"Fallback", ballMissing:"Out of stock"},
+    es: {function:"Función", resource:"Consumible", condition:"Condición", paused:"en pausa", details:"Cómo funciona", ballFallback:"Normal", ballFallbackHint:"Fallback", ballMissing:"Sin stock"},
+    zh: {function:"功能", resource:"消耗品", condition:"条件", paused:"已暂停", details:"说明", ballFallback:"普通", ballFallbackHint:"回退", ballMissing:"无库存"},
   };
   return {...(extra[lang.split(/[-_]/)[0]] || extra.en), ...Object.fromEntries(keys.map((key, index) => [key, (copy[lang.split(/[-_]/)[0]] || copy.en)[index]]))};
 }

@@ -1,0 +1,14 @@
+{
+  "006": {
+    "side_size": [56, 50],
+    "front_size": [60, 54],
+    "back_size": [60, 54],
+    "side_pixel_block": 2
+  },
+  "059": {
+    "side_size": [56, 56],
+    "front_size": [52, 60],
+    "back_size": [52, 60],
+    "side_pixel_block": 2
+  }
+}

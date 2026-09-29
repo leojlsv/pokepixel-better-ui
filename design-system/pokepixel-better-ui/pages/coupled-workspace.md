@@ -1,12 +1,81 @@
 # Coupled Workspace — Command Deck Design Override
 
-Status: **Implementation complete; corrected candidate TECH / A11Y / UX / VISUAL READY; Product Owner live revalidation functional; normal host promoted**
-Direction: **compact dual-account field-console workspace**
-Recorded: **2026-09-20**
+Status: **2026-09-29 host chrome / contextual Game Dock implementation; pending Product Owner in-game validation**
+Direction: **game-integrated dual-account workspace, data-first Cards and explicit Game fallback**
+Recorded: **2026-09-21; host chrome direction updated 2026-09-29**
 
 This page specializes `../MASTER.md` for the native WebView2 Coupled Workspace.
 It governs only the host chrome around PokePixel. It does not redesign the game
 canvas or reopen previously validated Better UI modules.
+
+## Current host chrome direction — 2026-09-29
+
+This section supersedes the historical Miyazaki 16/monospace/2px visual rules
+below, including the old Art direction and control-state appearance examples.
+The host follows `MASTER.md` version 3.0: window `#161D20`, interactive
+`#232C2E`, neutral lines `#6B6543` at **1px**, `Segoe UI` as the WinForms
+fallback for the game's Inter body font, gold for persistent selected/current,
+and **2px cyan only for actual keyboard/WebView focus**. Native Pokémon sprites
+remain pixelated assets; the host chrome does not imitate pixel art. Structural
+panels, disabled actions and the Maintenance Drawer share these roles.
+
+The 44px Game Dock directly exposes **two labeled account choices** in Dual
+mode, replacing the former noninteractive Active label. The selected account
+has a visible check mark, gold current-state edge/text and an accessible name
+(`Active account <name>`); the other exposes `Activate account <name>`.
+Both use the same authoritative workspace `ActiveProfileId` as the top deck.
+Changing the account does not change that profile's Cards/Game view, navigate
+the game, switch a Pokémon Team leader or target `Both`. In Dual Focus, choosing
+the other account changes the focused pane through the existing host layout
+path. Single mode shows only the selected profile as a noninteractive label;
+actual Single profile changes continue through the top profile selector.
+
+When the active page's menu bridge is unavailable, `MENUS OFFLINE` is shown
+within the dock while the account controls and Cards/Game remain accessible.
+Native module controls are disabled until capabilities return. The profile
+controls, shortened availability label and normal module actions must all fit
+on one 44px row at the supported 1180px logical minimum. This layout is
+subject to independent Technical, UX/A11y and rendered Visual Regression QA;
+automated evidence does not replace Product Owner validation in the live game.
+
+### Post-candidate111 user-approved QoLs (2026-09-29)
+
+The seven Game Dock native shortcuts become configurable **per workspace
+account** from the existing scrollable Maintenance Drawer. Reassignment swaps
+any duplicate favorite in place. Only existing native `data-menu-id` values
+are eligible; hover/tooltip exposes full names when a label needs shortening.
+Keep the dock one 44px row at 1180px. Reserve the same status footprint for
+`MENUS READY`, `MENUS OFFLINE` and `OPEN FAILED`; failure explains the exact
+account and destination through text/accessible status, without any automatic
+retry or change to native action ownership. Home/Reload remain the only
+shared-scope (`Active`/`Both`) actions.
+
+User-facing zoom is limited to 90%, 100%, 110% and 125% per independently
+initialized WebView2 account and may be reset to 100%; retained versioned
+preferences must not copy cookies or sessions. Maintenance includes one
+read-only health/error summary for **each** profile, without changing Active.
+The expanded Command Deck omits its duplicate active-account caption while
+retaining layout, Focus, Swap, status and scoped browser operations.
+
+Cards keeps the complete battle + Team control under 200px and its page-local
+Analyzer authority. The Product Owner's 2026-09-29 screenshot rejected the
+crowded two-line Hunt Story arrangement. At a pane width at or below 640px,
+Hunt Story uses a compact encounter record with Pokémon identity and semantic
+Rarity as its header, then visible labeled Time/Result/Ball and
+Quality/Chance/IV Total groups. When the available history content width is
+at most 320px, it reflows to two columns: Pokémon/Rarity, Time/Result,
+Ball/Chance and Quality/IV Total. All eight values, explicit Shiny state and
+captured-only genetics remain readable, with no hidden horizontal columns or
+scrolling; the local vertical scroller stays bounded. Wide history keeps its
+single-row table. Small Team and HP/EXP text becomes readable without crossing the
+player/target card boundary. Result filters use a three-choice segmented group
+with a selected text/state and roving keyboard focus. Scroll-triggered shortcuts
+jump to Summary, Economy, Story or Top within the **same pane** and hand focus
+to the chosen section. They create no extra persistent row and are omitted in
+standalone Card Mode, which already has its own sticky Cards/Game control.
+Copy Summary includes only rendered, available, display-authoritative KPI facts,
+localizes copy/status, rejects an absent clipboard and fences stale async
+settlement on cleanup or Analyzer loss. Live game acceptance remains Owner-only.
 
 ## Design intent
 
@@ -63,13 +132,221 @@ chrome is introduced.
 | Loaded/error text | REDESIGN | HealthIndicator family: Initializing / Loading / Ready / UI Ready / Error / Process Failed |
 | Maintenance Drawer | NEW | Progressive disclosure for DevTools, runtime, detailed errors, recovery and settings reset |
 | Raw `split.txt` persistence | REMOVE | Replace with versioned structured workspace settings |
-| Electron workspace | REMOVE | Retain only archived/superseded reference; launcher targets WebView2 |
+| Electron workspace | REMOVE | Superseded source removed; compatibility launcher targets WebView2; historical record in Git |
 | Mirrored input / gameplay sync | REMOVE / prohibited | Never implement as workspace functionality |
 | Bespoke raster art | ASSET NEEDED: NO | MASTER CSS/WinForms primitives are sufficient for host chrome |
 
-## Art direction
+## Coupled navigation integration — Game Dock
 
-Use MASTER's Miyazaki 16 grammar without inventing a parallel native-desktop theme:
+### Product Owner card-mode navigation rule — 2026-09-21
+
+The approved card-mode workspace must keep navigation **easy, persistent and
+predictable** while replacing the large gameplay/platform presentation with a
+data-first dashboard.
+
+- High-frequency module access remains directly visible in host chrome; it must not
+  move behind hover-only affordances, tooltips or multi-step menus.
+- The Command Deck remains the always-visible account/layout/navigation shell.
+- The Game Dock remains the direct active-account route to Inventory, Hunts, Hunt
+  Analyzer, Team, Storage, Auto Helper and Settings.
+- Card content must never cover, displace or require scrolling to reach the primary
+  navigation rows at supported desktop sizes.
+- Essential analytics must be readable in the cards themselves. Tooltips are
+  supplemental detail only, never the sole way to discover a metric or its meaning.
+- The **entire simplified battle representation**, not each Pokémon image, is bounded
+  to a horizontal strip no more than **200px logical height**. It is an intentionally
+  minimal **card × card** presentation: the active player Pokémon versus the current
+  target, using small static PNGs inside the cards plus only encounter-critical state
+  such as species/name, level and HP/status when available. It is not a sprite gallery,
+  carousel or decorative battle scene.
+- Remaining workspace area belongs to analytics cards and history. Recent encounter
+  imagery must not consume the 200px battle budget or compete with the data hierarchy.
+- Epic-attempt history is a first-class visible card/table, not a tooltip-only drilldown.
+
+The next workspace phase removes duplicated persistent game navigation from each
+embedded account viewport and promotes navigation orchestration to one host-owned
+**Game Dock**. This does not move game windows or gameplay logic into WinForms.
+The game remains authoritative; the host only asks the active account to activate
+an existing native destination.
+
+### Workspace Adapter contract
+
+- Coupled mode is enabled only by an explicit host bootstrap marker injected by the
+  WebView2 workspace before the Better UI bundle executes. Ordinary browser/
+  userscript sessions never enter coupled mode by inference.
+- A Better UI `coupled-workspace` adapter owns the page-side bridge. The **host bridge**
+  may expose navigation capability metadata and activate existing menu destinations by
+  their stable native `data-menu-id`; host messages must not call gameplay APIs, patch
+  network traffic or reproduce game state in WinForms. Separately, the page-local Cards
+  Hunt console may execute one allowlisted same-page native action only after an explicit
+  user selection (currently active-Team change or Auto Ball preference). Analyzer data
+  must never trigger, schedule, mirror or fan out those actions.
+- The bridge is top-frame and exact-host only. Messages use a versioned protocol,
+  tolerate unknown commands, and never carry credentials, cookies or storage data.
+- While coupled mode is active, the duplicated native `.pokeidle-top-toolbar` is
+  visually suppressed through reversible Better UI ownership. Its original nodes,
+  handlers and menu destinations remain in the DOM so host navigation can delegate
+  to those native controls.
+- The Game Dock remains a persistent **44px** host row even when the page bridge is
+  unavailable. `Cards` and `Game` remain directly reachable; native module buttons
+  stay visible but disabled/fail-closed and a visible `GAME MENU UNAVAILABLE` state
+  explains why. The dock must never disappear and trap the user in one content view.
+- The host bootstrap marker remains document-owned for that document. Adapter
+  cleanup removes only Better UI-owned root state/style/listeners and restores the
+  page to its normal Better UI/standalone presentation without reloading, so a
+  same-document Better UI remount can still re-enter coupled mode.
+
+### Host Game Dock
+
+- The Game Dock is one **44px logical row** below the game viewport(s), matching
+  Command Deck density rather than the native large-icon toolbar. A quiet **2px
+  stone top edge** separates host navigation from the game viewport without
+  introducing another card/surface frame.
+- It always targets **Active** only. Unlike Home/Reload, game navigation is never a
+  `Both` operation because opening the same game surface on two accounts would be a
+  gameplay/UI fan-out rather than a host/browser command.
+- The left side identifies the target profile using the existing gold current-state
+  language. Navigation controls remain neutral until hover/focus; cyan is reserved
+  for keyboard focus.
+- First implementation slice exposes direct high-frequency destinations that are
+  already native menu actions: `Inventory`, `Hunts`, `Team`, `Storage`,
+  `Auto Helper`, and `Settings`. The next native CW-M3 slice adds the game's own
+  `hunt-analyzer` destination. A destination is disabled until the active page
+  advertises that capability.
+- The dock never clones a native window, stores native scene state or manufactures
+  a second navigation implementation. Activation is delegated back into the active
+  WebView through the adapter.
+- Single, Dual, Swap and Focus change only which profile the dock targets; they do
+  not duplicate the dock or alter profile/UDF ownership.
+- At the supported 1180px host minimum the dock remains one row with no horizontal
+  scrolling. Lower-frequency destinations belong in later progressive disclosure,
+  not by expanding the permanent row.
+
+## Native Hunt Analyzer integration
+
+CW-M3 targets the **native PokePixel Hunt Analyzer**, not the separate external
+`pokepixel-hunt-analyzer` userscript. The Product Owner screenshot shows the native
+`ANALISADOR DE CAÇADA / Expandir` bottom surface, while the native menu exposes
+`button[data-menu-id="hunt-analyzer"]`.
+
+### Native action contract
+
+- The Game Dock may expose `hunt-analyzer` only through the same existing capability
+  discovery and active-profile-only bridge used by the other native destinations.
+- Activation delegates to the exact native `data-menu-id="hunt-analyzer"` button.
+  No native window, scene, metric, action or gameplay state is recreated in WinForms.
+- `Both` never applies to Hunt Analyzer navigation. Single, Dual, Swap and Focus only
+  change which profile owns the active request.
+- The full native Hunt Analyzer remains inside the WebView. Native navigation and
+  external Hunt analytics are separate contracts; neither replaces the other.
+
+### External Hunt Analyzer analytics contract
+
+The Product Owner explicitly approved incorporating information from the separate
+`pokepixel-hunt-analyzer` project. This supersedes the earlier temporary constraint
+that candidate6 should contain no host Hunt metrics, but it does **not** restore the
+invalid candidate5 architecture.
+
+- WebView2 injects the Analyzer engine at document start under an explicit
+  `__POKEPIXEL_HUNT_ANALYZER_EMBED__` marker so its passive WebSocket observation
+  remains early enough for the Analyzer's own protocol contract.
+- Embed mode keeps the Analyzer's pipeline, domain calculations and IndexedDB
+  persistence authoritative while omitting its panel/HUD/audio/gallery/history UI.
+  The Coupled Workspace does not create a second analytics implementation.
+- The Analyzer exposes only a versioned read-only summary provider through
+  `__POKEPIXEL_HUNT_ANALYZER_PUBLIC__`. The public snapshot contains bounded Current
+  Hunt metrics such as status/time, Seen/Captured/Failed, capture rate, Trainer and
+  Pokémon XP/h, Dollar/h, expenses, Rare+ failures and Shiny Seen/Captured, plus the
+  Analyzer-owned Seen counts for each rarity bucket and the chance from the latest
+  completed capture attempt. The additive protocol-1 Card Mode projection may also
+  expose bounded special-attempt `speciesId`/`qualityMultiplier` and bounded realized
+  loot item identity/quantity (`itemId` + `qty`). It does not expose encounter rows,
+  session IDs, raw frames, credentials, storage APIs, fabricated item metadata or
+  per-item value allocation.
+- Better UI samples only that public provider and forwards a bounded allowlisted
+  summary through the existing coupled bridge. It never reads Analyzer IndexedDB,
+  hooks Analyzer WebSocket state, scrapes Analyzer Shadow DOM or recomputes metrics.
+- Each WebView2 profile keeps its own UDF, Analyzer database, leadership lease and
+  summary. Host context is ephemeral per `AccountPane`, never persisted and never
+  copied between profiles.
+- `Cards | Game` is also profile-owned. The one host selector always targets the Active
+  profile; changing Active only refreshes which state the selector shows. Rhyxus and
+  Rhyosa may therefore remain in different content views, including across Swap,
+  Focus/Restore and Single/Dual transitions. Native Game Dock navigation changes only
+  its active target to Game before delegating the native action.
+
+### Card Mode hunt-data presentation — 2026-09-26 Product Owner correction
+
+- The overview order is **Hunt summary → Capture → Captured / Seen**. The Captured / Seen
+  rarity card does not render an `Unknown` bucket; the product contract treats the seven
+  canonical rarity values as the complete user-facing set.
+- Target identity is Analyzer-first. A fresh `currentTarget` establishes the hunt Pokémon
+  identity and native `PokeIdle.Api.getSpecies` metadata may supply its visual. The identity
+  remains readable between encounters while the Hunt is running. Opening Hunts/Atlas or
+  pressing Hunt is never a prerequisite; a remembered Hunt zone may only enrich a matching
+  target with already-native marker art/level context.
+- Product Owner follow-up on 2026-09-27 removes XP from the Target card. Target keeps only useful
+  authoritative context already available to Cards: identity, level/range, Rarity, Shiny, Element
+  types and native art. Internal zone ids are not presentation data and Cards must not fabricate a
+  prospective capture chance. In the wide crop layout, Target shares the third-column horizontal
+  bounds with Captured / Seen so both surfaces can be screenshot-cropped consistently.
+- The Active Pokémon card may show the exact selected native moves as compact move icons. The source
+  is the read-only native `getMoveset` contract for the current Team leader; it is not inferred from
+  Analyzer data and it does not introduce a gameplay write. `moveset.saved` invalidates that visual
+  cache so a user-authored move change can be reflected without remounting Cards.
+- `Trocar Pokémon` reads the authoritative Team runtime. A transient empty hydration may show
+  `Team indisponível`, but that availability message is cleared as soon as members arrive and
+  must not overwrite explicit switch success/failure feedback. Pokémon identity/level remains
+  readable from runtime data even if the compact HUD DOM was reconstructed.
+- Hunt Story is direct-read history. Each row exposes Pokémon identity/available native art,
+  discrete Rarity, continuous **Quality**, result, Ball, Chance and authoritative **IV Total**.
+  The scalar total is available for failed attempts when Analyzer observed it; missing/invalid totals
+  remain unavailable rather than being inferred. Captured genetics is inline; no per-row disclosure
+  click is required to understand the captured Pokémon. The eight direct-read
+  fields keep explicit visible column labels and remain a single row in `1:2` / `2:1` panes. A narrow
+  Story owns horizontal scrolling instead of reflowing those fields to a second line; the row/table
+  remains locally bounded rather than expanding the whole Card Mode surface.
+- Loot Story names its financial fields explicitly and lists realized item drops with quantity.
+  Each row aggregate is visibly labelled **Total** and exposes the same label/value accessibly.
+  The Analyzer supplies only authoritative `itemId` + `qty`; Better UI may enrich name and item
+  rarity from read-only native game metadata. Rarity is never inferred from item ID or value.
+  When native rarity metadata is unavailable the item remains visible as **Sem raridade**.
+  Loot Story provides an item-rarity filter for the seven canonical rarities plus this explicit
+  unclassified state. Native inventory metadata may arrive either on the inventory entry itself or
+  on its nested `item` object; explicit localized rarity labels are normalized to the same canonical
+  filter keys, while rarity is still never guessed from item id/name/value.
+
+### Host shell and Hunt analytics
+
+- The workspace has three vertical rows: 44px Command Deck, flexible account
+  panes and 44px Game Dock. No Host Analyzer Context Rail or Hunt metrics footer
+  is mounted between the panes and Game Dock, in Cards, Game or mixed view.
+- Cards consumes the Analyzer-owned public summary locally, checking the source
+  `capturedAtMs` against its bounded freshness window. The WebView2 host no
+  longer receives a separate Hunt telemetry message or stores a second summary
+  snapshot. The native Hunt Analyzer remains available through its game menu.
+
+### Duplicated native bottom surface
+
+- The duplicated `ANALISADOR DE CAÇADA / Expandir` strip may be visually suppressed
+  only after a stable native selector/structural contract is proven from repository
+  evidence or a non-destructive Product Owner diagnostic probe.
+- Do not infer that surface from visible text alone when a stable structural selector
+  is unavailable, and do not reuse external userscript selectors such as
+  `#pokepixel-hunt-analyzer-root` or `#pha-toggle`.
+- Suppression, once implemented, must be coupled-mode-only, reversible, keep the
+  native node/listeners mounted, and fail safe so native access returns if coupled
+  bridge ownership is unavailable.
+- If static evidence cannot identify the native strip reliably, CW-M3 must stop at
+  the native Game Dock destination and produce a read-only diagnostic probe instead
+  of guessing.
+
+## Art direction — historical snapshot (superseded on 2026-09-29)
+
+The following Miyazaki 16 values document the original 2026-09-21 candidate
+and are **not** an implementation target for the current host. Use the game
+palette, Segoe UI fallback, 1px neutral borders and independent cyan keyboard
+focus described in *Current host chrome direction* above. Historical values:
 
 - background/surface: `#232228`;
 - structural edge: `#5F5854`;
@@ -319,14 +596,19 @@ layout controls. Existing game/domain imagery stays inside WebView2 and remains 
 
 ## Design acceptance checks
 
-1. Game viewport(s) visibly dominate; host chrome remains compact.
+1. **Cards is the default coupled view** and analytics/history visibly dominate that
+   view; the full game viewport appears only through the explicit `Game` view or a
+   native module activation. Host chrome remains compact in both modes.
 2. Single and dual modes are immediately distinguishable without reading documentation.
 3. Single mode exposes one profile selector and no irrelevant dual-layout controls.
 4. Dual mode exposes 1:2 / 1:1 / 2:1, Swap and a clearly active pane.
 5. Focus mode can be entered/restored without losing the secondary session or previous ratio.
 6. Gold selected/current and cyan focus remain simultaneously distinguishable.
 7. Home/Reload default to Active and never fan out to Both without explicit scope.
-8. No primary control performs or mirrors gameplay input.
+8. Host-level primary controls never perform or mirror gameplay input. Cards may expose
+   narrowly allowlisted **explicit user actions** in the current page/account; they must
+   validate native state, fail closed, and never be Analyzer-triggered, scheduled,
+   mirrored or sent to `Both`.
 9. Health states communicate meaning with text/icon in addition to color.
 10. DevTools/runtime/error details are removed from permanent primary chrome and available
     through progressive disclosure.
@@ -338,3 +620,26 @@ layout controls. Existing game/domain imagery stays inside WebView2 and remains 
     synchronized or linked.
 16. Visible implementation receives representative local render evidence before Visual QA;
     source/tests alone do not qualify as visual approval.
+17. The complete active-Pokémon × current-target battle representation stays at or below
+    200px logical height, with no gallery/platform scene and no fabricated target facts.
+18. Attempt history across **all rarities** remains a first-class visible surface with
+    direct rarity/result filtering; Epic is an important filter, not the only history.
+    Essential hunt state, unavailable/offline state and module names are never tooltip-only.
+19. Economy exposes Analyzer-owned total revenue, revenue/hour, expenses, profit,
+    profit/hour and canonical loot sell value; Better UI must not recreate those formulas
+    or imply itemized loot when the canonical pipeline only retains monetary value.
+20. Equivalent summary cards share row rhythm and height. Rarity, capture, history and
+    economy remain visually identifiable without turning every surface into the same
+    dark-gray/gold panel or relying on color alone.
+21. The all-rarity history contract may retain up to 32 recent terminal attempts, but the
+    visible table is height-bounded with its own square vertical scroll surface and sticky
+    header. History must not expand dozens of rows inline and bury the Economy/XP section.
+22. The Hunt battle/control module keeps **Trocar Pokémon** and **Auto Ball** directly
+    reachable in the <=200px budget. Auto Ball exposes an explicit `Normal | Shiny` scope;
+    target telemetry never changes that editing scope on the user's behalf.
+23. A Team quick action reports success only after native Team state confirms the requested
+    active member. Auto Ball validates the selected capsule against current inventory and
+    preserves the latest unrelated Hunt settings before the native update.
+24. Sprite fallback work is bounded. Missing native art may use server-provided species
+    sprite metadata, but repeated Analyzer reconciliation must not create unbounded asset or
+    settings polling.

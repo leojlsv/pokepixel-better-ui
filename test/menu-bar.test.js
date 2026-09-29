@@ -35,7 +35,7 @@ function setup(t, html = fixture) {
   };
 }
 
-test("groups the original nodes, preserves all 27 destinations and calls listeners once", (t) => {
+test("groups the original nodes, preserves all 33 destinations and calls listeners once", (t) => {
   const { app, toolbar, pack, premium, group, trigger } = setup(t);
   const ids = [...toolbar.querySelectorAll("[data-menu-id]")].map((el) => el.dataset.menuId).sort();
   let packClicks = 0;
@@ -45,7 +45,7 @@ test("groups the original nodes, preserves all 27 destinations and calls listene
   app.start();
   for (let i = 0; i < 10; i++) app.reconcile();
   assert.equal(toolbar.querySelectorAll('[data-ppbui-group="shop"]').length, 1);
-  assert.equal(toolbar.querySelectorAll('button[data-menu-id]:not([aria-haspopup])').length, 27);
+  assert.equal(toolbar.querySelectorAll('button[data-menu-id]:not([aria-haspopup])').length, 33);
   assert.deepEqual([...toolbar.querySelectorAll("[data-menu-id]")].map((el) => el.dataset.menuId).sort(), ids);
   assert.equal(pack.parentElement, premium.parentElement);
   assert.ok(group().contains(pack));
@@ -61,6 +61,36 @@ test("groups the original nodes, preserves all 27 destinations and calls listene
   assert.equal(premium.getAttribute("aria-keyshortcuts"), "L");
 });
 
+test("vector menu icons are never mistaken for labels and created group icons follow late native hydration", t => {
+  const { app, toolbar } = setup(t);
+  const premium = toolbar.querySelector('[data-menu-id="premium"]');
+  const nativeIcon = premium.querySelector('.pokeidle-top-toolbar__icon');
+  const vector = toolbar.ownerDocument.createElement('span');
+  vector.className = 'pokeidle-menu-vector-icon';
+  vector.textContent = 'diamond';
+  nativeIcon.replaceWith(vector);
+
+  const playerTrigger = toolbar.querySelector('[data-menu-group="player"] > button');
+  const playerNativeIcon = playerTrigger.querySelector('.pokeidle-top-toolbar__icon');
+  const playerVector = toolbar.ownerDocument.createElement('span');
+  playerVector.className = 'pokeidle-menu-vector-icon';
+  playerVector.textContent = 'badge';
+  playerNativeIcon.replaceWith(playerVector);
+
+  app.start();
+
+  const shop = toolbar.querySelector('[data-ppbui-group="shop"]');
+  const shopTrigger = shop.querySelector(':scope > button');
+  assert.equal(shopTrigger.querySelector('.pokeidle-menu-vector-icon').textContent, 'diamond', 'created group preserves the vector glyph instead of renaming it as the label');
+  assert.equal(shopTrigger.querySelector('.pokeidle-top-toolbar__label').textContent, 'Loja');
+  assert.equal(playerTrigger.querySelector('.pokeidle-menu-vector-icon').textContent, 'badge', 'native group vector glyph is never treated as copy');
+  assert.equal(playerTrigger.querySelector('.pokeidle-top-toolbar__label').textContent, 'Treinador');
+
+  vector.textContent = 'storefront';
+  app.reconcile();
+  assert.equal(shopTrigger.querySelector('.pokeidle-menu-vector-icon').textContent, 'storefront', 'created group follows late host icon hydration without cloning action behavior');
+});
+
 test("cleanup restores native order, classes and nodes exactly; restarting is safe", (t) => {
   const { app, toolbar, pack, premium } = setup(t);
   const before = toolbar.outerHTML;
@@ -72,6 +102,99 @@ test("cleanup restores native order, classes and nodes exactly; restarting is sa
   app.start();
   app.stop();
   assert.equal(toolbar.outerHTML, before);
+});
+
+test("native Poké Hub drag and minimize controls share the navigation rail without replacing their handlers", t => {
+  const { app, doc, toolbar } = setup(t);
+  toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
+  const handle = doc.createElement("button");
+  handle.className = "pokeidle-pokehub__handle";
+  handle.textContent = "⠿";
+  const toggle = doc.createElement("button");
+  toggle.className = "pokeidle-pokehub__toggle";
+  toggle.textContent = "−";
+  let dragStarts = 0, toggles = 0;
+  handle.addEventListener("pointerdown", () => dragStarts++);
+  toggle.addEventListener("click", () => toggles++);
+  toolbar.prepend(handle, toggle);
+  const before = toolbar.outerHTML;
+
+  app.start();
+
+  const css = doc.querySelector('[data-ppbui-style="menu-bar"]').textContent;
+  assert.equal(toolbar.getAttribute("data-ppbui-menu-bar"), "");
+  assert.equal(handle.parentElement, toolbar);
+  assert.equal(toggle.parentElement, toolbar);
+  assert.equal(toolbar.querySelector(".pokeidle-pokehub__handle"), handle);
+  assert.equal(toolbar.querySelector(".pokeidle-pokehub__toggle"), toggle);
+  assert.match(css,/\.pokeidle-top-toolbar\.pokeidle-pokehub\.pokeidle-island\[data-ppbui-menu-bar\] \{[^}]*padding:3px 32px !important/s);
+  assert.match(css,/> :is\(\.pokeidle-pokehub__handle,\.pokeidle-pokehub__toggle\) \{[^}]*position:absolute !important[^}]*top:3px !important[^}]*height:56px !important[^}]*transform:none !important/s);
+  assert.match(css,/> \.pokeidle-pokehub__handle \{[^}]*left:4px !important/s);
+  assert.match(css,/> \.pokeidle-pokehub__toggle \{[^}]*right:4px !important/s);
+  assert.match(css,/\.is-collapsed \{[^}]*min-height:38px !important[^}]*\}[\s\S]*\.is-collapsed > :is\([^}]*height:32px !important/s,'collapsed hub keeps a nonzero compact rail for the native controls');
+  assert.match(css,/\.pokeidle-top-toolbar\[data-ppbui-menu-bar\] > \.pokeidle-top-toolbar__group \{[^}]*position:relative !important/s,'Better UI-owned toolbar groups provide the positioning context for their dropdowns');
+  assert.match(css,/\.pokeidle-top-toolbar\[data-ppbui-menu-bar\] > \.pokeidle-top-toolbar__group > \.ppbui-menu-popup \{[^}]*position:absolute !important;[^}]*left:50% !important;[^}]*right:auto !important;[^}]*top:auto !important;[^}]*bottom:100% !important;[^}]*display:grid !important;[^}]*width:min\(282px,calc\(100vw - 16px\)\) !important;[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\) !important;[^}]*max-height:calc\(100dvh - 96px\) !important;[^}]*overflow-y:auto !important;[^}]*translateX\(-50%\) !important;/s,'every Better UI grouped popup owns a compact trigger-local upward shell');
+  assert.match(css,/> \.ppbui-menu-popup::after \{[^}]*content:none !important;/s,'Better UI popup neutralizes the host downward-only pseudo shell');
+  assert.match(css,/border-radius:var\(--ppbui-window-radius\) !important/,'opted-in toolbar/menu shells follow the global corner mode');
+  assert.match(css,/border-radius:var\(--ppbui-control-radius\) !important/,'opted-in toolbar actions follow the global corner mode');
+  assert.doesNotMatch(css,/@media \(max-width:760px\)[\s\S]*\.pokeidle-top-toolbar__label[^}]*display:none/s,'Better UI preserves visible top-rail labels because the native island already owns its narrow six-column reflow');
+  handle.dispatchEvent(new doc.defaultView.Event("pointerdown", { bubbles:true }));
+  toggle.click();
+  assert.equal(dragStarts, 1);
+  assert.equal(toggles, 1);
+
+  app.stop();
+  assert.equal(doc.querySelector('[data-ppbui-style="menu-bar"]'), null);
+  assert.equal(toolbar.outerHTML, before);
+});
+
+test("every grouped dropdown keeps a trigger-local upward anchor under hostile live positioning", t => {
+  const { app, doc, window, toolbar } = setup(t);
+  const hostile = doc.createElement("style");
+  hostile.textContent = `
+    .pokeidle-top-toolbar__group { position:static !important; }
+    .pokeidle-top-toolbar__dropdown {
+      position:fixed !important;
+      inset:54px auto auto 55% !important;
+      transform:translateY(80px) !important;
+      max-height:none !important;
+      overflow:visible !important;
+    }
+  `;
+  doc.head.append(hostile);
+  app.start();
+  const groups = [...toolbar.querySelectorAll('[data-ppbui-group]')];
+  assert.equal(groups.length, 7);
+  for (const group of groups) {
+    const dropdown = group.querySelector(':scope > .pokeidle-top-toolbar__dropdown');
+    assert.ok(dropdown, `${group.dataset.ppbuiGroup} keeps its dropdown`);
+    assert.ok(dropdown.classList.contains("ppbui-menu-popup"), `${group.dataset.ppbuiGroup} opts into the Better UI popup shell`);
+    assert.equal(group.style.getPropertyValue("position"), "relative");
+    assert.equal(group.style.getPropertyPriority("position"), "important");
+    for (const [property, value] of [
+      ["position", "absolute"],
+      ["left", "50%"],
+      ["right", "auto"],
+      ["top", "auto"],
+      ["bottom", "100%"],
+      ["transform", "translateX(-50%)"],
+      ["max-width", "calc(100vw - 16px)"],
+      ["max-height", "calc(100dvh - 96px)"],
+      ["overflow-x", "hidden"],
+      ["overflow-y", "auto"],
+      ["overscroll-behavior", "contain"],
+    ]) {
+      assert.equal(dropdown.style.getPropertyValue(property), value, `${group.dataset.ppbuiGroup} owns ${property}`);
+      assert.equal(dropdown.style.getPropertyPriority(property), "important", `${group.dataset.ppbuiGroup} protects ${property}`);
+    }
+    assert.equal(window.getComputedStyle(group).position, "relative");
+    assert.equal(window.getComputedStyle(dropdown).position, "absolute");
+    assert.equal(window.getComputedStyle(dropdown).top, "auto");
+    assert.equal(window.getComputedStyle(dropdown).bottom, "100%");
+    assert.equal(window.getComputedStyle(dropdown).transform, "translateX(-50%)");
+    assert.equal(window.getComputedStyle(dropdown).display, "grid");
+    assert.equal(window.getComputedStyle(dropdown).gridTemplateColumns.replace(/\s+/g, ""), "repeat(3,minmax(0,1fr))");
+  }
 });
 
 test("native group activation and outside pointer close the new group", (t) => {
@@ -92,19 +215,21 @@ test("native group activation and outside pointer close the new group", (t) => {
 });
 
 test("keyboard navigation skips unavailable destinations and Escape closes", (t) => {
-  const { app, doc, window, pack, premium, trigger } = setup(t);
+  const { app, doc, window, toolbar, pack, premium, trigger } = setup(t);
+  const gacha = toolbar.querySelector('[data-menu-id="gacha"]');
   const key = (node, value) => node.dispatchEvent(new window.KeyboardEvent("keydown", { key: value, bubbles: true }));
   app.start();
   trigger().focus();
   key(trigger(), "ArrowUp");
-  assert.equal(doc.activeElement, pack);
-  key(pack, "Home");
+  assert.equal(doc.activeElement, gacha);
+  key(gacha, "Home");
   assert.equal(doc.activeElement, premium);
   pack.hidden = true;
   key(premium, "ArrowDown");
-  assert.equal(doc.activeElement, premium);
-  key(premium, "Escape");
+  assert.equal(doc.activeElement, gacha);
+  key(gacha, "Escape");
   assert.equal(trigger().getAttribute("aria-expanded"), "false");
+  assert.equal(doc.activeElement, trigger(), "Escape returns focus to the group trigger");
 });
 
 test("central observer remounts after complete toolbar replacement", async (t) => {
@@ -158,43 +283,10 @@ test("missing buttons are not fabricated and join their group when supplied by t
   app.reconcile();
   assert.ok(group().contains(pack));
 });
-
-
-// These six additional destinations model the public HUD contract, not a live capture.
-function completeFixture() {
-  const dom = new JSDOM(fixture);
-  const doc = dom.window.document;
-  const toolbar = doc.querySelector(".pokeidle-top-toolbar");
-  const city = doc.querySelector('[data-menu-group="social"]').cloneNode(true);
-  city.dataset.menuGroup = "city";
-  const trigger = city.querySelector("button");
-  trigger.dataset.menuId = "city";
-  trigger.setAttribute("aria-label", "Cidade");
-  trigger.querySelector("span").textContent = "Cidade";
-  trigger.setAttribute("aria-controls", "native-city-menu");
-  const dropdown = city.querySelector('[role="menu"]');
-  dropdown.id = "native-city-menu";
-  dropdown.replaceChildren();
-  const button = (id) => {
-    const node = doc.createElement("button");
-    node.className = "pokeidle-top-toolbar__dropdown-btn";
-    node.dataset.menuId = id;
-    node.innerHTML = `<span>${id}</span>`;
-    node.setAttribute("aria-label", id);
-    return node;
-  };
-  for (const id of ["npc-shop", "market", "storage", "professions"]) dropdown.append(button(id));
-  toolbar.append(city);
-  for (const id of ["event-calendar", "gacha"]) doc.querySelector('[data-menu-group="events"] [role="menu"]').append(button(id));
-  const html = toolbar.outerHTML;
-  dom.window.close();
-  return html;
-}
-
 const actionSelector = 'button[data-menu-id]:not([aria-haspopup="menu"])';
 
 test("all 33 destinations follow the approved order without replacing actions, shortcuts or native badges", t => {
-  const { app, toolbar } = setup(t, completeFixture());
+  const { app, toolbar } = setup(t);
   const before = toolbar.outerHTML;
   const actions = [...toolbar.querySelectorAll(actionSelector)];
   const badges = [...toolbar.querySelectorAll('.pokeidle-top-toolbar__badge')];
@@ -256,7 +348,7 @@ test("native click toggling remains single and moved badge references still upda
 });
 
 test("central observer follows hidden states and empty groups without reviving restricted actions", async t => {
-  const { app, window, toolbar } = setup(t, completeFixture());
+  const { app, window, toolbar } = setup(t);
   const boss = toolbar.querySelector('[data-menu-id="world-boss"]');
   const pvp = toolbar.querySelector('[data-menu-id="arena-pvp"]');
   const calendar = toolbar.querySelector('[data-menu-id="event-calendar"]');
@@ -275,6 +367,8 @@ test("central observer follows hidden states and empty groups without reviving r
   assert.equal(events.style.display, "");
   assert.equal(calendar.style.display, "");
   assert.equal(admin.hidden, true);
+  assert.equal(window.getComputedStyle(admin).display, "none", "Better UI popup shell never revives a restricted native action");
+  assert.equal(window.getComputedStyle(boss).display, "none", "native hidden menu actions remain visually hidden inside the owned popup shell");
 });
 
 test("localization follows the game and cleanup retains the latest native label", t => {
@@ -298,7 +392,7 @@ test("localization follows the game and cleanup retains the latest native label"
 });
 
 test("alternative native grouping, unknown actions and hidden source groups remain safe", t => {
-  const { app, toolbar } = setup(t, completeFixture());
+  const { app, toolbar } = setup(t);
   const automation = toolbar.querySelector('[data-menu-group="automation"] [role="menu"]');
   const settings = toolbar.querySelector('[data-menu-id="settings"]');
   automation.append(settings);
@@ -318,7 +412,7 @@ test("alternative native grouping, unknown actions and hidden source groups rema
 });
 
 test("stable reconciliation does not produce a mutation loop", async t => {
-  const { app, window, toolbar } = setup(t, completeFixture());
+  const { app, window, toolbar } = setup(t);
   app.start();
   await new Promise(resolve => window.setTimeout(resolve, 60));
   let count = 0;
@@ -358,7 +452,7 @@ test("removed destinations are not resurrected by cleanup", t => {
 });
 
 test("native item reordering and trigger-label replacement reconcile without losing nodes", t => {
-  const { app, toolbar } = setup(t, completeFixture());
+  const { app, toolbar } = setup(t);
   app.start();
   const player = toolbar.querySelector('[data-ppbui-group="player"]');
   const team = toolbar.querySelector('[data-menu-id="team"]');
@@ -377,7 +471,7 @@ test("native item reordering and trigger-label replacement reconcile without los
 });
 
 test("native group replacement does not duplicate relocated actions or restore into detached sources", t => {
-  const { app, toolbar } = setup(t, completeFixture());
+  const { app, toolbar } = setup(t);
   const original = toolbar.querySelector('[data-menu-group="events"]');
   const replacement = original.cloneNode(true);
   let clicks = 0;

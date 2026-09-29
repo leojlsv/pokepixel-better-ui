@@ -35,6 +35,8 @@ impact rather than becoming a second concurrent writer.
 - specify required technical regression coverage;
 - reject solutions that violate architecture/safety invariants;
 - update architecture documentation when the architecture itself changes.
+- state explicitly which conclusions are technical only and which user-visible
+  properties remain outside architecture evidence.
 
 ## Outputs
 
@@ -47,6 +49,7 @@ impact rather than becoming a second concurrent writer.
 
 - redefine product behavior;
 - overrule approved visual direction on aesthetic grounds;
+- issue `VISUAL READY` from architecture/source evidence;
 - install, open, reload, control, inspect or validate the live game, the user's
   browser or Tampermonkey;
 - implement feature code while simultaneously acting as its independent reviewer.

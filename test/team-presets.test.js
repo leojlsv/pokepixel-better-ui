@@ -32,6 +32,18 @@ test("storage keeps official order, active id and preset ordering independently"
   assert.equal(store.movePreset("p2", -1), true); assert.equal(store.list()[0].name, "PvP"); assert.equal(store.setActive("p2", "d"), true); assert.equal(store.list()[0].activeId, "d");
 });
 
+test("storage edits an existing preset atomically by id without name-based upsert ambiguity", () => {
+  const storage = memoryStorage(); let clock = 200, id = 0;
+  const store = createTeamPresetStorage({ storage: () => storage, now: () => ++clock, makeId: () => `p${++id}` });
+  store.upsert("Gym", snapshot(["a", "b"], "a")); store.upsert("PvP", snapshot(["c", "d"], "c"));
+  const before = store.list()[0];
+  const updated = store.updatePreset("p1", "Gym edited", snapshot(["b", "e", "a"], "e"));
+  assert.equal(updated.id, "p1"); assert.equal(updated.name, "Gym edited"); assert.equal(updated.createdAt, before.createdAt); assert.ok(updated.updatedAt > before.updatedAt);
+  assert.deepEqual(updated.members.map(member => member.id), ["b", "e", "a"]); assert.equal(updated.activeId, "e"); assert.equal(updated.orderVerified, true);
+  assert.equal(store.updatePreset("p1", "PvP", snapshot(["a"], "a")), null, "editing cannot collide with another preset name");
+  assert.deepEqual(store.list()[0].members.map(member => member.id), ["b", "e", "a"], "a rejected edit must not partially replace the snapshot");
+});
+
 test("HUD snapshot uses linked Team member_ids instead of HUD order or a stale cached scene", () => {
   const dom = new JSDOM(`<div class="pokeidle-team-hud"><div class="pokeidle-team-hud__list"><div class="pokeidle-team-card" data-creature-id="a"><span class="pokeidle-team-card__name">Exeggutor</span></div><div class="pokeidle-team-card" data-creature-id="b"><span class="pokeidle-team-card__name">Gyarados</span></div><div class="pokeidle-team-card" data-creature-id="c"><span class="pokeidle-team-card__name">Gengar</span></div><div class="pokeidle-team-card" data-creature-id="d"><span class="pokeidle-team-card__name">Raichu</span></div><div class="pokeidle-team-card" data-creature-id="e"><span class="pokeidle-team-card__name">Primeape</span></div><div class="pokeidle-team-card" data-creature-id="f"><span class="pokeidle-team-card__name">Arcanine</span></div></div></div><div class="pokeidle-team-panel"><div class="pokeidle-panel__body"></div></div>`);
   const root = dom.window.document.querySelector(".pokeidle-team-hud"), body = dom.window.document.querySelector(".pokeidle-panel__body");
@@ -52,13 +64,13 @@ test("Team HUD Teams panel is collapsed by default and stable reconciliation is 
   for (let index = 0; index < 5; index++) controller.sync(); await Promise.resolve(); observer.disconnect(); assert.equal(seen.length, 0);
 });
 
-test("Team manager renders native-like preset cards at minimum 260x124 and supports manual order maintenance", t => {
+test("Team manager fills the available workspace and supports manual order maintenance", t => {
   const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--roster"></section></div></div>`);
   const root = dom.window.document.body.firstChild, storage = memoryStorage(), store = createTeamPresetStorage({ storage: () => storage, makeId: () => "p1" });
   store.upsert("Gym", snapshot(["a", "b", "c", "d", "e", "f"], "e"));
   const manager = mountTeamPresetManager(root, { store, hudRoot: null, apply: async () => ({ ok: true }), capture: async () => ({ ok: true, snapshot: snapshot(["a"]) }), runExclusive: task => task(), onChange: () => {} });
   t.after(() => { manager.cleanup(); dom.window.close(); });
-  const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent; assert.match(css, /min-width:260px; min-height:124px/); assert.equal(root.querySelectorAll("[data-ppbui-team-preset-member]").length, 6);
+  const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent; assert.match(css, /min-width:min\(340px,calc\(100vw - 16px\)\)!important/); assert.match(css, /\[data-ppbui-team-preset-card\] \{[^}]*width:100%[^}]*max-width:none[^}]*padding:0/s); assert.match(css, /\[data-ppbui-team-preset-members\] \{[^}]*gap:0/s); assert.match(css, /border-radius:var\(--ppbui-radius\)!important/); assert.doesNotMatch(css, /--ui-/); assert.equal(root.querySelectorAll("[data-ppbui-team-preset-member]").length, 6);
   const secondLeft = root.querySelectorAll("[data-ppbui-team-preset-member]")[1].querySelector("button"); secondLeft.click();
   assert.deepEqual(store.list()[0].members.map(member => member.id), ["a", "b", "c", "d", "e", "f"], "selection is presentation-only");
   root.querySelector("[data-ppbui-team-preset-member-controls] button").click(); assert.deepEqual(store.list()[0].members.slice(0, 2).map(member => member.id), ["b", "a"]);

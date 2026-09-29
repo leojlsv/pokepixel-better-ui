@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Microsoft.Web.WebView2.Core;
@@ -30,6 +31,9 @@ namespace PokePixel.CoupledWorkspace
             View = new WebView2();
             HealthState = PaneHealthState.Idle;
             HealthText = "Idle";
+            CardsViewActive = true;
+            AvailableSurfaces = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            PendingWorkspaceRequests = new Dictionary<string, string>(StringComparer.Ordinal);
         }
 
         public ProfileDefinition Profile { get; private set; }
@@ -41,6 +45,18 @@ namespace PokePixel.CoupledWorkspace
         public string CurrentUrl { get; set; }
         public string LastErrorText { get; set; }
         public ulong ActiveNavigationId { get; set; }
+        public bool WorkspaceBridgeReady { get; set; }
+        public bool CardsViewActive { get; set; }
+        public HashSet<string> AvailableSurfaces { get; private set; }
+        public Dictionary<string, string> PendingWorkspaceRequests { get; private set; }
+        public EvidenceDevToolsCapture EvidenceCapture { get; set; }
+
+        public void ResetWorkspaceBridge()
+        {
+            WorkspaceBridgeReady = false;
+            AvailableSurfaces.Clear();
+            PendingWorkspaceRequests.Clear();
+        }
 
         public Task InitializeAsync(string dataRoot)
         {
@@ -79,6 +95,11 @@ namespace PokePixel.CoupledWorkspace
         public void Dispose()
         {
             _disposed = true;
+            if (EvidenceCapture != null)
+            {
+                EvidenceCapture.Dispose();
+                EvidenceCapture = null;
+            }
             if (View != null)
             {
                 View.Dispose();

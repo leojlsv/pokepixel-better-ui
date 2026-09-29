@@ -1,223 +1,153 @@
-# PokePixel Better UI — Pixel-Art Design System
+# PokePixel Better UI — Game-Integrated Design System
 
-Status: **approved**
-Version: **1.0**
-Runtime adoption: **approved for implementation**
+Status: **current Product Owner-approved direction for Better UI 0.2.78+**
+Version: **3.0**
+Runtime adoption: **project-wide baseline**
 
-This document is the global visual source of truth for PokePixel Idle
-Better UI. It defines reusable design decisions. Module-specific exceptions must
-live under `pages/<module>.md`, be explicitly marked `approved`, and must not
-silently redefine global tokens. Draft page files have no design authority.
+This document is the global visual source of truth for PokePixel Idle Better UI.
+The goal is no longer to maintain a separate pixel-art UI identity. Better UI-owned
+features should read as a coherent extension of the current game while preserving
+clear ownership, accessibility, responsive behavior and reversible integration.
+
+**Supersession rule:** any later historical wording in this document that still
+mentions Miyazaki 16 as the neutral surface authority, generic monospace as the
+project font, mandatory square/pixel geometry, 2px structural borders or pixel
+inset shadows is superseded by sections 2–5 below. Historical module evidence may
+remain, but it is not current design authority.
 
 ## 1. Review provenance
 
-This approved design system follows the mandatory `.skills/ui_ux_pro.md` workflow.
-The skill's referenced searchable `search.py`, `quick-reference.md` and
-`pro-rules.md` resources are not available in this workspace and no
-`CLAUDE_PLUGIN_ROOT` is configured. Therefore this version uses the skill's
-documented fallback priorities only; it does **not** claim a generated palette,
-style match or catalog search result.
+The 3.0 baseline is based on the Product Owner's approved Pokémon Profile Game
+Palette and a local read-only inspection of the current game's native CSS. The
+reference game typography is:
 
-Context used for the fallback review:
+- body/controls: `Inter, "Segoe UI", Arial, sans-serif`;
+- window/title display: `Cinzel, Georgia, serif`;
+- native reference geometry: 8px window radius, 5px cards/controls, 4px pills.
 
-- product: browser game UI + dense management/tooling layer;
-- primary context: desktop game session with many compact windows and data-heavy
-  controls;
-- target feel: pixel-art RPG, dark, structured, readable, purposeful;
-- implementation: framework-free DOM/CSS userscript layered over an SPA;
-- density: high;
-- motion: low;
-- visual variance: moderate;
-- accessibility, interaction clarity and performance take priority over ornament.
-
-Project-selected design dials, using the skill's 1–10 vocabulary as a descriptive
-aid rather than generated output:
-
-| Dial | Value | Meaning |
-| --- | ---: | --- |
-| Density | 8 | Dense game/tool UI; compact but not cramped |
-| Motion | 2 | Mostly state feedback; no decorative choreography |
-| Variance | 5 | Distinct pixel identity with predictable component grammar |
+The product remains a dense browser-game UI with low decorative motion and strong
+information hierarchy. Functional/native integration constraints remain higher
+priority than visual imitation.
 
 ## 2. Design statement
 
-**Modern dense pixel-RPG interface.** Better UI should look intentionally built
-for a game rather than like a generic web dashboard, while retaining contemporary
-information hierarchy, keyboard operation and readable data presentation.
+**Integrated game UI.** Better UI uses the current game's typographic language and
+a Product Owner-approved neutral surface system rather than a separate retro/pixel
+chrome. New and migrated features should feel like they belong to PokePixel itself,
+while remaining clearly structured, maintainable and accessible.
 
-The pixel-art identity comes from geometry, edges, sprites, hard shadows, compact
-spacing and state language — not from making every piece of text tiny or adding
-retro decoration everywhere.
+Required qualities:
 
-### Desired qualities
+- compact, dark and readable during long sessions;
+- consistent surface hierarchy across modules;
+- game-native typography;
+- semantic Pokémon Type/Rarity/status colors remain meaningful and opaque;
+- all normal structural lines use one neutral line system;
+- no ornamental pixel inset shadows, fake scanlines or retro typography;
+- sprites and domain artwork may retain pixel rendering when that belongs to the
+  source asset rather than the UI chrome;
+- no gameplay behavior is rebuilt solely for appearance.
 
-- game-native in *purpose*, not copied from the host's appearance;
-- dark, high-contrast and readable during long sessions;
-- compact and information-dense;
-- strong grouping and clear primary actions;
-- sharp/pixel geometry rather than soft app-card styling;
-- consistent across HUD surfaces, windows, dialogs and tools;
-- obvious selected/focus/disabled/error states;
-- restrained animation;
-- reversible integration with host functionality.
+## 3. Geometry and spacing
 
-### Avoid
+The existing compact spacing scale remains valid (`2/4/6/8/12/16/24px`), but it is
+no longer evidence of a pixel-art identity.
 
-- glassmorphism and blurred translucent panels;
-- soft SaaS/card-dashboard styling;
-- excessive rounded pills;
-- decorative gradients used as default surface treatment;
-- glow on every element;
-- fake scanlines/noise that harms text;
-- emoji used as interface icons;
-- tiny text used merely to appear retro;
-- color-only status communication;
-- rebuilding game behavior solely for visual reasons.
+### Lines
 
-## 3. Pixel geometry
+- all normal Better UI structural borders/separators: **1px**;
+- line color: **`#6B6543`**, always **100% opaque**;
+- semantic selected/focus/error/type/rarity cues may use their semantic color as a
+  compact edge/outline/badge when the color communicates state rather than neutral
+  structure;
+- multi-pixel strokes remain allowed inside domain artwork or tiny CSS glyphs
+  (for example arrows or the illustrated Pokéball), not as panel chrome.
 
-### Base unit
+### Corner preference
 
-Use a **2px pixel unit** for borders, hard shadows and fine alignment. Layout
-spacing generally uses multiples of 2px, with the preferred spacing scale below.
+Corner geometry is a **global persisted Better UI preference**, exposed under
+**Better UI → Appearance/Aparência → Corners/Cantos**:
 
-### Spacing scale
+| Mode | Window | Card/control | Badge/pill |
+| --- | ---: | ---: | ---: |
+| `Squared` | 0px | 0px | 0px |
+| `Rounded` | 8px | 5px | 4px |
 
-| Token | Value | Typical use |
-| --- | ---: | --- |
-| `--ppbui-space-1` | 2px | icon/text micro-gap, pixel edge |
-| `--ppbui-space-2` | 4px | compact internal gap |
-| `--ppbui-space-3` | 6px | dense row gap |
-| `--ppbui-space-4` | 8px | default component padding/gap |
-| `--ppbui-space-5` | 12px | section padding |
-| `--ppbui-space-6` | 16px | major group separation |
-| `--ppbui-space-7` | 24px | rare large separation |
+`Squared` is the migration/default mode so existing users are not silently switched.
+`Rounded` follows the current game reference geometry. The preference is exclusive:
+one mode owns all Better UI structural corner geometry at a time. Both modes use
+identical palette, alpha, typography, semantics and interaction behavior.
 
-Do not invent one-off values when this scale fits. Functional map positioning,
-sprite coordinates and integration geometry are exempt.
-
-### Borders and corners
-
-- standard component border: **2px**;
-- subtle internal separator: **1px** only when a 2px divider is visually heavy;
-- default corner: **0px**;
-- compact badges/chips may use **2px** radius when the shape improves grouping;
-- larger rounded cards/pills are not part of the default language;
-- stepped/cut pixel corners may be introduced as a reusable component primitive,
-  never reimplemented ad hoc per module.
+Better UI must never enforce this preference on arbitrary host-game elements. Only
+Better UI-owned/opted-in surfaces consume these radius tokens.
 
 ### Shadows
 
-Shadows are hard and non-blurred:
-
-- standard elevation: `2px 2px 0` dark shadow;
-- raised overlay/dialog: `4px 4px 0` dark shadow;
-- pressed controls may invert to an inset hard shadow;
-- blurred drop shadows are reserved for domain assets such as map sprites when
-  needed for legibility, not general panel chrome.
+- normal buttons and data surfaces are flat;
+- pressed controls do not use the old `inset 2px 2px` pixel-depth treatment;
+- overlays may use a restrained blurred elevation shadow for separation;
+- domain sprites may use a small drop shadow when needed for legibility.
 
 ## 4. Color system
 
-The palette is intentionally independent from the host's `--ui-*` palette.
-Runtime tokens must use `--ppbui-*` names.
+Neutral UI chrome uses exactly four Product Owner-approved roles:
 
-### Neutral surfaces
-
-| Role | Token | Value |
+| Role | Canonical token | Value |
 | --- | --- | --- |
-| Canvas/deep background | `--ppbui-bg-0` | `#0B0E14` |
-| Primary surface | `--ppbui-bg-1` | `#141922` |
-| Raised surface | `--ppbui-bg-2` | `#1B2230` |
-| Interactive/selected surface | `--ppbui-bg-3` | `#252E3D` |
-| Border | `--ppbui-border` | `#46566C` |
-| Strong border | `--ppbui-border-strong` | `#7387A5` |
+| Window | `--ppbui-surface-window` / `--ppbui-bg-1` | `rgba(22, 29, 32, .92)` = `#161D20` @ 92% |
+| Interactive | `--ppbui-surface-interactive` / `--ppbui-bg-2` | `rgba(35, 44, 46, .96)` = `#232C2E` @ 96% |
+| Values | `--ppbui-surface-values` / `--ppbui-bg-0` | `rgba(22, 29, 32, .85)` = `#161D20` @ 85% |
+| Lines | `--ppbui-line` / border aliases | `#6B6543` @ 100%, 1px |
 
-### Text
+Role mapping:
 
-| Role | Token | Value |
-| --- | --- | --- |
-| Primary text | `--ppbui-text` | `#F3F6FA` |
-| Secondary text | `--ppbui-text-muted` | `#AAB4C3` |
-| Tertiary metadata | `--ppbui-text-subtle` | `#8F9CAF` |
-| Inverse text | `--ppbui-text-inverse` | `#0B0E14` |
+- **Window:** outer windows, panels, dialogs, HUD/shell containers;
+- **Interactive:** titlebars, toolbars, buttons, tabs, selectable/editable action
+  surfaces and section headers;
+- **Values:** input/select wells, passive metrics/stats, portraits, meters, lists and
+  read-only data/content bays;
+- **Lines:** all neutral structural separators and borders.
 
-Against `#141922`, the primary, muted and subtle text colors remain comfortably
-above normal-text contrast requirements. `--ppbui-text-subtle` also stays above
-4.5:1 on `--ppbui-bg-3`, so 11px metadata can be used across the permitted
-surface hierarchy without a hidden contrast exception. Meaningful text must not
-be dimmed below readable contrast merely to look secondary.
+Alpha is applied to surfaces only. Text, Lines, focus indicators and semantic colors
+remain opaque.
 
-### Brand/action accent
+### Semantic colors
 
-| Role | Token | Value |
-| --- | --- | --- |
-| Primary accent | `--ppbui-accent` | `#F3C969` |
-| Accent hover/highlight | `--ppbui-accent-hi` | `#FFE3A0` |
-| Accent pressed/deep | `--ppbui-accent-low` | `#C99A3A` |
-| Keyboard focus | `--ppbui-focus` | `#70D6FF` |
+Existing verified gameplay/status colors remain independent of the neutral palette:
+Pokémon Types, rarity/quality, selected/current, focus, success/active, warning,
+danger, Shiny and other domain meaning. Prefer semantic text/icon/compact edge/badge
+over large tinted backgrounds. Broad semantic-tinted panel fills are not the default.
 
-Gold is the Better UI action/selection accent. Cyan is reserved for keyboard
-focus and should not be reused as the normal selected color.
-
-### Semantic feedback
-
-| Meaning | Token | Value |
-| --- | --- | --- |
-| Success | `--ppbui-success` | `#72D572` |
-| Warning | `--ppbui-warning` | `#F0B84B` |
-| Danger | `--ppbui-danger` | `#F06A6A` |
-| Informational | `--ppbui-info` | `#6EAEFF` |
-
-Semantic color must be paired with text/icon/state when the distinction matters.
-
-### Domain colors
-
-Pokémon element colors, rarity/quality colors, HP/EXP colors and other gameplay
-data colors are **domain semantics**, not Better UI brand tokens. Preserve a
-verified canonical source when the color itself carries game meaning. Better UI
-may change the surrounding surface/border/layout but must not remap data meaning
-for aesthetic consistency.
+Legacy Miyazaki swatches may remain as compatibility/semantic variables where an
+existing state depends on them; they are **not** neutral surface authority.
 
 ## 5. Typography
 
-The first design-system version must remain self-contained and must not fetch a
-remote font. A dedicated bundled pixel font may be evaluated later only with
-asset/license/performance review.
+Better UI follows the current game's typography and does not fetch a remote font.
+It relies on the same local/system fallbacks the game declares:
 
-### Font roles
+- `--ppbui-font-body`: `Inter, "Segoe UI", Arial, sans-serif`;
+- `--ppbui-font-data`: same body stack, with tabular numerals when useful;
+- `--ppbui-font-display`: `Cinzel, Georgia, serif` for window/title display roles.
 
-- body/control text: `system-ui, "Segoe UI", Arial, sans-serif`;
-- numeric/data/compact labels when tabular alignment matters:
-  `ui-monospace, "Cascadia Mono", Consolas, monospace`;
-- game sprites/logotypes are assets, not typography substitutes.
+Do not introduce generic monospace as a project identity. Module-local typography
+must consume these shared roles unless a verified native/domain asset has a specific
+reason not to. Sprite/logotype artwork is not a typography substitute.
 
-The pixel identity should come primarily from component geometry. Do not force a
-hard-to-read novelty pixel font across dense descriptions or tables.
-
-### Type scale
-
-| Role | Size | Weight | Line height |
-| --- | ---: | ---: | ---: |
-| Window/title | 16px | 700 | 1.25 |
-| Section title | 13px | 700 | 1.25 |
-| Body/control | 13px | 400–600 | 1.35 |
-| Secondary | 12px | 400–600 | 1.35 |
-| Metadata | 11px | 600 | 1.3 |
-
-11px is for short metadata only, never paragraphs, descriptions or primary
-interaction labels. Longer localized text must wrap instead of being shrunk.
-
-Use tabular numerals for timers, prices, levels, counts and statistics where
-alignment improves scanning.
+Current compact scale remains approximately 10px metadata, 11–12px controls/body,
+12px section headings and 15px game-style window titles. Longer localized text wraps
+or reflows; it is not shrunk merely to preserve a retro composition.
 
 ## 6. Surface hierarchy
 
 Use a small number of depth levels:
 
-1. **Canvas** — `bg-0`, world/background behind tools.
-2. **Window surface** — `bg-1`, main Better UI window/panel.
+1. **Game/world canvas** — host content behind Better UI; Better UI does not
+   repaint the world.
+2. **Window surface** — `bg-1`, charcoal shell distinguished structurally rather than by a light fill.
 3. **Section/card surface** — `bg-2`, grouped content within a window.
-4. **Interactive/selected surface** — `bg-3`, active rows and controls.
+4. **Input/control well** — `bg-0`, deepest dark field/control interior.
+5. **Hover/pressed surface** — `bg-3`, transient stone interaction feedback; never a large static panel fill.
 
 Do not nest framed cards indefinitely. Prefer spacing + one separator when a
 fourth nested container would be purely decorative.
@@ -229,11 +159,44 @@ not a generic mobile-first website.
 
 ### Desktop baseline
 
-- standard control height: **32px**;
-- primary/destructive action height: **36px**;
-- compact icon button: **32×32px**;
+- standard control height: **28px**;
+- standard action height: **28px** (`.ppbui-button--action` does not create a
+  separate taller visual family);
+- canonical **1:1** button: **28×28px**;
+- canonical **2:1** button: **56×28px**;
+- compact maintenance control/icon button: **24px / 24×24px**;
 - default horizontal control padding: **8–10px**;
 - adjacent interactive controls: target **6–8px** separation when space allows.
+
+Dense maintenance surfaces may opt into the shared compact-control variant when the
+action is secondary, repetitive and pointer/keyboard-oriented: **24px** control
+height, **24×24px** icon buttons and **5px** horizontal padding. Compact variants
+must remain explicit (`.ppbui-button--compact` / `.ppbui-icon-button--compact`),
+must not replace the default globally, and still expand to the coarse-pointer target.
+
+`.ppbui-button` owns its own box/display alignment. Its default minimum footprint
+is the 2:1 token; `.ppbui-button--1x1` and `.ppbui-button--2x1` make exact ratios
+explicit. Wider text actions may expand horizontally while retaining the 28px
+height. Modules must not rely on host
+button classes for centering or inline-flex behavior, because mixed native + Better
+UI classes otherwise produce inconsistent geometry across modules. Use the shared
+`.ppbui-action-row` primitive for dense groups of related actions instead of
+re-implementing flex/wrap/gap rules per module.
+
+Button **semantics do not imply geometry**. `.ppbui-button--primary` and
+`.ppbui-button--danger` own semantic edge/text treatment only. Add
+`.ppbui-button--action` for semantic layout hooks without introducing a second
+height system; keep icon/delete utilities at their explicit standard or compact
+icon size. This prevents actions from drifting into unrelated geometries.
+
+For compact resource/status meters that need a short label beside a bar, use the
+shared `.ppbui-meter-row` + `.ppbui-meter-row__label` primitive. The default label
+track is 32px and may be overridden through `--ppbui-meter-label-width` when a
+verified localized label requires it. Modules own the actual domain bar/fill and
+its value; they should not duplicate label|bar grid geometry or magic label widths.
+When a moved native bar carries its own grid placement (for example `grid-column:
+1 / -1`), the integration layer must explicitly release that host placement so the
+shared meter row can actually own the label/bar axis.
 
 These values intentionally differ from the skill's generic 44×44 touch target
 because the primary environment is a dense pointer/keyboard desktop game.
@@ -265,20 +228,23 @@ state mapping:
 
 | State | Surface | Border/text | Additional cue |
 | --- | --- | --- | --- |
-| Default | `bg-2` | `border-strong` + `text` | hard 2px elevation where appropriate |
+| Default | `bg-0`/`bg-2` | 2px `border-strong` + `text` | flat control surface |
 | Hover | `bg-3` | `accent-hi` for primary, `border-strong` otherwise | pointer-only; no meaning depends on it |
-| Pressed | `bg-0` or inset `bg-1` | same semantic edge as default | inset hard shadow / 2px depth shift |
-| Selected/current | `bg-3` | `accent` edge + `text` | explicit edge/surface change, not color-only text |
+| Pressed | `bg-3` | same semantic family as default; primary may use `accent-low` for compact-text contrast | subtle inset 2px depth cue |
+| Selected/current | `bg-3` | `selected` edge + `text` | explicit edge/surface change, not color-only text |
 | Focus-visible | current state surface | current state border | independent 2px `focus` outline |
 | Disabled | `bg-1` | `text-subtle` + `border` | disabled semantics/attribute; no hover elevation |
 | Loading/pending | current semantic surface | current semantic edge | `aria-busy`/status copy; block duplicate submission |
 | Error | `bg-2` | `danger` edge + readable text | adjacent error/status message or icon + text |
 
-For primary buttons, replace the default neutral edge with `accent`; for danger
-buttons use `danger`. Inputs use `bg-0`/`bg-1` as their default well, adopt
-`border-strong` on hover, `focus` outline on focus-visible, and `danger` plus an
-adjacent message for invalid state. Tabs use the selected mapping for the current
-tab while keyboard focus remains independently visible.
+For primary buttons, replace the default neutral edge with `accent` and use readable
+`accent-hi` text. Hover/pressed states use `action-bg` with `accent-hi` edge/text so
+12px labels retain WCAG text contrast. Do not add a separate lower rail or a filled-gold
+button family. For danger buttons use
+`danger`. Inputs use the dark `bg-0` well and a 2px hard edge, adopt the normal
+focus outline on focus-visible, and use `danger` plus an adjacent message for
+invalid state. Tabs use the selected mapping for the current tab while keyboard
+focus remains independently visible.
 
 ### Focus
 
@@ -290,8 +256,10 @@ states. Never remove focus rings without a Better UI replacement.
 
 ### Buttons
 
-**Primary:** gold border/accent, high-contrast label, reserved for the main action
-in the current context. Avoid multiple equal primary actions in one small panel.
+**Primary:** dark PPBUI surface with blue/cyan action border/text, reserved for the main
+action in the current context. Hover/pressed may use the navy action surface while
+gold remains reserved for persistent selected/current state. Avoid multiple equal primary
+actions in one small panel.
 
 **Secondary:** neutral surface + strong neutral border. Used for navigation,
 filters, utility actions and reversible operations.
@@ -302,13 +270,24 @@ small chrome actions such as close or disclosure, not major actions.
 **Danger:** red semantic edge/text or surface treatment. Keep spatial distance
 from the primary action when accidental activation is costly.
 
-Pressed buttons may shift visual depth through an inset hard shadow; avoid scale
-animations that make surrounding pixel alignment shimmer.
+Pressed buttons use a subtle hard inset depth; never inherit native scale/translate
+animation. Standard buttons and fields use the same 2px Miyazaki 16 hard-edge
+grammar. Internal separators may use 1px.
+Base `.ppbui-button` provides the square pixel-control defaults. When a native game button is
+enhanced, the exact dual-class `.pokeidle-btn.ppbui-button` host bridge owns `appearance`,
+gradient/background-image, text shadow, filter and native transform with stronger `!important`
+specificity so host chrome cannot leak back regardless of stylesheet order. Pure Better UI
+module buttons remain deliberately overridable by scoped module CSS for an approved local
+surface/shadow/pressed-motion pattern; that module ownership must not mutate the shared primitive.
+Team-family controls consume the shared primary/secondary/danger semantics instead of repainting
+them locally.
 
 ### Inputs and selects
 
-- 2px border;
-- `bg-0`/`bg-1` input well against a raised section;
+- 2px hard control border;
+- dark `bg-0` input well against the raised Miyazaki 16 section surface;
+- native `game-window__search` / `game-window__select` controls that opt into PPBUI must release
+  host height/radius/background chrome so Team-family fields remain square and visually consistent;
 - visible label when the meaning is not self-evident;
 - placeholder is supplemental, never the sole label for ambiguous forms;
 - search should expose clear/reset when persistent filtering can hide results;
@@ -327,6 +306,19 @@ Use for concise states, elements, rarities and counters. Keep the label on one
 line where possible. A badge must not become the only source of a critical label.
 Gameplay semantic colors may override the brand accent inside the badge.
 
+Element artwork uses one project-wide opt-in primitive instead of module-specific
+circles/plates. `.ppbui-element-icons` is the list wrapper and
+`.ppbui-element-icon` is a **24×24px square** domain-color well; compact contexts use
+`.ppbui-element-icon--small` at **20×20px**. The background/border color comes from
+the canonical game Element definition (`PokeIdle.ElementIcons.definition(type).color`)
+or the native `--element-color`; Better UI must not remap Element meaning to brand
+colors. Native/domain artwork remains centered and pixelated. Rounded/circular Element
+chrome and per-module Element-icon families are not allowed.
+
+Rarity/quality labels that opt into `.ppbui-quality-badge` use the same square dark
+surface with a canonical `--quality-*` structural edge. The primitive changes chrome
+only; rarity names, multipliers, ordering and gameplay meaning remain authoritative.
+
 ### Panels/cards
 
 - 2px border + hard shadow when elevated;
@@ -335,9 +327,37 @@ Gameplay semantic colors may override the brand accent inside the badge.
 - footer is reserved for persistent actions/status when useful;
 - cards representing selectable entities need explicit selected + focus states.
 
+For compact Pokémon representations reused across Team-family surfaces, use the
+shared `.ppbui-pokemon-card` **semantic/state shell** instead of redefining selected,
+active, fainted or focus behavior per module. Geometry is deliberately role-specific:
+
+- `.ppbui-pokemon-card--hud` — narrow live-monitor micro-slot;
+- `.ppbui-pokemon-card--roster` — richer Full Team management slot;
+- `.ppbui-pokemon-card--preset` — saved formation identity/order token;
+- `.ppbui-pokemon-card__position` — official/order marker;
+- `.ppbui-pokemon-card__visual` — centered sprite well whose bounds follow the role;
+- `.ppbui-pokemon-card__meta` — optional facts area for a role that needs text;
+- `.ppbui-pokemon-card__meter` — optional live-vitality rail, not a required card part;
+- `--selected` — gold structural edge;
+- `--active` — green **right** structural edge independent from selected/order;
+- `--fainted` — danger edge on live surfaces;
+- focus/hover/pressed behavior is shared for interactive cards only.
+
+Do not force identical dimensions or telemetry into materially different contexts. In
+particular, Team HUD keeps compact visible `Lv.N` as its repeated text fact and demotes HP
+to the thin vitality rail, while a Saved Formation token must not project live HP/fainted
+state merely to resemble a combat card. Full Team may use richer facts and responsive
+geometry because it is a management surface. Shared consistency means common state
+semantics, position language, typography roles and pixel-art chrome—not one universal
+information payload.
+
+Integration may keep overflow visible where an existing native status affordance is
+intentionally positioned outside the card frame (for example Full Team XP Share badges).
+That exception must not change the shared state semantics or corrupt the native affordance.
+
 ### Dialogs/popovers
 
-- visually above the source surface with a 4px hard shadow;
+- visually above the source surface with the shared restrained hard shadow;
 - clear title/context;
 - Escape closes when safe;
 - Close/Cancel remains discoverable;
@@ -352,9 +372,19 @@ keyboard-accessible surface. Do not design workflows that depend on pointer hove
 
 ### Scrollbars
 
-Better UI-owned scroll containers may receive a compact pixel-art scrollbar that
-uses neutral surfaces and accent only on active/hover states. Do not restyle the
+Every Better UI-owned scroll container uses the shared pixel scrollbar primitive:
+**10px** horizontal/vertical track, square corners, charcoal track and a stone
+2px hard-edged thumb with a weathered-neutral hover state. Horizontal and vertical
+scroll use the same grammar. Modules may add a scoped specificity bridge when host
+scrollbar rules would otherwise override this primitive, but must not ship a separate
+scrollbar palette/rounding unless an approved exception exists. Do not restyle the
 entire host application's scrollbar globally.
+
+When the host may move `overflow` to an unknown descendant, opt the owned root into
+`.ppbui-scroll-scope`; it extends the same primitive through that subtree, removes native
+WebKit arrow buttons and yields standardized `scrollbar-color` in Blink/WebKit so the
+square `::-webkit-scrollbar-*` geometry remains authoritative. This scope is reversible
+and must never be applied to an unrelated host subtree.
 
 ### Progress/status bars
 
@@ -457,8 +487,11 @@ Runtime implementation follows these rules:
 
 ## 15. Component adoption strategy
 
-Do not perform a big-bang rewrite. When a module is revisited, classify it after
-the mandatory UI/UX review:
+The Product Owner changed the rollout strategy on 2026-09-16: **all shared visual
+objects are standardized first, then modules migrate in consolidated batches by
+gameplay impact.** No module may invent a new button/input/box/scrollbar/dropdown
+style while the master primitive exists. When a module is migrated, classify it
+after the mandatory UI/UX review:
 
 - **Keep:** current layout is intentionally retained; only system tokens/states
   are adopted where useful.
@@ -467,27 +500,44 @@ the mandatory UI/UX review:
 - **Redesign:** layout/interaction hierarchy is reworked while preserving the
   agreed functional contract.
 
-Hunts is the first full pilot for this approved MASTER. Its current
-functional work (selection vs gameplay, Locate, dossier data, explicit Hunt,
-stable identity, map state preservation and lifecycle) is an integration asset,
-not a requirement to keep its present visual composition.
+Migration order is impact-driven rather than module-by-module approval driven:
+
+1. shared foundation: typography, panels/boxes, buttons, fields/dropdowns,
+   horizontal/vertical scrollbars and states;
+2. high-frequency/high-gameplay surfaces: Hunts, Team HUD/Team/Presets, Storage,
+   Inventory and Trade;
+3. secondary utilities: Module Controls, Auto Helper, Pokémon Tools, Marks Shop,
+   Chat and Buff Strip;
+4. independent UX/A11y + technical QA over a consolidated candidate;
+5. Product Owner performs the only live in-game validation gate.
+
+Existing functional work in these modules remains an integration asset. Visual
+migration must preserve native behavior, lifecycle and authoritative game state.
 
 ## 16. Validation contract
 
-Before a build is handed to the user:
+Before a build is handed to the user, the Project Manager applies
+`docs/PROJECT_WORKFLOW.md` and audits criterion-level evidence:
 
 - mandatory `.skills/ui_ux_pro.md` review completed;
 - `.skills/pixel_art_direction.md` completed when the task changes pixel-art
   direction, performs a substantial visual redesign or introduces bespoke pixel
   artwork;
 - design-system/page override checked;
-- required role-owned review gates in `docs/roles/README.md` are `READY`,
-  including Independent QA and UX/A11y & Design QA when that specialist gate is
-  triggered;
+- Independent QA returns `TECH READY` for the exact candidate;
+- triggered UX/A11y review returns `UX READY`;
+- every visible change receives Visual Regression review against qualifying
+  rendered evidence. Source/CSS/tests/JSDOM are not visual evidence. The result is
+  `VISUAL READY`, `VISUAL NOT READY` or `VISUAL EVIDENCE INSUFFICIENT`;
 - keyboard/focus/ARIA checked with automated/synthetic evidence where possible;
 - lifecycle/reconciliation/cleanup regressions pass;
 - build and diff checks pass;
 - no unrelated host UI is restyled.
+
+The PM must not convert missing render evidence into a visual pass. When a visual
+property is inherently live-only, the candidate may be handed off only as an
+explicit pre-live candidate with that evidence gap named; it must not be described
+as visually ready or fully approved.
 
 Then **stop**. The agent must not open/control/reload the live game or Tampermonkey
 for interface validation. The delivery remains `pending in-game validation` until
@@ -495,11 +545,37 @@ the user explicitly approves it.
 
 ## 17. Approval gate
 
-Approval was granted by the user on 2026-09-12. Runtime adoption proceeds in
-small, testable stages:
+The original design-system approval was granted on 2026-09-12. On 2026-09-16 the
+Product Owner explicitly superseded the module-by-module validation strategy and
+approved autonomous implementation until the next live gate. Later that day the
+Product Owner explicitly rejected the white/warm master, then later rejected the
+resulting Sweetie 16 color distribution after live inspection and selected the official
+Miyazaki 16 palette as the new project-wide color authority. The approved monospace,
+square/pixel geometry, density, state language and reversible integration contracts
+remain in force. Miyazaki 16 supersedes the earlier Sweetie 16 candidate; blue is now
+interaction/focus, gold is selected, and green is active/success.
 
-1. implement the shared design-system runtime/tokens/components;
-2. create an approved `pages/hunts.md` from a Hunts-specific UI/UX review;
-3. redesign Hunts as the first full pilot;
-4. run automated validation/build/static review;
-5. hand the build to the user and stop for in-game validation.
+On 2026-09-17 the Product Owner explicitly reported **“Estrutura validada.”** The
+Backpack/Team/Add Pokémon composition therefore stays closed. The current gate is a
+visual-polish pass only: Backpack Sort +15px, the Add Pokémon pixel scrollbar, shared
+square Element icon adoption project-wide and rarity-box chrome. Structural redesign is
+out of scope unless a later Product Owner instruction explicitly reopens it.
+
+The 2026-09-17 live review further clarified the Element primitive: canonical Element color
+must remain visible as the square swatch/edge, but the backing must be a darker element-tinted
+well rather than the same full-strength color behind the native symbol. The symbol and backing
+must remain visually separable at 20px and 24px. This clarification does not remap domain
+colors to Miyazaki roles and does not reopen the approved structure.
+
+The later correction sequence reinforces the evidence boundary: local Technical/UX/Visual readiness
+never equals in-game approval. Exact `0.2.11` ultimately closed the legacy Shared Stone contamination
+case and was explicitly live-validated by the Product Owner. The subsequent live screenshot reopened
+only one bounded presentation issue: the Saved Team HUD `6/6` preview left unused width after member 6.
+Exact `0.2.12` preserves the accepted structure, removes the false scrollbar/right-strip condition,
+completed fresh Technical and local render-first Visual gates at `P0-P3=0`, and was subsequently
+validated live by the Product Owner. The Team-family correction sequence is closed unless a later
+instruction explicitly reopens it.
+
+Agents continue through foundation, module migration, automated verification and
+independent review without pausing for intermediate Product Owner authorization.
+The next human gate is the consolidated in-game validation candidate.

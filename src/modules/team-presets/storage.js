@@ -84,6 +84,14 @@ export function createTeamPresetStorage({ storage = () => window.localStorage, n
     Object.assign(preset, cleanSnapshot, { updatedAt: now() }); persist(); return true;
   }
 
+  function updatePreset(id, name, snapshot) {
+    const cleanName = normalizeName(name), cleanSnapshot = normalizeSnapshot(snapshot), index = presets.findIndex(entry => entry.id === id);
+    if (index < 0 || !cleanName || !cleanSnapshot) return null;
+    if (presets.some((entry, entryIndex) => entryIndex !== index && entry.name.toLocaleLowerCase() === cleanName.toLocaleLowerCase())) return null;
+    presets[index] = { ...presets[index], name: cleanName, ...cleanSnapshot, updatedAt: now() };
+    persist(); return clone(presets[index]);
+  }
+
   function rename(id, name) {
     const cleanName = normalizeName(name), preset = presets.find(entry => entry.id === id);
     if (!preset || !cleanName) return false;
@@ -126,5 +134,5 @@ export function createTeamPresetStorage({ storage = () => window.localStorage, n
   }
 
   reload();
-  return { list, reload, upsert, replaceSnapshot, rename, remove, movePreset, moveMember, setActive, confirmOrder, isPersistent: () => persistent };
+  return { list, reload, upsert, replaceSnapshot, updatePreset, rename, remove, movePreset, moveMember, setActive, confirmOrder, isPersistent: () => persistent };
 }

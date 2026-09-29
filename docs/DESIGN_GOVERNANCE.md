@@ -2,18 +2,20 @@
 
 ## Purpose
 
-PokePixel Idle Better UI has its own pixel-art visual language. This document
-defines how design decisions are made; the actual visual tokens and component
-specification live in `design-system/pokepixel-better-ui/MASTER.md`.
+PokePixel Idle Better UI prioritizes functional layout, responsiveness and
+native integration. This document records the design-review process. The
+historical pixel-art grammar and optional shared visual tokens live in
+`design-system/pokepixel-better-ui/MASTER.md`; they govern only tasks that
+explicitly adopt that direction.
 
 ## Authorities
 
 1. Explicit user requirement and approval.
 2. Functional/safety architecture in `AGENTS.md`, `docs/PROJECT_RULES.md` and
    `docs/ARCHITECTURE.md`.
-3. Global visual decisions in the design-system MASTER, with an approved page
-   override taking precedence only inside its named module.
-4. Module functional contracts.
+3. Module functional contracts and native implementation evidence.
+4. Global visual decisions in the design-system MASTER only when the task
+   explicitly includes that direction, with approved module-specific overrides.
 
 `.skills/ui_ux_pro.md` is the required analysis/review method applied across
 those authorities; it is not a separate styling authority.
@@ -24,7 +26,8 @@ QA verifies conformance; it does not become another styling authority. See
 `docs/roles/README.md`.
 
 The native PokePixel interface supplies technical evidence about data, handlers,
-state and constraints. It does not constrain Better UI to the game's styling.
+state and constraints. Better UI may follow its visual language when it improves
+usability, while preserving authoritative behavior.
 
 ## UI/UX Pro gate
 

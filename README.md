@@ -1,12 +1,14 @@
 # PokePixel Idle Better UI
 
-Pixel-art UI/UX and QoL layer for PokePixel Idle.
+Functional UI/UX and QoL layer for PokePixel Idle.
 
 ## Principle
 
-Better UI owns a coherent pixel-art interface system while preserving the game
-rules, authoritative state and safe native integrations underneath it. The
-original client is a functional reference, not the visual source of truth.
+Better UI prioritizes functional layout, clear controls, responsiveness and safe
+native integration while preserving the game rules and authoritative state.
+Better UI now follows the current game's visual language instead of maintaining a
+separate pixel-art chrome: shared Game Palette surfaces, game typography and one
+global `Squared` / `Rounded` corner preference apply across owned modules.
 
 ## Scope
 
@@ -16,7 +18,7 @@ original client is a functional reference, not the visual source of truth.
 - additional information
 - search/filter helpers
 - reduced interaction friction
-- accessible, consistent pixel-art components
+- accessible, maintainable interface components
 
 Not in scope:
 
@@ -28,14 +30,15 @@ Not in scope:
 
 Requirements:
 
-- Node.js
+- Node.js `^22.22.2 || ^24.15.0 || >=26.0.0` (matches the pinned jsdom toolchain)
 - npm
-- Tampermonkey-compatible browser
+- Python 3.10+ for sprite tooling and its offline tests
+- Windows PowerShell 5.1 and .NET Framework 4.x for the optional native WebView2 builder
 
 Install:
 
 ```powershell
-npm install
+npm ci
 ```
 
 Build:
@@ -50,26 +53,65 @@ Watch:
 npm run watch
 ```
 
+Offline developer validation on Windows (no live game or browser):
+
+```powershell
+npm run validate:offline:win
+```
+
+`npm test` checks the JS application and game-evidence tools. The combined gate
+also runs the Python cache tests, an isolated PowerShell/Python launcher fixture
+and the userscript build. The WebView2 C# compile is a separate **isolated
+candidate** gate: do not rebuild the normal, previously accepted host merely
+to validate source changes. On other operating systems, run `npm test`,
+`npm run test:python` and `npm run build` separately. The Python cache tests
+import NumPy, Pillow, Requests and Beautiful Soup; they require those packages
+already installed in the selected Python interpreter (or the corresponding
+isolated tool venv). The offline gate deliberately does not fetch dependencies.
+
 Generated userscript:
 
 ```text
 dist/pokepixel-better-ui.user.js
 ```
 
+Generated-artifact retention and safe cleanup: `docs/REPOSITORY_LAYOUT.md`.
+Use `npm run clean:generated` to preview disposable files; adding `-- --apply`
+removes only the allowlisted temporary outputs.
+
+For Tampermonkey validation, replace/re-import the installed script with this generated file after a
+build. The local userscript currently has no `@updateURL` / `@downloadURL`, so rebuilding the repository
+does not update an already-installed older Tampermonkey copy automatically.
+
+Hunt Story's failed-attempt **IV Total** column requires Hunt Analyzer `1.13.6` or newer, because that
+version is the first public-summary build to expose the already-authoritative terminal `ivTotal` scalar
+for failed captures.
+
 ## Architecture
 
 See:
 
 - `docs/PROJECT_RULES.md`
+- `docs/PROJECT_WORKFLOW.md`
+- `docs/SKILLS_MATRIX.md`
 - `docs/roles/README.md`
 - `docs/DESIGN_GOVERNANCE.md`
 - `docs/DESIGN_TOOLING.md`
 - `docs/ARCHITECTURE.md`
 - `design-system/pokepixel-better-ui/MASTER.md`
 
-Every UI/UX change must also pass the review process in `.skills/ui_ux_pro.md`.
-Pixel-art redesign/art-direction work additionally uses
-`.skills/pixel_art_direction.md`.
+UI/UX changes use `.skills/ui_ux_pro.md` when design/interaction judgment is
+material. Pixel-art redesign/art-direction work uses
+`.skills/pixel_art_direction.md` only when that visual direction is explicitly
+part of the task.
+Project execution is coordinated through the role/gate lifecycle in
+`docs/PROJECT_WORKFLOW.md`; external skills referenced by `docs/SKILLS_MATRIX.md`
+are supplemental methods and are not vendored into the repository.
+Changes that can materially affect layout, readability, clipping, reachability,
+control state or interaction require render-first Visual Regression QA;
+source/CSS/JSDOM/test evidence cannot by itself establish those rendered claims.
+The PM uses `docs/PM_GATE_TEMPLATE.md` to track criterion-level evidence and
+authorize handoff.
 In-game interface validation is performed exclusively by the user; automated
 tests/builds do not count as an in-game green light.
 
@@ -82,8 +124,8 @@ Swap/Focus, scoped Home/Reload controls, explicit health state and a Better
 UI-native Maintenance Drawer without mirroring gameplay input.
 
 The legacy `tools/coupled-workspace/Start-CoupledWorkspace.ps1` entry point is a
-compatibility wrapper to the WebView2 host; the Electron implementation in that
-directory is archived/superseded. See `docs/COUPLED_WORKSPACE_STATUS.md` and
+compatibility wrapper to the WebView2 host; the superseded Electron prototype
+and its extension mirror have been removed. See `docs/COUPLED_WORKSPACE_STATUS.md` and
 `design-system/pokepixel-better-ui/pages/coupled-workspace.md` for the final
 acceptance and design records.
 
@@ -95,18 +137,22 @@ Keep, Refine or Redesign. Their functional behavior and historical user
 validations remain evidence; a future visual migration reopens validation only
 for the changed delivery.
 
-The shared pixel-art runtime now provides namespaced Better UI tokens and opt-in
+The shared runtime provides namespaced Better UI tokens and opt-in
 surface/button/field/state primitives without globally restyling the host game.
-Hunts is the first module migrated as a full `reviewed / redesign` pilot.
+Owned modules consume the project-wide Game Palette and native typography roles;
+semantic gameplay colors remain independent.
 
 The menu-bar module implements the approved organization of up to 33 native
 actions, including Premium Shop, Pack and Gacha under Shop. It reuses action
 nodes, native groups and styling, preserves conditional access, and restores
-the original structure on cleanup. The example module is still disabled.
+the original structure on cleanup.
 
 The Better UI icon at the end of the native toolbar opens module preferences.
-Menu bar can be enabled or disabled immediately, with choices saved in this
-browser. The preferences icon remains available when Menu bar is disabled.
+Menu bar can be enabled or disabled immediately, and **Aparência → Cantos** selects
+exactly one global Better UI geometry: `Squared` (`0px`) or game-style `Rounded`.
+The selected mode applies consistently to Better UI-owned/opted-in surfaces without
+changing unrelated host-game geometry. Choices are saved in this browser. The preferences
+icon remains available when Menu bar is disabled.
 See `docs/modules/module-controls-plan.md` for behavior and validation scope.
 
 Buff strip keeps the game's native buff HUD in a compact single-line surface
@@ -132,18 +178,16 @@ It preserves messages, drafts and private tabs, and can be disabled independentl
 in Better UI. Only fixed-channel keys are persisted. See
 `docs/modules/chat-plan.md` for verification. The user has validated and approved the implemented Chat scope; no validation remains pending.
 
-Hunts (Map) is the first full pixel-art pilot. World navigation, a two-group
-Filters/Target command deck, the map workspace and the right-side dossier now
-share the Better UI design system while retaining the proven native map/action
-integration. Marker click selects/inspects instead of starting gameplay; the
-Hunt action is explicit inside the dossier, which also owns the original
-Classic/Platform selector. Automated validation is complete; user in-game
-validation is pending. See `docs/modules/hunts.md` and
+Hunts (Map) uses the shared Better UI design system while retaining the proven
+native map/action integration. Marker click selects/inspects instead of starting
+gameplay; the Hunt action is explicit inside the dossier, which also owns the
+original Classic/Platform selector. See `docs/modules/hunts.md` and
 `design-system/pokepixel-better-ui/pages/hunts.md`.
 
 Team adds compact level/HP tracking to the six native slots
 and brings the original action block beside
-the profile without replacing its controls. See `docs/modules/team.md`.
+the profile without replacing its controls. See `docs/modules/team.md` and the
+current PM gate record in `docs/TEAM_REDESIGN_STATUS.md`.
 
 Team HUD adds compact HP visibility, fainted state and keyboard access to occupied
 native HUD cards without changing combat or leader actions. See `docs/modules/team-hud.md`.

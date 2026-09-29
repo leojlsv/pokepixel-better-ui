@@ -3,7 +3,7 @@ import { findControlsTarget } from "./dom.js";
 
 import { mountControls } from "./controller.js";
 
-export function createModuleControls({ preferences, modules }) {
+export function createModuleControls({ preferences, appearance, modules }) {
   let target = null;
   let mounted = null;
   return {
@@ -16,7 +16,7 @@ export function createModuleControls({ preferences, modules }) {
     getMountKey: () => target,
     reconcile: () => mounted?.sync(),
     mount() {
-      mounted = mountControls(target, preferences, modules);
+      mounted = mountControls(target, preferences, modules, appearance);
       return () => { mounted.cleanup(); mounted = null; };
     },
   };

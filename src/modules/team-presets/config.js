@@ -12,6 +12,8 @@ export const teamPresetsConfig = Object.freeze({
     teamBody: ".pokeidle-panel__body",
     teamRoster: ".team-section--roster",
     teamProfile: ".team-section--profile",
+    teamVitals: ".team-section--vitals",
+    teamAttributes: ".team-section--attributes",
     teamSlot: ".team-slot",
     teamActiveAction: ".team-active-state",
     teamRemoveAction: ".team-actions .pokeidle-btn--danger",

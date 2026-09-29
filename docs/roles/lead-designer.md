@@ -14,7 +14,7 @@ For UI/UX work, read:
 - `.skills/ui_ux_pro.md`;
 - `.skills/pixel_art_direction.md` when the task changes pixel-art direction,
   performs a substantial visual redesign or introduces bespoke pixel artwork;
-- the functional contract from Project Lead/Requirements Analyst;
+- the functional contract from Project Manager/Requirements Analyst;
 - architecture constraints that affect presentation/integration.
 
 ## Responsibilities
@@ -32,6 +32,10 @@ For UI/UX work, read:
 - promote reusable decisions into MASTER and keep module-only decisions in an
   approved page override;
 - give Feature / Module Engineer a concrete implementation brief.
+- define the **rendered acceptance target**: geometry, spacing, overflow,
+  state treatment and visual comparison reference clearly enough that Visual
+  Regression QA can judge the result without reading the implementation author's
+  intent into the source.
 
 ## May edit
 
@@ -51,10 +55,12 @@ until the Product Owner explicitly approves it.
 - treat external image-generation output as design authority;
 - mark a materially new visual direction as approved without explicit Product
   Owner adoption;
-- approve their own design as Design QA.
+- approve their own design as UX/A11y QA or Visual Regression QA.
+- act as Visual Regression Reviewer for the same design they authored.
 
 ## Handoff
 
 Return the design intent, component inventory, hierarchy, state treatment, asset
 plan, responsive/accessibility constraints and concrete implementation acceptance
-checks. Avoid vague instructions such as "make it more pixel art".
+checks. For visible work, include render-checkable criteria. Avoid vague
+instructions such as "make it more pixel art".

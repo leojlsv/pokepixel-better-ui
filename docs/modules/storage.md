@@ -1,6 +1,6 @@
 # Storage
 
-Status: validated in game by the user, including the refinements in 8a4097a. No in-game validation remains pending for this delivery.
+Status: Product Owner live-validated on exact `0.2.16` on 2026-09-17. Functionality, structure and the corrected Search / initial filter / More Filters field chrome are accepted; no Storage validation remains pending for this candidate.
 
 ## Scope
 
@@ -18,7 +18,7 @@ The native scene builds filtered lists before rendering and closes over its page
 
 Scene discovery checks the native methods and associated panel body in ReactiveWindows.cached() and SceneManager._scene, including non-blocking windows over the active map. The centralized reconciler mounts the adapter once; idle reconciliation does not scan cards, resolve sprites, refresh the scene or make requests. Disabling restores method descriptors and refreshes the native screen.
 
-Bulk transfers retain their native all-Pokémon scope, including hidden search results. The existing native confirmation receives a scoped informational note with the source count as an upper bound, destination and explicit unfiltered scope. It does not add a second confirmation or replace the transfer handler/API.
+Bulk semantics depend on filter state. With no active filter, the original native all-Pokémon bulk action remains authoritative, including its native confirmation; Better UI only enriches the newly opened native dialog with scoped quantity/destination context and does not replace the handler/API. With search/rarity/element/More Filters active, the bulk label changes to the localized filtered action and Better UI snapshots the unique IDs across every filtered result page, asks one confirmation, then invokes the native individual transfer method sequentially. Equipped/missing entries are skipped and the batch stops if the game does not confirm a move. Sorting alone is not a filter.
 
 ## Validation
 
@@ -28,11 +28,10 @@ In game: search a Pokémon beyond page one, combine search with rarity/element f
 
 Native sources: https://pokepixel.nietore.com/play/js/plugins/CreatureStorageScene.js and the game's inventory-slots.css / pokecentro-filters.css. The source inspection confirmed that unfiltered pagination used warehouse capacity rather than occupied count.
 
-The historical approved Storage direction is preserved in the deprecated
-`.interface-design/system.md` during the pixel-art migration. Its behavioral and
-user-validation record remains evidence; current project-wide visual authority
-is `design-system/pokepixel-better-ui/MASTER.md`. In the validated legacy
-implementation, both columns reserve 48px for the selected action/idle hint.
+The original Storage direction and its in-game approval remain recorded in
+Git history. The implemented feature contract is documented here; project-wide
+visual decisions follow `AGENTS.md` and the applicable approved design rules.
+In the validated legacy implementation, both columns reserve 48px for the selected action/idle hint.
 Capacity stays in the header; result counts sit beside search. Empty sources and
 no matches have distinct messages. Pagination clears selection only on the
 selected side. Refresh preserves scroll and control focus (falling back to search

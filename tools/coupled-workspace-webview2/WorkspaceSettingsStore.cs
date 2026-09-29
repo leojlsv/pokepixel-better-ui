@@ -9,7 +9,7 @@ namespace PokePixel.CoupledWorkspace
 {
     internal sealed class WorkspaceSettingsStore
     {
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         private readonly string _path;
 
@@ -32,7 +32,7 @@ namespace PokePixel.CoupledWorkspace
                     document = serializer.ReadObject(stream) as WorkspaceSettingsDocument;
                 }
 
-                if (document == null || document.Version != CurrentVersion)
+                if (document == null || (document.Version != 1 && document.Version != CurrentVersion))
                     return WorkspaceState.CreateBaseline();
 
                 return FromDocument(document);
@@ -135,9 +135,29 @@ namespace PokePixel.CoupledWorkspace
             {
                 double value;
                 if (state.ZoomByProfile != null && state.ZoomByProfile.TryGetValue(registered.Id, out value))
-                    normalized.ZoomByProfile[registered.Id] = ClampZoom(value);
+                    normalized.ZoomByProfile[registered.Id] = WorkspaceZoomPresets.Normalize(value);
                 else
                     normalized.ZoomByProfile[registered.Id] = 1.0;
+            }
+
+            normalized.QuickSurfacesByProfile = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var registered in ProfileRegistry.All())
+            {
+                List<string> requested;
+                if (state.QuickSurfacesByProfile == null
+                    || !state.QuickSurfacesByProfile.TryGetValue(registered.Id, out requested))
+                    requested = null;
+                normalized.QuickSurfacesByProfile[registered.Id] = NormalizeQuickSurfaces(requested);
+            }
+
+            normalized.CardsViewByProfile = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            foreach (var registered in ProfileRegistry.All())
+            {
+                bool cards;
+                normalized.CardsViewByProfile[registered.Id] = state.CardsViewByProfile != null
+                    && state.CardsViewByProfile.TryGetValue(registered.Id, out cards)
+                        ? cards
+                        : true;
             }
 
             normalized.MaintenanceDrawerExpanded = state.MaintenanceDrawerExpanded;
@@ -150,10 +170,28 @@ namespace PokePixel.CoupledWorkspace
             return Math.Max(0.20, Math.Min(0.80, value));
         }
 
-        private static double ClampZoom(double value)
+        private static List<string> NormalizeQuickSurfaces(IEnumerable<string> requested)
         {
-            if (double.IsNaN(value) || double.IsInfinity(value)) return 1.0;
-            return Math.Max(0.50, Math.Min(2.00, value));
+            var result = new List<string>();
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (requested != null)
+            {
+                foreach (var id in requested)
+                {
+                    string canonicalId;
+                    if (!WorkspaceQuickSurfaceCatalog.TryGetCanonicalId(id, out canonicalId)
+                        || !seen.Add(canonicalId)) continue;
+                    result.Add(canonicalId);
+                    if (result.Count == WorkspaceQuickSurfaceCatalog.Default.Length) return result;
+                }
+            }
+            foreach (var definition in WorkspaceQuickSurfaceCatalog.Default)
+            {
+                if (!seen.Add(definition.Key)) continue;
+                result.Add(definition.Key);
+                if (result.Count == WorkspaceQuickSurfaceCatalog.Default.Length) break;
+            }
+            return result;
         }
 
         private static DataContractJsonSerializer CreateSerializer()
@@ -164,11 +202,21 @@ namespace PokePixel.CoupledWorkspace
         private static WorkspaceSettingsDocument ToDocument(WorkspaceState state)
         {
             var zoom = new List<ZoomSettingDocument>();
+            var views = new List<ViewSettingDocument>();
+            var favorites = new List<QuickSurfacesSettingDocument>();
             foreach (var profile in ProfileRegistry.All())
             {
                 double factor;
                 if (!state.ZoomByProfile.TryGetValue(profile.Id, out factor)) factor = 1.0;
                 zoom.Add(new ZoomSettingDocument { ProfileId = profile.Id, Factor = factor });
+                bool cards;
+                if (!state.CardsViewByProfile.TryGetValue(profile.Id, out cards)) cards = true;
+                views.Add(new ViewSettingDocument { ProfileId = profile.Id, Cards = cards });
+                favorites.Add(new QuickSurfacesSettingDocument
+                {
+                    ProfileId = profile.Id,
+                    SurfaceIds = new List<string>(state.QuickSurfacesByProfile[profile.Id])
+                });
             }
 
             return new WorkspaceSettingsDocument
@@ -184,6 +232,8 @@ namespace PokePixel.CoupledWorkspace
                 LastDualRatio = state.LastDualRatio,
                 FocusMode = state.FocusMode,
                 ZoomByProfile = zoom,
+                CardsViewByProfile = views,
+                QuickSurfacesByProfile = favorites,
                 MaintenanceDrawerExpanded = state.MaintenanceDrawerExpanded
             };
         }
@@ -211,6 +261,8 @@ namespace PokePixel.CoupledWorkspace
             state.FocusMode = document.FocusMode;
             state.MaintenanceDrawerExpanded = document.MaintenanceDrawerExpanded;
             state.ZoomByProfile = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+            state.CardsViewByProfile = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+            state.QuickSurfacesByProfile = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
             if (document.ZoomByProfile != null)
             {
@@ -219,6 +271,26 @@ namespace PokePixel.CoupledWorkspace
                     ProfileDefinition profile;
                     if (entry != null && ProfileRegistry.TryGet(entry.ProfileId, out profile))
                         state.ZoomByProfile[profile.Id] = entry.Factor;
+                }
+            }
+
+            if (document.CardsViewByProfile != null)
+            {
+                foreach (var entry in document.CardsViewByProfile)
+                {
+                    ProfileDefinition profile;
+                    if (entry != null && ProfileRegistry.TryGet(entry.ProfileId, out profile))
+                        state.CardsViewByProfile[profile.Id] = entry.Cards;
+                }
+            }
+
+            if (document.QuickSurfacesByProfile != null)
+            {
+                foreach (var entry in document.QuickSurfacesByProfile)
+                {
+                    ProfileDefinition profile;
+                    if (entry != null && ProfileRegistry.TryGet(entry.ProfileId, out profile))
+                        state.QuickSurfacesByProfile[profile.Id] = entry.SurfaceIds;
                 }
             }
 
@@ -240,6 +312,15 @@ namespace PokePixel.CoupledWorkspace
             [DataMember(Name = "commandScope", Order = 10)] public string CommandScope { get; set; }
             [DataMember(Name = "zoomByProfile", Order = 11)] public List<ZoomSettingDocument> ZoomByProfile { get; set; }
             [DataMember(Name = "maintenanceDrawerExpanded", Order = 12)] public bool MaintenanceDrawerExpanded { get; set; }
+            [DataMember(Name = "cardsViewByProfile", Order = 13, EmitDefaultValue = false)] public List<ViewSettingDocument> CardsViewByProfile { get; set; }
+            [DataMember(Name = "quickSurfacesByProfile", Order = 14, EmitDefaultValue = false)] public List<QuickSurfacesSettingDocument> QuickSurfacesByProfile { get; set; }
+        }
+
+        [DataContract]
+        private sealed class QuickSurfacesSettingDocument
+        {
+            [DataMember(Name = "profileId", Order = 1)] public string ProfileId { get; set; }
+            [DataMember(Name = "surfaceIds", Order = 2)] public List<string> SurfaceIds { get; set; }
         }
 
         [DataContract]
@@ -247,6 +328,13 @@ namespace PokePixel.CoupledWorkspace
         {
             [DataMember(Name = "profileId", Order = 1)] public string ProfileId { get; set; }
             [DataMember(Name = "factor", Order = 2)] public double Factor { get; set; }
+        }
+
+        [DataContract]
+        private sealed class ViewSettingDocument
+        {
+            [DataMember(Name = "profileId", Order = 1)] public string ProfileId { get; set; }
+            [DataMember(Name = "cards", Order = 2)] public bool Cards { get; set; }
         }
     }
 }
