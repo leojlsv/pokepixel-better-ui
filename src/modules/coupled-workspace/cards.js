@@ -140,6 +140,29 @@ function relativeTime(atMs, locale = "en-US", now = Date.now()) {
   return formatter.format(-Math.floor(delta / 3_600_000), "hour");
 }
 
+function nextRelativeTimeAt(atMs, now) {
+  if (!Number.isFinite(atMs) || atMs < 0) return Infinity;
+  const delta = Math.max(0, now - atMs);
+  const step = delta < 60_000 ? 1000 : delta < 3_600_000 ? 60_000 : 3_600_000;
+  return atMs + (Math.floor(delta / step) + 1) * step;
+}
+
+function refreshRelativeTimes(entries, locale, now) {
+  for (const entry of entries) {
+    const time = entry.time || entry;
+    if (now < time.nextAt) continue;
+    const value = relativeTime(time.atMs, locale, now);
+    if (time.node.textContent !== value) {
+      writeText(time.node, value);
+      if (time.label) {
+        time.node.title = `${time.label}: ${value}`;
+        time.node.setAttribute("aria-label", time.node.title);
+      }
+    }
+    time.nextAt = nextRelativeTimeAt(time.atMs, now);
+  }
+}
+
 function normalizedElements(value) {
   if (!Array.isArray(value)) return [];
   return [...new Set(value.map(type => String(type || "").trim().toLowerCase()).filter(type => pokemonTypes.includes(type)))].slice(0, 2);
@@ -495,15 +518,26 @@ function writeBoolean(node, key, value) {
   if (node && node[key] !== Boolean(value)) node[key] = Boolean(value);
 }
 
+const cardNodeCache = new WeakMap();
+function cardNode(root, selector) {
+  let nodes = cardNodeCache.get(root);
+  if (!nodes) {
+    nodes = new Map();
+    cardNodeCache.set(root, nodes);
+  }
+  if (!nodes.has(selector)) nodes.set(selector, root.querySelector(selector));
+  return nodes.get(selector);
+}
+
 const elementRenderState = new WeakMap();
 
 function setText(root, key, value) {
-  const node = root.querySelector(`[data-card-field="${key}"]`);
+  const node = cardNode(root, `[data-card-field="${key}"]`);
   writeText(node, value);
 }
 
 function setMetric(root, key, display, exact = display, copy = COPY.en) {
-  const node = root.querySelector(`[data-card-field="${key}"]`);
+  const node = cardNode(root, `[data-card-field="${key}"]`);
   if (!node) return;
   writeText(node, display);
   const label = node.parentElement?.querySelector("span")?.textContent?.trim() || key;
@@ -514,7 +548,7 @@ function setMetric(root, key, display, exact = display, copy = COPY.en) {
 }
 
 function renderElements(root, key, types, win, localeKey, copy, { textOnly = false } = {}) {
-  const node = root.querySelector(`[data-card-elements="${key}"]`);
+  const node = cardNode(root, `[data-card-elements="${key}"]`);
   if (!node) return;
   const normalized = normalizedElements(types);
   const icons = textOnly ? null : win?.PokeIdle?.ElementIcons;
@@ -546,7 +580,7 @@ function renderElements(root, key, types, win, localeKey, copy, { textOnly = fal
 }
 
 function renderPlayerMoves(root, state, moves) {
-  const node = root.querySelector("[data-card-player-moves]");
+  const node = cardNode(root, "[data-card-player-moves]");
   if (!node) return;
   const list = Array.isArray(moves) ? moves.slice(0, 4) : [];
   const signature = JSON.stringify(list.map(move => [move.id, move.name, move.element]));
@@ -595,8 +629,8 @@ function captureDetailText(details, copy) {
 }
 
 function setSprite(root, state, key, src, fallbackText = "SEM IMG") {
-  const image = root.querySelector(`[data-card-sprite="${key}"]`);
-  const fallback = root.querySelector(`[data-card-sprite-fallback="${key}"]`);
+  const image = cardNode(root, `[data-card-sprite="${key}"]`);
+  const fallback = cardNode(root, `[data-card-sprite-fallback="${key}"]`);
   if (!image || !fallback) return;
   if (!image.dataset.ppbuiFallbackBound) {
     image.dataset.ppbuiFallbackBound = "true";
@@ -648,7 +682,7 @@ function raritySummary(summary) {
 }
 
 function renderRarity(root, summary, state) {
-  const wrap = root.querySelector("[data-card-rarity-grid]");
+  const wrap = cardNode(root, "[data-card-rarity-grid]");
   if (!wrap) return;
   const copy = state.copy || COPY.en;
   const rarityLabels = state.rarityLabels || RARITY_LABELS.en;
@@ -676,22 +710,93 @@ function renderRarity(root, summary, state) {
   }
 }
 
+function createAttemptEntry(root, attempt, filters, columns, now) {
+  const copy = filters.copy || COPY.en;
+  const locale = filters.locale || copy.locale;
+  const rarityLabels = filters.rarityLabels || RARITY_LABELS.en;
+  const row = root.ownerDocument.createElement("div");
+  row.className = "ppbui-cards-attempt";
+  row.setAttribute("role", "listitem");
+  row.dataset.rarity = attempt.rarity || "unknown";
+  row.dataset.result = attempt.result;
+  row.dataset.shiny = attempt.shiny === true ? "true" : "false";
+  const values = [
+    relativeTime(attempt.atMs, locale, now),
+    knownRarity(attempt.rarity) ? (rarityLabels[attempt.rarity] || text(attempt.rarity)) : "—",
+    text(attempt.species),
+    Number.isFinite(attempt.qualityMultiplier) ? `×${number(attempt.qualityMultiplier, 3, locale)}` : "—",
+    attempt.result === "captured" ? copy.captured : copy.failed,
+    text(attempt.ball),
+    percent(attempt.chance, 3, locale),
+    Number.isFinite(attempt.ivTotal) ? number(attempt.ivTotal, 0, locale) : "—"
+  ];
+  let timeNode = null;
+  let image = null;
+  values.forEach((value, columnIndex) => {
+    const cell = root.ownerDocument.createElement("span");
+    cell.dataset.attemptColumn = String(columnIndex);
+    cell.dataset.label = columns[columnIndex];
+    cell.setAttribute("role", "group");
+    const accessibleValue = columnIndex === 2 && attempt.shiny === true ? `${value} · SHINY` : value;
+    cell.setAttribute("aria-label", `${columns[columnIndex]}: ${accessibleValue}`);
+    cell.title = `${columns[columnIndex]}: ${accessibleValue}`;
+    if (columnIndex === 0) timeNode = cell;
+    if (columnIndex === 2) {
+      cell.className = "ppbui-cards-attempt-pokemon";
+      if (!filters.textOnly) {
+        image = root.ownerDocument.createElement("img");
+        const sprite = requestNativeSpeciesSprite(root.ownerDocument.defaultView, filters, attempt.speciesId, attempt.shiny === true);
+        image.alt = ""; image.setAttribute("aria-hidden", "true");
+        if (sprite) image.src = sprite; else image.hidden = true;
+        cell.append(image);
+      }
+      const name = root.ownerDocument.createElement("strong");
+      name.textContent = `${value}${attempt.shiny === true ? " ✦\u00a0SHINY" : ""}`;
+      cell.append(name);
+    } else cell.textContent = value;
+    row.append(cell);
+  });
+  if (attempt.result === "captured") {
+    const details = root.ownerDocument.createElement("div");
+    details.className = "ppbui-cards-attempt-details";
+    details.dataset.label = copy.genetics;
+    details.textContent = captureDetailText(attempt.captureDetails, copy);
+    row.append(details);
+  }
+  return {
+    key: JSON.stringify(attempt),
+    row,
+    time: { node:timeNode, atMs:attempt.atMs, nextAt:nextRelativeTimeAt(attempt.atMs, now), label:columns[0] },
+    image,
+    speciesId:attempt.speciesId,
+    shiny:attempt.shiny === true,
+  };
+}
+
 function renderAttempts(root, attempts, available, filters) {
-  const body = root.querySelector("[data-card-attempt-body]");
+  const body = cardNode(root, "[data-card-attempt-body]");
   if (!body) return;
   const copy = filters.copy || COPY.en;
-  const rarityLabels = filters.rarityLabels || RARITY_LABELS.en;
   const locale = filters.locale || copy.locale;
-  const rows = Array.isArray(attempts) ? attempts : [];
-  const filtered = rows.filter((attempt) => (
+  const rows = Array.isArray(attempts) ? attempts.filter(attempt => (
+    attempt && typeof attempt === "object" && Number.isFinite(attempt.atMs)
+    && (attempt.result === "captured" || attempt.result === "fled")
+  )) : [];
+  const filtered = rows.filter(attempt => (
     (SPECIAL_RARITY_SET.has(attempt.rarity) ? filters.attemptRarities.has(attempt.rarity) : attempt.shiny === true)
     && (filters.attemptShiny === "" || (filters.attemptShiny === "yes") === (attempt.shiny === true))
     && (filters.attemptResult === "" || filters.attemptResult === attempt.result)
   ));
-  const signature = JSON.stringify([available, filters.localeKey, locale, filters.speciesSpriteRevision, [...filters.attemptRarities].sort(), filters.attemptShiny, filters.attemptResult, rows]);
-  if (body.dataset.signature === signature) return;
-  body.dataset.signature = signature;
-  body.replaceChildren();
+  const signature = JSON.stringify([available, filters.localeKey, locale, filters.speciesSpriteRevision,
+    [...filters.attemptRarities].sort(), filters.attemptShiny, filters.attemptResult, rows]);
+  const now = Date.now();
+  const view = filters.attemptView;
+  if (body.dataset.signature === signature) {
+    refreshRelativeTimes(view.entries, locale, now);
+    return;
+  }
+  const controls = JSON.stringify([filters.localeKey, locale, ...[...filters.attemptRarities].sort(),
+    filters.attemptShiny, filters.attemptResult, filters.textOnly]);
   if (filtered.length === 0) {
     const emptyRow = root.ownerDocument.createElement("div");
     emptyRow.className = "ppbui-cards-empty-row";
@@ -700,72 +805,59 @@ function renderAttempts(root, attempts, available, filters) {
     empty.className = "ppbui-cards-empty";
     empty.textContent = !available
       ? copy.analyzerUnavailable
-      : rows.length
-        ? copy.noFilteredAttempts
-        : copy.noAttempts;
+      : rows.length ? copy.noFilteredAttempts : copy.noAttempts;
     emptyRow.append(empty);
-    body.append(emptyRow);
+    body.replaceChildren(emptyRow);
+    view.entries = [];
+    view.controls = controls;
+    view.spriteRevision = filters.speciesSpriteRevision;
+    body.dataset.signature = signature;
     return;
   }
+  const nextKeys = filtered.map(attempt => JSON.stringify(attempt));
+  const previous = view.controls === controls ? view.entries : [];
+  let prefix = 0;
+  while (prefix < previous.length && prefix < nextKeys.length && previous[prefix].key === nextKeys[prefix]) prefix++;
+  let suffix = 0;
+  while (suffix < previous.length - prefix && suffix < nextKeys.length - prefix
+    && previous[previous.length - suffix - 1].key === nextKeys[nextKeys.length - suffix - 1]) suffix++;
   const columns = [copy.hour, copy.rarity, copy.pokemon, copy.quality, copy.outcome, copy.ball, copy.chance, copy.ivTotal];
-  filtered.forEach((attempt, index) => {
-    const row = root.ownerDocument.createElement("div");
-    row.className = "ppbui-cards-attempt";
-    row.setAttribute("role", "listitem");
-    row.dataset.rarity = attempt.rarity || "unknown";
-    row.dataset.result = attempt.result;
-    row.dataset.shiny = attempt.shiny === true ? "true" : "false";
-    const values = [
-      relativeTime(attempt.atMs, locale),
-      knownRarity(attempt.rarity) ? (rarityLabels[attempt.rarity] || text(attempt.rarity)) : "—",
-      text(attempt.species),
-      Number.isFinite(attempt.qualityMultiplier) ? `×${number(attempt.qualityMultiplier, 3, locale)}` : "—",
-      attempt.result === "captured" ? copy.captured : copy.failed,
-      text(attempt.ball),
-      percent(attempt.chance, 3, locale),
-      Number.isFinite(attempt.ivTotal) ? number(attempt.ivTotal, 0, locale) : "—"
-    ];
-    values.forEach((value, columnIndex) => {
-      const cell = root.ownerDocument.createElement("span");
-      cell.dataset.attemptColumn = String(columnIndex);
-      cell.dataset.label = columns[columnIndex];
-      cell.setAttribute("role", "group");
-      const accessibleValue = columnIndex === 2 && attempt.shiny === true ? `${value} · SHINY` : value;
-      cell.setAttribute("aria-label", `${columns[columnIndex]}: ${accessibleValue}`);
-      cell.title = `${columns[columnIndex]}: ${accessibleValue}`;
-      if (columnIndex === 2) {
-        cell.className = "ppbui-cards-attempt-pokemon";
-        if (!filters.textOnly) {
-          const image = root.ownerDocument.createElement("img");
-          const sprite = requestNativeSpeciesSprite(root.ownerDocument.defaultView, filters, attempt.speciesId, attempt.shiny === true);
-          image.alt = ""; image.setAttribute("aria-hidden", "true");
-          if (sprite) image.src = sprite; else image.hidden = true;
-          cell.append(image);
-        }
-        const name = root.ownerDocument.createElement("strong");
-        name.textContent = `${value}${attempt.shiny === true ? " ✦\u00a0SHINY" : ""}`;
-        cell.append(name);
-      } else cell.textContent = value;
-      row.append(cell);
-    });
-    if (attempt.result === "captured") {
-      const details = root.ownerDocument.createElement("div");
-      details.className = "ppbui-cards-attempt-details";
-      details.dataset.label = copy.genetics;
-      details.textContent = captureDetailText(attempt.captureDetails, copy);
-      row.append(details);
+  const fragment = root.ownerDocument.createDocumentFragment();
+  const inserted = [];
+  for (let index = prefix; index < nextKeys.length - suffix; index++) {
+    const entry = createAttemptEntry(root, filtered[index], filters, columns, now);
+    fragment.append(entry.row);
+    inserted.push(entry);
+  }
+  if (!previous.length) body.replaceChildren(fragment);
+  else {
+    for (let index = prefix; index < previous.length - suffix; index++) previous[index].row.remove();
+    body.insertBefore(fragment, suffix ? previous[previous.length - suffix].row : null);
+  }
+  view.entries = [...previous.slice(0, prefix), ...inserted, ...previous.slice(previous.length - suffix)];
+  view.controls = controls;
+  if (view.spriteRevision !== filters.speciesSpriteRevision && !filters.textOnly) {
+    for (const entry of view.entries) {
+      if (!entry.image) continue;
+      const sprite = requestNativeSpeciesSprite(root.ownerDocument.defaultView, filters, entry.speciesId, entry.shiny);
+      if (!sprite) continue;
+      if (entry.image.getAttribute("src") !== sprite) entry.image.src = sprite;
+      writeBoolean(entry.image, "hidden", false);
     }
-    body.append(row);
-  });
+  }
+  view.spriteRevision = filters.speciesSpriteRevision;
+  body.dataset.signature = signature;
+  refreshRelativeTimes(view.entries, locale, now);
 }
 
 function renderLootHistory(root, lootHistory, available, state) {
-  const body = root.querySelector("[data-card-loot-body]");
+  const body = cardNode(root, "[data-card-loot-body]");
   if (!body) return;
   const copy = state.copy || COPY.en;
   const locale = state.locale || copy.locale;
-  const rows = Array.isArray(lootHistory) ? lootHistory : [];
-  const itemIds = rows.flatMap(row => (row?.items || []).map(item => item?.itemId));
+  const rows = Array.isArray(lootHistory) ? lootHistory.filter(entry => entry && typeof entry === "object" && Number.isFinite(entry.atMs)) : [];
+  const itemsOf = entry => Array.isArray(entry?.items) ? entry.items.filter(item => item && typeof item === "object") : [];
+  const itemIds = rows.flatMap(row => itemsOf(row).map(item => item.itemId));
   if (itemIds.some(Boolean)) requestLootCatalog(root.ownerDocument.defaultView, state, itemIds);
   const itemMeta = item => state.lootCatalog.get(String(item?.itemId || "")) || { itemId:String(item?.itemId || ""), name:String(item?.itemId || ""), rarity:"" };
   const itemMatches = item => {
@@ -773,11 +865,16 @@ function renderLootHistory(root, lootHistory, available, state) {
     const rarity = itemMeta(item).rarity;
     return state.lootRarity === "none" ? !rarity : rarity === state.lootRarity;
   };
-  const filteredRows = state.lootRarity ? rows.filter(row => (row.items || []).some(itemMatches)) : rows;
+  const filteredRows = state.lootRarity ? rows.filter(row => itemsOf(row).some(itemMatches)) : rows;
   const signature = JSON.stringify([available, state.localeKey, locale, state.lootRarity, state.lootCatalogRevision, rows]);
-  if (body.dataset.signature === signature) return;
+  const now = Date.now();
+  if (body.dataset.signature === signature) {
+    refreshRelativeTimes(state.lootTimes, locale, now);
+    return;
+  }
   body.dataset.signature = signature;
   body.replaceChildren();
+  state.lootTimes = [];
   if (filteredRows.length === 0) {
     const emptyRow = root.ownerDocument.createElement("div");
     emptyRow.className = "ppbui-cards-empty-row";
@@ -794,7 +891,8 @@ function renderLootHistory(root, lootHistory, available, state) {
     row.className = "ppbui-cards-loot-row";
     row.setAttribute("role", "listitem");
     const head = root.ownerDocument.createElement("div"); head.className = "ppbui-cards-loot-head";
-    const when = root.ownerDocument.createElement("span"); when.textContent = relativeTime(entry.atMs, locale); when.dataset.label = copy.hour;
+    const when = root.ownerDocument.createElement("span"); when.textContent = relativeTime(entry.atMs, locale, now); when.dataset.label = copy.hour;
+    state.lootTimes.push({ node:when, atMs:entry.atMs, nextAt:nextRelativeTimeAt(entry.atMs, now) });
     const pokemon = root.ownerDocument.createElement("strong"); pokemon.textContent = text(entry.species); pokemon.dataset.label = copy.pokemon;
     const total = root.ownerDocument.createElement("strong");
     const totalDisplay = compactMoney(entry.totalValue, 0, false, locale), totalExact = money(entry.totalValue, 0, false, locale);
@@ -802,7 +900,7 @@ function renderLootHistory(root, lootHistory, available, state) {
     total.title = `${copy.lootTotal}: ${totalExact}`; total.setAttribute("aria-label", total.title);
     head.append(when, pokemon, total);
     const items = root.ownerDocument.createElement("div"); items.className = "ppbui-cards-loot-items"; items.dataset.label = copy.items;
-    const visibleItems = (entry.items || []).filter(itemMatches);
+    const visibleItems = itemsOf(entry).filter(itemMatches);
     if (!visibleItems.length) {
       const empty = root.ownerDocument.createElement("span"); empty.className = "ppbui-cards-loot-item ppbui-cards-loot-item--empty"; empty.textContent = copy.noItems; items.append(empty);
     } else for (const item of visibleItems) {
@@ -822,7 +920,7 @@ function renderLootHistory(root, lootHistory, available, state) {
 }
 
 function setControlStatus(root, key, message, tone = "", source = "") {
-  const node = root.querySelector(`[data-card-control-status="${key}"]`);
+  const node = cardNode(root, `[data-card-control-status="${key}"]`);
   if (!node) return;
   const nextText = String(message || "");
   if (node.textContent !== nextText) node.textContent = nextText;
@@ -844,7 +942,7 @@ function copyableSessionSummary(root, state) {
     [copy.trainerHour, "trainer-xp-hour"],
   ];
   for (const [label, key] of fields) {
-    const field = root.querySelector(`[data-card-field="${key}"]`);
+    const field = cardNode(root, `[data-card-field="${key}"]`);
     const displayed = field?.textContent?.trim();
     if (!displayed || displayed === "—" || displayed === copy.unavailable) continue;
     const exact = field.title?.startsWith(`${copy.exactValue}: `)
@@ -980,7 +1078,7 @@ function applyStaticLocale(root, context) {
   root.querySelectorAll("[data-card-rarity-label]").forEach(node => {
     node.textContent = rarityLabels[node.dataset.cardRarityLabel] || "—";
   });
-  const shiny = root.querySelector("[data-card-attempt-shiny]");
+  const shiny = cardNode(root, "[data-card-attempt-shiny]");
   if (shiny?.options?.length >= 3) {
     shiny.options[0].textContent = copy.all;
     shiny.options[1].textContent = copy.yes;
@@ -988,18 +1086,18 @@ function applyStaticLocale(root, context) {
   }
   const specialRarityLabels = SPECIAL_RARITIES.map(key => rarityLabels[key] || key).join(", ");
   root.setAttribute("aria-label", copy.huntConsole);
-  root.querySelector("[data-card-shortcuts]")?.setAttribute("aria-label", copy.sectionNavigation);
-  root.querySelector(".ppbui-cards-result-filter")?.setAttribute("aria-label", copy.outcome);
-  root.querySelector('[data-card-aria="battle"]')?.setAttribute("aria-label", `${copy.active} / ${copy.target}`);
-  root.querySelector('[data-card-aria="teamRoster"]')?.setAttribute("aria-label", copy.switchPokemon);
-  root.querySelector('[data-card-aria="huntData"]')?.setAttribute("aria-label", copy.huntSummary);
-  root.querySelector('[data-card-aria="historyTable"]')?.setAttribute("aria-label", `${copy.huntStory}: ${specialRarityLabels} + ${copy.shiny}`);
-  root.querySelector('[data-card-aria="lootTable"]')?.setAttribute("aria-label", copy.lootStory);
-  root.querySelector(".ppbui-cards-story-tabs")?.setAttribute("aria-label", copy.history);
-  const rarityFieldset = root.querySelector(".ppbui-cards-rarity-filter fieldset");
+  cardNode(root, "[data-card-shortcuts]")?.setAttribute("aria-label", copy.sectionNavigation);
+  cardNode(root, ".ppbui-cards-result-filter")?.setAttribute("aria-label", copy.outcome);
+  cardNode(root, '[data-card-aria="battle"]')?.setAttribute("aria-label", `${copy.active} / ${copy.target}`);
+  cardNode(root, '[data-card-aria="teamRoster"]')?.setAttribute("aria-label", copy.switchPokemon);
+  cardNode(root, '[data-card-aria="huntData"]')?.setAttribute("aria-label", copy.huntSummary);
+  cardNode(root, '[data-card-aria="historyTable"]')?.setAttribute("aria-label", `${copy.huntStory}: ${specialRarityLabels} + ${copy.shiny}`);
+  cardNode(root, '[data-card-aria="lootTable"]')?.setAttribute("aria-label", copy.lootStory);
+  cardNode(root, ".ppbui-cards-story-tabs")?.setAttribute("aria-label", copy.history);
+  const rarityFieldset = cardNode(root, ".ppbui-cards-rarity-filter fieldset");
   rarityFieldset?.setAttribute("aria-label", `${copy.rarity}: ${specialRarityLabels}. ${copy.shinyFilterHelp}`);
-  root.querySelector("[data-card-player-hp-meter]")?.setAttribute("aria-label", `HP · ${copy.active}`);
-  root.querySelector("[data-card-player-exp-meter]")?.setAttribute("aria-label", `EXP · ${copy.active}`);
+  cardNode(root, "[data-card-player-hp-meter]")?.setAttribute("aria-label", `HP · ${copy.active}`);
+  cardNode(root, "[data-card-player-exp-meter]")?.setAttribute("aria-label", `EXP · ${copy.active}`);
 }
 
 function styles() {
@@ -1010,6 +1108,7 @@ function styles() {
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-combat-art{display:none!important}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-combat-card{grid-template-columns:minmax(0,1fr)}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-element-icon{display:none!important}
+    .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-element i{display:inline}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-meter-row{grid-template-columns:minmax(0,1fr)}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] :is(.ppbui-cards-hp-meter,.ppbui-cards-exp-meter){display:none!important}
     .ppbui-coupled-cards [data-rarity="weak"]{--rarity-color:var(--quality-weak,#878573)}.ppbui-coupled-cards [data-rarity="common"]{--rarity-color:var(--quality-common,#c3d5c7)}.ppbui-coupled-cards [data-rarity="uncommon"]{--rarity-color:var(--quality-uncommon,#55a058)}.ppbui-coupled-cards [data-rarity="rare"]{--rarity-color:var(--quality-rare,#2485a6)}.ppbui-coupled-cards [data-rarity="epic"]{--rarity-color:var(--quality-epic,#e3c054)}.ppbui-coupled-cards [data-rarity="legendary"]{--rarity-color:var(--quality-legendary,#e6928a)}.ppbui-coupled-cards [data-rarity="mythical"]{--rarity-color:var(--quality-mythical,#54bad2)}.ppbui-coupled-cards [data-rarity="unknown"]{--rarity-color:var(--ppbui-border-strong,#6b6543)}
@@ -1072,7 +1171,7 @@ export function createCoupledCards({ win, textOnly = false }) {
   root.innerHTML = markup(initialLocale);
   // Standalone mode scrolls the document and already owns a sticky Cards/Game switch.
   // Its navigation remains unchanged; the compact section shortcuts belong to the host pane.
-  if (textOnly) root.querySelector("[data-card-shortcuts]")?.remove();
+  if (textOnly) cardNode(root, "[data-card-shortcuts]")?.remove();
   (doc.body || doc.documentElement).append(root);
   applyStaticLocale(root, initialLocale);
   const state = {
@@ -1105,6 +1204,8 @@ export function createCoupledCards({ win, textOnly = false }) {
     attemptRarities: new Set(SPECIAL_RARITIES),
     attemptShiny: "",
     attemptResult: "",
+    attemptView: { entries:[], controls:"", spriteRevision:-1 },
+    lootTimes: [],
     storyTab: "hunt",
     summary: null,
     localeKey: initialLocale.key,
@@ -1124,17 +1225,17 @@ export function createCoupledCards({ win, textOnly = false }) {
     textOnly: Boolean(textOnly),
   };
   const rarityFilters = [...root.querySelectorAll("[data-card-attempt-rarity]")];
-  const rarityFilterSummary = root.querySelector("[data-card-attempt-rarity-summary]");
-  const shinyFilter = root.querySelector("[data-card-attempt-shiny]");
+  const rarityFilterSummary = cardNode(root, "[data-card-attempt-rarity-summary]");
+  const shinyFilter = cardNode(root, "[data-card-attempt-shiny]");
   const resultFilters = [...root.querySelectorAll("[data-card-attempt-result]")];
-  const lootRarityFilter = root.querySelector("[data-card-loot-rarity]");
-  const sectionShortcuts = root.querySelector("[data-card-shortcuts]");
-  const copySummaryButton = root.querySelector("[data-card-copy-summary]");
+  const lootRarityFilter = cardNode(root, "[data-card-loot-rarity]");
+  const sectionShortcuts = cardNode(root, "[data-card-shortcuts]");
+  const copySummaryButton = cardNode(root, "[data-card-copy-summary]");
   const storyTabs = [...root.querySelectorAll("[data-card-story-tab]")];
   const storyPanels = [...root.querySelectorAll("[data-card-story-panel]")];
-  const teamList = root.querySelector("[data-card-team-list]");
-  const pauseButton = root.querySelector("[data-card-session-pause]");
-  const resetButton = root.querySelector("[data-card-session-reset]");
+  const teamList = cardNode(root, "[data-card-team-list]");
+  const pauseButton = cardNode(root, "[data-card-session-pause]");
+  const resetButton = cardNode(root, "[data-card-session-reset]");
   let mountedNativeBus = null;
   const usableNativeBus = bus => typeof bus?.on === "function" && typeof bus?.off === "function";
   const busBindings = [];
@@ -1275,10 +1376,10 @@ export function createCoupledCards({ win, textOnly = false }) {
   root.querySelectorAll("[data-card-jump]").forEach(button => button.addEventListener("click", () => {
     if (state.disposed) return;
     const target = {
-      top: root.querySelector(".ppbui-cards-battle"),
-      summary: root.querySelector(".ppbui-cards-card--summary"),
-      economy: root.querySelector(".ppbui-cards-economy"),
-      story: root.querySelector(".ppbui-cards-history"),
+      top: cardNode(root, ".ppbui-cards-battle"),
+      summary: cardNode(root, ".ppbui-cards-card--summary"),
+      economy: cardNode(root, ".ppbui-cards-economy"),
+      story: cardNode(root, ".ppbui-cards-history"),
     }[button.dataset.cardJump];
     if (!target) return;
     const desiredTop = button.dataset.cardJump === "top" ? 0 : Math.max(0,
@@ -1363,7 +1464,7 @@ export function createCoupledCards({ win, textOnly = false }) {
         ?.focus({ preventScroll: true });
     }
     if (!state.teamActionBusy && (!awaitingLeaderSync || (!focusLost && !focusedTeamId))) state.pendingTeamFocusId = "";
-    const teamStatus = root.querySelector('[data-card-control-status="team"]');
+    const teamStatus = cardNode(root, '[data-card-control-status="team"]');
     if (!team.members.length && !state.teamActionBusy) setControlStatus(root, "team", state.copy.teamUnavailable, "error", "availability");
     else if (team.members.length && teamStatus?.dataset.source === "availability") setControlStatus(root, "team", "");
   };
@@ -1460,10 +1561,10 @@ export function createCoupledCards({ win, textOnly = false }) {
     if (!state.textOnly) setSprite(root, state, "player", player?.spriteUrl || "", state.copy.noImage);
     renderElements(root, "player", player?.elements, win, state.localeKey, state.copy, { textOnly: state.textOnly });
     renderPlayerMoves(root, state, player ? requestPlayerMoveset(win, state, player.id) : []);
-    const playerHpRow = root.querySelector("[data-card-player-hp-row]");
-    const playerHpMeter = root.querySelector("[data-card-player-hp-meter]");
-    const playerHpBar = root.querySelector("[data-card-player-hp-bar]");
-    const playerHpValue = root.querySelector("[data-card-player-hp-value]");
+    const playerHpRow = cardNode(root, "[data-card-player-hp-row]");
+    const playerHpMeter = cardNode(root, "[data-card-player-hp-meter]");
+    const playerHpBar = cardNode(root, "[data-card-player-hp-bar]");
+    const playerHpValue = cardNode(root, "[data-card-player-hp-value]");
     const playerHpRatio = player && Number.isFinite(player.hp) && Number.isFinite(player.maxHp) && player.maxHp > 0
       ? Math.max(0, Math.min(1, player.hp / player.maxHp))
       : null;
@@ -1484,10 +1585,10 @@ export function createCoupledCards({ win, textOnly = false }) {
       writeText(playerHpValue, playerHpRatio == null ? "—" : `${compactNumber(player.hp, 0, state.locale)}/${compactNumber(player.maxHp, 0, state.locale)}`);
       playerHpValue.title = playerHpRatio == null ? "" : `${number(player.hp, 0, state.locale)} / ${number(player.maxHp, 0, state.locale)}`;
     }
-    const playerExpRow = root.querySelector("[data-card-player-exp-row]");
-    const playerExpMeter = root.querySelector("[data-card-player-exp-meter]");
-    const playerExpBar = root.querySelector("[data-card-player-exp-bar]");
-    const playerExpValue = root.querySelector("[data-card-player-exp-value]");
+    const playerExpRow = cardNode(root, "[data-card-player-exp-row]");
+    const playerExpMeter = cardNode(root, "[data-card-player-exp-meter]");
+    const playerExpBar = cardNode(root, "[data-card-player-exp-bar]");
+    const playerExpValue = cardNode(root, "[data-card-player-exp-value]");
     const experience = player?.experience || null;
     writeBoolean(playerExpRow, "hidden", !experience);
     if (playerExpBar) playerExpBar.style.width = experience ? `${experience.percent}%` : "0%";
@@ -1558,14 +1659,14 @@ export function createCoupledCards({ win, textOnly = false }) {
       ? levelText(target, huntZone)
       : huntZone ? levelText(null, huntZone) : targetContext ? "Lv. —" : state.copy.noCanonicalTarget;
     setText(root, "target-meta", targetMeta);
-    const targetCard = root.querySelector('[data-card-combat="target"]');
+    const targetCard = cardNode(root, '[data-card-combat="target"]');
     if (targetCard) {
       targetCard.dataset.rarity = target?.rarity || "";
       targetCard.dataset.shiny = target?.shiny === true ? "true" : "false";
     }
-    const shinyBadge = root.querySelector("[data-card-shiny-badge]");
+    const shinyBadge = cardNode(root, "[data-card-shiny-badge]");
     writeBoolean(shinyBadge, "hidden", target?.shiny !== true);
-    const rarityBadge = root.querySelector("[data-card-target-rarity]");
+    const rarityBadge = cardNode(root, "[data-card-target-rarity]");
     if (rarityBadge) {
       writeBoolean(rarityBadge, "hidden", !target?.rarity);
       writeText(rarityBadge, target?.rarity ? (state.rarityLabels[target.rarity] || target.rarity).toUpperCase() : "—");
@@ -1605,7 +1706,7 @@ export function createCoupledCards({ win, textOnly = false }) {
     setMetric(root, "pokemon-xp", compactNumber(summary?.pokemonExp, 0, state.locale), number(summary?.pokemonExp, 0, state.locale), state.copy);
     setMetric(root, "pokemon-xp-hour", compactNumber(summary?.pokemonExpPerHour, 1, state.locale), number(summary?.pokemonExpPerHour, 1, state.locale), state.copy);
     for (const key of ["profit", "profit-hour"]) {
-      const node = root.querySelector(`[data-card-field="${key}"]`);
+      const node = cardNode(root, `[data-card-field="${key}"]`);
       const value = key === "profit" ? summary?.profit : summary?.profitPerHour;
       if (node) node.dataset.tone = Number.isFinite(value) ? (value > 0 ? "positive" : value < 0 ? "negative" : "") : "";
     }
@@ -1618,7 +1719,7 @@ export function createCoupledCards({ win, textOnly = false }) {
     if (state.disposed) return;
     state.mode = mode === "game" ? "game" : "cards";
     root.hidden = state.mode !== "cards";
-    if (state.mode === "cards" && !root.querySelector('[data-card-sprite="player"]')?.getAttribute("src")) {
+    if (state.mode === "cards" && !cardNode(root, '[data-card-sprite="player"]')?.getAttribute("src")) {
       state.playerVisualReader = null;
       state.playerSpriteAttempts = 0;
     }

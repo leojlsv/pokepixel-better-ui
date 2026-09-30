@@ -15,15 +15,19 @@ export function createAutoHelperModule() {
     },
     getMountKey: () => key,
     mount() {
-      const currentRoot = root, currentKey = key, pi = root.ownerDocument.defaultView.PokeIdle;
+      const currentRoot = root, currentKey = key, win = currentRoot.ownerDocument.defaultView;
       const generation = ++mountGeneration;
       if (!session.saver) {
         session.saver = createSettingsSaver(async payload => {
-          const latestResponse = await pi.Api.getHuntSettings();
+          const api = win.PokeIdle?.Api;
+          if (typeof api?.getHuntSettings !== "function" || typeof api?.updateHuntSettings !== "function")
+            throw new Error("Native Auto Helper settings API unavailable");
+          const latestResponse = await api.getHuntSettings();
+          if (win.PokeIdle?.Api !== api) throw new Error("Native Auto Helper settings API changed during save");
           const latest = latestResponse?.data || latestResponse || {};
           const [capture, potion, combat, sell, extract] = payload;
           const merge = (base, patch) => ({ ...(base && typeof base === "object" ? base : {}), ...patch });
-          await pi.Api.updateHuntSettings(
+          await api.updateHuntSettings(
             merge(latest.auto_capture, capture),
             merge(latest.auto_potion, potion),
             combat,
@@ -33,7 +37,7 @@ export function createAutoHelperModule() {
         });
         session.saver.subscribe(() => {
           const state = session.saver.state();
-          if (state.phase === "error" && !root?.isConnected) pi.Toast?.error?.(state.error);
+          if (state.phase === "error" && !root?.isConnected) win.PokeIdle?.Toast?.error?.(state.error);
         });
       }
       const currentMount = mountAutoHelper(root, session);
@@ -48,8 +52,8 @@ export function createAutoHelperModule() {
           void session.saver.flush().then(() => {
             if (mountGeneration !== generation) return;
             if (!currentRoot.isConnected) return;
-            if (session.saver.state().phase === "error") pi.Toast?.error?.(session.saver.state().error);
-            pi.AutoHelper.open();
+            if (session.saver.state().phase === "error") win.PokeIdle?.Toast?.error?.(session.saver.state().error);
+            win.PokeIdle?.AutoHelper?.open?.();
           });
         }
       };

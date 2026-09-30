@@ -18,7 +18,6 @@ import { createTeamPresetsModule, teamPresetsText } from "../modules/team-preset
 import { createPokemonProfileModule, pokemonProfileText } from "../modules/pokemon-profile/index.js";
 import { createCoupledWorkspaceModule } from "../modules/coupled-workspace/index.js";
 import { createStandaloneCardModeModule } from "../modules/coupled-workspace/standalone.js";
-import { createCustomPokeballModule, customPokeballText } from "../modules/custom-pokeball/index.js";
 import { createMarksShopModule } from "../modules/marks-shop/index.js";
 import { shopText } from "../modules/marks-shop/dom.js";
 
@@ -39,7 +38,6 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
   // infrastructure before its host, and the preferences panel last in index.js.
   const entries = [
     toggle(createPokemonHoverModule(), hoverText, false),
-    toggle(createCustomPokeballModule(), customPokeballText),
     toggle(createPokemonProfileModule({ teamPresetStore, movesetStore: teamMovesetStore }), pokemonProfileText),
     { module: menuBarModule, preference: {
       id: menuBarModule.id,

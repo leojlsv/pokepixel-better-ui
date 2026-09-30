@@ -371,7 +371,6 @@ export function mountAutoHelper(root, session) {
   listen(refresh, "click", refreshInventory);
   const onInventory = () => { void refreshInventory(); };
   nativeBus.bind("inventory.updated", onInventory);
-  nativeBus.reconcile();
   async function initialize() {
     loadError = ""; parts.body.inert = true;
     content(saveMessage, autoHelperText(doc).loading); saveState.dataset.state = "loading";
@@ -440,19 +439,30 @@ export function mountAutoHelper(root, session) {
       listen(parts.names, "keyup", () => { session.selection = [parts.names.selectionStart,parts.names.selectionEnd]; });
     } catch (error) { if (alive) { parts.body.inert = wasInert; loadError = error.message; sync(); } }
   }
-  void initialize();
-  return { sync, cleanup() {
+  function cleanup() {
+    if (!alive) return;
     alive = false; session.scroll = parts.body.scrollTop;
-    if (session.saver.state().phase !== "error") void session.saver.flush(); unsubscribe(); listeners.forEach(remove => remove()); nativeBus.cleanup();
-    for (const {el,next} of replacements.reverse()) if (next.parentNode) next.replaceWith(el);
-    for (const {el,anchor} of moves.reverse()) if (anchor.parentNode) anchor.replaceWith(el);
-    owned.forEach(el => el.remove());
-    hiddenWarnings.forEach(({el,hidden}) => {el.hidden=hidden;el.classList.remove("ppbui-auto-original");});
-    if (nativeStatus) { nativeStatus.hidden = false; nativeStatus.classList.remove("ppbui-auto-original"); }
-    hiddenNodes.forEach(({el,hidden})=>{el.hidden=hidden;el.classList.remove("ppbui-auto-original");});
-    hpRow.classList.remove("ppbui-auto-support-condition");
-    parts.support.classList.remove("ppbui-auto-support"); parts.body.inert = wasInert;
-    for (const {el,name} of ownedClasses.reverse()) el.classList.remove(name);
-    root.removeAttribute("data-ppbui-auto-helper");
-  } };
+    if (session.saver.state().phase !== "error") void session.saver.flush(); unsubscribe(); listeners.forEach(remove => remove());
+    try { nativeBus.cleanup(); }
+    finally {
+      for (const {el,next} of replacements.reverse()) if (next.parentNode) next.replaceWith(el);
+      for (const {el,anchor} of moves.reverse()) if (anchor.parentNode) anchor.replaceWith(el);
+      owned.forEach(el => el.remove());
+      hiddenWarnings.forEach(({el,hidden}) => {el.hidden=hidden;el.classList.remove("ppbui-auto-original");});
+      if (nativeStatus) { nativeStatus.hidden = false; nativeStatus.classList.remove("ppbui-auto-original"); }
+      hiddenNodes.forEach(({el,hidden})=>{el.hidden=hidden;el.classList.remove("ppbui-auto-original");});
+      hpRow.classList.remove("ppbui-auto-support-condition");
+      parts.support.classList.remove("ppbui-auto-support"); parts.body.inert = wasInert;
+      for (const {el,name} of ownedClasses.reverse()) el.classList.remove(name);
+      root.removeAttribute("data-ppbui-auto-helper");
+    }
+  }
+  try { nativeBus.reconcile(); }
+  catch (error) {
+    try { cleanup(); }
+    catch (cleanupError) { throw new AggregateError([error, cleanupError], "Auto Helper mount rollback failed"); }
+    throw error;
+  }
+  void initialize();
+  return { sync, cleanup };
 }

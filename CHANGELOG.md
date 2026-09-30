@@ -4,6 +4,29 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **0.2.124 — remoção completa do Custom Pokéball:**
+  por decisão do Product Owner, removidos editor, botão no menu Treinador,
+  configuração de módulo, personalização visual das Poké Balls, integração com
+  `CaptureSequence`, persistência ativa, PNG embutido e testes exclusivos.
+  A captura e as Poké Balls nativas permanecem sob controle do jogo. Preferências
+  antigas armazenadas no navegador tornam-se inertes; um próximo save da lista
+  de módulos descarta a entrada obsoleta. Demais correções do candidato
+  `0.2.123` permanecem. Candidato `0.2.124` aprovado pelo Product Owner em
+  2026-09-30 e designado referência funcional para integração na `main`.
+
+- **0.2.123 — correções da auditoria de `src` (candidato pré-live):**
+  o Auto Helper restaura sua estrutura e o estado `inert` se a inscrição no Bus
+  falhar durante a montagem, permite tentar novamente e salva alterações pela
+  API nativa atual após reidratação. Refresh e resync do Perfil Pokémon
+  invalidam o cache de golpes. O Coupled Workspace limita a descoberta e a
+  execução de ações à toolbar nativa; Hunt/Loot Story atualizam horários
+  relativos sem remontar linhas; os tipos permanecem visíveis no Cards
+  `textOnly` estreito; o histórico completo atualiza registros incrementalmente.
+  Custom Pokéball reconcilia substituições tardias de `CaptureSequence` e usa
+  um diálogo modal com gerenciamento de foco e teclado. Testes sintéticos de
+  regressão cobrem os casos corrigidos. Validação visual e funcional no jogo
+  permanece exclusiva e pendente do Product Owner.
+
 - **0.2.122 — PPTools leader snapshot consistency:** the native attacker reader
   now completes `getTeam()` before requesting the creature list, and performs
   at most one bounded reread when the same identified creature temporarily

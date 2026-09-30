@@ -1,5 +1,9 @@
 # Pokémon Profile — dossiê dedicado
 
+> Nota de atualização (`0.2.124`): a feature Custom Pokéball foi removida por
+> decisão do Product Owner. As referências abaixo a seu PNG e aos testes conjuntos
+> são histórico do freeze `0.2.77`; apenas o ícone do Pokémon Profile permanece.
+
 Status: **Better UI 0.2.77 / candidate76 congelado localmente com o PNG solicitado para o ícone de
 menu do Pokémon Profile, sobre o baseline visual/funcional 0.2.76 já aprovado. Team segue restaurado
 e Profile dedicado; o contrato de layout e comportamento do dossier permanece inalterado.**

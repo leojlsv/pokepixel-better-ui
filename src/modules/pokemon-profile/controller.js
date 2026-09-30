@@ -678,7 +678,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   async function select(id, focusMain=false) { const clean=String(id||"").trim(); if(!clean||!owned.some(creature=>String(creature.id)===clean))return;selectedId=clean;renderPicker();await renderSelected(clean);if(focusMain)main.querySelector("[data-ppbui-profile-name]")?.scrollIntoView?.({block:"nearest"}); }
 
   async function refreshOwned(preferredId=selectedId, strictPreferred=false) {
-    const epoch=++loadEpoch,text=copy();detailCache.clear();pickerState.textContent=text.loading;pickerState.dataset.error="false";refresh.disabled=true;
+    const epoch=++loadEpoch,text=copy();selectionEpoch++;detailCache.clear();movesCache.clear();pickerState.textContent=text.loading;pickerState.dataset.error="false";refresh.disabled=true;
     try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch)return false;owned=next;pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker();main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker();if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
     catch{if(!alive||epoch!==loadEpoch)return;pickerState.textContent=text.loadError;pickerState.dataset.error="true";renderPicker();}
     finally{if(alive&&epoch===loadEpoch)refresh.disabled=false;}

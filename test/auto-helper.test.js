@@ -63,6 +63,81 @@ test("Auto Helper rebinds its native inventory event to the replacement Bus", t 
   s.mounted.cleanup();
   assert.equal(active.size,0);
 });
+test("failed initial Bus subscription restores native DOM and inert before a successful mount retry", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const handlers=new Map();let first=true;
+  s.dom.window.PokeIdle.Bus={
+    on(name,handler){if(first){first=false;throw new Error("transient native Bus");}handlers.set(name,handler);},
+    off(name,handler){if(handlers.get(name)===handler)handlers.delete(name);},
+  };
+  const module=createAutoHelperModule(),grid=s.root.querySelector(".auto-helper-grid"),body=s.root.querySelector(".pokeidle-panel__body");
+  const nativeSections=[...grid.children],originalInert=body.inert;
+  assert.equal(module.shouldMount(),true);
+  assert.throws(()=>module.mount(),/transient native Bus/);
+  assert.equal(body.inert,originalInert,"failed mount must restore native input availability");
+  assert.deepEqual([...grid.children],nativeSections,"native sections must return in their original order");
+  assert.equal(s.root.querySelector(".ppbui-auto-group"),null);
+  assert.equal(s.root.hasAttribute("data-ppbui-auto-helper"),false);
+  assert.equal(handlers.size,0);
+  assert.equal(module.shouldMount(),true,"a new attempt must discover the original native layout");
+  const cleanup=module.mount();await tick();
+  assert.equal(s.root.querySelectorAll(".ppbui-auto-group").length,3);
+  s.root.remove();
+  cleanup();
+  assert.equal(body.inert,originalInert);
+  assert.deepEqual([...grid.children],nativeSections);
+  assert.equal(handlers.size,0);
+});
+test("a persistent Auto Helper saver writes through the currently hydrated native API", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const settings={auto_capture:{},auto_potion:{},auto_sell:{qualities:[]},auto_extract:{qualities:[]}};
+  const writes=[];
+  const originalPokeIdle=s.dom.window.PokeIdle;
+  const withApi=name=>({
+    ...originalPokeIdle,
+    Api:{getHuntSettings:async()=>settings,getInventory:async()=>[],updateHuntSettings:async(...data)=>writes.push({name,data})},
+  });
+  s.dom.window.PokeIdle=withApi("old");
+  const module=createAutoHelperModule();assert.equal(module.shouldMount(),true);
+  const firstCleanup=module.mount();await tick();
+  s.root.remove();firstCleanup();
+  s.root.innerHTML=s.original;s.doc.body.append(s.root);
+  s.dom.window.PokeIdle=withApi("new");
+  assert.equal(module.shouldMount(),true);
+  const nextCleanup=module.mount();await tick();
+  s.root.querySelector(".ppbui-auto-group input[type=checkbox]").click();
+  await tick();await tick();
+  assert.deepEqual(writes.map(write=>write.name),["new"]);
+  s.root.remove();nextCleanup();
+});
+test("a native API swap during settings read prevents stale writes and keeps Retry available", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const settings={auto_capture:{},auto_potion:{},auto_sell:{qualities:[]}};
+  const writes=[];
+  const initialApi={getHuntSettings:async()=>settings,getInventory:async()=>[],updateHuntSettings:async()=>writes.push("old")};
+  const previousPokeIdle=s.dom.window.PokeIdle;
+  s.dom.window.PokeIdle={...previousPokeIdle,Api:initialApi};
+  const module=createAutoHelperModule();assert.equal(module.shouldMount(),true);
+  const cleanup=module.mount();await tick();
+  const pendingRead=deferred();initialApi.getHuntSettings=()=>pendingRead.promise;
+  s.root.querySelector(".ppbui-auto-group input[type=checkbox]").click();
+  s.dom.window.PokeIdle={...previousPokeIdle,Api:{getHuntSettings:async()=>settings,getInventory:async()=>[],updateHuntSettings:async()=>writes.push("new")}};
+  pendingRead.resolve(settings);await tick();
+  assert.deepEqual(writes,[],"settings read from a retired API cannot be committed");
+  assert.equal(s.root.querySelector(".ppbui-auto-save").dataset.state,"error");
+  s.root.querySelector(".ppbui-auto-save button").click();await tick();
+  assert.deepEqual(writes,["new"],"Retry must send the preserved draft through the current API");
+  s.root.remove();cleanup();
+});
 test("slow initialization never exposes native pickers or destination grids", async t => {
   const settingsPending=deferred(), inventoryPending=deferred();
   const s=setup(t,{}, {getHuntSettings:()=>settingsPending.promise,getInventory:()=>inventoryPending.promise});
@@ -206,6 +281,19 @@ test("stale module cleanup cannot reopen Auto Helper over a newer mount on the s
   pending.resolve();await tick();await tick();
   assert.equal(opens,0,"the first cleanup must not reopen the native editor after a newer mount owns the panel");
   s.root.remove();cleanupSecond();
+});
+
+test("module cleanup tolerates a replaced PokeIdle without the native AutoHelper opener", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const module=createAutoHelperModule();assert.equal(module.shouldMount(),true);
+  const cleanup=module.mount();await tick();
+  cleanup();
+  s.doc.defaultView.PokeIdle={...s.doc.defaultView.PokeIdle,AutoHelper:undefined};
+  await tick();
+  assert.equal(s.root.querySelector(".ppbui-auto-group"),null,"native controls remain restored after the detached flush resolves");
 });
 
 test("paused destinations explain disabled master toggles without changing assignments",async t=>{

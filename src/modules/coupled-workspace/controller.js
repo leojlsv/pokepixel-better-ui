@@ -244,12 +244,13 @@ function actionLabel(button) {
 }
 
 function actionAvailable(button) {
+  const toolbar = button?.ownerDocument?.querySelector(config.selectors.toolbar);
   if (!button
+    || !toolbar?.contains(button)
     || button.disabled
     || button.hidden
     || button.getAttribute("aria-hidden") === "true"
     || button.getAttribute("aria-disabled") === "true") return false;
-  const toolbar = button.closest(config.selectors.toolbar);
   for (let node = button; node && node !== toolbar; node = node.parentElement) {
     if (node.hidden || node.getAttribute?.("aria-hidden") === "true") return false;
     if (node.style?.display === "none" || node.style?.visibility === "hidden") return false;
@@ -260,7 +261,8 @@ function actionAvailable(button) {
 function actionSnapshot(doc) {
   const surfaces = [];
   const seen = new Set();
-  for (const button of doc.querySelectorAll(config.selectors.action)) {
+  const toolbar = doc.querySelector(config.selectors.toolbar);
+  for (const button of toolbar?.querySelectorAll(config.selectors.action) || []) {
     const id = String(button.dataset.menuId || "").trim();
     if (!id || seen.has(id)) continue;
     seen.add(id);
@@ -271,7 +273,8 @@ function actionSnapshot(doc) {
 }
 
 function findAction(doc, surfaceId) {
-  for (const button of doc.querySelectorAll(config.selectors.action)) {
+  const toolbar = doc.querySelector(config.selectors.toolbar);
+  for (const button of toolbar?.querySelectorAll(config.selectors.action) || []) {
     if (button.dataset.menuId === surfaceId) return button;
   }
   return null;

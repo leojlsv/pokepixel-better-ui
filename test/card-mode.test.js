@@ -91,6 +91,23 @@ test("standalone userscript mounts Card Mode by default from the Analyzer public
   assert.equal(cards.querySelectorAll(".ppbui-element-icon").length, 0, "text-only Cards does not create type icons");
 });
 
+test("textual Card Mode keeps the only native type labels visible at narrow widths", t => {
+  const { app, doc } = setup(t, {
+    analyzerSummary: {
+      protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+      currentTarget: { speciesId: "charmander", species: "Charmander", elements: ["fire"] },
+    },
+  });
+  app.start();
+  const cards = doc.querySelector('[data-ppbui-text-only="true"]');
+  const target = cards.querySelector('[data-card-elements="target"]');
+  assert.equal(target.querySelector("i")?.textContent, "Fogo");
+  assert.equal(target.querySelector(".ppbui-element-icon"), null);
+  const css = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
+  assert.match(css, /\.ppbui-coupled-cards\[data-ppbui-text-only="true"\] \.ppbui-cards-element i\{display:(?:inline|block|inline-block)/,
+    "text-only labels must override the narrow-width rule hiding icon-mode labels");
+});
+
 test("Cards and Game remain directly switchable without a floating overlay", t => {
   const { app, doc, stop } = setup(t);
   app.start();

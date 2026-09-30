@@ -1917,6 +1917,35 @@ test("host open-surface delegates to the exact native action and fails closed", 
   assert.equal(inventoryClicks, 1, "unknown protocol is ignored");
 });
 
+test("host capabilities and commands never use menu-id impostors outside the native toolbar", t => {
+  const { app, doc, bridge, sent } = setup(t);
+  const native = doc.querySelector('[data-menu-id="inventory"]');
+  const outside = doc.createElement("button");
+  outside.dataset.menuId = "inventory";
+  outside.textContent = "Outside inventory";
+  const fake = doc.createElement("button");
+  fake.dataset.menuId = "fake-surface";
+  fake.textContent = "Not native";
+  doc.body.prepend(fake, outside);
+  let realClicks = 0;
+  let outsideClicks = 0;
+  native.addEventListener("click", () => realClicks++);
+  outside.addEventListener("click", () => outsideClicks++);
+  app.start();
+  const initial = sent.find(message => message.type === "ppbui.coupled.capabilities");
+  assert.equal(initial.surfaces.some(surface => surface.id === "fake-surface"), false);
+  assert.equal(initial.surfaces.find(surface => surface.id === "inventory").label, "Inventory");
+  bridge.send({ protocol: 1, type: "ppbui.coupled.open-surface", surfaceId: "inventory", requestId: "native" });
+  assert.equal(realClicks, 1);
+  assert.equal(outsideClicks, 0);
+  assert.equal(sent.at(-1).ok, true);
+  native.remove();
+  bridge.send({ protocol: 1, type: "ppbui.coupled.open-surface", surfaceId: "inventory", requestId: "missing" });
+  assert.equal(outsideClicks, 0);
+  assert.equal(sent.find(message => message.type === "ppbui.coupled.open-surface-result" && message.requestId === "missing")?.ok,
+    false, "the fallback must not click an outside impostor");
+});
+
 test("capability reconciliation tracks late native availability and cleanup restores standalone state", t => {
   const { app, doc, bridge, sent } = setup(t);
   app.start();

@@ -1,5 +1,9 @@
 # Pokémon Profile / Dossier — dedicated surface
 
+> Update (`0.2.124`): Custom Pokéball has been removed at the Product Owner's
+> request. Its icon and paired test evidence below document the historical
+> `0.2.77` freeze; the Pokémon Profile icon remains in the current implementation.
+
 Status: **Better UI 0.2.77 / candidate76 is locally frozen with the requested Pokémon Profile menu
 PNG applied on top of the approved 0.2.76 Game Palette + Alpha result. Team remains restored and
 Pokémon Profile remains dedicated; the Profile behavior/layout contract is unchanged.**

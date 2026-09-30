@@ -2,7 +2,7 @@ export const moduleControlsConfig = {
   id: "module-controls",
   disclosureStorageKey: "ppbui:module-groups:v1",
   groups: [
-    { id: "interface", modules: ["menu-bar", "buff-strip", "custom-pokeball", "chat", "disable-pokemon-hover"] },
+    { id: "interface", modules: ["menu-bar", "buff-strip", "chat", "disable-pokemon-hover"] },
     { id: "team", modules: ["team", "team-hud", "team-presets"] },
     { id: "activities", modules: ["inventory", "hunts", "marks-shop", "auto-helper", "storage", "trade"] },
   ],

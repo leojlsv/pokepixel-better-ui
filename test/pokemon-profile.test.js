@@ -77,6 +77,26 @@ test("Profile detaches events from the original native Bus and rebinds after reh
   s.mounted.cleanup();
   assert.equal(attached.size, 0, "teardown must detach from the exact registered Bus");
 });
+test("Profile Refresh and state.resynced re-read authoritative current moves instead of a prior cache", async t => {
+  const s=setup(t),nativeRead=s.dom.window.PokeIdle.Api.getMoveset;
+  let reads=0;
+  s.dom.window.PokeIdle.Api.getMoveset=async id=>{
+    const response=await nativeRead(id);
+    if(id!=="bag-1")return response;
+    reads++;
+    return {...response,selected:response.selected.map((move,index)=>index===0?{...move,name:`Earthquake v${reads}`}:move)};
+  };
+  await s.dom.window.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  const current=()=>s.doc.querySelector("[data-ppbui-profile-current] [data-ppbui-profile-move-name]")?.textContent;
+  assert.equal(current(),"Earthquake v1");
+  await s.dom.window.__PPBUI_POKEMON_PROFILE__.refresh();
+  assert.equal(current(),"Earthquake v2","manual Refresh must invalidate successful move reads");
+  s.dom.window.PokeIdle.Bus.emit("state.resynced");
+  for(let attempt=0;attempt<20&&current()!=="Earthquake v3";attempt++)
+    await new Promise(resolve=>s.dom.window.setTimeout(resolve,5));
+  assert.equal(current(),"Earthquake v3","native resync must invalidate successful move reads");
+  assert.equal(reads,3);
+});
 
 function installNativeCardRenderer(s, { labels = {}, nativeNote = false } = {}) {
   const { doc } = s, pokemonCard = s.dom.window.PokeIdle.PokemonCard || {};

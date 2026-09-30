@@ -23,7 +23,7 @@ export const menuBarConfig = Object.freeze({
     open: "is-open",
   },
   groups: [
-    { id: "player", items: ["team", "pokemon-profile", "profile", "custom-pokeball", "encyclopedia", "species-goals", "promotion"] },
+    { id: "player", items: ["team", "pokemon-profile", "profile", "encyclopedia", "species-goals", "promotion"] },
     { id: "city", items: ["npc-shop", "market", "storage", "professions"] },
     { id: "activities", items: ["quests", "battle-pass", "daily-gift"] },
     { id: "events", items: ["event-calendar", "arena-pvp", "world-boss"] },
