@@ -606,8 +606,10 @@ test("Cards mirrors CURRENT expedition heading and does not inherit a Hunt speci
   bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
   const cards = doc.querySelector("[data-ppbui-coupled-cards]");
   const name = cards.querySelector('[data-card-field="target-name"]');
+  const meta = cards.querySelector('[data-card-field="target-meta"]');
   const sprite = cards.querySelector('[data-card-sprite="target"]');
   assert.equal(name.textContent, "EXPEDITION");
+  assert.equal(meta.textContent, "Expedição em andamento", "Expedition never reports a missing canonical Hunt target");
   assert.equal(sprite.hidden, true);
   setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), sessionGeneration: 3, activityKind: "hunt", currentTarget: null, currentSessionSpecies: null });
   app.reconcile();

@@ -17,7 +17,7 @@ const LOOT_CATALOG_RETRY_MS = 5_000;
 const COPY = Object.freeze({
   en: Object.freeze({
     locale: "en-US", unavailable: "Unavailable", waitingTarget: "Waiting for target", noAttempts: "No attempts recorded in this Hunt.", noFilteredAttempts: "No attempts match these filters.", analyzerUnavailable: "Hunt Analyzer data unavailable.",
-    huntConsole: "Hunt console", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
+    huntConsole: "Hunt console", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", expeditionInProgress: "Expedition in progress", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
     huntSummary: "Hunt summary", status: "Status", time: "Time", seen: "Seen", captured: "Captured", failed: "Failed", seenHour: "Seen/h", capturedSeen: "Captured / Seen", rarityCaption: "C/S · ✦ Shiny C/S",
     capture: "Capture", huntRate: "Hunt rate", lastAttemptChance: "Last attempt chance", epicFailed: "Epic+ failed", shinySeen: "Shiny seen", shinyCaptured: "Shiny captured",
     economyXp: "Economy / XP", revenue: "Revenue", totalRevenue: "Total revenue", directGold: "Direct gold", lootValue: "Loot value", autoSell: "Auto-sell", result: "Result", totalProfit: "Total profit", profitHour: "Profit/h", expenses: "Expenses", expensesHour: "Expenses/h", experience: "Experience", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Trainer/h", trainerTotal: "Trainer total",
@@ -33,7 +33,7 @@ const COPY = Object.freeze({
   }),
   pt: Object.freeze({
     locale: "pt-BR", unavailable: "Indisponível", waitingTarget: "Aguardando alvo", noAttempts: "Nenhuma tentativa registrada nesta hunt.", noFilteredAttempts: "Nenhuma tentativa corresponde aos filtros.", analyzerUnavailable: "Dados do Hunt Analyzer indisponíveis.",
-    huntConsole: "Console de hunt", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
+    huntConsole: "Console de hunt", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", expeditionInProgress: "Expedição em andamento", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
     huntSummary: "Resumo da hunt", status: "Status", time: "Tempo", seen: "Vistos", captured: "Capturados", failed: "Falharam", seenHour: "Vistos/h", capturedSeen: "Capturados / Vistos", rarityCaption: "C/V · ✦ Shiny C/V",
     capture: "Captura", huntRate: "Taxa da hunt", lastAttemptChance: "Chance última tentativa", epicFailed: "Epic+ falharam", shinySeen: "Shiny vistos", shinyCaptured: "Shiny capturados",
     economyXp: "Economia / XP", revenue: "Receita", totalRevenue: "Receita total", directGold: "Gold direto", lootValue: "Loot (valor)", autoSell: "Auto-sell", result: "Resultado", totalProfit: "Lucro total", profitHour: "Lucro/h", expenses: "Gastos", expensesHour: "Gastos/h", experience: "Experiência", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Treinador/h", trainerTotal: "Treinador total",
@@ -1102,6 +1102,24 @@ function styles() {
       .ppbui-cards-attempt-pokemon img{width:18px;height:18px;flex-basis:18px}
       .ppbui-cards-attempt-pokemon strong{font-size:11px}
     }
+    /* Narrow WebView2 panes must not spend the available target-label width
+       on three parallel cards. Reflow the layout instead of hiding CURRENT. */
+    @media(max-width:519px){
+      .ppbui-cards-battle{height:auto;max-height:none}
+      .ppbui-cards-battle-pair{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:108px minmax(112px,auto);height:auto;gap:4px}
+      .ppbui-cards-team-switch{grid-column:1/-1;grid-row:1}
+      .ppbui-cards-combat-card--player{grid-column:1;grid-row:2}
+      .ppbui-cards-combat-card--target{grid-column:2;grid-row:2}
+      .ppbui-cards-combat-card{min-height:112px;align-content:center}
+      .ppbui-cards-combat-card strong,.ppbui-cards-combat-card>div:last-child>span{white-space:normal;overflow-wrap:anywhere}
+    }
+    @media(max-width:269px){
+      .ppbui-cards-battle-pair{grid-template-columns:minmax(0,1fr);grid-template-rows:104px minmax(96px,auto) minmax(96px,auto)}
+      .ppbui-cards-team-switch{grid-column:1;grid-row:1}
+      .ppbui-cards-combat-card--player{grid-column:1;grid-row:2}
+      .ppbui-cards-combat-card--target{grid-column:1;grid-row:3}
+      .ppbui-cards-combat-card{min-height:96px}
+    }
     @media(min-width:900px){.ppbui-cards-battle{height:158px}.ppbui-cards-battle-pair{grid-template-columns:minmax(126px,.6fr) minmax(0,1.4fr) minmax(0,1fr);gap:8px}.ppbui-cards-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ppbui-cards-card--overview{min-height:168px}.ppbui-cards-card--rarity{grid-column:auto}.ppbui-cards-economy-groups{grid-template-columns:repeat(3,minmax(0,1fr))}}
   `;
 }
@@ -1589,7 +1607,8 @@ export function createCoupledCards({ win, textOnly = false }) {
     setText(root, "target-name", summary ? (isExpedition ? "EXPEDITION" : target?.species || state.copy.waitingTarget) : state.copy.unavailable);
     setText(root, "target-meta", !summary
       ? state.copy.analyzerUnavailable
-      : liveTarget ? levelText(liveTarget)
+      : isExpedition ? state.copy.expeditionInProgress
+        : liveTarget ? levelText(liveTarget)
         : lastExpeditionSpecies ? state.copy.lastSeenInExpedition
           : lastSeen ? state.copy.lastSeenInHunt : state.copy.noCanonicalTarget);
     const targetCard = cardNode(root, '[data-card-combat="target"]');
