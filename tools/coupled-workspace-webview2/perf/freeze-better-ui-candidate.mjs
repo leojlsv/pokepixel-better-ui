@@ -55,6 +55,11 @@ const hostSources = {
     manifestSha256: "D129A93658C9C6F1E194B3386024B30340D2728A859CB40243F7EF1A3C879D09",
     hostSha256: "709F0010C80E0243D118FC1AF54BC4238F010827F1F75681ED16DFA125B6D0C8",
   },
+  "--host-settings-v09": {
+    id: "cwperf-settings-current-po-20261001-v09",
+    manifestSha256: "8E697F02FCCEA3712CC83BDED326A6EC3E6573AA60B835F597A42017826F4660",
+    hostSha256: "2B634150104E47B0C115ACFD45655507187C323A2B80428B69ED714FF3B82B5B",
+  },
 };
 const hostFile = "tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate.exe";
 const betterUiFile = "dist/pokepixel-better-ui.user.js";
@@ -65,7 +70,7 @@ const analyzerOption = process.argv[4] ?? "";
 if (!campaignId || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,47}$/.test(campaignId) ||
     process.argv.length > 5 || !Object.hasOwn(hostSources, hostOption) ||
     (analyzerOption !== "" && analyzerOption !== "--analyzer-current-source")) {
-  throw new Error("Usage: node freeze-better-ui-candidate.mjs <new-create-only-campaign-id> [--host-001|--host-005|--host-005-v3|--host-005-v5|--host-view-epoch-v6|--host-view-epoch-v7|--host-view-epoch-v9|--host-view-epoch-v14|--host-view-overflow-v17] [--analyzer-current-source]");
+  throw new Error("Usage: node freeze-better-ui-candidate.mjs <new-create-only-campaign-id> [pinned --host-*] [--analyzer-current-source]");
 }
 const buildAnalyzerFromCurrentSource = analyzerOption === "--analyzer-current-source";
 const { id: baselineId, manifestSha256: baselineManifestSha256, hostSha256: originalHostSha256 } = hostSources[hostOption];

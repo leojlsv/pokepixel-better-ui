@@ -808,6 +808,7 @@ namespace PokePixel.CoupledWorkspace
         private readonly bool _evidenceProbeEnabled;
         private readonly WorkspaceState _workspaceState;
         private readonly WorkspaceSettingsStore _settingsStore;
+        private bool _settingsWriteAllowed;
         private string _lastSavedSettingsFingerprint;
         private bool _smokeFocusSaveProbe;
         private AccountPane _smokeCancelNextNavigationPane;
@@ -989,10 +990,12 @@ namespace PokePixel.CoupledWorkspace
             _settingsStore = _shutdownSaveSmokePhase.HasValue
                 ? new WorkspaceSettingsStore(_shutdownSmokeSettingsPath, InjectShutdownSaveFault)
                 : new WorkspaceSettingsStore(_shutdownSmokeSettingsPath);
+            var settingsWriteAllowed = true;
             _workspaceState = _smokeMode
                 ? WorkspaceState.CreateBaseline()
-                : _settingsStore.LoadOrDefault();
-            if (!_smokeMode)
+                : _settingsStore.LoadOrDefault(out settingsWriteAllowed);
+            _settingsWriteAllowed = settingsWriteAllowed;
+            if (!_smokeMode && _settingsWriteAllowed)
                 _lastSavedSettingsFingerprint = _settingsStore.NormalizedFingerprint(_workspaceState);
 
             Text = "PokePixel Coupled Workspace \u2014 WebView2";
@@ -1069,6 +1072,15 @@ namespace PokePixel.CoupledWorkspace
 
             Shown += async delegate
             {
+                if (!_smokeMode && !_settingsWriteAllowed)
+                {
+                    try { WarnAboutUnreadableWorkspaceSettings(this); }
+                    catch (Exception warningError)
+                    {
+                        Console.Error.WriteLine("Workspace settings read warning failed: "
+                            + warningError.GetType().Name);
+                    }
+                }
                 ApplyWorkspaceDpiMetrics();
                 await RunWorkspaceMutationAsync(InitializeAsync);
                 // Actual WinForms/WebView2 focus is not available to a
@@ -1105,7 +1117,13 @@ namespace PokePixel.CoupledWorkspace
                 _webViewFocusedProfileId = null;
                 if (!IsDisposed && !Disposing) UpdateCommandDeck();
             };
-            FormClosing += delegate { BeginShutdown(); };
+            FormClosing += delegate
+            {
+                BeginShutdown();
+                // In the normal host the owner is still a valid, visible HWND.
+                // Cleanup first, then show an owned warning before FormClosed.
+                if (!_smokeMode) CompleteShutdown();
+            };
             FormClosed += delegate { CompleteShutdown(); };
             Resize += delegate
             {
@@ -1143,7 +1161,7 @@ namespace PokePixel.CoupledWorkspace
             // watchdog exclusive to the opt-in synthetic cycle fixture.
             _smokeTimer.Interval = _perfCyclesSmoke ? 240000
                 : _perfVisibleFocusSmoke ? 90000
-                : _perfExtendedVisualSmoke ? 60000 : 12000;
+                : _perfExtendedVisualSmoke ? 90000 : 12000;
             _smokeTimer.Tick += delegate
             {
                 _smokeTimer.Stop();
@@ -1209,13 +1227,55 @@ namespace PokePixel.CoupledWorkspace
             return false;
         }
 
-        private static void WarnAboutUnsavedWorkspaceSettings()
+        private static void WarnAboutUnreadableWorkspaceSettings(IWin32Window owner)
         {
-            // FormClosed has already released the panes, menus and tooltips.
+            MessageBox.Show(
+                owner,
+                "N\u00e3o foi poss\u00edvel ler as prefer\u00eancias existentes.\n"
+                    + "Para proteger o arquivo anterior, altera\u00e7\u00f5es nesta sess\u00e3o n\u00e3o ser\u00e3o salvas.\n"
+                    + "Verifique o acesso ao arquivo e reabra o aplicativo.",
+                "PokePixel Better UI - prefer\u00eancias protegidas",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
+        private static void WarnAboutConcurrentWorkspaceSettings(IWin32Window owner)
+        {
+            MessageBox.Show(
+                owner,
+                "As prefer\u00eancias foram alteradas por outra inst\u00e2ncia do workspace.\n"
+                    + "Para evitar sobrescrever essas altera\u00e7\u00f5es, esta sess\u00e3o deixar\u00e1 de salvar prefer\u00eancias.\n"
+                    + "Feche as outras inst\u00e2ncias e reabra o aplicativo.",
+                "PokePixel Better UI - prefer\u00eancias em conflito",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
+        private static void WarnAboutDisabledWorkspaceSettings(IWin32Window owner)
+        {
+            MessageBox.Show(
+                owner,
+                "N\u00e3o foi poss\u00edvel salvar as prefer\u00eancias do workspace.\n"
+                    + "Para proteger o arquivo existente, esta sess\u00e3o n\u00e3o salvar\u00e1 novas altera\u00e7\u00f5es.\n"
+                    + "Verifique o acesso de grava\u00e7\u00e3o e reabra o aplicativo.",
+                "PokePixel Better UI - grava\u00e7\u00e3o desativada",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
+        private static void WarnAboutUnsavedWorkspaceSettings(IWin32Window owner)
+        {
+            // FormClosing has released the panes, menus and tooltips while its
+            // owner is still valid. The synthetic FormClosed smoke never opens
+            // this dialog. No private paths or exception messages are shown.
             // In a Windows /target:winexe build, stderr is not a user-visible
             // warning. Never include settings paths, profile IDs or exception
             // messages in this final native dialog.
             MessageBox.Show(
+                owner,
                 "N\u00e3o foi poss\u00edvel salvar as prefer\u00eancias do workspace.\n"
                     + "Algumas altera\u00e7\u00f5es recentes podem ter sido perdidas.\n"
                     + "Verifique o acesso de grava\u00e7\u00e3o e tente novamente.",
@@ -1270,7 +1330,7 @@ namespace PokePixel.CoupledWorkspace
                 Environment.ExitCode = 1;
                 if (!_smokeMode && ContainsSettingsShutdownFailure(failures))
                 {
-                    try { WarnAboutUnsavedWorkspaceSettings(); }
+                    try { WarnAboutUnsavedWorkspaceSettings(this); }
                     catch (Exception warningError)
                     {
                         // A failed notification must not undo cleanup or
@@ -5008,7 +5068,8 @@ namespace PokePixel.CoupledWorkspace
 
         private void PersistWorkspaceState(bool allowDuringClosing = false)
         {
-            if ((_smokeMode && !_smokeFocusSaveProbe && !IsShutdownSaveSmoke)
+            if (!_settingsWriteAllowed
+                || (_smokeMode && !_smokeFocusSaveProbe && !IsShutdownSaveSmoke)
                 || (_isClosing && !allowDuringClosing)) return;
 
             if (_workspaceState.Mode == WorkspaceMode.Dual && !_split.Panel2Collapsed)
@@ -5020,8 +5081,7 @@ namespace PokePixel.CoupledWorkspace
 
             var store = _smokeFocusSaveProbe ? _smokeFocusSaveStore : _settingsStore;
             var fingerprint = store.NormalizedFingerprint(_workspaceState);
-            if (!allowDuringClosing && string.Equals(
-                fingerprint, _lastSavedSettingsFingerprint, StringComparison.Ordinal))
+            if (string.Equals(fingerprint, _lastSavedSettingsFingerprint, StringComparison.Ordinal))
                 return;
 
             var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
@@ -5030,6 +5090,33 @@ namespace PokePixel.CoupledWorkspace
                 if (_smokeFocusSaveProbe) _smokeFocusSaveCalls++;
                 store.Save(_workspaceState);
                 _lastSavedSettingsFingerprint = fingerprint;
+            }
+            catch (WorkspaceSettingsConflictException)
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.SettingsSaveFailed);
+                if (_smokeMode || _isClosing) throw;
+                _settingsWriteAllowed = false;
+                try { WarnAboutConcurrentWorkspaceSettings(this); }
+                catch (Exception warningError)
+                {
+                    Console.Error.WriteLine("Workspace settings conflict warning failed: "
+                        + warningError.GetType().Name);
+                }
+            }
+            catch (IOException)
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.SettingsSaveFailed);
+                if (_smokeMode || _isClosing) throw;
+                DisableWorkspaceSettingsWritesAfterSaveError();
+            }
+            catch (UnauthorizedAccessException)
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.SettingsSaveFailed);
+                if (_smokeMode || _isClosing) throw;
+                DisableWorkspaceSettingsWritesAfterSaveError();
             }
             catch
             {
@@ -5041,6 +5128,17 @@ namespace PokePixel.CoupledWorkspace
             {
                 if (_perfMetrics != null)
                     _perfMetrics.Observe(WorkspacePerfSpan.SettingsSave, perfStarted);
+            }
+        }
+
+        private void DisableWorkspaceSettingsWritesAfterSaveError()
+        {
+            _settingsWriteAllowed = false;
+            try { WarnAboutDisabledWorkspaceSettings(this); }
+            catch (Exception warningError)
+            {
+                Console.Error.WriteLine("Workspace settings save warning failed: "
+                    + warningError.GetType().Name);
             }
         }
 
@@ -8330,7 +8428,8 @@ namespace PokePixel.CoupledWorkspace
                 "ended-hunt", "expedition-running", "expedition-paused",
                 "expedition-ended", "new-hunt", "unavailable"
             };
-            var widths = new[] { 235, 320, 390 };
+            // Cover both sides of the 319/320 and 519/520 CSS reflow edges.
+            var widths = new[] { 235, 269, 270, 319, 320, 390, 519, 520 };
             foreach (var scenario in scenarios)
             {
                 foreach (var width in widths)
@@ -8373,15 +8472,30 @@ namespace PokePixel.CoupledWorkspace
                         + "var rarity=root&&root.querySelector('[data-card-target-rarity]');"
                         + "var shiny=root&&root.querySelector('[data-card-shiny-badge]');"
                         + "var target=root&&root.querySelector('[data-card-combat=target]');"
-                        + "if(!root||root.hidden||!name||!kicker||!rarity||!shiny||!target)return false;"
+                        + "var team=root&&root.querySelector('.ppbui-cards-team-switch');"
+                        + "var player=root&&root.querySelector('[data-card-combat=player]');"
+                        + "var meta=root&&root.querySelector('[data-card-field=target-meta]');"
+                        + "if(!root||root.hidden||!name||!kicker||!rarity||!shiny||!target||!team||!player||!meta)return false;"
                         + "var rootBounds=root.getBoundingClientRect();var nameBounds=name.getBoundingClientRect();"
+                        + "var teamBounds=team.getBoundingClientRect();var playerBounds=player.getBoundingClientRect();"
+                        + "var targetBounds=target.getBoundingClientRect();"
+                        + "function wrapsWithin(el,bounds){var range=document.createRange();range.selectNodeContents(el);"
+                        + "return Array.from(range.getClientRects()).every(function(r){return r.left>=bounds.left-1&&r.right<=bounds.right+1&&r.top>=bounds.top-1&&r.bottom<=bounds.bottom+1;});}"
+                        + "var layout=" + width + "<=319?teamBounds.bottom<=playerBounds.top+2&&playerBounds.bottom<=targetBounds.top+2:"
+                        + width + "<=519?teamBounds.bottom<=playerBounds.top+2&&Math.abs(playerBounds.top-targetBounds.top)<3:"
+                        + "Math.abs(teamBounds.top-playerBounds.top)<3&&Math.abs(playerBounds.top-targetBounds.top)<3;"
                         + "return name.textContent.trim()===" + QuoteJs(expectedName)
                         + "&&kicker.textContent.trim()===" + QuoteJs(expectedKicker)
                         + "&&rarity.hidden===" + (expectedNoRarity ? "true" : "false")
                         + "&&shiny.hidden===" + (expectedNoRarity ? "true" : "false")
                         + "&&target.dataset.shiny===" + QuoteJs(expectedNoRarity ? "false" : "true")
                         + "&&Math.abs(rootBounds.width-" + width + ")<5"
-                        + "&&nameBounds.left>=rootBounds.left-1&&nameBounds.right<=rootBounds.right+1;})()";
+                        + "&&nameBounds.left>=rootBounds.left-1&&nameBounds.right<=rootBounds.right+1"
+                        + "&&layout&&root.scrollWidth<=root.clientWidth+" + (width < 320 ? "5" : "1")
+                        + "&&document.body.scrollWidth<=document.body.clientWidth+1"
+                        + "&&document.documentElement.scrollWidth<=document.documentElement.clientWidth+1"
+                        + "&&wrapsWithin(name,targetBounds)&&wrapsWithin(kicker,targetBounds)"
+                        + "&&wrapsWithin(meta,targetBounds);})()";
                     var verified = await pane.View.CoreWebView2.ExecuteScriptAsync(verification);
                     if (!string.Equals(verified, "true", StringComparison.Ordinal))
                     {
@@ -8392,10 +8506,20 @@ namespace PokePixel.CoupledWorkspace
                             + "var rarity=root.querySelector('[data-card-target-rarity]');"
                             + "var shiny=root.querySelector('[data-card-shiny-badge]');"
                             + "var target=root.querySelector('[data-card-combat=target]');"
+                            + "var team=root.querySelector('.ppbui-cards-team-switch');"
+                            + "var player=root.querySelector('[data-card-combat=player]');"
+                            + "var meta=root.querySelector('[data-card-field=target-meta]');"
+                            + "function b(el){if(!el)return null;var r=el.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom};}"
+                            + "function full(el){if(!el||!target)return null;var bounds=target.getBoundingClientRect();"
+                            + "var range=document.createRange();range.selectNodeContents(el);"
+                            + "return Array.from(range.getClientRects()).every(function(r){return r.left>=bounds.left-1&&r.right<=bounds.right+1&&r.top>=bounds.top-1&&r.bottom<=bounds.bottom+1;});}"
                             + "return JSON.stringify({name:name&&name.textContent,kicker:kicker&&kicker.textContent,"
                             + "rarityHidden:rarity&&rarity.hidden,shinyHidden:shiny&&shiny.hidden,"
-                            + "targetShiny:target&&target.dataset.shiny,width:root.getBoundingClientRect().width,"
-                            + "nameRight:name&&name.getBoundingClientRect().right,rootRight:root.getBoundingClientRect().right});})()"
+                            + "targetShiny:target&&target.dataset.shiny,width:root.getBoundingClientRect().width,viewport:innerWidth,"
+                            + "rootScroll:[root.scrollWidth,root.clientWidth],bodyScroll:[document.body.scrollWidth,document.body.clientWidth],"
+                            + "docScroll:[document.documentElement.scrollWidth,document.documentElement.clientWidth],"
+                            + "team:b(team),player:b(player),target:b(target),name:b(name),kicker:b(kicker),meta:b(meta),"
+                            + "nameFull:full(name),kickerFull:full(kicker),metaFull:full(meta)});})()"
                         );
                         throw new InvalidOperationException("CURRENT synthetic Cards data/geometry failed: "
                             + scenario + " " + width + "px, diagnostic=" + diagnosis + ".");
@@ -8970,7 +9094,7 @@ namespace PokePixel.CoupledWorkspace
             int attemptRows;
             int viewportWidth;
             if (!int.TryParse(viewportWidthRaw, out viewportWidth)) viewportWidth = 900;
-            var maximumBattleHeight = viewportWidth <= 269 ? 360
+            var maximumBattleHeight = viewportWidth <= 319 ? 360
                 : viewportWidth <= 519 ? 270 : 164;
             if (!string.Equals(visible, "true", StringComparison.Ordinal)
                 || !int.TryParse(battleHeightRaw, out battleHeight)

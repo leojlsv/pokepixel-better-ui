@@ -1113,7 +1113,15 @@ function styles() {
       .ppbui-cards-combat-card{min-height:112px;align-content:center}
       .ppbui-cards-combat-card strong,.ppbui-cards-combat-card>div:last-child>span{white-space:normal;overflow-wrap:anywhere}
     }
-    @media(max-width:269px){
+    @media(min-width:520px) and (max-width:899px){
+      .ppbui-cards-combat-card strong,.ppbui-cards-combat-card>div:last-child>span{white-space:normal;overflow-wrap:anywhere}
+      .ppbui-cards-combat-kicker{flex-wrap:wrap;overflow:visible}
+    }
+    @media(min-width:520px) and (max-width:640px){
+      .ppbui-cards-elements{flex-wrap:wrap;overflow:visible}
+      .ppbui-cards-element i{white-space:normal;overflow:visible;text-overflow:clip}
+    }
+    @media(max-width:319px){
       .ppbui-cards-battle-pair{grid-template-columns:minmax(0,1fr);grid-template-rows:104px minmax(96px,auto) minmax(96px,auto)}
       .ppbui-cards-team-switch{grid-column:1;grid-row:1}
       .ppbui-cards-combat-card--player{grid-column:1;grid-row:2}

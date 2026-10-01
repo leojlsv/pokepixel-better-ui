@@ -4,17 +4,30 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading;
 
 namespace PokePixel.CoupledWorkspace
 {
     internal enum WorkspaceSavePhase { Create, Flush, Replace }
+
+    internal sealed class WorkspaceSettingsConflictException : IOException
+    {
+        public WorkspaceSettingsConflictException()
+            : base("Workspace settings were changed by another instance; reload before saving.") { }
+    }
 
     internal sealed class WorkspaceSettingsStore
     {
         public const int CurrentVersion = 2;
 
         private readonly string _path;
+        private readonly string _mutexName;
         private readonly Action<WorkspaceSavePhase> _beforeSavePhase;
+        private bool _hasLoadedSnapshot;
+        private bool _unreadableOnLoad;
+        private string _lastDiskContents;
 
         public WorkspaceSettingsStore(string path) : this(path, null) { }
 
@@ -23,6 +36,9 @@ namespace PokePixel.CoupledWorkspace
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Settings path is required.", "path");
             _path = path;
             _beforeSavePhase = beforeSavePhase;
+            using (var sha = SHA256.Create())
+                _mutexName = @"Local\PPBUIWorkspaceSettings_" + BitConverter.ToString(sha.ComputeHash(
+                    Encoding.UTF8.GetBytes(Path.GetFullPath(_path).ToUpperInvariant()))).Replace("-", "");
         }
 
         // The exact serialized, normalized document is the persistence identity.
@@ -38,13 +54,24 @@ namespace PokePixel.CoupledWorkspace
 
         public WorkspaceState LoadOrDefault()
         {
-            if (!File.Exists(_path)) return WorkspaceState.CreateBaseline();
+            bool canSave;
+            return LoadOrDefault(out canSave);
+        }
 
+        // A missing document may be created, but an existing unreadable,
+        // malformed or newer document must never be silently replaced by
+        // defaults on the next routine Save.
+        public WorkspaceState LoadOrDefault(out bool canSave)
+        {
+            canSave = false;
+            _hasLoadedSnapshot = false;
+            _unreadableOnLoad = true;
             try
             {
                 WorkspaceSettingsDocument document;
                 var serializer = CreateSerializer();
-                using (var stream = File.OpenRead(_path))
+                var contents = File.ReadAllBytes(_path);
+                using (var stream = new MemoryStream(contents, false))
                 {
                     document = serializer.ReadObject(stream) as WorkspaceSettingsDocument;
                 }
@@ -52,7 +79,20 @@ namespace PokePixel.CoupledWorkspace
                 if (document == null || (document.Version != 1 && document.Version != CurrentVersion))
                     return WorkspaceState.CreateBaseline();
 
-                return FromDocument(document);
+                var state = FromDocument(document);
+                _lastDiskContents = ContentFingerprint(contents);
+                _hasLoadedSnapshot = true;
+                _unreadableOnLoad = false;
+                canSave = true;
+                return state;
+            }
+            catch (FileNotFoundException)
+            {
+                _lastDiskContents = null;
+                _hasLoadedSnapshot = true;
+                _unreadableOnLoad = false;
+                canSave = true;
+                return WorkspaceState.CreateBaseline();
             }
             catch
             {
@@ -63,36 +103,77 @@ namespace PokePixel.CoupledWorkspace
         public void Save(WorkspaceState state)
         {
             if (state == null) throw new ArgumentNullException("state");
+            if (_unreadableOnLoad)
+                throw new IOException("Existing workspace settings could not be loaded. Restart after recovering them.");
 
             var normalized = Normalize(state);
             var document = ToDocument(normalized);
             var directory = Path.GetDirectoryName(_path);
-            if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+            byte[] contents;
+            using (var serialized = new MemoryStream())
+            {
+                CreateSerializer().WriteObject(serialized, document);
+                contents = serialized.ToArray();
+            }
 
-            var tempPath = _path + ".tmp";
-            try
+            // Cooperating instances in this Windows logon session serialize
+            // changes to the same settings path. The disk snapshot check also
+            // refuses sequential stale writes, even from another session.
+            using (var gate = new Mutex(false, _mutexName))
             {
-                if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Create);
-                using (var stream = File.Create(tempPath))
+                var locked = false;
+                try
                 {
-                    CreateSerializer().WriteObject(stream, document);
-                    if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Flush);
-                    stream.Flush();
+                    try { locked = gate.WaitOne(2000); }
+                    catch (AbandonedMutexException) { locked = true; }
+                    if (!locked) throw new IOException("Timed out waiting to save workspace settings.");
+                    if (_hasLoadedSnapshot && !string.Equals(ReadDiskContents(), _lastDiskContents,
+                        StringComparison.Ordinal))
+                        throw new WorkspaceSettingsConflictException();
+
+                    if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
+                    var tempPath = _path + ".tmp";
+                    try
+                    {
+                        if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Create);
+                        using (var stream = File.Create(tempPath))
+                        {
+                            stream.Write(contents, 0, contents.Length);
+                            if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Flush);
+                            stream.Flush();
+                        }
+                        if (File.Exists(_path))
+                        {
+                            if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Replace);
+                            File.Replace(tempPath, _path, null, true);
+                        }
+                        else File.Move(tempPath, _path);
+
+                        _lastDiskContents = ContentFingerprint(contents);
+                        _hasLoadedSnapshot = true;
+                    }
+                    finally
+                    {
+                        if (File.Exists(tempPath)) File.Delete(tempPath);
+                    }
                 }
-                if (File.Exists(_path))
+                finally
                 {
-                    if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Replace);
-                    File.Replace(tempPath, _path, null, true);
-                }
-                else
-                {
-                    File.Move(tempPath, _path);
+                    if (locked) gate.ReleaseMutex();
                 }
             }
-            finally
-            {
-                if (File.Exists(tempPath)) File.Delete(tempPath);
-            }
+        }
+
+        private string ReadDiskContents()
+        {
+            try { return ContentFingerprint(File.ReadAllBytes(_path)); }
+            catch (FileNotFoundException) { return null; }
+        }
+
+        private static string ContentFingerprint(byte[] contents)
+        {
+            using (var sha = SHA256.Create())
+                return Convert.ToBase64String(sha.ComputeHash(contents));
         }
 
         public WorkspaceState Normalize(WorkspaceState state)

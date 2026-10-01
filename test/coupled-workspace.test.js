@@ -1599,6 +1599,12 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
     "narrow target must retain a visible, textual rarity instead of relying on border color");
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-combat-kicker\{flex-wrap:wrap;overflow:visible;gap:2px\}/,
     "narrow target must allow its rarity and Shiny badges to wrap without clipping");
+  assert.match(css, /@media\(max-width:319px\)\{\s*\.ppbui-cards-battle-pair\{grid-template-columns:minmax\(0,1fr\);grid-template-rows:104px minmax\(96px,auto\) minmax\(96px,auto\)\}/,
+    "panes below the supported 320px minimum stack team/player/target to retain CURRENT labels");
+  assert.match(css, /@media\(min-width:520px\) and \(max-width:899px\)\{\s*\.ppbui-cards-combat-card strong,\.ppbui-cards-combat-card>div:last-child>span\{white-space:normal;overflow-wrap:anywhere\}/,
+    "CURRENT metadata must wrap rather than clip at the first three-column width");
+  assert.match(css, /@media\(min-width:520px\) and \(max-width:640px\)\{\s*\.ppbui-cards-elements\{flex-wrap:wrap;overflow:visible\}/,
+    "element/type labels in the 520px three-column layout wrap instead of truncating");
   assert.match(css, /\.ppbui-cards-rarity-badge,\.ppbui-cards-shiny-badge\{flex:0 0 auto;min-height:13px;padding:1px 2px;font-size:7px!important;/,
     "narrow rarity and Shiny names remain visible at compact text sizes");
   assert.doesNotMatch(css, /\.ppbui-cards-shiny-badge\{[^}]*font-size:0!important/,

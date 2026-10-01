@@ -53,3 +53,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
           & .\tools\coupled-workspace-webview2\Ensure-WebView2Sdk.ps1
           & .\tools\coupled-workspace-webview2\Test-IsolatedBuild.ps1
+
+      - name: Verify settings safety under real Windows file failures
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .\tools\coupled-workspace-webview2\Test-WorkspaceSettingsPhysicalIo.ps1

@@ -4,7 +4,23 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
-- **Cards CURRENT / WebView2 — candidato 0.2.129 (não publicado):** a
+- **Cards CURRENT / persistência Windows — revisão técnica final do candidato
+  `0.2.129` (não publicado):** matriz sintética ampliada para dez estados em
+  235/269/270/319/320/390/519/520 px, com detecção do corte real a 270/520 px.
+  Team/Player/Target agora empilham abaixo de 320 px; acima disso, rótulos,
+  metadados e tipos podem quebrar linha sem desaparecer. A tupla final v19
+  gerou 131 screenshots e passou o smoke. Preferências existentes ilegíveis
+  ficam protegidas contra sobregravação, enquanto snapshots concorrentes
+  acionam conflito seguro; testes físicos de Create/Replace, duas gravações
+  simultâneas e liberação de mutex passaram em diretório temporário. Os avisos
+  WinForms sanitizados distinguem encerramento, falha durante uso e conflito;
+  a caixa de shutdown foi comprovada visível, com owner e Enter em formulário
+  Windows sintético. Novo teste físico integra CI Windows. O contrato CURRENT
+  depende do Analyzer `1.15.1`; validação live do PO e aprovação de release
+  continuam pendentes. Evidências, SHA e limites:
+  `docs/PM_GATE_2026-10-01_CURRENT_VISUAL_PERSISTENCE_V24.md`.
+
+- **Cards CURRENT / WebView2 — candidato inicial 0.2.129, tupla v07 (histórico):** a
   revisão render-first do candidato `0.2.128` encontrou rótulos de última
   espécie e de Expedição cortados em panes estreitos. Cards passou a
   reorganizar Team/ativo/alvo em vez de esconder rótulos: duas linhas em
