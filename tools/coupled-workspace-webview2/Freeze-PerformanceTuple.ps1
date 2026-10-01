@@ -40,7 +40,13 @@ param(
 
     # Optional instrumented candidate built inside the dedicated ignored
     # staging tree. This never reads/replaces the ordinary bin/ executable.
-    [string]$HostSourceFile = ''
+    [string]$HostSourceFile = '',
+
+    # Opt-in reuse of immutable bundles from an earlier *frozen* synthetic
+    # tuple; source/destination hashes remain independently pinned. Neither
+    # the shared dist/ nor the earlier tuple is modified.
+    [string]$BetterUiSourceFile = '',
+    [string]$AnalyzerSourceFile = ''
 )
 
 Set-StrictMode -Version Latest
@@ -57,6 +63,9 @@ if (-not $Smoke -and $SmokeVariant -ne 'basic') {
 }
 if (($Verify -or $Smoke) -and -not $ExpectedManifestSha256) {
     throw '-Verify/-Smoke require an independently pinned -ExpectedManifestSha256.'
+}
+if (-not $Create -and ($BetterUiSourceFile -or $AnalyzerSourceFile)) {
+    throw '-BetterUiSourceFile/-AnalyzerSourceFile are supported only with -Create.'
 }
 
 $toolDir = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -111,6 +120,27 @@ function Assert-NoLink([string]$path) {
     }
 }
 
+function Get-FrozenBundleSource([string]$customSource, [string]$bundleName, [string]$expectedSha256) {
+    if (-not $customSource) {
+        $shared = Join-Path $repoRoot ('dist/' + $bundleName)
+        Assert-NoLink $shared
+        Assert-Hash $shared $expectedSha256
+        return $shared
+    }
+    $full = [IO.Path]::GetFullPath($customSource)
+    $sourcePrefix = [IO.Path]::GetFullPath($campaignsRoot).TrimEnd('\') + '\'
+    $tail = [IO.Path]::Combine('dist', $bundleName)
+    $withinTuples = $full.StartsWith($sourcePrefix, [StringComparison]::OrdinalIgnoreCase)
+    $matchesArtifact = $full.EndsWith(('\' + $tail), [StringComparison]::OrdinalIgnoreCase)
+    $sameCampaign = $full.Equals((Join-Path $campaignRoot $tail), [StringComparison]::OrdinalIgnoreCase)
+    if (-not $withinTuples -or -not $matchesArtifact -or $sameCampaign) {
+        throw 'Frozen bundle source must be a dist artifact in a different, existing CW-PERF tuple.'
+    }
+    Assert-NoLink $full
+    Assert-Hash $full $expectedSha256
+    return $full
+}
+
 function Assert-ManifestAndContents {
     Assert-NoLink $campaignRoot
     Assert-NoLink $manifestPath
@@ -154,8 +184,8 @@ if ($Create) {
 
     # Verify shared inputs *before* creating the destination. Running hosts
     # and userscripts are not rebuilt, overwritten or accessed via the game.
-    Assert-Hash (Join-Path $repoRoot 'dist/pokepixel-better-ui.user.js') $ExpectedBetterUiSha256
-    Assert-Hash (Join-Path $repoRoot 'dist/pokepixel-hunt-analyzer.embed.js') $ExpectedAnalyzerSha256
+    $betterSource = Get-FrozenBundleSource $BetterUiSourceFile 'pokepixel-better-ui.user.js' $ExpectedBetterUiSha256
+    $analyzerSource = Get-FrozenBundleSource $AnalyzerSourceFile 'pokepixel-hunt-analyzer.embed.js' $ExpectedAnalyzerSha256
     $allowedStagingRoot = Join-Path $repoRoot '.local-evidence\coupled-webview2-perf\staging'
     $hostSource = if ($HostSourceFile) {
         $resolved = [IO.Path]::GetFullPath($HostSourceFile)
@@ -173,7 +203,10 @@ if ($Create) {
     }
 
     $items = foreach ($rel in $requiredPaths) {
-        $source = if ($rel -ceq ($binPrefix + $HostExeName)) { $hostSource } else { Join-Path $repoRoot $rel }
+        $source = if ($rel -ceq ($binPrefix + $HostExeName)) { $hostSource }
+            elseif ($rel -ceq 'dist/pokepixel-better-ui.user.js') { $betterSource }
+            elseif ($rel -ceq 'dist/pokepixel-hunt-analyzer.embed.js') { $analyzerSource }
+            else { Join-Path $repoRoot $rel }
         Assert-NoLink $source
         [pscustomobject]@{
             path = $rel
@@ -198,7 +231,10 @@ if ($Create) {
 
     [void][IO.Directory]::CreateDirectory($campaignRoot)
     foreach ($item in $items) {
-        $source = if ($item.path -ceq ($binPrefix + $HostExeName)) { $hostSource } else { Join-Path $repoRoot $item.path }
+        $source = if ($item.path -ceq ($binPrefix + $HostExeName)) { $hostSource }
+            elseif ($item.path -ceq 'dist/pokepixel-better-ui.user.js') { $betterSource }
+            elseif ($item.path -ceq 'dist/pokepixel-hunt-analyzer.embed.js') { $analyzerSource }
+            else { Join-Path $repoRoot $item.path }
         $target = Join-Path $campaignRoot $item.path
         [void][IO.Directory]::CreateDirectory((Split-Path -Parent $target))
         Assert-NoLink $target

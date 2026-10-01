@@ -1201,6 +1201,30 @@ namespace PokePixel.CoupledWorkspace
             }
         }
 
+        private static bool ContainsSettingsShutdownFailure(List<string> failures)
+        {
+            if (failures == null) return false;
+            foreach (var failure in failures)
+                if (failure.StartsWith("settings:", StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        private static void WarnAboutUnsavedWorkspaceSettings()
+        {
+            // FormClosed has already released the panes, menus and tooltips.
+            // In a Windows /target:winexe build, stderr is not a user-visible
+            // warning. Never include settings paths, profile IDs or exception
+            // messages in this final native dialog.
+            MessageBox.Show(
+                "N\u00e3o foi poss\u00edvel salvar as prefer\u00eancias do workspace.\n"
+                    + "Algumas altera\u00e7\u00f5es recentes podem ter sido perdidas.\n"
+                    + "Verifique o acesso de grava\u00e7\u00e3o e tente novamente.",
+                "PokePixel Better UI - prefer\u00eancias n\u00e3o salvas",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+        }
+
         private void CompleteShutdown()
         {
             if (_shutdownCleanupCompleted) return;
@@ -1244,6 +1268,17 @@ namespace PokePixel.CoupledWorkspace
                 foreach (var failure in failures)
                     Console.Error.WriteLine("Workspace shutdown failed: " + failure);
                 Environment.ExitCode = 1;
+                if (!_smokeMode && ContainsSettingsShutdownFailure(failures))
+                {
+                    try { WarnAboutUnsavedWorkspaceSettings(); }
+                    catch (Exception warningError)
+                    {
+                        // A failed notification must not undo cleanup or
+                        // incorrectly change the failing exit code.
+                        Console.Error.WriteLine("Workspace shutdown warning failed: "
+                            + warningError.GetType().Name);
+                    }
+                }
                 return;
             }
 
@@ -1265,9 +1300,11 @@ namespace PokePixel.CoupledWorkspace
             // sequence, not an isolated delegate/disposal stand-in.
             var success = _shutdownSaveSuccessSmoke;
             var expectedOutcome = success
-                ? !_shutdownSmokeFaultArmed && _shutdownSmokeFaultHits == 0 && failures.Count == 0
+                ? !_shutdownSmokeFaultArmed && _shutdownSmokeFaultHits == 0
+                    && failures.Count == 0 && !ContainsSettingsShutdownFailure(failures)
                 : _shutdownSmokeFaultArmed && _shutdownSmokeFaultHits == 1 && failures.Count == 1
-                    && string.Equals(failures[0], "settings:IOException", StringComparison.Ordinal);
+                    && string.Equals(failures[0], "settings:IOException", StringComparison.Ordinal)
+                    && ContainsSettingsShutdownFailure(failures);
             var valid = _shutdownSmokeFixtureReady && expectedOutcome
                 && _shutdownCleanupCompleted && _isClosing && _panesByProfile.Count == 0
                 && _shutdownSmokePanes != null && _shutdownSmokePanes.Length == 2
@@ -8227,6 +8264,10 @@ namespace PokePixel.CoupledWorkspace
             AssertCardsModeShellGeometry("cards-restored-after-game-1180");
             await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-restored-left");
             await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Right), "cards-restored-right");
+            // The general dashboard smoke above deliberately holds one live Hunt
+            // target. Capture the distinct CURRENT-only presentation states in
+            // an isolated, synthetic local page before the maintenance drawer.
+            await CaptureCurrentLifecycleVisualEvidenceAsync(outputDir);
 
             if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
                 _maintenanceDrawer.Dispose();
@@ -8262,6 +8303,122 @@ namespace PokePixel.CoupledWorkspace
             PerformLayout();
             UpdateCommandDeck();
             Application.DoEvents();
+        }
+
+        // Synthetic-only presentation matrix for the allowlisted CURRENT
+        // contract. It runs after the original 51-state visual baseline and
+        // never accesses a PokePixel origin or a real user profile.
+        private async Task CaptureCurrentLifecycleVisualEvidenceAsync(string outputDir)
+        {
+            var pane = GetPaneForSide(PaneSide.Left);
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null
+                || !pane.CardsViewActive)
+                throw new InvalidOperationException("CURRENT visual fixture requires a synthetic Cards pane.");
+
+            ApplyLayoutPreset(0.5);
+            PerformLayout();
+            Application.DoEvents();
+            var previousLeftMin = _split.Panel1MinSize;
+            var previousSplitterDistance = _split.SplitterDistance;
+            // The ordinary host keeps at least 320px per pane. The 235px
+            // diagnostic temporarily narrows only this disposable smoke pane
+            // so CSS viewport breakpoints, not merely a root width override,
+            // are actually exercised. Never save this synthetic split.
+            _split.Panel1MinSize = DpiMetric(200);
+            var scenarios = new[] {
+                "cold-hunt", "live-hunt", "between-hunt", "paused-hunt",
+                "ended-hunt", "expedition-running", "expedition-paused",
+                "expedition-ended", "new-hunt", "unavailable"
+            };
+            var widths = new[] { 235, 320, 390 };
+            foreach (var scenario in scenarios)
+            {
+                foreach (var width in widths)
+                {
+                    _applyingLayout = true;
+                    try { _split.SplitterDistance = DpiMetric(width); }
+                    finally { _applyingLayout = false; }
+                    PerformLayout();
+                    Application.DoEvents();
+                    var script = "(function(){"
+                        + "var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                        + "if(!root||typeof window.__cwVisualSetCurrent!=='function')return false;"
+                        + "root.style.removeProperty('width');root.style.removeProperty('right');root.scrollTop=0;"
+                        + "window.PokeIdle.Localization.get=function(){return 'pt-BR';};"
+                        + "if(!window.__cwVisualSetCurrent(" + QuoteJs(scenario) + "))return false;"
+                        + "var adapter=document[Symbol.for('ppbui.coupled.active-adapter')];"
+                        + "if(!adapter||typeof adapter.sync!=='function')return false;adapter.sync();return true;})()";
+                    var prepared = await pane.View.CoreWebView2.ExecuteScriptAsync(script);
+                    if (!string.Equals(prepared, "true", StringComparison.Ordinal))
+                        throw new InvalidOperationException("Could not prepare CURRENT synthetic state " + scenario + " at " + width + "px.");
+
+                    await Task.Delay(90);
+                    Application.DoEvents();
+                    var expectedName = scenario == "expedition-running" ? "EXPEDITION"
+                        : scenario == "unavailable" ? "Indisponível"
+                        : scenario == "new-hunt" ? "Aguardando alvo"
+                        : scenario == "live-hunt" ? "Charizard"
+                        : scenario.StartsWith("expedition-", StringComparison.Ordinal) ? "Gyarados"
+                        : "Dragonite";
+                    var expectedKicker = scenario == "cold-hunt" || scenario == "between-hunt"
+                        || scenario == "paused-hunt" || scenario == "ended-hunt"
+                        ? "\u00daLTIMO DA HUNT"
+                        : scenario == "expedition-paused" || scenario == "expedition-ended"
+                            ? "\u00daLTIMO DA EXP." : "ALVO";
+                    var expectedNoRarity = scenario != "live-hunt";
+                    var verification = "(function(){"
+                        + "var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                        + "var name=root&&root.querySelector('[data-card-field=target-name]');"
+                        + "var kicker=root&&root.querySelector('[data-card-copy=target]');"
+                        + "var rarity=root&&root.querySelector('[data-card-target-rarity]');"
+                        + "var shiny=root&&root.querySelector('[data-card-shiny-badge]');"
+                        + "var target=root&&root.querySelector('[data-card-combat=target]');"
+                        + "if(!root||root.hidden||!name||!kicker||!rarity||!shiny||!target)return false;"
+                        + "var rootBounds=root.getBoundingClientRect();var nameBounds=name.getBoundingClientRect();"
+                        + "return name.textContent.trim()===" + QuoteJs(expectedName)
+                        + "&&kicker.textContent.trim()===" + QuoteJs(expectedKicker)
+                        + "&&rarity.hidden===" + (expectedNoRarity ? "true" : "false")
+                        + "&&shiny.hidden===" + (expectedNoRarity ? "true" : "false")
+                        + "&&target.dataset.shiny===" + QuoteJs(expectedNoRarity ? "false" : "true")
+                        + "&&Math.abs(rootBounds.width-" + width + ")<5"
+                        + "&&nameBounds.left>=rootBounds.left-1&&nameBounds.right<=rootBounds.right+1;})()";
+                    var verified = await pane.View.CoreWebView2.ExecuteScriptAsync(verification);
+                    if (!string.Equals(verified, "true", StringComparison.Ordinal))
+                    {
+                        var diagnosis = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                            "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                            + "if(!root)return 'missing root';var name=root.querySelector('[data-card-field=target-name]');"
+                            + "var kicker=root.querySelector('[data-card-copy=target]');"
+                            + "var rarity=root.querySelector('[data-card-target-rarity]');"
+                            + "var shiny=root.querySelector('[data-card-shiny-badge]');"
+                            + "var target=root.querySelector('[data-card-combat=target]');"
+                            + "return JSON.stringify({name:name&&name.textContent,kicker:kicker&&kicker.textContent,"
+                            + "rarityHidden:rarity&&rarity.hidden,shinyHidden:shiny&&shiny.hidden,"
+                            + "targetShiny:target&&target.dataset.shiny,width:root.getBoundingClientRect().width,"
+                            + "nameRight:name&&name.getBoundingClientRect().right,rootRight:root.getBoundingClientRect().right});})()"
+                        );
+                        throw new InvalidOperationException("CURRENT synthetic Cards data/geometry failed: "
+                            + scenario + " " + width + "px, diagnostic=" + diagnosis + ".");
+                    }
+                    await CaptureWorkspaceCompositeAsync(
+                        Path.Combine(outputDir, "workspace-current-" + scenario + "-ptbr-" + width + ".png"), false
+                    );
+                }
+            }
+            var restored = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "if(!root)return false;root.style.removeProperty('width');root.style.removeProperty('right');"
+                + "window.PokeIdle.Localization.get=function(){return 'en-US';};"
+                + "window.__cwVisualSetCurrent('live-hunt');"
+                + "document[Symbol.for('ppbui.coupled.active-adapter')].sync();return true;})()"
+            );
+            if (!string.Equals(restored, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("CURRENT fixture could not restore original synthetic Cards state.");
+            _split.Panel1MinSize = previousLeftMin;
+            _applyingLayout = true;
+            try { _split.SplitterDistance = previousSplitterDistance; }
+            finally { _applyingLayout = false; }
+            PerformLayout();
         }
 
         private void CaptureGameDockOverflowVisualSmoke(string outputDir)
@@ -8727,7 +8884,15 @@ namespace PokePixel.CoupledWorkspace
                 + "latestCaptureChance:" + (isRhyxus ? "0.033936651583710405" : "0.004")
                 + ",currentTarget:{speciesId:" + QuoteJs(targetSpeciesId) + ",zoneId:" + QuoteJs(isRhyxus ? "visual-zone-left" : "visual-zone-right") + ",species:" + QuoteJs(targetName) + ",level:" + targetLevel + ",rarity:'epic',shiny:"
                 + (isRhyxus ? "true" : "false") + ",elements:" + (isRhyxus ? "['fire','flying']" : "['dragon','flying']") + ",pokemonExp:" + (isRhyxus ? 4305 : 3920) + "},attemptHistory:attempts.slice(0,32),specialHistory:attempts,lootHistory:lootHistory};"
-                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_PUBLIC__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,getSummary:function(){return Object.assign({},summary,{capturedAtMs:Date.now()-1000,currentTarget:Object.assign({},summary.currentTarget),rarityCounts:Object.fromEntries(Object.entries(summary.rarityCounts).map(function(entry){return [entry[0],Object.assign({},entry[1])];})),attemptHistory:summary.attemptHistory.map(function(item){return Object.assign({},item);}),specialHistory:summary.specialHistory.map(function(item){return Object.assign({},item);}),lootHistory:summary.lootHistory.map(function(item){return Object.assign({},item,{items:(item.items||[]).map(function(entry){return Object.assign({},entry);})});})});}})});"
+                + "var visualBaseTarget=Object.assign({},summary.currentTarget);"
+                + "window.__cwVisualSetCurrent=function(kind){summary.available=true;summary.appVersion='1.15.1';summary.activityKind='hunt';summary.status='running';summary.sessionGeneration=(summary.sessionGeneration||0)+1;summary.startedAtMs=now-300000;summary.endedAtMs=null;summary.currentTarget=null;summary.currentSessionSpecies=null;"
+                + "if(kind==='live-hunt'){summary.currentTarget=Object.assign({},visualBaseTarget);}"
+                + "else if(kind==='cold-hunt'||kind==='between-hunt'){summary.currentSessionSpecies={speciesId:'dragonite',species:'Dragonite'};}"
+                + "else if(kind==='paused-hunt'||kind==='ended-hunt'){summary.currentSessionSpecies={speciesId:'dragonite',species:'Dragonite'};summary.status=kind==='paused-hunt'?'paused':'waiting';if(kind==='ended-hunt')summary.endedAtMs=now-10000;}"
+                + "else if(kind==='expedition-running'){summary.activityKind='expedition';}"
+                + "else if(kind==='expedition-paused'||kind==='expedition-ended'){summary.activityKind='expedition';summary.status=kind==='expedition-paused'?'paused':'waiting';summary.currentSessionSpecies={speciesId:'gyarados',species:'Gyarados'};if(kind==='expedition-ended')summary.endedAtMs=now-10000;}"
+                + "else if(kind==='new-hunt'){}else if(kind==='unavailable'){summary.available=false;}else return false;return true;};"
+                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_PUBLIC__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,getSummary:function(){return Object.assign({},summary,{capturedAtMs:Date.now()-1000,currentTarget:summary.currentTarget?Object.assign({},summary.currentTarget):null,currentSessionSpecies:summary.currentSessionSpecies?Object.assign({},summary.currentSessionSpecies):null,rarityCounts:Object.fromEntries(Object.entries(summary.rarityCounts).map(function(entry){return [entry[0],Object.assign({},entry[1])];})),attemptHistory:summary.attemptHistory.map(function(item){return Object.assign({},item);}),specialHistory:summary.specialHistory.map(function(item){return Object.assign({},item);}),lootHistory:summary.lootHistory.map(function(item){return Object.assign({},item,{items:(item.items||[]).map(function(entry){return Object.assign({},entry);})});})});}})});"
                 + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_CONTROL__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,act:function(action){return Promise.resolve({ok:action==='pause'||action==='resume'||action==='reset'});}})});"
                 + "})();\n";
             await pane.View.CoreWebView2.ExecuteScriptAsync(setup + _betterUiScript);
@@ -8757,6 +8922,7 @@ namespace PokePixel.CoupledWorkspace
             var battleHeightRaw = await pane.View.CoreWebView2.ExecuteScriptAsync(
                 "(function(){var node=document.querySelector('.ppbui-cards-battle');return node?Math.round(node.getBoundingClientRect().height):-1;})()"
             );
+            var viewportWidthRaw = await pane.View.CoreWebView2.ExecuteScriptAsync("window.innerWidth");
             var overflow = await pane.View.CoreWebView2.ExecuteScriptAsync(
                 "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');return Boolean(root&&root.scrollWidth>root.clientWidth+1);})()"
             );
@@ -8802,10 +8968,14 @@ namespace PokePixel.CoupledWorkspace
                 );
             int battleHeight;
             int attemptRows;
+            int viewportWidth;
+            if (!int.TryParse(viewportWidthRaw, out viewportWidth)) viewportWidth = 900;
+            var maximumBattleHeight = viewportWidth <= 269 ? 360
+                : viewportWidth <= 519 ? 270 : 164;
             if (!string.Equals(visible, "true", StringComparison.Ordinal)
                 || !int.TryParse(battleHeightRaw, out battleHeight)
                 || battleHeight <= 0
-                || battleHeight > 164
+                || battleHeight > maximumBattleHeight
                 || !string.Equals(overflow, "false", StringComparison.Ordinal)
                 || !int.TryParse(attemptRowsRaw, out attemptRows)
                 || attemptRows != 40
