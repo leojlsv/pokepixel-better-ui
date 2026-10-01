@@ -57,6 +57,25 @@ O par de código de interface/Analyzer é idêntico às fontes atualmente editad
 exceto pelos caminhos sintéticos exclusivos do host; o manifesto mantém a
 proveniência completa da compilação.
 
+**Conferência posterior ao commit:** todos os sete arquivos declarados em
+`featureSourceProvenance` e os dez arquivos C# declarados em
+`hostBuildProvenance.csharpSources` mantêm os mesmos hashes SHA-256 das
+fontes agora commitadas no branch. O sinal `sourceWorktreeDirty=true` do
+manifesto é uma fotografia do momento do freeze, anterior ao commit, e não
+autoriza alterar silenciosamente os bytes congelados.
+
+**Parecer independente final da tupla exata v07:** Visual QA render-first
+abriu 15 dos 30 PNG CURRENT, cobrindo cold Hunt, Expedition running,
+Expedition paused, live Hunt e New Hunt em 235/320/390px. Comparou essas
+imagens com a v06; não observou regressão perceptível da troca de versão nem
+truncamento de rótulos/espécies/metadados no topo do Cards. **VISUAL READY
+somente para o topo estático, nas imagens/estados examinados; P0=0/P1=0
+nesse recorte.** Não equivale a `UX READY`, `VISUAL READY` global ou prova de
+transições reais. P2 delimitados: tipografia pequena e maior scroll vertical
+diagnóstico a 235px, thresholds 269/270 e 519/520 ainda não fotografados,
+larguras maiores, múltiplos idiomas, zoom/DPI e foco/ARIA/teclado não
+verificados por esse parecer.
+
 **Tentativas históricas não apagadas nem promovidas a PASS:** v01/v02 foram
 reprovadas por validação de tamanho de pane equivocada ou abertura intermitente
 do Overflow; v03/v04 chegaram a produzir 30 PNG, mas Visual QA encontrou
@@ -89,8 +108,10 @@ evidência técnica e não substituem inspeção visual independente nem o PO li
 A aprovação textual do PO sobre v20/`0.2.128` **não se transfere automaticamente**
 ao código responsivo/host da versão `0.2.129`. Antes de merge/tag/release:
 
-1. Reabrir as imagens da tupla exata v07 em Visual QA independente (inclusive
-   o P1 de clipping original); manter resultados de UX interativa separados.
+1. **Visual estático delimitado concluído** no topo do Cards v07, sem P0/P1
+   no conjunto analisado. Completar, se necessário, thresholds de breakpoint,
+   telas circundantes e UX interativa independente; não promover o veredito
+   estático a um aceite global.
 2. PO validar instalação exata de Analyzer `1.15.1` + Better UI `0.2.129`
    em login frio, Hunt→Expedition→Hunt, paused/End→Resume, Game↔Cards, F5 e
    seleção de contas/menus, sem automação de gameplay por agentes.
