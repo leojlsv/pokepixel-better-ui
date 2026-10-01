@@ -7,16 +7,33 @@ using System.Runtime.Serialization.Json;
 
 namespace PokePixel.CoupledWorkspace
 {
+    internal enum WorkspaceSavePhase { Create, Flush, Replace }
+
     internal sealed class WorkspaceSettingsStore
     {
         public const int CurrentVersion = 2;
 
         private readonly string _path;
+        private readonly Action<WorkspaceSavePhase> _beforeSavePhase;
 
-        public WorkspaceSettingsStore(string path)
+        public WorkspaceSettingsStore(string path) : this(path, null) { }
+
+        internal WorkspaceSettingsStore(string path, Action<WorkspaceSavePhase> beforeSavePhase)
         {
             if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Settings path is required.", "path");
             _path = path;
+            _beforeSavePhase = beforeSavePhase;
+        }
+
+        // The exact serialized, normalized document is the persistence identity.
+        // A freshly cloned or reordered caller dictionary cannot invalidate it.
+        internal string NormalizedFingerprint(WorkspaceState state)
+        {
+            using (var stream = new MemoryStream())
+            {
+                CreateSerializer().WriteObject(stream, ToDocument(Normalize(state)));
+                return Convert.ToBase64String(stream.ToArray());
+            }
         }
 
         public WorkspaceState LoadOrDefault()
@@ -53,17 +70,18 @@ namespace PokePixel.CoupledWorkspace
             if (!string.IsNullOrEmpty(directory)) Directory.CreateDirectory(directory);
 
             var tempPath = _path + ".tmp";
-            var serializer = CreateSerializer();
-            using (var stream = File.Create(tempPath))
-            {
-                serializer.WriteObject(stream, document);
-                stream.Flush();
-            }
-
             try
             {
+                if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Create);
+                using (var stream = File.Create(tempPath))
+                {
+                    CreateSerializer().WriteObject(stream, document);
+                    if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Flush);
+                    stream.Flush();
+                }
                 if (File.Exists(_path))
                 {
+                    if (_beforeSavePhase != null) _beforeSavePhase(WorkspaceSavePhase.Replace);
                     File.Replace(tempPath, _path, null, true);
                 }
                 else

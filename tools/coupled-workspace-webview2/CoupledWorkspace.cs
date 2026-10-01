@@ -791,12 +791,44 @@ namespace PokePixel.CoupledWorkspace
 
         private readonly string _baseDir;
         private readonly bool _smokeMode;
+        private readonly bool _perfBaselineSmoke;
+        private readonly bool _perfCyclesSmoke;
+        private readonly bool _perfIdleSmoke;
+        private readonly bool _perfIdleGame;
+        private readonly bool _perfIdleMixed;
+        private readonly bool _perfIdlePreflightSmoke;
+        private readonly bool _perfVisibleFocusSmoke;
+        private readonly bool _perfExtendedVisualSmoke;
+        private readonly WorkspaceSavePhase? _shutdownSaveSmokePhase;
+        private readonly bool _shutdownSaveSuccessSmoke;
+        private bool IsShutdownSaveSmoke { get { return _shutdownSaveSmokePhase.HasValue || _shutdownSaveSuccessSmoke; } }
+        private string ShutdownSaveSmokeLabel { get { return _shutdownSaveSuccessSmoke ? "success" : _shutdownSaveSmokePhase.Value.ToString().ToLowerInvariant(); } }
         private readonly bool _shutdownDuringInitSmoke;
         private readonly bool _shutdownDuringSwitchSmoke;
         private readonly bool _evidenceProbeEnabled;
         private readonly WorkspaceState _workspaceState;
         private readonly WorkspaceSettingsStore _settingsStore;
+        private string _lastSavedSettingsFingerprint;
+        private bool _smokeFocusSaveProbe;
+        private AccountPane _smokeCancelNextNavigationPane;
+        private int _smokeResyncFailuresRemaining;
+        private int _smokeResyncPostCount;
+        private WorkspaceSettingsStore _smokeFocusSaveStore;
+        private WorkspaceSavePhase? _smokeSaveFaultPhase;
+        private int _smokeFocusSaveCalls;
+        private readonly string _shutdownSmokeSettingsPath;
+        private bool _shutdownSmokeFaultArmed;
+        private int _shutdownSmokeFaultHits;
+        private bool _shutdownSmokeFixtureReady;
+        private AccountPane[] _shutdownSmokePanes;
+        private byte[] _shutdownSmokeOriginalSettings;
+        private string _shutdownSmokeOriginalFingerprint;
+        private double _shutdownSmokeExpectedRatio;
+        private bool _shutdownSmokeMenuDisposed;
+        private bool _shutdownSmokeTimerDisposed;
+        private bool _shutdownSmokeToolTipDisposed;
         private readonly string _dataRoot;
+        private readonly WorkspacePerfMetrics _perfMetrics;
         private readonly PptoolsBackgroundExecutor _pptoolsExecutor;
         private readonly SemaphoreSlim _pptoolsEnvironmentGate = new SemaphoreSlim(2, 2);
         private sealed class PptoolsPendingRequest
@@ -837,6 +869,7 @@ namespace PokePixel.CoupledWorkspace
         private Button _gameViewButton;
         private Button _gameDockOverflowButton;
         private ContextMenuStrip _gameDockOverflowMenu;
+        private string _gameDockOverflowSignature;
         private Label _gameDockAvailabilityLabel;
         private FlowLayoutPanel _leftCommandGroup;
         private FlowLayoutPanel _rightCommandGroup;
@@ -886,6 +919,11 @@ namespace PokePixel.CoupledWorkspace
         private string _huntAnalyzerScript;
         private string _evidenceProbeScript;
         private string _webViewFocusedProfileId;
+        private int _perfFocusRequestedCycle;
+        private int _perfFocusReceived;
+        private int _perfFocusCompleted;
+        private int _perfFocusLastCompletedCycle;
+        private string _perfFocusLastCompletedProfile;
         private int _bridgeRequestSequence;
         private bool _applyingLayout;
         private bool _updatingCommandDeck;
@@ -900,31 +938,62 @@ namespace PokePixel.CoupledWorkspace
             bool shutdownDuringInitSmoke,
             bool shutdownDuringSwitchSmoke,
             bool evidenceProbeEnabled,
-            bool pptoolsBackgroundEnabled
+            bool pptoolsBackgroundEnabled,
+            bool perfMetricsEnabled,
+            bool perfBaselineSmoke,
+            bool perfCyclesSmoke,
+            bool perfIdleSmoke,
+            bool perfIdleGame,
+            bool perfIdleMixed,
+            bool perfIdlePreflightSmoke,
+            bool perfVisibleFocusSmoke,
+            bool perfExtendedVisualSmoke,
+            WorkspaceSavePhase? shutdownSaveSmokePhase,
+            bool shutdownSaveSuccessSmoke
         )
         {
             _baseDir = baseDir;
             _smokeMode = smokeMode;
+            _shutdownSaveSmokePhase = smokeMode ? shutdownSaveSmokePhase : null;
+            _shutdownSaveSuccessSmoke = smokeMode && shutdownSaveSuccessSmoke;
+            _perfBaselineSmoke = smokeMode && (perfBaselineSmoke || perfCyclesSmoke);
+            _perfCyclesSmoke = smokeMode && perfCyclesSmoke;
+            _perfIdleSmoke = smokeMode && perfIdleSmoke;
+            _perfIdleGame = _perfIdleSmoke && perfIdleGame;
+            _perfIdleMixed = _perfIdleSmoke && perfIdleMixed;
+            _perfIdlePreflightSmoke = smokeMode && perfIdlePreflightSmoke;
+            _perfVisibleFocusSmoke = smokeMode && perfVisibleFocusSmoke;
+            _perfExtendedVisualSmoke = smokeMode && perfExtendedVisualSmoke;
+            _perfMetrics = perfMetricsEnabled ? new WorkspacePerfMetrics() : null;
             _shutdownDuringInitSmoke = shutdownDuringInitSmoke;
             _shutdownDuringSwitchSmoke = shutdownDuringSwitchSmoke;
             _evidenceProbeEnabled = evidenceProbeEnabled && !smokeMode;
             ProfileRegistry.Validate();
             var stateRoot = _smokeMode
-                ? Path.Combine(_baseDir, "smoke", "runtime-state")
+                ? IsShutdownSaveSmoke
+                    ? Path.Combine(_baseDir, "smoke", "shutdown-save-" + ShutdownSaveSmokeLabel)
+                    : Path.Combine(_baseDir, "smoke", "runtime-state")
                 : Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "PokePixelCoupledWorkspace"
                 );
             Directory.CreateDirectory(stateRoot);
             _dataRoot = _smokeMode
-                ? Path.Combine(_baseDir, "smoke-user-data")
+                ? IsShutdownSaveSmoke
+                    ? Path.Combine(_baseDir, "smoke-user-data-shutdown-" + ShutdownSaveSmokeLabel)
+                    : Path.Combine(_baseDir, "smoke-user-data")
                 : stateRoot;
             Directory.CreateDirectory(_dataRoot);
             _pptoolsExecutor = new PptoolsBackgroundExecutor(_baseDir, _dataRoot, pptoolsBackgroundEnabled);
-            _settingsStore = new WorkspaceSettingsStore(Path.Combine(stateRoot, "workspace.json"));
+            _shutdownSmokeSettingsPath = Path.Combine(stateRoot, "workspace.json");
+            _settingsStore = _shutdownSaveSmokePhase.HasValue
+                ? new WorkspaceSettingsStore(_shutdownSmokeSettingsPath, InjectShutdownSaveFault)
+                : new WorkspaceSettingsStore(_shutdownSmokeSettingsPath);
             _workspaceState = _smokeMode
                 ? WorkspaceState.CreateBaseline()
                 : _settingsStore.LoadOrDefault();
+            if (!_smokeMode)
+                _lastSavedSettingsFingerprint = _settingsStore.NormalizedFingerprint(_workspaceState);
 
             Text = "PokePixel Coupled Workspace \u2014 WebView2";
             BackColor = WorkspaceChrome.Window;
@@ -937,11 +1006,19 @@ namespace PokePixel.CoupledWorkspace
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9.0f, FontStyle.Regular);
             _toolTip = new ToolTip();
+            if (IsShutdownSaveSmoke)
+                _toolTip.Disposed += delegate { _shutdownSmokeToolTipDisposed = true; };
 
             if (_smokeMode)
             {
                 ShowInTaskbar = false;
-                Opacity = 0;
+                Opacity = _perfVisibleFocusSmoke ? 1 : 0;
+                if (_perfVisibleFocusSmoke)
+                {
+                    Text = "CW-PERF-001 SYNTHETIC FOCUS / LOCAL HTML ONLY";
+                    Width = 1180;
+                    Height = 650;
+                }
             }
 
             var root = new TableLayoutPanel();
@@ -985,6 +1062,8 @@ namespace PokePixel.CoupledWorkspace
             _split.Panel2.Controls.Add(_rightHost);
 
             _gameDock = BuildGameDock();
+            if (IsShutdownSaveSmoke)
+                _gameDockOverflowMenu.Disposed += delegate { _shutdownSmokeMenuDisposed = true; };
             root.Controls.Add(_gameDock, 0, 2);
             UpdateGameDock();
 
@@ -992,6 +1071,39 @@ namespace PokePixel.CoupledWorkspace
             {
                 ApplyWorkspaceDpiMetrics();
                 await RunWorkspaceMutationAsync(InitializeAsync);
+                // Actual WinForms/WebView2 focus is not available to a
+                // zero-opacity synthetic form. Test a short, explicitly
+                // visible *local-fixture* form only after startup releases
+                // the normal mutation semaphore, never inside the gate.
+                if (_perfVisibleFocusSmoke && !_isClosing)
+                {
+                    try
+                    {
+                        await RunVisibleSyntheticFocusSmokeAsync();
+                        _smokeTimer.Stop();
+                        Console.WriteLine("CW-PERF-001 visible local WebView2 GotFocus: 20/20 processed with owner PASS (visual smoke NOT RUN)");
+                        Environment.ExitCode = 0;
+                        Close();
+                    }
+                    catch (Exception ex)
+                    {
+                        if (_isClosing) return;
+                        Console.Error.WriteLine(ex);
+                        Environment.ExitCode = 1;
+                        Close();
+                    }
+                }
+            };
+            Deactivate += delegate
+            {
+                if (_isClosing || _webViewFocusedProfileId == null) return;
+                // After native Chromium owns focus, the outer WinForms
+                // WebView2 wrapper is no longer Focused and may not receive
+                // another LostFocus when the entire host is deactivated.
+                // A different foreground window must clear only the focus
+                // cue/owner, never the selected account or gameplay state.
+                _webViewFocusedProfileId = null;
+                if (!IsDisposed && !Disposing) UpdateCommandDeck();
             };
             FormClosing += delegate { BeginShutdown(); };
             FormClosed += delegate { CompleteShutdown(); };
@@ -1024,14 +1136,21 @@ namespace PokePixel.CoupledWorkspace
             };
 
             _smokeTimer = new System.Windows.Forms.Timer();
-            _smokeTimer.Interval = 12000;
+            if (IsShutdownSaveSmoke)
+                _smokeTimer.Disposed += delegate { _shutdownSmokeTimerDisposed = true; };
+            // Twenty same-process WebView2 rebuild cycles can legitimately
+            // exceed the short ordinary smoke budget. Keep this extended
+            // watchdog exclusive to the opt-in synthetic cycle fixture.
+            _smokeTimer.Interval = _perfCyclesSmoke ? 240000
+                : _perfVisibleFocusSmoke ? 90000
+                : _perfExtendedVisualSmoke ? 60000 : 12000;
             _smokeTimer.Tick += delegate
             {
                 _smokeTimer.Stop();
                 if (_smokeMode)
                 {
                     Console.Error.WriteLine("WebView2 smoke timed out.");
-                    Environment.ExitCode = 1;
+                    Environment.ExitCode = IsShutdownSaveSmoke ? 4 : 1;
                     Close();
                 }
             };
@@ -1060,28 +1179,73 @@ namespace PokePixel.CoupledWorkspace
             _toolTip.RemoveAll();
         }
 
+        // This callback exists only in the explicit synthetic shutdown fixture.
+        // It simulates an exception immediately BEFORE the named filesystem
+        // operation; it does not claim to induce a Windows kernel I/O failure.
+        private void InjectShutdownSaveFault(WorkspaceSavePhase phase)
+        {
+            if (!_shutdownSmokeFaultArmed || !_shutdownSaveSmokePhase.HasValue
+                || phase != _shutdownSaveSmokePhase.Value) return;
+            _shutdownSmokeFaultHits++;
+            throw new IOException("Synthetic shutdown settings failure at " + phase);
+        }
+
+        private static void CompleteShutdownStep(string name, Action operation, List<string> failures)
+        {
+            try { operation(); }
+            catch (Exception error)
+            {
+                // Do not print exception messages: settings paths may contain
+                // private account names. No failed step may block later disposal.
+                failures.Add(name + ":" + error.GetType().Name);
+            }
+        }
+
         private void CompleteShutdown()
         {
             if (_shutdownCleanupCompleted) return;
             _shutdownCleanupCompleted = true;
-            if (!_isClosing) BeginShutdown();
-
-            if (!_smokeMode) PersistWorkspaceState(true);
+            var failures = new List<string>();
+            if (!_isClosing)
+                CompleteShutdownStep("begin", BeginShutdown, failures);
+            if (!_smokeMode || IsShutdownSaveSmoke)
+                CompleteShutdownStep("settings", () => PersistWorkspaceState(true), failures);
 
             var panes = new List<AccountPane>(_panesByProfile.Values);
             _panesByProfile.Clear();
             foreach (var pane in panes)
-                pane.Dispose();
+                CompleteShutdownStep("pane", pane.Dispose, failures);
 
             if (_maintenanceDrawer != null && !_maintenanceDrawer.IsDisposed)
-                _maintenanceDrawer.Dispose();
+                CompleteShutdownStep("drawer", _maintenanceDrawer.Dispose, failures);
             if (_gameDockOverflowMenu != null && !_gameDockOverflowMenu.IsDisposed)
-                _gameDockOverflowMenu.Dispose();
+                CompleteShutdownStep("menu", _gameDockOverflowMenu.Dispose, failures);
 
-            if (_smokeMode) RunShutdownLifecycleSmoke();
+            if (_smokeMode)
+                CompleteShutdownStep("smoke-cleanup", RunShutdownLifecycleSmoke, failures);
 
-            _smokeTimer.Dispose();
-            _toolTip.Dispose();
+            CompleteShutdownStep("timer", _smokeTimer.Dispose, failures);
+            CompleteShutdownStep("tooltip", _toolTip.Dispose, failures);
+
+            // No file writes or network telemetry: the optional report remains
+            // available on demand through Copy Diagnostics while the form lives.
+            if (_perfMetrics != null)
+                CompleteShutdownStep("metrics", () => Console.WriteLine(_perfMetrics.Snapshot(
+                    _smokeMode ? "synthetic-smoke" : "host-opt-in", 0, 0)), failures);
+
+            if (IsShutdownSaveSmoke)
+            {
+                VerifyShutdownSaveSmoke(failures);
+                return;
+            }
+
+            if (failures.Count > 0)
+            {
+                foreach (var failure in failures)
+                    Console.Error.WriteLine("Workspace shutdown failed: " + failure);
+                Environment.ExitCode = 1;
+                return;
+            }
 
             if (_shutdownDuringInitSmoke)
             {
@@ -1092,6 +1256,92 @@ namespace PokePixel.CoupledWorkspace
             {
                 Console.WriteLine("WebView2 coupled workspace shutdown-during-switch smoke: PASS");
                 Environment.ExitCode = 0;
+            }
+        }
+
+        private void VerifyShutdownSaveSmoke(List<string> failures)
+        {
+            // Check the actual objects after the real FormClosed -> CompleteShutdown
+            // sequence, not an isolated delegate/disposal stand-in.
+            var success = _shutdownSaveSuccessSmoke;
+            var expectedOutcome = success
+                ? !_shutdownSmokeFaultArmed && _shutdownSmokeFaultHits == 0 && failures.Count == 0
+                : _shutdownSmokeFaultArmed && _shutdownSmokeFaultHits == 1 && failures.Count == 1
+                    && string.Equals(failures[0], "settings:IOException", StringComparison.Ordinal);
+            var valid = _shutdownSmokeFixtureReady && expectedOutcome
+                && _shutdownCleanupCompleted && _isClosing && _panesByProfile.Count == 0
+                && _shutdownSmokePanes != null && _shutdownSmokePanes.Length == 2
+                && !object.ReferenceEquals(_shutdownSmokePanes[0], _shutdownSmokePanes[1])
+                && _shutdownSmokePanes[0].View == null && _shutdownSmokePanes[0].Environment == null
+                && _shutdownSmokePanes[1].View == null && _shutdownSmokePanes[1].Environment == null
+                && _shutdownSmokeMenuDisposed && _shutdownSmokeTimerDisposed
+                && _shutdownSmokeToolTipDisposed
+                && _gameDockOverflowMenu.IsDisposed
+                && (success
+                    ? !string.Equals(_lastSavedSettingsFingerprint,
+                        _shutdownSmokeOriginalFingerprint, StringComparison.Ordinal)
+                    : string.Equals(_lastSavedSettingsFingerprint,
+                        _shutdownSmokeOriginalFingerprint, StringComparison.Ordinal));
+            try
+            {
+                valid = valid && _shutdownSmokeOriginalSettings != null
+                    && File.Exists(_shutdownSmokeSettingsPath)
+                    && !File.Exists(_shutdownSmokeSettingsPath + ".tmp");
+                if (valid)
+                {
+                    var current = File.ReadAllBytes(_shutdownSmokeSettingsPath);
+                    var equalToOriginal = current.Length == _shutdownSmokeOriginalSettings.Length;
+                    for (var i = 0; equalToOriginal && i < current.Length; i++)
+                        equalToOriginal = current[i] == _shutdownSmokeOriginalSettings[i];
+                    if (success)
+                    {
+                        var loaded = _settingsStore.LoadOrDefault();
+                        valid = current.Length > 0 && !equalToOriginal
+                            && _lastSavedSettingsFingerprint == _settingsStore.NormalizedFingerprint(loaded)
+                            && loaded.Mode == WorkspaceMode.Dual
+                            && loaded.ActiveProfileId == _workspaceState.ActiveProfileId
+                            && loaded.CommandScope == _workspaceState.CommandScope
+                            && loaded.CardsViewByProfile[ProfileRegistry.Rhyxus.Id] == false
+                            && Math.Abs(loaded.ZoomByProfile[ProfileRegistry.Rhyosa.Id] - 1.25) < 0.0001
+                            && Math.Abs(loaded.LayoutRatio - _workspaceState.LayoutRatio) < 0.0001
+                            && Math.Abs(loaded.LastDualRatio - _workspaceState.LastDualRatio) < 0.0001
+                            && Math.Abs(loaded.LayoutRatio - _shutdownSmokeExpectedRatio) < 0.0001
+                            && Math.Abs(loaded.LastDualRatio - _shutdownSmokeExpectedRatio) < 0.0001
+                            && Math.Abs(_shutdownSmokeExpectedRatio - 0.5) > 0.05;
+                    }
+                    else valid = equalToOriginal;
+                }
+            }
+            catch (Exception error)
+            {
+                valid = false;
+                Console.Error.WriteLine("CW-PERF-005 shutdown settings verification: " + error.GetType().Name);
+            }
+
+            if (valid)
+            {
+                if (success)
+                {
+                    Console.WriteLine("CW-PERF-005 shutdown success: FINAL SETTINGS SAVE + CLEANUP PASS (real FormClosed)");
+                    Console.WriteLine("CW-PERF-005 shutdown: BOTH REAL PANES DISPOSED; MENU/TIMER/TOOLTIP DISPOSED; CHANGED FILE AND FINGERPRINT RELOADED");
+                    Environment.ExitCode = 0;
+                }
+                else
+                {
+                    Console.WriteLine("CW-PERF-005 shutdown "
+                        + ShutdownSaveSmokeLabel
+                        + ": EXPECTED SETTINGS FAILURE + CLEANUP PASS (pre-operation simulation)");
+                    Console.WriteLine("CW-PERF-005 shutdown: BOTH REAL PANES DISPOSED; MENU/TIMER/TOOLTIP DISPOSED; ORIGINAL FILE AND FINGERPRINT PRESERVED");
+                    Environment.ExitCode = 1; // Intentional, never a successful smoke exit.
+                }
+            }
+            else
+            {
+                Console.Error.WriteLine("CW-PERF-005 shutdown fixture FAIL: stage="
+                    + ShutdownSaveSmokeLabel + " faultHits=" + _shutdownSmokeFaultHits
+                    + " ready=" + _shutdownSmokeFixtureReady + " failures="
+                    + string.Join(",", failures.ToArray()));
+                Environment.ExitCode = 4; // Distinguishable from the expected nonzero 1.
             }
         }
 
@@ -1493,6 +1743,7 @@ namespace PokePixel.CoupledWorkspace
         private void UpdateGameDock()
         {
             if (_isClosing || _gameDockProfileLabel == null) return;
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
             var profile = ProfileRegistry.Get(_workspaceState.ActiveProfileId);
             var pane = GetPaneForProfile(profile.Id);
             var bridgeReady = pane != null && pane.WorkspaceBridgeReady;
@@ -1579,13 +1830,54 @@ namespace PokePixel.CoupledWorkspace
                 SetToolTipSafe(_gameDockAvailabilityLabel, _gameDockAvailabilityLabel.AccessibleName);
             }
             RefreshGameDockQuickButtons(profile, pane, bridgeReady);
-            RebuildGameDockOverflowMenu(pane, profile.DisplayName, bridgeReady);
+            RebuildGameDockOverflowMenu(pane, profile, bridgeReady);
             LayoutGameDock();
+            if (_perfMetrics != null)
+                _perfMetrics.Observe(WorkspacePerfSpan.GameDockUpdate, perfStarted);
         }
 
-        private void RebuildGameDockOverflowMenu(AccountPane pane, string profileName, bool bridgeReady)
+        private static void AddGameDockSignaturePart(StringBuilder signature, string value)
         {
-            if (_gameDockOverflowMenu == null || _gameDockOverflowButton == null) return;
+            var text = value ?? string.Empty;
+            signature.Append(text.Length).Append(':').Append(text);
+        }
+
+        private string GameDockOverflowSignature(AccountPane pane, ProfileDefinition profile, bool bridgeReady)
+        {
+            var signature = new StringBuilder();
+            AddGameDockSignaturePart(signature, profile.Id);
+            AddGameDockSignaturePart(signature, profile.DisplayName);
+            AddGameDockSignaturePart(signature, bridgeReady ? "ready" : "offline");
+            AddGameDockSignaturePart(signature, DeviceDpi.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            AddGameDockSignaturePart(signature, Font.ToString());
+            AddGameDockSignaturePart(signature, ForeColor.ToArgb().ToString(System.Globalization.CultureInfo.InvariantCulture));
+            AddGameDockSignaturePart(signature, BackColor.ToArgb().ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (bridgeReady && pane != null)
+            {
+                foreach (var surface in GameDockAllSurfaces)
+                {
+                    if (IsQuickGameDockSurface(surface.Key)
+                        || !pane.AvailableSurfaces.Contains(surface.Key)) continue;
+                    AddGameDockSignaturePart(signature, surface.Key);
+                    AddGameDockSignaturePart(signature, surface.Value);
+                }
+            }
+            return signature.ToString();
+        }
+
+        private void RebuildGameDockOverflowMenu(AccountPane pane, ProfileDefinition profile, bool bridgeReady)
+        {
+            if (_gameDockOverflowMenu == null || _gameDockOverflowMenu.IsDisposed
+                || _gameDockOverflowButton == null) return;
+            var signature = GameDockOverflowSignature(pane, profile, bridgeReady);
+            if (string.Equals(_gameDockOverflowSignature, signature, StringComparison.Ordinal))
+            {
+                // Focus can move even when the overflow's content stays identical.
+                SetButtonSelected(_gameDockOverflowButton, false);
+                return;
+            }
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            _gameDockOverflowSignature = null;
             if (_gameDockOverflowMenu.Visible)
                 _gameDockOverflowMenu.Close(ToolStripDropDownCloseReason.AppClicked);
 
@@ -1610,19 +1902,25 @@ namespace PokePixel.CoupledWorkspace
                     item.Tag = surfaceId;
                     item.Font = Font;
                     item.ForeColor = ForeColor;
-                    item.AccessibleName = "Open " + definition.Value + " for " + profileName;
+                    item.AccessibleName = "Open " + definition.Value + " for " + profile.DisplayName;
                     item.Click += delegate { QueueGameDockSurfaceOpen(surfaceId); };
                     _gameDockOverflowMenu.Items.Add(item);
                     count++;
                 }
             }
 
-            _gameDockOverflowMenu.AccessibleName = "Additional game menus for " + profileName;
+            _gameDockOverflowMenu.AccessibleName = "Additional game menus for " + profile.DisplayName;
             _gameDockOverflowButton.Enabled = bridgeReady && count > 0;
             _gameDockOverflowButton.AccessibleName = _gameDockOverflowButton.Enabled
-                ? "Open additional game menus for " + profileName + ", " + count + " available"
-                : "Additional game menus for " + profileName + " unavailable";
+                ? "Open additional game menus for " + profile.DisplayName + ", " + count + " available"
+                : "Additional game menus for " + profile.DisplayName + " unavailable";
             SetButtonSelected(_gameDockOverflowButton, false);
+            _gameDockOverflowSignature = signature;
+            if (_perfMetrics != null)
+            {
+                _perfMetrics.Count(WorkspacePerfCounter.GameDockOverflowItemsCreated, count);
+                _perfMetrics.Observe(WorkspacePerfSpan.GameDockOverflowRebuild, perfStarted);
+            }
         }
 
         private void ShowGameDockOverflowMenu()
@@ -1688,37 +1986,168 @@ namespace PokePixel.CoupledWorkspace
             return null;
         }
 
-        private void SendContentView(AccountPane pane)
+        private bool SendContentView(AccountPane pane)
         {
-            if (pane == null || !pane.WorkspaceBridgeReady) return;
-            TryPostWorkspaceBridgeMessage(
+            if (pane == null || !pane.WorkspaceBridgeReady) return false;
+            if (pane.StrictViewSession && pane.ViewRevision == int.MaxValue)
+            {
+                pane.ResetWorkspaceBridge();
+                return false;
+            }
+            var sent = TryPostWorkspaceBridgeMessage(
                 pane,
                 new WorkspaceBridgeMessage
                 {
                     Type = WorkspaceBridgeProtocol.SetViewType,
                     Protocol = WorkspaceBridgeProtocol.Version,
-                    ViewMode = pane.CardsViewActive ? "cards" : "game"
+                    ViewMode = pane.CardsViewActive ? "cards" : "game",
+                    SessionId = pane.StrictViewSession ? pane.ViewSessionId : null,
+                    DocumentEpoch = pane.StrictViewSession ? pane.ViewDocumentEpoch : null,
+                    MountOrdinal = pane.StrictViewSession ? pane.ViewMountOrdinal : 0,
+                    CapabilitySeq = pane.StrictViewSession ? pane.ViewCapabilitySeq : 0,
+                    ViewRevision = pane.StrictViewSession ? ++pane.ViewRevision : 0
                 }
             );
+            if (sent && pane.ViewSendRetryScheduled)
+            {
+                pane.ViewSendRetryGeneration++;
+                pane.ViewSendRetryScheduled = false;
+            }
+            if (!sent && pane.StrictViewSession && !pane.ViewSendRetryScheduled)
+            {
+                pane.ViewSendRetryScheduled = true;
+                var generation = ++pane.ViewSendRetryGeneration;
+                var retry = RetryContentViewDeliveryAsync(pane, pane.ViewDocumentEpoch,
+                    pane.ViewSessionId, pane.ViewMountOrdinal, generation);
+            }
+            return sent;
         }
 
-        private void SetContentView(bool cards)
+        private async Task RetryContentViewDeliveryAsync(AccountPane pane, string epoch,
+            string sessionId, int mountOrdinal, int generation)
         {
-            SetContentView(_workspaceState.ActiveProfileId, cards);
+            try
+            {
+                for (var attempt = 0; attempt < 3; attempt++)
+                {
+                    await Task.Delay(750);
+                    if (_isClosing || pane.ViewSendRetryGeneration != generation
+                        || !IsCurrentPane(pane)
+                        || !pane.StrictViewSession || !pane.WorkspaceBridgeReady
+                        || !pane.ViewDocumentCommitted
+                        || !string.Equals(pane.ViewDocumentEpoch, epoch, StringComparison.Ordinal)
+                        || !string.Equals(pane.ViewSessionId, sessionId, StringComparison.Ordinal)
+                        || pane.ViewMountOrdinal != mountOrdinal) return;
+                    // Always resend the latest desired mode with a higher
+                    // revision, so an old intent never wins after recovery.
+                    if (SendContentView(pane)) return;
+                }
+                if (_isClosing || pane.ViewSendRetryGeneration != generation
+                    || !IsCurrentPane(pane) || !pane.StrictViewSession
+                    || !string.Equals(pane.ViewDocumentEpoch, epoch, StringComparison.Ordinal)
+                    || !string.Equals(pane.ViewSessionId, sessionId, StringComparison.Ordinal)) return;
+                pane.ResetWorkspaceBridge();
+                if (string.Equals(pane.Profile.Id, _workspaceState.ActiveProfileId,
+                    StringComparison.OrdinalIgnoreCase)) UpdateGameDock();
+                RequestCurrentViewCapabilities(pane);
+            }
+            finally
+            {
+                if (pane.ViewSendRetryGeneration == generation)
+                    pane.ViewSendRetryScheduled = false;
+            }
         }
 
-        private void SetContentView(string profileId, bool cards)
+        private bool RequestCurrentViewCapabilities(AccountPane pane)
+        {
+            if (pane == null || !pane.StrictViewSession || !pane.ViewDocumentCommitted)
+                return false;
+            var sent = PostCurrentViewCapabilityResync(pane);
+            if (pane.ViewResyncRetryScheduled
+                && pane.ViewResyncRetryCapabilitySeq != pane.ViewCapabilitySeq)
+            {
+                // A newer accepted capability generation supersedes the old
+                // retry. If this new post fails it must start its OWN retries.
+                pane.ViewResyncRetryGeneration++;
+                pane.ViewResyncRetryScheduled = false;
+            }
+            if (!pane.WorkspaceBridgeReady && !pane.ViewResyncRetryScheduled)
+            {
+                pane.ViewResyncRetryScheduled = true;
+                pane.ViewResyncRetryCapabilitySeq = pane.ViewCapabilitySeq;
+                var generation = ++pane.ViewResyncRetryGeneration;
+                var retry = RetryViewCapabilityResyncAsync(pane, pane.ViewDocumentEpoch,
+                    pane.ViewSessionId, pane.ViewMountOrdinal, pane.ViewCapabilitySeq,
+                    generation);
+            }
+            return sent;
+        }
+
+        private bool PostCurrentViewCapabilityResync(AccountPane pane)
+        {
+            if (_smokeMode)
+            {
+                _smokeResyncPostCount++;
+                if (_smokeResyncFailuresRemaining > 0)
+                {
+                    _smokeResyncFailuresRemaining--;
+                    return false;
+                }
+            }
+            return TryPostWorkspaceBridgeMessage(pane, new WorkspaceBridgeMessage
+            {
+                Type = WorkspaceBridgeProtocol.ResyncCapabilitiesType,
+                Protocol = WorkspaceBridgeProtocol.Version,
+                SessionId = pane.ViewSessionId,
+                DocumentEpoch = pane.ViewDocumentEpoch,
+                MountOrdinal = pane.ViewMountOrdinal,
+                CapabilitySeq = pane.ViewCapabilitySeq
+            });
+        }
+
+        private async Task RetryViewCapabilityResyncAsync(AccountPane pane, string epoch,
+            string sessionId, int mountOrdinal, int capabilitySeq, int generation)
+        {
+            try
+            {
+                for (var attempt = 0; attempt < 3; attempt++)
+                {
+                    await Task.Delay(750);
+                    if (_isClosing || !IsCurrentPane(pane)
+                        || pane.ViewResyncRetryGeneration != generation
+                        || !pane.StrictViewSession || !pane.ViewDocumentCommitted
+                        || pane.WorkspaceBridgeReady || pane.ViewCapabilitySeq != capabilitySeq
+                        || !string.Equals(pane.ViewDocumentEpoch, epoch, StringComparison.Ordinal)
+                        || !string.Equals(pane.ViewSessionId, sessionId, StringComparison.Ordinal)
+                        || pane.ViewMountOrdinal != mountOrdinal) return;
+                    PostCurrentViewCapabilityResync(pane);
+                }
+            }
+            finally
+            {
+                if (pane.ViewResyncRetryGeneration == generation)
+                    pane.ViewResyncRetryScheduled = false;
+            }
+        }
+
+        private bool SetContentView(bool cards)
+        {
+            return SetContentView(_workspaceState.ActiveProfileId, cards);
+        }
+
+        private bool SetContentView(string profileId, bool cards)
         {
             ProfileDefinition profile;
-            if (!ProfileRegistry.TryGet(profileId, out profile)) return;
+            if (!ProfileRegistry.TryGet(profileId, out profile)) return false;
             var pane = GetPaneForProfile(profileId);
+            var delivered = pane == null;
             if (_workspaceState.CardsViewByProfile == null)
                 _workspaceState.CardsViewByProfile = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
             _workspaceState.CardsViewByProfile[profile.Id] = cards;
             if (pane != null)
             {
                 pane.CardsViewActive = cards;
-                SendContentView(pane);
+                delivered = SendContentView(pane);
             }
             if (!_smokeMode) PersistWorkspaceState();
             if (string.Equals(
@@ -1727,6 +2156,7 @@ namespace PokePixel.CoupledWorkspace
                 StringComparison.OrdinalIgnoreCase
             ))
                 UpdateGameDock();
+            return delivered;
         }
 
         private void OpenGameSurface(string surfaceId)
@@ -1740,12 +2170,17 @@ namespace PokePixel.CoupledWorkspace
                 || pane.View.CoreWebView2 == null)
                 return;
 
-            if (pane.CardsViewActive) SetContentView(false);
+            if (pane.CardsViewActive && !SetContentView(false)) return;
 
             var requestId = pane.Profile.Id + "-" + Interlocked.Increment(ref _bridgeRequestSequence);
             ClearDockOpenFeedback();
             _latestDockUiRequestByProfile[pane.Profile.Id] = requestId;
             pane.PendingWorkspaceRequests[requestId] = surfaceId;
+            if (_perfMetrics != null)
+            {
+                _perfMetrics.Count(WorkspacePerfCounter.PendingRequestAdded);
+                RecordPendingWorkspaceRequests();
+            }
             try
             {
                 pane.View.CoreWebView2.PostWebMessageAsJson(
@@ -1754,16 +2189,29 @@ namespace PokePixel.CoupledWorkspace
                         Type = WorkspaceBridgeProtocol.OpenSurfaceType,
                         Protocol = WorkspaceBridgeProtocol.Version,
                         RequestId = requestId,
-                        SurfaceId = surfaceId
+                        SurfaceId = surfaceId,
+                        SessionId = pane.StrictViewSession ? pane.ViewSessionId : null,
+                        DocumentEpoch = pane.StrictViewSession ? pane.ViewDocumentEpoch : null,
+                        MountOrdinal = pane.StrictViewSession ? pane.ViewMountOrdinal : 0,
+                        CapabilitySeq = pane.StrictViewSession ? pane.ViewCapabilitySeq : 0
                     })
                 );
             }
             catch
             {
                 pane.PendingWorkspaceRequests.Remove(requestId);
+                if (_perfMetrics != null)
+                {
+                    _perfMetrics.Count(WorkspacePerfCounter.PendingRequestPostFailed);
+                    RecordPendingWorkspaceRequests();
+                }
                 pane.ResetWorkspaceBridge();
                 SetDockOpenFailure(pane, surfaceId, requestId);
                 UpdateGameDock();
+                // A transient native-post failure must not leave the host
+                // offline while the page still believes capabilities are
+                // accepted and therefore suppresses an unchanged snapshot.
+                RequestCurrentViewCapabilities(pane);
             }
         }
 
@@ -1836,6 +2284,88 @@ namespace PokePixel.CoupledWorkspace
                 currentDocument,
                 StringComparison.OrdinalIgnoreCase
             );
+        }
+
+        private static bool SameDocumentAddress(string left, string right)
+        {
+            Uri first, second;
+            if (!Uri.TryCreate(left, UriKind.Absolute, out first)
+                || !Uri.TryCreate(right, UriKind.Absolute, out second)) return false;
+            var components = UriComponents.SchemeAndServer | UriComponents.PathAndQuery;
+            return string.Equals(first.GetComponents(components, UriFormat.SafeUnescaped),
+                second.GetComponents(components, UriFormat.SafeUnescaped),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private async Task TryRecoverInterruptedViewDocumentAsync(AccountPane pane,
+            CoreWebView2 core, ulong failedNavigationId)
+        {
+            var snapshot = pane == null ? null : pane.InterruptedViewDocument;
+            if (snapshot == null || _isClosing || !IsCurrentPane(pane)
+                || !pane.IsInitialized || pane.View.CoreWebView2 != core
+                || pane.ActiveNavigationId != failedNavigationId
+                || pane.ViewReplacementContentStarted || pane.ViewDocumentCommitted) return;
+            var pendingEpoch = pane.ViewDocumentEpoch;
+            if (!_smokeMode && !IsAllowedGameUrl(snapshot.Url)) return;
+            try
+            {
+                // Failed navigation may leave the old page, an error page or
+                // no page. Only the live document closure proves identity.
+                var probe = core.ExecuteScriptAsync(
+                    "(function(){var p=document[Symbol.for('ppbui.coupled.document-session-probe')];"
+                    + "return document.documentElement&&document.documentElement.isConnected"
+                    + "&&typeof p==='function'?p():null;})()");
+                if (await Task.WhenAny(probe, Task.Delay(2000)) != probe) return;
+                var live = WorkspaceBridgeProtocol.Deserialize(await probe);
+                if (live == null || live.Type != "ppbui.coupled.document-probe"
+                    || live.Protocol != WorkspaceBridgeProtocol.Version
+                    || !string.Equals(live.SessionId, snapshot.SessionId, StringComparison.Ordinal)
+                    || !string.Equals(live.DocumentEpoch, snapshot.Epoch, StringComparison.Ordinal)
+                    || live.MountOrdinal != snapshot.MountOrdinal
+                    || !SameDocumentAddress(live.DocumentUrl, snapshot.Url)
+                    || !SameDocumentAddress(core.Source, snapshot.Url)) return;
+                if (_isClosing || !IsCurrentPane(pane) || pane.View == null
+                    || pane.View.CoreWebView2 != core || pane.ActiveNavigationId != failedNavigationId
+                    || pane.ViewReplacementContentStarted
+                    || !string.Equals(pane.ViewDocumentEpoch, pendingEpoch, StringComparison.Ordinal)
+                    || !pane.RestoreInterruptedViewDocument(snapshot)) return;
+                // Retain the failed-navigation diagnostic and restore only by
+                // a fresh capability advertisement, never pending native actions.
+                RequestCurrentViewCapabilities(pane);
+                if (string.Equals(pane.Profile.Id, _workspaceState.ActiveProfileId,
+                    StringComparison.OrdinalIgnoreCase)) UpdateGameDock();
+            }
+            catch (Exception) { /* An unverifiable document stays offline. */ }
+        }
+
+        private static bool ValidViewSessionId(string id)
+        {
+            Guid parsed;
+            return !string.IsNullOrWhiteSpace(id) && Guid.TryParseExact(id, "N", out parsed);
+        }
+
+        private static bool MatchesViewSession(AccountPane pane, WorkspaceBridgeMessage message)
+        {
+            return pane != null && message != null && pane.StrictViewSession
+                && pane.ViewDocumentCommitted
+                && string.Equals(message.DocumentEpoch, pane.ViewDocumentEpoch, StringComparison.Ordinal)
+                && string.Equals(message.SessionId, pane.ViewSessionId, StringComparison.Ordinal)
+                && message.MountOrdinal == pane.ViewMountOrdinal;
+        }
+
+        private static WorkspaceBridgeMessage WithCurrentSmokeViewSession(AccountPane pane, WorkspaceBridgeMessage message)
+        {
+            // Manually triggered synthetic host events must have the same
+            // envelope as the actual isolated-page messages under strict mode.
+            if (pane != null && pane.StrictViewSession && message != null)
+            {
+                message.SessionId = pane.ViewSessionId;
+                message.DocumentEpoch = pane.ViewDocumentEpoch;
+                message.MountOrdinal = pane.ViewMountOrdinal;
+                if (message.Type == WorkspaceBridgeProtocol.CapabilitiesType)
+                    message.CapabilitySeq = pane.ViewCapabilitySeq + 1;
+            }
+            return message;
         }
 
         private void CancelPptoolsForProfile(string profileId, string requestId = null)
@@ -2194,6 +2724,31 @@ namespace PokePixel.CoupledWorkspace
             var message = WorkspaceBridgeProtocol.Deserialize(json);
             if (message == null || message.Protocol != WorkspaceBridgeProtocol.Version) return;
 
+            if (string.Equals(message.Type, WorkspaceBridgeProtocol.SessionHelloType, StringComparison.Ordinal))
+            {
+                // A top-level old document can emit messages while the next
+                // navigation is pending. Issue this epoch only after commit;
+                // PostWebMessageAsJson then targets the current document.
+                if (!pane.ViewDocumentCommitted || !ValidViewSessionId(message.SessionId)
+                    || message.MountOrdinal <= 0 || string.IsNullOrWhiteSpace(message.RequestId)
+                    || message.RequestId.Length > 100) return;
+                if (pane.StrictViewSession
+                    && (message.MountOrdinal < pane.ViewMountOrdinal
+                        || (message.MountOrdinal == pane.ViewMountOrdinal
+                            && !string.Equals(message.SessionId, pane.ViewSessionId, StringComparison.Ordinal)))) return;
+                pane.IssueViewSession(message.SessionId, message.MountOrdinal);
+                TryPostWorkspaceBridgeMessage(pane, new WorkspaceBridgeMessage
+                {
+                    Type = WorkspaceBridgeProtocol.SessionReadyType,
+                    Protocol = WorkspaceBridgeProtocol.Version,
+                    RequestId = message.RequestId,
+                    SessionId = message.SessionId,
+                    MountOrdinal = message.MountOrdinal,
+                    DocumentEpoch = pane.ViewDocumentEpoch
+                });
+                return;
+            }
+
             if (string.Equals(message.Type, WorkspaceBridgeProtocol.PptoolsRunType, StringComparison.Ordinal))
             {
                 var pending = ExecutePptoolsRequestAsync(pane, message);
@@ -2212,7 +2767,45 @@ namespace PokePixel.CoupledWorkspace
                 StringComparison.Ordinal
             ))
             {
-                pane.ResetWorkspaceBridge();
+                var correlated = !string.IsNullOrWhiteSpace(message.DocumentEpoch)
+                    || !string.IsNullOrWhiteSpace(message.SessionId)
+                    || message.MountOrdinal != 0 || message.CapabilitySeq != 0;
+                if (correlated)
+                {
+                    if (!pane.ViewDocumentCommitted
+                        || !string.Equals(message.DocumentEpoch, pane.ViewDocumentEpoch, StringComparison.Ordinal)
+                        || !ValidViewSessionId(message.SessionId)
+                        || message.MountOrdinal <= 0 || message.CapabilitySeq <= 0
+                        || !pane.HasIssuedViewSession(message.SessionId, message.MountOrdinal)) return;
+                    if (pane.StrictViewSession
+                        && (message.MountOrdinal < pane.ViewMountOrdinal
+                            || (message.MountOrdinal == pane.ViewMountOrdinal
+                                && (!string.Equals(message.SessionId, pane.ViewSessionId, StringComparison.Ordinal)
+                                    || message.CapabilitySeq <= pane.ViewCapabilitySeq)))) return;
+                }
+                // The new production host advertises strict correlation in its
+                // document marker. An older bundle must fail closed to native
+                // Game/toolbar until upgraded, not silently authorize bare
+                // capabilities from an old same-URL document. Only the local
+                // synthetic host can exercise the legacy path explicitly.
+                else if (pane.StrictViewSession || !_smokeMode) return;
+
+                var sameSession = correlated && MatchesViewSession(pane, message);
+                if (sameSession)
+                {
+                    // A native toolbar refresh must not erase an in-flight
+                    // open-surface request owned by this same document.
+                    pane.AvailableSurfaces.Clear();
+                }
+                else pane.ResetWorkspaceBridge();
+
+                if (correlated)
+                {
+                    pane.StrictViewSession = true;
+                    pane.ViewSessionId = message.SessionId;
+                    pane.ViewMountOrdinal = message.MountOrdinal;
+                    pane.ViewCapabilitySeq = message.CapabilitySeq;
+                }
                 var recognized = 0;
                 if (message.Surfaces != null)
                 {
@@ -2232,7 +2825,11 @@ namespace PokePixel.CoupledWorkspace
                         Type = WorkspaceBridgeProtocol.CapabilitiesAcceptedType,
                         Protocol = WorkspaceBridgeProtocol.Version,
                         RequestId = message.RequestId,
-                        Ok = pane.WorkspaceBridgeReady
+                        Ok = pane.WorkspaceBridgeReady,
+                        SessionId = correlated ? pane.ViewSessionId : null,
+                        DocumentEpoch = correlated ? pane.ViewDocumentEpoch : null,
+                        MountOrdinal = correlated ? pane.ViewMountOrdinal : 0,
+                        CapabilitySeq = correlated ? pane.ViewCapabilitySeq : 0
                     }
                 ))
                 {
@@ -2257,6 +2854,7 @@ namespace PokePixel.CoupledWorkspace
                 StringComparison.Ordinal
             ))
             {
+                if (pane.StrictViewSession && !MatchesViewSession(pane, message)) return;
                 string expectedSurface;
                 if (string.IsNullOrWhiteSpace(message.RequestId)
                     || !pane.PendingWorkspaceRequests.TryGetValue(
@@ -2270,6 +2868,11 @@ namespace PokePixel.CoupledWorkspace
                     ))
                     return;
                 pane.PendingWorkspaceRequests.Remove(message.RequestId);
+                if (_perfMetrics != null)
+                {
+                    _perfMetrics.Count(WorkspacePerfCounter.PendingRequestResolved);
+                    RecordPendingWorkspaceRequests();
+                }
                 if (!message.Ok && IsGameDockSurface(message.SurfaceId))
                 {
                     pane.AvailableSurfaces.Remove(message.SurfaceId);
@@ -2735,11 +3338,23 @@ namespace PokePixel.CoupledWorkspace
             }
 
             if (!string.Equals(_workspaceState.ActiveProfileId, profile.Id, StringComparison.OrdinalIgnoreCase))
+            {
                 ClearDockOpenFeedback();
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.ActiveProfileChanged);
+            }
             _workspaceState.ActiveProfileId = profile.Id;
             if (_workspaceState.FocusMode) ApplyFocusLayout();
-            if (!_smokeMode) PersistWorkspaceState();
-            UpdateCommandDeck();
+            try
+            {
+                if (!_smokeMode || _smokeFocusSaveProbe) PersistWorkspaceState();
+            }
+            finally
+            {
+                // A disk failure must never leave the selected account/ARIA
+                // or the native focused-pane cue out of sync with memory.
+                UpdateCommandDeck();
+            }
         }
 
         private void ExecuteScopedCommand(Action<AccountPane> command)
@@ -3373,6 +3988,12 @@ namespace PokePixel.CoupledWorkspace
 
         private string BuildDiagnosticsText()
         {
+            // In opt-in synthetic perf mode, the on-demand report contains
+            // metrics ONLY; do not mix in the normal diagnostics URL fields.
+            if (_perfMetrics != null)
+                return _perfMetrics.Snapshot("synthetic-smoke",
+                    _panesByProfile.Count, CountPendingWorkspaceRequests());
+
             var lines = new List<string>();
             lines.Add("PokePixel Coupled Workspace");
             lines.Add("Mode=" + _workspaceState.Mode);
@@ -3751,6 +4372,21 @@ namespace PokePixel.CoupledWorkspace
                 pane.View.Parent.Controls.Remove(pane.View);
             pane.Dispose();
             _panesByProfile.Remove(profileId);
+            RecordPendingWorkspaceRequests();
+        }
+
+        private int CountPendingWorkspaceRequests()
+        {
+            var total = 0;
+            foreach (var pane in _panesByProfile.Values)
+                total += pane.PendingWorkspaceRequests.Count;
+            return total;
+        }
+
+        private void RecordPendingWorkspaceRequests()
+        {
+            if (_perfMetrics != null)
+                _perfMetrics.SetPendingCount(CountPendingWorkspaceRequests());
         }
 
         private async Task<AccountPane> EnsurePaneAsync(
@@ -3764,7 +4400,8 @@ namespace PokePixel.CoupledWorkspace
             var created = false;
             if (pane == null)
             {
-                pane = new AccountPane(ProfileRegistry.Get(profileId));
+                pane = new AccountPane(ProfileRegistry.Get(profileId), _perfMetrics);
+                if (_perfMetrics != null) _perfMetrics.PaneCreated(profileId);
                 pane.CardsViewActive = GetCardsViewPreference(profileId);
                 _panesByProfile[profileId] = pane;
                 created = true;
@@ -3790,6 +4427,7 @@ namespace PokePixel.CoupledWorkspace
             pane.HealthState = PaneHealthState.Initializing;
             pane.HealthText = "Initializing";
 
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
             try
             {
                 var initializationTask = pane.InitializeAsync(_dataRoot);
@@ -3810,9 +4448,18 @@ namespace PokePixel.CoupledWorkspace
 
                 if (_smokeMode)
                 {
-                    await pane.View.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
-                        BuildWorkspaceBridgeSmokeScript(pane.Profile.Id)
-                    );
+                    var smokeScriptStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+                    try
+                    {
+                        await pane.View.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(
+                            BuildWorkspaceBridgeSmokeScript(pane.Profile.Id)
+                        );
+                    }
+                    finally
+                    {
+                        if (_perfMetrics != null)
+                            _perfMetrics.Observe(WorkspacePerfSpan.RegisterSmokeScript, smokeScriptStarted);
+                    }
                     if (_isClosing || !IsCurrentPane(pane)) return null;
                 }
                 else
@@ -3853,6 +4500,11 @@ namespace PokePixel.CoupledWorkspace
                     }
                 }
                 throw;
+            }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.PaneSetup, perfStarted);
             }
         }
 
@@ -3920,6 +4572,29 @@ namespace PokePixel.CoupledWorkspace
                         await RunShutdownDuringSwitchSmokeAsync();
                         return;
                     }
+                    if (IsShutdownSaveSmoke)
+                    {
+                        _smokeTimer.Start();
+                        await RunSyntheticShutdownSaveSmokeAsync();
+                        return;
+                    }
+                    if (_perfVisibleFocusSmoke)
+                    {
+                        _smokeTimer.Start();
+                        await PrepareVisualSmokePagesAsync();
+                        return;
+                    }
+                    if (_perfIdlePreflightSmoke)
+                    {
+                        _smokeTimer.Start();
+                        await RunIdlePreflightSmokeAsync();
+                        return;
+                    }
+                    if (_perfIdleSmoke)
+                    {
+                        await RunIdlePerfSmokeAsync();
+                        return;
+                    }
                     _smokeTimer.Start();
                     await RunSmokeAsync();
                     return;
@@ -3950,7 +4625,7 @@ namespace PokePixel.CoupledWorkspace
                 Console.Error.WriteLine(ex);
                 if (_smokeMode)
                 {
-                    Environment.ExitCode = 1;
+                    Environment.ExitCode = IsShutdownSaveSmoke ? 4 : 1;
                     Close();
                 }
                 else
@@ -4296,7 +4971,8 @@ namespace PokePixel.CoupledWorkspace
 
         private void PersistWorkspaceState(bool allowDuringClosing = false)
         {
-            if (_smokeMode || (_isClosing && !allowDuringClosing)) return;
+            if ((_smokeMode && !_smokeFocusSaveProbe && !IsShutdownSaveSmoke)
+                || (_isClosing && !allowDuringClosing)) return;
 
             if (_workspaceState.Mode == WorkspaceMode.Dual && !_split.Panel2Collapsed)
             {
@@ -4305,7 +4981,411 @@ namespace PokePixel.CoupledWorkspace
                 if (!_workspaceState.FocusMode) _workspaceState.LastDualRatio = ratio;
             }
 
+            var store = _smokeFocusSaveProbe ? _smokeFocusSaveStore : _settingsStore;
+            var fingerprint = store.NormalizedFingerprint(_workspaceState);
+            if (!allowDuringClosing && string.Equals(
+                fingerprint, _lastSavedSettingsFingerprint, StringComparison.Ordinal))
+                return;
+
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            try
+            {
+                if (_smokeFocusSaveProbe) _smokeFocusSaveCalls++;
+                store.Save(_workspaceState);
+                _lastSavedSettingsFingerprint = fingerprint;
+            }
+            catch
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.SettingsSaveFailed);
+                throw;
+            }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.SettingsSave, perfStarted);
+            }
+        }
+
+        private async Task RunSyntheticShutdownSaveSmokeAsync()
+        {
+            // This is the only path which arms the shutdown-only store hook.
+            // Existing baseline/visual smokes and the normal host never enter it.
+            if (!_smokeMode || !IsShutdownSaveSmoke || _isClosing)
+                throw new InvalidOperationException("Shutdown fixture requires an active synthetic host.");
+
+            var left = GetPaneForProfile(ProfileRegistry.Rhyxus.Id);
+            var right = GetPaneForProfile(ProfileRegistry.Rhyosa.Id);
+            if (_panesByProfile.Count != 2 || left == null || right == null
+                || object.ReferenceEquals(left, right) || !left.IsInitialized || !right.IsInitialized
+                || left.View == null || right.View == null
+                || _gameDockOverflowMenu == null || _gameDockOverflowMenu.IsDisposed
+                || _smokeTimer == null || !_smokeTimer.Enabled || _toolTip == null
+                || _shutdownSmokeMenuDisposed || _shutdownSmokeTimerDisposed
+                || _shutdownSmokeToolTipDisposed)
+                throw new InvalidOperationException("Shutdown fixture needs two real WebView2 panes and WinForms resources.");
+
+            // Actual WebView2 navigation, but only to two minimal file:// pages.
+            var directory = Path.Combine(_baseDir, "smoke", "shutdown-save-" + ShutdownSaveSmokeLabel);
+            Directory.CreateDirectory(directory);
+            var leftPath = Path.Combine(directory, "left.html");
+            var rightPath = Path.Combine(directory, "right.html");
+            File.WriteAllText(leftPath, "<!doctype html><title>Local shutdown fixture left</title><body>left</body>");
+            File.WriteAllText(rightPath, "<!doctype html><title>Local shutdown fixture right</title><body>right</body>");
+            await Task.WhenAll(
+                NavigateSmokePaneAsync(left, new Uri(leftPath).AbsoluteUri),
+                NavigateSmokePaneAsync(right, new Uri(rightPath).AbsoluteUri)
+            );
+            if (_isClosing || !IsCurrentPane(left) || !IsCurrentPane(right)
+                || left.View.CoreWebView2.Source == null || right.View.CoreWebView2.Source == null
+                || !new Uri(left.View.CoreWebView2.Source).IsFile
+                || !new Uri(right.View.CoreWebView2.Source).IsFile)
+                throw new InvalidOperationException("Shutdown fixture did not finish both local HTML navigations.");
+
+            // Seed an existing valid destination while injection is disarmed;
+            // Replace therefore enters File.Replace rather than File.Move.
             _settingsStore.Save(_workspaceState);
+            _lastSavedSettingsFingerprint = _settingsStore.NormalizedFingerprint(_workspaceState);
+            _shutdownSmokeOriginalFingerprint = _lastSavedSettingsFingerprint;
+            _shutdownSmokeOriginalSettings = File.ReadAllBytes(_shutdownSmokeSettingsPath);
+            if (_shutdownSmokeOriginalSettings.Length == 0
+                || File.Exists(_shutdownSmokeSettingsPath + ".tmp"))
+                throw new InvalidOperationException("Shutdown fixture did not seed an intact settings destination.");
+
+            _workspaceState.CommandScope = _workspaceState.CommandScope == CommandScope.Both
+                ? CommandScope.Active : CommandScope.Both;
+            if (_shutdownSaveSuccessSmoke)
+            {
+                SetSplitRatio(0.66);
+                _shutdownSmokeExpectedRatio = GetCurrentSplitRatio();
+                if (Math.Abs(_shutdownSmokeExpectedRatio - 0.5) < 0.05)
+                    throw new InvalidOperationException("Shutdown fixture did not change the actual split geometry.");
+                // The final Save must read the live splitter, not just serialize
+                // values that SetSplitRatio already copied into the model.
+                _workspaceState.LayoutRatio = 0.34;
+                _workspaceState.LastDualRatio = 0.34;
+                _workspaceState.ActiveProfileId = ProfileRegistry.Rhyosa.Id;
+                _workspaceState.CardsViewByProfile[ProfileRegistry.Rhyxus.Id] = false;
+                _workspaceState.ZoomByProfile[ProfileRegistry.Rhyosa.Id] = 1.25;
+            }
+            if (string.Equals(_settingsStore.NormalizedFingerprint(_workspaceState),
+                _shutdownSmokeOriginalFingerprint, StringComparison.Ordinal))
+                throw new InvalidOperationException("Shutdown fixture did not create a dirty state.");
+
+            _shutdownSmokePanes = new[] { left, right };
+            _shutdownSmokeFixtureReady = true;
+            _shutdownSmokeFaultArmed = !_shutdownSaveSuccessSmoke;
+            Environment.ExitCode = 4; // Default FAIL; actual shutdown verifier alone sets 1.
+            Close(); // Real FormClosing -> FormClosed -> CompleteShutdown on the UI thread.
+            if (!_shutdownCleanupCompleted)
+            {
+                Console.Error.WriteLine("CW-PERF-005 shutdown fixture FAIL: real FormClosed cleanup never ran.");
+                Environment.ExitCode = 4;
+            }
+        }
+
+        private async Task RunIdlePerfSmokeAsync()
+        {
+            await PrepareVisualSmokePagesAsync();
+            var left = GetPaneForSide(PaneSide.Left);
+            var right = GetPaneForSide(PaneSide.Right);
+            if (left == null || right == null || !left.WorkspaceBridgeReady || !right.WorkspaceBridgeReady)
+                throw new InvalidOperationException("Idle performance smoke requires both visual fixture bridges to be ready.");
+            SetContentView(left.Profile.Id, !_perfIdleGame);
+            SetContentView(right.Profile.Id, !_perfIdleGame && !_perfIdleMixed);
+            foreach (var pane in new[] { left, right })
+            {
+                var expectedVisible = !_perfIdleGame
+                    && (!_perfIdleMixed || object.ReferenceEquals(pane, left));
+                await VerifyIdleFixtureViewAsync(pane, expectedVisible);
+            }
+            var idleReadyMarker = Path.Combine(_baseDir, "smoke", "perf-idle-ready.txt");
+            var idleClock = System.Diagnostics.Stopwatch.StartNew();
+            File.WriteAllText(
+                idleReadyMarker,
+                DateTime.UtcNow.ToString("o") + Environment.NewLine
+            );
+            Console.WriteLine(
+                _perfIdleMixed
+                    ? "CW-PERF-001 synthetic idle mixed cards/game: READY"
+                    : _perfIdleGame
+                        ? "CW-PERF-001 synthetic idle game: READY"
+                        : "CW-PERF-001 synthetic idle cards: READY"
+            );
+            await Task.Delay(TimeSpan.FromMinutes(10));
+            idleClock.Stop();
+            var idlePassMarker = Path.Combine(_baseDir, "smoke", "perf-idle-pass.txt");
+            File.WriteAllText(
+                idlePassMarker,
+                DateTime.UtcNow.ToString("o") + Environment.NewLine
+                + idleClock.Elapsed.TotalMilliseconds.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)
+                + Environment.NewLine
+            );
+            Console.WriteLine(
+                _perfIdleMixed
+                    ? "CW-PERF-001 synthetic idle mixed cards/game: PASS"
+                    : _perfIdleGame
+                        ? "CW-PERF-001 synthetic idle game: PASS"
+                        : "CW-PERF-001 synthetic idle cards: PASS"
+            );
+            Environment.ExitCode = 0;
+            Close();
+        }
+
+        private static async Task VerifyIdleFixtureViewAsync(AccountPane pane, bool expectedCards)
+        {
+            if (pane == null || pane.View == null || pane.View.CoreWebView2 == null)
+                throw new InvalidOperationException("Idle performance smoke has no current fixture WebView2.");
+            // A missing dashboard root is NOT proof of a Game view. Require
+            // explicit root existence and the actual hidden state for each.
+            var expectedState = expectedCards ? "\"cards\"" : "\"game\"";
+            string observedState = null;
+            for (var attempt = 0; attempt < 20; attempt++)
+            {
+                observedState = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                    + "return !root?'missing':root.hidden?'game':'cards';})()"
+                );
+                if (string.Equals(observedState, expectedState, StringComparison.Ordinal)) return;
+                await Task.Delay(100);
+            }
+            throw new InvalidOperationException(
+                "Idle performance smoke fixture root/mode did not settle: expected="
+                + expectedState + ", actual=" + (observedState ?? "null") + "."
+            );
+        }
+
+        private async Task RunIdlePreflightSmokeAsync()
+        {
+            if (!_smokeMode || !_perfIdlePreflightSmoke)
+                throw new InvalidOperationException("Idle preflight must run only as an explicit local smoke.");
+            await PrepareVisualSmokePagesAsync();
+            var left = GetPaneForSide(PaneSide.Left);
+            var right = GetPaneForSide(PaneSide.Right);
+            if (left == null || right == null || !left.WorkspaceBridgeReady || !right.WorkspaceBridgeReady)
+                throw new InvalidOperationException("Idle preflight requires both local HTML fixture bridges.");
+
+            SetContentView(left.Profile.Id, true);
+            SetContentView(right.Profile.Id, true);
+            await VerifyIdleFixtureViewAsync(left, true);
+            await VerifyIdleFixtureViewAsync(right, true);
+
+            SetContentView(left.Profile.Id, false);
+            SetContentView(right.Profile.Id, false);
+            await VerifyIdleFixtureViewAsync(left, false);
+            await VerifyIdleFixtureViewAsync(right, false);
+
+            SetContentView(left.Profile.Id, true);
+            await VerifyIdleFixtureViewAsync(left, true);
+            await VerifyIdleFixtureViewAsync(right, false);
+
+            var deleted = await right.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "if(!root)return false;root.remove();return true;})()"
+            );
+            if (!string.Equals(deleted, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("Idle missing-root negative could not remove local fixture root.");
+            var missingRejected = false;
+            try
+            {
+                await VerifyIdleFixtureViewAsync(right, false);
+            }
+            catch (InvalidOperationException ex)
+            {
+                missingRejected = ex.Message.IndexOf("actual=\"missing\"", StringComparison.Ordinal) >= 0;
+                if (!missingRejected) throw;
+            }
+            if (!missingRejected)
+                throw new InvalidOperationException("Game preflight incorrectly accepted an absent root.");
+
+            _smokeTimer.Stop();
+            Console.WriteLine("CW-PERF-001 idle preflight: cards/cards + game/game + mixed + missing-root refusal PASS (600s idle NOT RUN)");
+            Environment.ExitCode = 0;
+            Close();
+        }
+
+        private async Task RunVisibleSyntheticFocusSmokeAsync()
+        {
+            if (!_smokeMode || !_perfVisibleFocusSmoke || _perfMetrics == null || _isClosing)
+                throw new InvalidOperationException("Visible synthetic focus requires opt-in metrics and a live local fixture.");
+            var left = GetPaneForSide(PaneSide.Left);
+            var right = GetPaneForSide(PaneSide.Right);
+            if (left == null || right == null || !left.WorkspaceBridgeReady || !right.WorkspaceBridgeReady)
+                throw new InvalidOperationException("Visible synthetic focus requires two ready local HTML fixture panes.");
+            if (_workspaceState.Mode != WorkspaceMode.Dual || _workspaceState.FocusMode)
+                throw new InvalidOperationException("Visible synthetic focus requires restored Dual layout.");
+
+            SetContentView(left.Profile.Id, false);
+            SetContentView(right.Profile.Id, false);
+            _commandDeck.Enabled = true;
+            Activate();
+            await Task.Delay(150);
+            if (!Visible || Opacity <= 0 || !ContainsFocus)
+                throw new InvalidOperationException("The visible local fixture did not obtain actual OS focus; no synthetic event will be counted.");
+
+            var initiallyReceived = _perfFocusReceived;
+            var initiallyCompleted = _perfFocusCompleted;
+            for (var cycle = 1; cycle <= 20; cycle++)
+            {
+                var target = cycle % 2 == 1 ? left : right;
+                if (_isClosing || !IsCurrentPane(target) || target.View == null || !target.View.Visible)
+                    throw new InvalidOperationException("Local WebView2 pane unavailable during real focus transition.");
+                if (!_maintenanceButton.Focus())
+                    throw new InvalidOperationException("Real WinForms blur control failed to receive focus.");
+                await Task.Delay(45);
+                if (!_maintenanceButton.Focused)
+                    throw new InvalidOperationException("Host blur control was not actually focused.");
+                if (_webViewFocusedProfileId != null)
+                    throw new InvalidOperationException("Host blur did not release the previous WebView2 focus owner.");
+                _perfFocusRequestedCycle = cycle;
+                var accepted = target.View.Focus();
+                var settled = false;
+                for (var attempt = 0; attempt < 40; attempt++)
+                {
+                    await Task.Delay(35);
+                    if (_perfFocusLastCompletedCycle == cycle
+                        && _perfFocusCompleted - initiallyCompleted == cycle
+                        && _perfFocusReceived - initiallyReceived == cycle
+                        && string.Equals(_perfFocusLastCompletedProfile, target.Profile.Id, StringComparison.OrdinalIgnoreCase)
+                        && target.View.ContainsFocus && ContainsFocus
+                        && string.Equals(_webViewFocusedProfileId, target.Profile.Id, StringComparison.OrdinalIgnoreCase)
+                        && string.Equals(_workspaceState.ActiveProfileId, target.Profile.Id, StringComparison.OrdinalIgnoreCase))
+                    {
+                        settled = true;
+                        break;
+                    }
+                }
+                if (!settled)
+                    throw new InvalidOperationException(
+                        "Real visible WebView2 focus cycle " + cycle
+                        + " not processed/stable: accepted=" + accepted
+                        + " receivedDelta=" + (_perfFocusReceived - initiallyReceived)
+                        + " completedDelta=" + (_perfFocusCompleted - initiallyCompleted)
+                        + " completedCycle=" + _perfFocusLastCompletedCycle
+                        + " viewCanFocus=" + target.View.CanFocus
+                        + " viewFocused=" + target.View.Focused
+                        + " containsFocus=" + target.View.ContainsFocus
+                        + " formContainsFocus=" + ContainsFocus
+                        + " owner=" + (_webViewFocusedProfileId ?? "none")
+                        + " active=" + (_workspaceState.ActiveProfileId ?? "none") + "."
+                    );
+                Console.WriteLine("CW-PERF-001 visible focus cycle " + cycle + "/20: actual event and owner PASS");
+            }
+            if (_perfFocusReceived - initiallyReceived != 20
+                || _perfFocusCompleted - initiallyCompleted != 20)
+                throw new InvalidOperationException("Visible focus event totals were not exactly 20/20.");
+
+            // Distinguish blur *out of the host window* from the legitimate
+            // wrapper->Chromium child transition. This is another local
+            // WinForms fixture, not a user browser or an external process.
+            using (var otherForm = new Form())
+            {
+                otherForm.Text = "CW-PERF-001 LOCAL EXTERNAL BLUR";
+                otherForm.ShowInTaskbar = false;
+                otherForm.Width = 260;
+                otherForm.Height = 130;
+                var otherButton = new Button { Text = "Local focus target", Dock = DockStyle.Fill };
+                otherForm.Controls.Add(otherButton);
+                otherForm.Show();
+                otherForm.Activate();
+                otherButton.Focus();
+                await Task.Delay(120);
+                if (!otherButton.Focused)
+                    throw new InvalidOperationException("Auxiliary local form did not receive actual focus.");
+                if (_webViewFocusedProfileId != null)
+                    throw new InvalidOperationException("Host retained WebView2 focus ownership after deactivation to auxiliary local form.");
+                otherForm.Close();
+            }
+            // Reacquire focus directly on the host control. Calling Activate
+            // here can generate an unrelated extra WebView2 GotFocus sample
+            // before the explicit final host-blur assertion.
+            if (!_maintenanceButton.Focus())
+                throw new InvalidOperationException("Final host blur request was rejected.");
+            await Task.Delay(45);
+            if (!_maintenanceButton.Focused || _webViewFocusedProfileId != null)
+                throw new InvalidOperationException("Final blur did not return focus ownership to the host.");
+
+            // Deterministic *real event* race: a GotFocus callback can enter
+            // while an unrelated workspace mutation owns the async gate.
+            // Blur to the toolbar before releasing that gate and prove that
+            // the queued event cannot resurrect an obsolete focus owner or
+            // change the active account. No synthetic event is invoked.
+            _perfFocusRequestedCycle = 0;
+            right.View.Focus();
+            var restored = false;
+            for (var attempt = 0; attempt < 40; attempt++)
+            {
+                await Task.Delay(35);
+                if (right.View.ContainsFocus && ContainsFocus
+                    && string.Equals(_webViewFocusedProfileId, right.Profile.Id, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(_workspaceState.ActiveProfileId, right.Profile.Id, StringComparison.OrdinalIgnoreCase))
+                {
+                    restored = true;
+                    break;
+                }
+            }
+            if (!restored)
+                throw new InvalidOperationException("Gated focus race cannot restore the right local pane as the initial owner.");
+
+            var receivedBeforeRace = _perfFocusReceived;
+            var completedBeforeRace = _perfFocusCompleted;
+            var capturedLeftFocusEvent = false;
+            var released = false;
+            await _workspaceMutationGate.WaitAsync();
+            try
+            {
+                _perfFocusRequestedCycle = 21;
+                left.View.Focus();
+                for (var attempt = 0; attempt < 40; attempt++)
+                {
+                    await Task.Delay(35);
+                    if (_perfFocusReceived == receivedBeforeRace + 1
+                        && _perfFocusCompleted == completedBeforeRace
+                        && left.View.ContainsFocus && ContainsFocus)
+                    {
+                        capturedLeftFocusEvent = true;
+                        break;
+                    }
+                }
+                if (!capturedLeftFocusEvent)
+                    throw new InvalidOperationException("Gated focus regression did not observe an actual queued WinForms GotFocus.");
+                if (!_maintenanceButton.Focus())
+                    throw new InvalidOperationException("Gated focus regression failed to blur to toolbar.");
+                await Task.Delay(55);
+                if (!_maintenanceButton.Focused || !ContainsFocus || left.View.ContainsFocus
+                    || _webViewFocusedProfileId != null
+                    || !string.Equals(_workspaceState.ActiveProfileId, right.Profile.Id, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException("Gated focus regression did not establish real toolbar blur before gate release.");
+            }
+            finally
+            {
+                _workspaceMutationGate.Release();
+                released = true;
+            }
+            if (!released)
+                throw new InvalidOperationException("Gated focus regression failed to release the mutation semaphore.");
+            var completedStaleFocus = false;
+            for (var attempt = 0; attempt < 40; attempt++)
+            {
+                await Task.Delay(35);
+                if (_perfFocusCompleted == completedBeforeRace + 1
+                    && _perfFocusLastCompletedCycle == 21
+                    && string.Equals(_perfFocusLastCompletedProfile, left.Profile.Id, StringComparison.OrdinalIgnoreCase))
+                {
+                    completedStaleFocus = true;
+                    break;
+                }
+            }
+            if (!completedStaleFocus || !_maintenanceButton.Focused || !ContainsFocus
+                || left.View.ContainsFocus || _webViewFocusedProfileId != null
+                || !string.Equals(_workspaceState.ActiveProfileId, right.Profile.Id, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    "Gated stale GotFocus was processed after toolbar blur: callbackComplete="
+                    + completedStaleFocus + ", owner=" + (_webViewFocusedProfileId ?? "none")
+                    + ", active=" + (_workspaceState.ActiveProfileId ?? "none")
+                    + ", toolbarFocused=" + _maintenanceButton.Focused + "."
+                );
+            Console.WriteLine("CW-PERF-001 gated stale GotFocus: suppressed owner and active-profile mutation PASS");
         }
 
         private void ConfigureView(AccountPane pane)
@@ -4317,19 +5397,65 @@ namespace PokePixel.CoupledWorkspace
             view.GotFocus += async delegate
             {
                 if (_isClosing) return;
-                await RunWorkspaceMutationAsync(delegate
+                var requestedFocusCycle = _perfVisibleFocusSmoke ? _perfFocusRequestedCycle : 0;
+                if (requestedFocusCycle > 0) _perfFocusReceived++;
+                if (_perfVisibleFocusSmoke)
+                    Console.WriteLine("CW-PERF-001 focus trace GOT profile=" + profileId
+                        + " cycle=" + requestedFocusCycle
+                        + " viewFocused=" + view.Focused
+                        + " containsFocus=" + view.ContainsFocus
+                        + " owner=" + (_webViewFocusedProfileId ?? "none"));
+                var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.FocusReceived);
+                try
                 {
-                    if (IsCurrentPane(pane))
+                    await RunWorkspaceMutationAsync(delegate
                     {
-                        _webViewFocusedProfileId = profileId;
-                        SetActiveProfile(profileId);
+                        // GotFocus is async: another workspace mutation can
+                        // hold the semaphore while the user focuses a toolbar
+                        // button or switches windows. Recheck the *actual*
+                        // pane/host focus after acquiring the gate so a stale
+                        // callback cannot resurrect the owner or persist a
+                        // now-inactive account. ContainsFocus, not Focused,
+                        // also recognizes the native Chromium child.
+                        if (IsCurrentPane(pane) && view.ContainsFocus && ContainsFocus)
+                        {
+                            _webViewFocusedProfileId = profileId;
+                            SetActiveProfile(profileId);
+                        }
+                        return Task.FromResult(0);
+                    });
+                }
+                finally
+                {
+                    if (_perfMetrics != null)
+                        _perfMetrics.Observe(WorkspacePerfSpan.FocusHandling, perfStarted);
+                    if (_perfVisibleFocusSmoke && requestedFocusCycle > 0)
+                    {
+                        _perfFocusLastCompletedCycle = requestedFocusCycle;
+                        _perfFocusLastCompletedProfile = profileId;
+                        _perfFocusCompleted++;
+                        Console.WriteLine("CW-PERF-001 focus trace COMPLETE profile=" + profileId
+                            + " cycle=" + requestedFocusCycle
+                            + " viewFocused=" + view.Focused
+                            + " containsFocus=" + view.ContainsFocus
+                            + " owner=" + (_webViewFocusedProfileId ?? "none"));
                     }
-                    return Task.FromResult(0);
-                });
+                }
             };
             view.LostFocus += delegate
             {
                 if (_isClosing) return;
+                if (_perfVisibleFocusSmoke)
+                    Console.WriteLine("CW-PERF-001 focus trace LOST profile=" + profileId
+                        + " viewFocused=" + view.Focused
+                        + " containsFocus=" + view.ContainsFocus
+                        + " owner=" + (_webViewFocusedProfileId ?? "none"));
+                // WebView2's native browser child can receive focus after
+                // the WinForms wrapper raises LostFocus. This is not a blur
+                // from the pane while the child still owns actual focus.
+                if (view.ContainsFocus) return;
                 if (string.Equals(
                     _webViewFocusedProfileId,
                     profileId,
@@ -4356,16 +5482,6 @@ namespace PokePixel.CoupledWorkspace
             {
                 if (_isClosing) return;
                 if (!IsCurrentPane(pane)) return;
-                CancelPptoolsForProfile(profileId);
-                pane.ResetWorkspaceBridge();
-                if (string.Equals(
-                    pane.Profile.Id,
-                    _workspaceState.ActiveProfileId,
-                    StringComparison.OrdinalIgnoreCase
-                ))
-                    UpdateGameDock();
-                pane.ActiveNavigationId = args.NavigationId;
-                pane.CurrentUrl = args.Uri;
                 if (!_smokeMode && !IsAllowedGameUrl(args.Uri))
                 {
                     args.Cancel = true;
@@ -4377,16 +5493,68 @@ namespace PokePixel.CoupledWorkspace
                     return;
                 }
 
+                // NavigationStarting can repeat for redirects with the SAME
+                // NavigationId. Keep the original pre-navigation checkpoint
+                // until that navigation commits, fails or gets superseded.
+                var samePendingNavigation = !pane.ViewDocumentCommitted
+                    && pane.ActiveNavigationId == args.NavigationId;
+                if (!samePendingNavigation)
+                {
+                    CancelPptoolsForProfile(profileId);
+                    pane.BeginViewDocument();
+                    RecordPendingWorkspaceRequests();
+                    if (string.Equals(
+                        pane.Profile.Id,
+                        _workspaceState.ActiveProfileId,
+                        StringComparison.OrdinalIgnoreCase
+                    )) UpdateGameDock();
+                }
+                pane.ActiveNavigationId = args.NavigationId;
+                pane.CurrentUrl = args.Uri;
+
+                if (_smokeMode && object.ReferenceEquals(_smokeCancelNextNavigationPane, pane))
+                {
+                    _smokeCancelNextNavigationPane = null;
+                    args.Cancel = true; // Only an opt-in file:// smoke can reach this branch.
+                }
+
+                if (_perfMetrics != null)
+                {
+                    pane.PerfNavigationId = args.NavigationId;
+                    pane.PerfNavigationStartedAt = _perfMetrics.Start();
+                    pane.PerfNavigationUiReadyObserved = false;
+                    _perfMetrics.Count(WorkspacePerfCounter.NavigationStarted);
+                }
                 SetPaneHealth(pane, PaneHealthState.Loading, "Loading");
+            };
+
+            core.ContentLoading += delegate(object sender, CoreWebView2ContentLoadingEventArgs args)
+            {
+                if (!_isClosing && IsCurrentPane(pane)
+                    && args.NavigationId == pane.ActiveNavigationId)
+                    pane.ViewReplacementContentStarted = true;
+            };
+            core.SourceChanged += delegate(object sender, CoreWebView2SourceChangedEventArgs args)
+            {
+                if (!_isClosing && IsCurrentPane(pane) && args.IsNewDocument)
+                    pane.ViewReplacementContentStarted = true;
             };
 
             core.NavigationCompleted += async delegate(object sender, CoreWebView2NavigationCompletedEventArgs args)
             {
                 if (_isClosing) return;
                 if (!IsCurrentPane(pane) || args.NavigationId != pane.ActiveNavigationId) return;
+                if (_perfMetrics != null && pane.PerfNavigationId == args.NavigationId)
+                {
+                    _perfMetrics.Observe(WorkspacePerfSpan.NavigationComplete, pane.PerfNavigationStartedAt);
+                    _perfMetrics.Count(args.IsSuccess
+                        ? WorkspacePerfCounter.NavigationSucceeded
+                        : WorkspacePerfCounter.NavigationFailed);
+                }
                 pane.CurrentUrl = core.Source;
                 if (args.IsSuccess)
                 {
+                    pane.CommitViewDocument();
                     pane.LastErrorText = null;
                     SetPaneHealth(pane, PaneHealthState.Ready, "READY");
                     Console.WriteLine(
@@ -4403,6 +5571,7 @@ namespace PokePixel.CoupledWorkspace
                         "[CoupledWorkspace] " + profileName + " load failed: "
                         + args.WebErrorStatus + " " + SafeDiagnosticUrl(core.Source)
                     );
+                    await TryRecoverInterruptedViewDocumentAsync(pane, core, args.NavigationId);
                 }
             };
 
@@ -4433,7 +5602,10 @@ namespace PokePixel.CoupledWorkspace
                 if (_isClosing) return;
                 if (!IsCurrentPane(pane)) return;
                 CancelPptoolsForProfile(profileId);
-                pane.ResetWorkspaceBridge();
+                pane.BeginViewDocument();
+                RecordPendingWorkspaceRequests();
+                if (_perfMetrics != null)
+                    _perfMetrics.Count(WorkspacePerfCounter.ProcessFailed);
                 UpdateGameDock();
                 pane.LastErrorText = "Process failed: " + args.ProcessFailedKind;
                 SetPaneHealth(pane, PaneHealthState.ProcessFailed, "PROCESS FAILED");
@@ -4458,7 +5630,17 @@ namespace PokePixel.CoupledWorkspace
                     && IsCurrentPane(pane)
                     && navigationId == pane.ActiveNavigationId
                     && string.Equals(ready, "true", StringComparison.Ordinal))
+                {
+                    if (_perfMetrics != null && pane.PerfNavigationId == navigationId
+                        && !pane.PerfNavigationUiReadyObserved)
+                    {
+                        pane.PerfNavigationUiReadyObserved = true;
+                        _perfMetrics.Observe(WorkspacePerfSpan.NavigationUiReadyProbe,
+                            pane.PerfNavigationStartedAt);
+                        _perfMetrics.Count(WorkspacePerfCounter.UiReadyConfirmed);
+                    }
                     SetPaneHealth(pane, PaneHealthState.UiReady, "UI READY");
+                }
             }
             catch (Exception ex)
             {
@@ -4477,7 +5659,16 @@ namespace PokePixel.CoupledWorkspace
                 "__PPBUI_WEBVIEW2_INJECTED__",
                 "__PPBUI_WEBVIEW2_READY__"
             );
-            await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            try
+            {
+                await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+            }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.RegisterBetterUiScript, perfStarted);
+            }
         }
 
         private async Task RegisterHuntAnalyzerAsync(WebView2 view, string script)
@@ -4487,7 +5678,16 @@ namespace PokePixel.CoupledWorkspace
                 TargetOrigin,
                 "__PPBUI_HUNT_ANALYZER_EMBED_INJECTED__"
             );
-            await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            try
+            {
+                await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+            }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.RegisterAnalyzerScript, perfStarted);
+            }
         }
 
         private async Task RegisterEvidenceProbeAsync(WebView2 view, string script)
@@ -4497,7 +5697,16 @@ namespace PokePixel.CoupledWorkspace
                 TargetOrigin,
                 "__PPBUI_EVIDENCE_INJECTED__"
             );
-            await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            try
+            {
+                await view.CoreWebView2.AddScriptToExecuteOnDocumentCreatedAsync(guarded);
+            }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.RegisterEvidenceScript, perfStarted);
+            }
         }
 
         private string BuildCoupledWorkspaceBootstrapStatement()
@@ -4506,7 +5715,7 @@ namespace PokePixel.CoupledWorkspace
                 "if(!window.__PPBUI_COUPLED_WORKSPACE__){"
                 + "Object.defineProperty(window,'__PPBUI_COUPLED_WORKSPACE__',{"
                 + "value:Object.freeze({protocol:" + WorkspaceBridgeProtocol.Version
-                + ",pptoolsBackground:" + (_pptoolsExecutor.Available ? "true" : "false") + "}),"
+                + ",viewCorrelation:2,pptoolsBackground:" + (_pptoolsExecutor.Available ? "true" : "false") + "}),"
                 + "configurable:false,enumerable:false,writable:false});"
                 + "}\n";
         }
@@ -4524,26 +5733,46 @@ namespace PokePixel.CoupledWorkspace
         private static string BuildWorkspaceBridgeSmokeScript(string profileId)
         {
             var capabilityRequestId = "caps-" + profileId;
+            var helloRequestId = "hello-" + profileId;
             var surfaces = BuildGameDockSmokeSurfaces(profileId);
             return
                 "(function(){"
                 + "window.__PPBUI_GAME_DOCK_OPENED__='';"
                 + "window.__PPBUI_GAME_DOCK_ACCEPTED__=false;"
                 + "window.__PPBUI_COUPLED_VIEW__='game';"
+                + "window.__PPBUI_COUPLED_VIEW_REVISION__=0;"
                 + "var capabilityRequestId=" + QuoteJs(capabilityRequestId) + ";"
+                + "var helloRequestId=" + QuoteJs(helloRequestId) + ";"
+                + "var sessionId=Array.from(crypto.getRandomValues(new Uint8Array(16)),function(n){return n.toString(16).padStart(2,'0');}).join('');"
+                + "var mountOrdinal=1,documentEpoch='',capabilitySeq=0,latestViewRevision=0;"
+                + "window.__PPBUI_GAME_DOCK_SESSION__=sessionId;"
+                + "Object.defineProperty(document,Symbol.for('ppbui.coupled.document-session-probe'),{configurable:true,value:function(){"
+                + "return {type:'ppbui.coupled.document-probe',protocol:1,sessionId:sessionId,documentEpoch:documentEpoch,mountOrdinal:mountOrdinal,documentUrl:document.location.href};}});"
                 + "var bridge=window.chrome&&window.chrome.webview;if(!bridge)return;"
                 + "bridge.addEventListener('message',function(event){"
                 + "var data=event.data;if(typeof data==='string'){try{data=JSON.parse(data);}catch(_){return;}}"
                 + "if(!data||data.protocol!==1)return;"
-                + "if(data.type==='ppbui.coupled.capabilities-accepted'){if(data.requestId===capabilityRequestId)window.__PPBUI_GAME_DOCK_ACCEPTED__=data.ok===true;return;}"
-                + "if(data.type==='ppbui.coupled.set-view'){window.__PPBUI_COUPLED_VIEW__=data.viewMode==='game'?'game':'cards';return;}"
-                + "if(data.type!=='ppbui.coupled.open-surface')return;"
+                + "if(data.type==='ppbui.coupled.session-ready'){"
+                + "if(data.requestId===helloRequestId&&data.sessionId===sessionId&&data.mountOrdinal===mountOrdinal&&/^[a-f0-9]{32}$/.test(data.documentEpoch)){"
+                + "documentEpoch=data.documentEpoch;clearInterval(helloTimer);announce();}return;}"
+                + "if(data.type==='ppbui.coupled.capabilities-accepted'){"
+                + "if(data.requestId===capabilityRequestId&&data.sessionId===sessionId&&data.documentEpoch===documentEpoch&&data.mountOrdinal===mountOrdinal&&data.capabilitySeq===capabilitySeq)window.__PPBUI_GAME_DOCK_ACCEPTED__=data.ok===true;return;}"
+                + "if(data.sessionId!==sessionId||data.documentEpoch!==documentEpoch||data.mountOrdinal!==mountOrdinal||!documentEpoch)return;"
+                + "if(data.type==='ppbui.coupled.resync-capabilities'){if(data.capabilitySeq===capabilitySeq)announce();return;}"
+                + "if(data.type==='ppbui.coupled.set-view'){"
+                + "if(data.capabilitySeq!==capabilitySeq||!Number.isSafeInteger(data.viewRevision)||data.viewRevision<=latestViewRevision)return;"
+                + "latestViewRevision=data.viewRevision;window.__PPBUI_COUPLED_VIEW_REVISION__=latestViewRevision;"
+                + "window.__PPBUI_COUPLED_VIEW__=data.viewMode==='game'?'game':'cards';return;}"
+                + "if(data.type!=='ppbui.coupled.open-surface'||data.capabilitySeq!==capabilitySeq)return;"
                 + "window.__PPBUI_GAME_DOCK_OPENED__=data.surfaceId||'';"
-                + "bridge.postMessage({type:'ppbui.coupled.open-surface-result',protocol:1,requestId:data.requestId||'',surfaceId:data.surfaceId||'',ok:true,error:''});"
+                + "bridge.postMessage({type:'ppbui.coupled.open-surface-result',protocol:1,requestId:data.requestId||'',surfaceId:data.surfaceId||'',ok:true,error:'',sessionId:sessionId,documentEpoch:documentEpoch,mountOrdinal:mountOrdinal});"
                 + "});"
-                + "function announce(){bridge.postMessage({type:'ppbui.coupled.capabilities',protocol:1,requestId:capabilityRequestId,surfaces:"
+                + "function announce(){bridge.postMessage({type:'ppbui.coupled.capabilities',protocol:1,requestId:capabilityRequestId,sessionId:sessionId,documentEpoch:documentEpoch,mountOrdinal:mountOrdinal,capabilitySeq:++capabilitySeq,surfaces:"
                 + surfaces + "});}"
-                + "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',announce,{once:true});else announce();"
+                + "window.__PPBUI_GAME_DOCK_REANNOUNCE__=announce;"
+                + "function hello(){if(documentEpoch)return;bridge.postMessage({type:'ppbui.coupled.session-hello',protocol:1,requestId:helloRequestId,sessionId:sessionId,mountOrdinal:mountOrdinal});}"
+                + "var helloTimer=setInterval(hello,125);"
+                + "if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hello,{once:true});else hello();"
                 + "})();";
         }
 
@@ -4771,8 +6000,14 @@ namespace PokePixel.CoupledWorkspace
                 throw new InvalidOperationException("Left post-success ready marker missing: " + leftReady);
             if (!string.Equals(rightReady, "true", StringComparison.Ordinal))
                 throw new InvalidOperationException("Right post-success ready marker missing: " + rightReady);
+            RecordSyntheticSmokeReady(leftPane);
+            RecordSyntheticSmokeReady(rightPane);
 
             await RunGameDockBridgeSmokeAsync(leftPane, rightPane);
+            await RunViewCorrelationReplaySmokeAsync(leftPane, rightPane);
+            await RunCancelledNavigationSmokeAsync(leftPane);
+            await RunViewResyncFailureSmokeAsync(leftPane);
+            RunRepeatedFocusSettingsSmoke();
 
             if (string.Equals(
                 leftPane.View.CoreWebView2.Environment.UserDataFolder,
@@ -4783,21 +6018,365 @@ namespace PokePixel.CoupledWorkspace
                 throw new InvalidOperationException("WebView2 user data folders are not isolated.");
             }
 
-            await RunWorkspaceLifecycleSmokeAsync(leftPane, rightPane);
-            RunLayoutEngineSmoke();
-            await CaptureVisualSmokeAsync();
+            var cycleCount = _perfCyclesSmoke ? 20 : 1;
+            for (var cycle = 0; cycle < cycleCount; cycle++)
+            {
+                var cycleLeft = GetPaneForSide(PaneSide.Left);
+                var cycleRight = GetPaneForSide(PaneSide.Right);
+                var lifecycleStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+                await RunWorkspaceLifecycleSmokeAsync(cycleLeft, cycleRight);
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.SmokeLifecycleCycle, lifecycleStarted);
+                var layoutStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+                RunLayoutEngineSmoke();
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.SmokeFocusLayoutCycle, layoutStarted);
+            }
+            // CW-PERF-001 deliberately separates reproducible synthetic core
+            // startup/bridge/layout/recovery timings from a separate, fully
+            // enforced visual screenshot smoke. This opt-in mode does not
+            // claim to pass the visual acceptance tests it omits.
+            if (!_perfBaselineSmoke)
+            {
+                if (_perfExtendedVisualSmoke)
+                    Console.WriteLine("CW-PERF-001 extended visual smoke: starting full screenshot assertions");
+                await CaptureVisualSmokeAsync();
+                if (_perfExtendedVisualSmoke)
+                    Console.WriteLine("CW-PERF-001 extended visual smoke: full screenshot assertions PASS");
+            }
             await RunHostCommandAndDiagnosticsSmokeAsync();
 
             _smokeTimer.Stop();
-            Console.WriteLine("WebView2 coupled workspace smoke: PASS");
+            Console.WriteLine(_perfCyclesSmoke
+                ? "CW-PERF-001 synthetic 20-cycle core smoke: PASS (visual smoke NOT RUN)"
+                : _perfBaselineSmoke
+                    ? "CW-PERF-001 synthetic core-only smoke: PASS (visual smoke NOT RUN)"
+                    : "WebView2 coupled workspace smoke: PASS");
             Environment.ExitCode = 0;
             Close();
         }
 
+        private void RecordSyntheticSmokeReady(AccountPane pane)
+        {
+            if (_perfMetrics == null || pane == null || pane.PerfNavigationStartedAt <= 0
+                || pane.PerfNavigationId != pane.ActiveNavigationId
+                || pane.PerfNavigationUiReadyObserved) return;
+            pane.PerfNavigationUiReadyObserved = true;
+            // The smoke probe is intentionally separate from real UI READY:
+            // the local fixture does not load or inspect a game session.
+            _perfMetrics.Observe(WorkspacePerfSpan.SmokeNavigationUiReadyProbe,
+                pane.PerfNavigationStartedAt);
+            _perfMetrics.Count(WorkspacePerfCounter.SmokeUiReadyConfirmed);
+        }
+
+        private async Task RunViewResyncFailureSmokeAsync(AccountPane pane)
+        {
+            if (!_smokeMode || pane == null || !pane.StrictViewSession || !pane.WorkspaceBridgeReady)
+                throw new InvalidOperationException("View resync failure smoke needs a committed local adapter.");
+            // The preceding canceled-navigation recovery may still have a
+            // scheduled (now obsolete) retry waiting for its final 750ms tick.
+            for (var attempt = 0; attempt < 12 && pane.ViewResyncRetryScheduled; attempt++)
+                await Task.Delay(100);
+            if (pane.ViewResyncRetryScheduled)
+                throw new InvalidOperationException("Previous navigation resync did not settle before fault injection.");
+            var epoch = pane.ViewDocumentEpoch;
+            var sessionId = pane.ViewSessionId;
+            var previousRevision = pane.ViewRevision;
+            try
+            {
+                // The first two native posts throw/fail before delivery;
+                // the third must reach the same still-running document.
+                pane.PendingWorkspaceRequests["before-resync-failure"] = "inventory";
+                pane.ResetWorkspaceBridge();
+                _smokeResyncFailuresRemaining = 2;
+                _smokeResyncPostCount = 0;
+                if (RequestCurrentViewCapabilities(pane))
+                    throw new InvalidOperationException("Synthetic resync failures were not exercised.");
+                for (var attempt = 0; attempt < 40 && !pane.WorkspaceBridgeReady; attempt++)
+                {
+                    await Task.Delay(100);
+                    Application.DoEvents();
+                }
+                if (!pane.WorkspaceBridgeReady || _smokeResyncPostCount != 3
+                    || pane.ViewRevision <= previousRevision
+                    || !string.Equals(pane.ViewDocumentEpoch, epoch, StringComparison.Ordinal)
+                    || !string.Equals(pane.ViewSessionId, sessionId, StringComparison.Ordinal)
+                    || pane.PendingWorkspaceRequests.ContainsKey("before-resync-failure"))
+                    throw new InvalidOperationException("Bounded native post retry failed to rehydrate the current document."
+                        + " posts=" + _smokeResyncPostCount
+                        + " ready=" + pane.WorkspaceBridgeReady
+                        + " scheduled=" + pane.ViewResyncRetryScheduled
+                        + " epoch=" + (pane.ViewDocumentEpoch == epoch)
+                        + " session=" + (pane.ViewSessionId == sessionId));
+                for (var attempt = 0; attempt < 12 && pane.ViewResyncRetryScheduled; attempt++)
+                    await Task.Delay(100);
+                if (pane.ViewResyncRetryScheduled)
+                    throw new InvalidOperationException("Previous resync retry did not settle before the next scenario.");
+
+                // Four consecutive failures exhaust immediate post + 3 retries.
+                pane.ResetWorkspaceBridge();
+                _smokeResyncFailuresRemaining = 4;
+                _smokeResyncPostCount = 0;
+                if (RequestCurrentViewCapabilities(pane))
+                    throw new InvalidOperationException("Expected first all-failing resync post to fail.");
+                for (var attempt = 0; attempt < 42 && pane.ViewResyncRetryScheduled; attempt++)
+                {
+                    await Task.Delay(100);
+                    Application.DoEvents();
+                }
+                if (pane.WorkspaceBridgeReady || pane.ViewResyncRetryScheduled
+                    || _smokeResyncPostCount != 4)
+                    throw new InvalidOperationException("All-failed resync did not stop offline after four bounded attempts.");
+
+                // A later explicit healthy retry can recover without a reload.
+                _smokeResyncFailuresRemaining = 0;
+                if (!RequestCurrentViewCapabilities(pane))
+                    throw new InvalidOperationException("Recovered native bridge could not send resync.");
+                for (var attempt = 0; attempt < 20 && !pane.WorkspaceBridgeReady; attempt++)
+                {
+                    await Task.Delay(100);
+                    Application.DoEvents();
+                }
+                if (!pane.WorkspaceBridgeReady || pane.ViewDocumentEpoch != epoch
+                    || pane.ViewSessionId != sessionId)
+                    throw new InvalidOperationException("Healthy resync did not restore the original document.");
+                Console.WriteLine("CW-PERF-002 resync transport failures: PASS (2 failures recovered; 4 failures bounded offline; explicit later recovery)");
+            }
+            finally { _smokeResyncFailuresRemaining = 0; }
+        }
+
+        private async Task RunCancelledNavigationSmokeAsync(AccountPane pane)
+        {
+            if (!_smokeMode || pane == null || !pane.StrictViewSession || !pane.WorkspaceBridgeReady)
+                throw new InvalidOperationException("Canceled navigation smoke needs a committed local document.");
+            var core = pane.View.CoreWebView2;
+            var priorUrl = core.Source;
+            var priorSession = pane.ViewSessionId;
+            var priorEpoch = pane.ViewDocumentEpoch;
+            var priorRevision = pane.ViewRevision;
+            var completion = new TaskCompletionSource<bool>();
+            EventHandler<CoreWebView2NavigationCompletedEventArgs> handler = null;
+            handler = delegate(object sender, CoreWebView2NavigationCompletedEventArgs args)
+            {
+                core.NavigationCompleted -= handler;
+                completion.TrySetResult(args.IsSuccess);
+            };
+            pane.PendingWorkspaceRequests["cancelled-navigation-open"] = "inventory";
+            core.NavigationCompleted += handler;
+            try
+            {
+                _smokeCancelNextNavigationPane = pane;
+                core.Navigate(priorUrl);
+                if (await Task.WhenAny(completion.Task, Task.Delay(3500)) != completion.Task)
+                    throw new InvalidOperationException("Canceled navigation did not emit NavigationCompleted.");
+                if (await completion.Task)
+                    throw new InvalidOperationException("Synthetic NavigationStarting cancel unexpectedly succeeded.");
+            }
+            finally
+            {
+                _smokeCancelNextNavigationPane = null;
+                core.NavigationCompleted -= handler;
+            }
+
+            var probeScript = "(function(){var p=document[Symbol.for('ppbui.coupled.document-session-probe')];"
+                + "return typeof p==='function'?p():null;})()";
+            WorkspaceBridgeMessage live = null;
+            try { live = WorkspaceBridgeProtocol.Deserialize(await core.ExecuteScriptAsync(probeScript)); }
+            catch (Exception) { }
+            var oldSurvived = live != null
+                && live.Type == "ppbui.coupled.document-probe"
+                && string.Equals(live.SessionId, priorSession, StringComparison.Ordinal)
+                && string.Equals(live.DocumentEpoch, priorEpoch, StringComparison.Ordinal)
+                && SameDocumentAddress(live.DocumentUrl, priorUrl)
+                && !pane.ViewReplacementContentStarted;
+            if (oldSurvived)
+            {
+                for (var attempt = 0; attempt < 28 && !pane.WorkspaceBridgeReady; attempt++)
+                {
+                    await Task.Delay(100);
+                    Application.DoEvents();
+                }
+                if (!pane.WorkspaceBridgeReady || !pane.ViewDocumentCommitted
+                    || !pane.StrictViewSession || pane.ViewSessionId != priorSession
+                    || pane.ViewDocumentEpoch != priorEpoch || pane.ViewRevision < priorRevision)
+                    throw new InvalidOperationException("Verified surviving old document did not recover its bridge.");
+            }
+            else if (pane.ViewDocumentCommitted || pane.WorkspaceBridgeReady)
+                throw new InvalidOperationException("Failed navigation authorized an unverified/error document.");
+
+            if (pane.PendingWorkspaceRequests.ContainsKey("cancelled-navigation-open"))
+                throw new InvalidOperationException("Canceled navigation replayed a previously pending native action.");
+
+            if (!oldSurvived)
+            {
+                // Chromium can replace a canceled/error document. Return this
+                // smoke pane to the same local file without assuming survival.
+                var loaded = new TaskCompletionSource<bool>();
+                EventHandler<CoreWebView2NavigationCompletedEventArgs> restore = null;
+                restore = delegate(object sender, CoreWebView2NavigationCompletedEventArgs args)
+                {
+                    core.NavigationCompleted -= restore;
+                    loaded.TrySetResult(args.IsSuccess);
+                };
+                core.NavigationCompleted += restore;
+                try
+                {
+                    core.Navigate(priorUrl);
+                    if (await Task.WhenAny(loaded.Task, Task.Delay(3500)) != loaded.Task || !await loaded.Task)
+                        throw new InvalidOperationException("Failed navigation smoke could not restore local HTML.");
+                    for (var attempt = 0; attempt < 20 && !pane.WorkspaceBridgeReady; attempt++)
+                    {
+                        await Task.Delay(100);
+                        Application.DoEvents();
+                    }
+                    if (!pane.WorkspaceBridgeReady)
+                        throw new InvalidOperationException("Failed navigation smoke did not rehydrate local capabilities.");
+                }
+                finally { core.NavigationCompleted -= restore; }
+            }
+            Console.WriteLine("CW-PERF-002 canceled NavigationStarting/failed NavigationCompleted: PASS (oldDocumentSurvived="
+                + oldSurvived + "; pending actions cleared; no unverified session accepted)");
+        }
+
+        private async Task RunViewCorrelationReplaySmokeAsync(AccountPane pane, AccountPane other)
+        {
+            if (pane == null || other == null || !pane.StrictViewSession || !other.StrictViewSession)
+                throw new InvalidOperationException("Strict view replay smoke requires both correlated local panes.");
+            var oldEpoch = pane.ViewDocumentEpoch;
+            var oldSession = pane.ViewSessionId;
+            var oldMount = pane.ViewMountOrdinal;
+            var oldCapabilitySeq = pane.ViewCapabilitySeq;
+            var oldRevision = pane.ViewRevision;
+            var unaffectedSession = other.ViewSessionId;
+            var reloadUrl = pane.View.CoreWebView2.Source;
+            pane.PendingWorkspaceRequests["prior-document-open"] = "inventory";
+            var complete = new TaskCompletionSource<bool>();
+            EventHandler<CoreWebView2NavigationCompletedEventArgs> handler = null;
+            handler = delegate(object sender, CoreWebView2NavigationCompletedEventArgs args)
+            {
+                pane.View.CoreWebView2.NavigationCompleted -= handler;
+                if (args.IsSuccess) complete.TrySetResult(true);
+                else complete.TrySetException(new InvalidOperationException("Same-URL replay smoke reload failed."));
+            };
+            pane.View.CoreWebView2.NavigationCompleted += handler;
+            try
+            {
+                pane.View.CoreWebView2.Reload();
+                await complete.Task;
+            }
+            finally
+            {
+                pane.View.CoreWebView2.NavigationCompleted -= handler;
+            }
+
+            for (var attempt = 0; attempt < 18 && !pane.WorkspaceBridgeReady; attempt++)
+            {
+                await Task.Delay(100);
+                Application.DoEvents();
+            }
+            if (!pane.WorkspaceBridgeReady || !pane.StrictViewSession
+                || pane.ViewDocumentEpoch == oldEpoch || pane.ViewSessionId == oldSession
+                || pane.ViewRevision <= oldRevision
+                || !string.Equals(pane.View.CoreWebView2.Source, reloadUrl, StringComparison.OrdinalIgnoreCase)
+                || pane.PendingWorkspaceRequests.ContainsKey("prior-document-open")
+                || !other.WorkspaceBridgeReady || other.ViewSessionId != unaffectedSession)
+                throw new InvalidOperationException("Same-URL reload failed to replace only its document session.");
+
+            var retainedOpenId = "same-session-pending-open";
+            pane.PendingWorkspaceRequests[retainedOpenId] = "inventory";
+            try
+            {
+                var beforeReannounce = pane.ViewCapabilitySeq;
+                await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "window.__PPBUI_GAME_DOCK_REANNOUNCE__()");
+                for (var attempt = 0; attempt < 12 && pane.ViewCapabilitySeq == beforeReannounce; attempt++)
+                {
+                    await Task.Delay(75);
+                    Application.DoEvents();
+                }
+                if (!pane.WorkspaceBridgeReady || pane.ViewCapabilitySeq <= beforeReannounce
+                    || !pane.PendingWorkspaceRequests.ContainsKey(retainedOpenId))
+                    throw new InvalidOperationException("Same-session capability refresh cleared a pending native action.");
+            }
+            finally { pane.PendingWorkspaceRequests.Remove(retainedOpenId); }
+
+            var surfacesBefore = new HashSet<string>(pane.AvailableSurfaces, StringComparer.OrdinalIgnoreCase);
+            var currentSequence = pane.ViewCapabilitySeq;
+            var poisoned = new List<WorkspaceBridgeSurface> { new WorkspaceBridgeSurface
+                { Id = "inventory", Label = "Replay", Available = false } };
+            HandleWorkspaceBridgeMessage(pane, WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+            {
+                Type = WorkspaceBridgeProtocol.CapabilitiesType,
+                Protocol = WorkspaceBridgeProtocol.Version,
+                RequestId = "old-document-capabilities",
+                SessionId = oldSession,
+                DocumentEpoch = oldEpoch,
+                MountOrdinal = oldMount,
+                CapabilitySeq = oldCapabilitySeq + 100,
+                Surfaces = poisoned
+            }));
+            HandleWorkspaceBridgeMessage(pane, WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+            {
+                Type = WorkspaceBridgeProtocol.CapabilitiesType,
+                Protocol = WorkspaceBridgeProtocol.Version,
+                RequestId = "duplicate-document-capabilities",
+                SessionId = pane.ViewSessionId,
+                DocumentEpoch = pane.ViewDocumentEpoch,
+                MountOrdinal = pane.ViewMountOrdinal,
+                CapabilitySeq = currentSequence,
+                Surfaces = poisoned
+            }));
+            // A higher ordinal with the current epoch cannot take over a pane
+            // unless the host first issued its document-session challenge.
+            HandleWorkspaceBridgeMessage(pane, WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+            {
+                Type = WorkspaceBridgeProtocol.CapabilitiesType,
+                Protocol = WorkspaceBridgeProtocol.Version,
+                RequestId = "never-issued-session",
+                SessionId = Guid.NewGuid().ToString("N"),
+                DocumentEpoch = pane.ViewDocumentEpoch,
+                MountOrdinal = pane.ViewMountOrdinal + 1,
+                CapabilitySeq = currentSequence + 1,
+                Surfaces = poisoned
+            }));
+            var inFlightId = "new-document-open";
+            pane.PendingWorkspaceRequests[inFlightId] = "inventory";
+            try
+            {
+                HandleWorkspaceBridgeMessage(pane, WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
+                {
+                    Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
+                    Protocol = WorkspaceBridgeProtocol.Version,
+                    RequestId = inFlightId, SurfaceId = "inventory", Ok = false,
+                    SessionId = oldSession, DocumentEpoch = oldEpoch, MountOrdinal = oldMount
+                }));
+                if (!pane.WorkspaceBridgeReady || pane.ViewCapabilitySeq != currentSequence
+                    || !surfacesBefore.SetEquals(pane.AvailableSurfaces)
+                    || !pane.PendingWorkspaceRequests.ContainsKey(inFlightId))
+                    throw new InvalidOperationException("Stale same-URL capabilities/result replaced current native state.");
+            }
+            finally { pane.PendingWorkspaceRequests.Remove(inFlightId); }
+
+            var inPageRevision = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_COUPLED_VIEW_REVISION__");
+            var inPageSession = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_SESSION__");
+            if (!string.Equals(inPageRevision, pane.ViewRevision.ToString(), StringComparison.Ordinal)
+                || inPageSession.IndexOf(pane.ViewSessionId, StringComparison.Ordinal) < 0)
+                throw new InvalidOperationException("Reloaded page did not accept latest native view revision/session.");
+            Console.WriteLine("CW-PERF-002 same-URL document-epoch replay and dual-account isolation: PASS");
+        }
+
         private async Task RunGameDockBridgeSmokeAsync(AccountPane rhyxusPane, AccountPane rhyosaPane)
         {
-            await Task.Delay(60);
-            Application.DoEvents();
+            // A session-hello emitted before NavigationCompleted is deliberately
+            // discarded; allow the isolated page to retry its 125ms hello.
+            for (var attempt = 0; attempt < 16
+                && (!rhyxusPane.WorkspaceBridgeReady || !rhyosaPane.WorkspaceBridgeReady); attempt++)
+            {
+                await Task.Delay(100);
+                Application.DoEvents();
+            }
             if (!rhyxusPane.WorkspaceBridgeReady || !rhyosaPane.WorkspaceBridgeReady)
                 throw new InvalidOperationException("Game Dock bridge capabilities were not received for both panes.");
             var rhyxusAccepted = await rhyxusPane.View.CoreWebView2.ExecuteScriptAsync(
@@ -4971,6 +6550,38 @@ namespace PokePixel.CoupledWorkspace
             {
                 throw new InvalidOperationException("Game Dock overflow did not open above the bottom bar.");
             }
+            var openOverflowItem = analyzerOverflowItem;
+            SetActiveProfile(ProfileRegistry.Rhyxus.Id);
+            UpdateGameDock();
+            if (!_gameDockOverflowMenu.Visible
+                || !object.ReferenceEquals(openOverflowItem, FindGameDockOverflowItem("hunt-analyzer")))
+                throw new InvalidOperationException("Redundant Game Dock update closed or replaced an open menu.");
+            var originalFavorites = _workspaceState.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id];
+            var reorderedFavorites = new List<string>(originalFavorites);
+            var firstFavorite = reorderedFavorites[0];
+            reorderedFavorites[0] = reorderedFavorites[1];
+            reorderedFavorites[1] = firstFavorite;
+            _workspaceState.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id] = reorderedFavorites;
+            try
+            {
+                UpdateGameDock();
+                if (!_gameDockOverflowMenu.Visible
+                    || !object.ReferenceEquals(openOverflowItem, FindGameDockOverflowItem("hunt-analyzer")))
+                    throw new InvalidOperationException("Quick slot reorder closed unchanged Overflow menu.");
+            }
+            finally
+            {
+                _workspaceState.QuickSurfacesByProfile[ProfileRegistry.Rhyxus.Id] = originalFavorites;
+                UpdateGameDock();
+            }
+            rhyxusPane.AvailableSurfaces.Remove("hunt-analyzer");
+            UpdateGameDock();
+            if (_gameDockOverflowMenu.Visible || FindGameDockOverflowItem("hunt-analyzer") != null)
+                throw new InvalidOperationException("Revoked Overflow capability remained actionable.");
+            rhyxusPane.AvailableSurfaces.Add("hunt-analyzer");
+            UpdateGameDock();
+            if (FindGameDockOverflowItem("hunt-analyzer") == null)
+                throw new InvalidOperationException("Restored Overflow capability was not rebuilt.");
             _gameDockOverflowMenu.Close(ToolStripDropDownCloseReason.CloseCalled);
             OpenGameSurface("inventory");
             await Task.Delay(30);
@@ -5087,7 +6698,7 @@ namespace PokePixel.CoupledWorkspace
             }
             SwapPanes();
             SetActiveProfile(ProfileRegistry.Rhyxus.Id);
-            RunGameDockOfflineBridgeSmoke(rhyxusPane);
+            await RunGameDockOfflineBridgeSmokeAsync(rhyxusPane);
             await RunHostQoLSmokeAsync(rhyxusPane, rhyosaPane);
         }
 
@@ -5167,7 +6778,7 @@ namespace PokePixel.CoupledWorkspace
                 _latestDockUiRequestByProfile[rhyxusPane.Profile.Id] = requestId;
                 rhyxusPane.PendingWorkspaceRequests[requestId] = "hunt-analyzer";
                 HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
-                    new WorkspaceBridgeMessage
+                    WithCurrentSmokeViewSession(rhyxusPane, new WorkspaceBridgeMessage
                     {
                         Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
                         Protocol = WorkspaceBridgeProtocol.Version,
@@ -5175,7 +6786,7 @@ namespace PokePixel.CoupledWorkspace
                         SurfaceId = "hunt-analyzer",
                         Ok = false,
                         Error = "surface-unavailable"
-                    }
+                    })
                 ));
                 if (rhyxusPane.PendingWorkspaceRequests.ContainsKey(requestId)
                     || _gameDockAvailabilityLabel.Text != "OPEN FAILED"
@@ -5189,23 +6800,23 @@ namespace PokePixel.CoupledWorkspace
                 rhyxusPane.PendingWorkspaceRequests[newRequest] = "storage";
                 _latestDockUiRequestByProfile[rhyxusPane.Profile.Id] = newRequest;
                 HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
-                    new WorkspaceBridgeMessage
+                    WithCurrentSmokeViewSession(rhyxusPane, new WorkspaceBridgeMessage
                     {
                         Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
                         Protocol = WorkspaceBridgeProtocol.Version,
                         RequestId = oldRequest, SurfaceId = "team", Ok = true
-                    }
+                    })
                 ));
                 if (_gameDockAvailabilityLabel.Text != "OPEN FAILED"
                     || _gameDockAvailabilityLabel.AccessibleName.IndexOf("Hunt Analyzer", StringComparison.Ordinal) < 0)
                     throw new InvalidOperationException("Older correlated success cleared a newer failure message.");
                 HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
-                    new WorkspaceBridgeMessage
+                    WithCurrentSmokeViewSession(rhyxusPane, new WorkspaceBridgeMessage
                     {
                         Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
                         Protocol = WorkspaceBridgeProtocol.Version,
                         RequestId = newRequest, SurfaceId = "storage", Ok = false
-                    }
+                    })
                 ));
                 if (_gameDockAvailabilityLabel.Text != "OPEN FAILED"
                     || _gameDockAvailabilityLabel.AccessibleName.IndexOf("Storage", StringComparison.Ordinal) < 0)
@@ -5217,20 +6828,20 @@ namespace PokePixel.CoupledWorkspace
                 rhyxusPane.PendingWorkspaceRequests[newSuccess] = "inventory";
                 _latestDockUiRequestByProfile[rhyxusPane.Profile.Id] = newSuccess;
                 HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
-                    new WorkspaceBridgeMessage
+                    WithCurrentSmokeViewSession(rhyxusPane, new WorkspaceBridgeMessage
                     {
                         Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
                         Protocol = WorkspaceBridgeProtocol.Version,
                         RequestId = newSuccess, SurfaceId = "inventory", Ok = true
-                    }
+                    })
                 ));
                 HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
-                    new WorkspaceBridgeMessage
+                    WithCurrentSmokeViewSession(rhyxusPane, new WorkspaceBridgeMessage
                     {
                         Type = WorkspaceBridgeProtocol.OpenSurfaceResultType,
                         Protocol = WorkspaceBridgeProtocol.Version,
                         RequestId = oldSuccess, SurfaceId = "team", Ok = false
-                    }
+                    })
                 ));
                 if (_gameDockAvailabilityLabel.Text != "MENUS READY"
                     || rhyxusPane.PendingWorkspaceRequests.ContainsKey(oldSuccess)
@@ -5252,26 +6863,29 @@ namespace PokePixel.CoupledWorkspace
                 TryApplyPaneZoom(rhyosaPane);
                 ClearDockOpenFeedback();
                 SetActiveProfile(ProfileRegistry.Rhyxus.Id);
-                var restoredSurfaces = new List<WorkspaceBridgeSurface>();
-                foreach (var definition in GameDockAllSurfaces)
-                    restoredSurfaces.Add(new WorkspaceBridgeSurface
-                    {
-                        Id = definition.Key, Label = definition.Value, Available = true
-                    });
-                HandleWorkspaceBridgeMessage(rhyxusPane, WorkspaceBridgeProtocol.Serialize(
-                    new WorkspaceBridgeMessage
-                    {
-                        Type = WorkspaceBridgeProtocol.CapabilitiesType,
-                        Protocol = WorkspaceBridgeProtocol.Version,
-                        RequestId = "qol-restored",
-                        Surfaces = restoredSurfaces
-                    }
-                ));
                 UpdateGameDock();
             }
+            // Restore the catalog from the real local page, advancing the
+            // JS/host capability generation together.
+            await ReannounceSmokeCapabilitiesAsync(rhyxusPane);
         }
 
-        private void RunGameDockOfflineBridgeSmoke(AccountPane pane)
+        private async Task ReannounceSmokeCapabilitiesAsync(AccountPane pane)
+        {
+            var previous = pane.ViewCapabilitySeq;
+            if (!RequestCurrentViewCapabilities(pane))
+                throw new InvalidOperationException("Native local-page capability refresh was not delivered.");
+            for (var attempt = 0; attempt < 12
+                && (!pane.WorkspaceBridgeReady || pane.ViewCapabilitySeq == previous); attempt++)
+            {
+                await Task.Delay(75);
+                Application.DoEvents();
+            }
+            if (!pane.WorkspaceBridgeReady || pane.ViewCapabilitySeq <= previous)
+                throw new InvalidOperationException("Local page capability generation failed to recover.");
+        }
+
+        private async Task RunGameDockOfflineBridgeSmokeAsync(AccountPane pane)
         {
             if (pane == null) throw new InvalidOperationException("Offline Game Dock smoke requires an active pane.");
             pane.ResetWorkspaceBridge();
@@ -5301,32 +6915,22 @@ namespace PokePixel.CoupledWorkspace
                 throw new InvalidOperationException("Game Dock overflow remained actionable while the bridge was unavailable.");
             }
 
-            var restoredSurfaces = new List<WorkspaceBridgeSurface>();
-            foreach (var definition in GameDockAllSurfaces)
-            {
-                restoredSurfaces.Add(new WorkspaceBridgeSurface
-                {
-                    Id = definition.Key,
-                    Label = definition.Value,
-                    Available = true
-                });
-            }
-            HandleWorkspaceBridgeMessage(
-                pane,
-                WorkspaceBridgeProtocol.Serialize(new WorkspaceBridgeMessage
-                {
-                    Type = WorkspaceBridgeProtocol.CapabilitiesType,
-                    Protocol = WorkspaceBridgeProtocol.Version,
-                    RequestId = "offline-restore",
-                    Surfaces = restoredSurfaces
-                })
-            );
+            await ReannounceSmokeCapabilitiesAsync(pane);
+            var nativeShop = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "Boolean(document.querySelector('[data-menu-id=\"npc-shop\"]'))");
+            // The core fixture intentionally advertises the full synthetic
+            // catalog. The visual-page adapter instead advertises only actual
+            // native toolbar actions. Identify which client owns this pane.
+            var stubSession = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                "window.__PPBUI_GAME_DOCK_SESSION__");
+            var syntheticCatalog = stubSession.IndexOf(pane.ViewSessionId, StringComparison.Ordinal) >= 0;
+            var expectedShop = syntheticCatalog || string.Equals(nativeShop, "true", StringComparison.Ordinal);
             if (!pane.WorkspaceBridgeReady
                 || !_gameDockAvailabilityLabel.Visible
                 || _gameDockAvailabilityLabel.Text != "MENUS READY"
                 || !_gameDockButtons["inventory"].Enabled
                 || !_gameDockButtons["hunts"].Enabled
-                || !_gameDockButtons["npc-shop"].Enabled
+                || _gameDockButtons["npc-shop"].Enabled != expectedShop
                 || !_gameDockOverflowButton.Enabled
                 || FindGameDockOverflowItem("hunt-analyzer") == null)
             {
@@ -6172,27 +7776,93 @@ namespace PokePixel.CoupledWorkspace
                 );
             }
 
-            _scopeSelector.Focus();
-            _scopeSelector.OpenMenuForSmoke();
-            Application.DoEvents();
             var menu = _scopeSelector.MenuForSmoke;
-            if (menu == null
-                || !menu.Visible
-                || ( _scopeSelector.AccessibilityObject.State & AccessibleStates.Expanded) == 0)
+            if (menu == null)
+                throw new InvalidOperationException("Better UI select smoke menu is missing.");
+            var opens = 0;
+            ToolStripDropDownCloseReason? lastCloseReason = null;
+            EventHandler onOpened = delegate { opens++; };
+            ToolStripDropDownClosedEventHandler onClosed = delegate(
+                object sender, ToolStripDropDownClosedEventArgs args)
             {
-                throw new InvalidOperationException(
-                    "Better UI select did not expose an open dropdown/accessibility state."
+                lastCloseReason = args.CloseReason;
+            };
+            menu.Opened += onOpened;
+            menu.Closed += onClosed;
+            try
+            {
+                _scopeSelector.Focus();
+                _scopeSelector.OpenMenuForSmoke();
+                var openedBeforePump = menu.Visible;
+                Application.DoEvents();
+
+                // A synthetic offscreen WinForms smoke may receive an unrelated
+                // activation/focus notification during DoEvents and auto-close a
+                // menu which *was* visibly opened. Reopen ONCE only when the
+                // precise native CloseReason proves that transient condition.
+                // Never mask an inaccessible, empty, disposed or unopenable menu.
+                var transientFocusClose = openedBeforePump
+                    && !menu.Visible
+                    && (lastCloseReason == ToolStripDropDownCloseReason.AppClicked
+                        || lastCloseReason == ToolStripDropDownCloseReason.AppFocusChange)
+                    && _scopeSelector.Enabled
+                    && _scopeSelector.Visible
+                    && _scopeSelector.CanFocus
+                    && _scopeSelector.IsHandleCreated
+                    && _scopeSelector.Items.Count > 0;
+                if (transientFocusClose)
+                {
+                    _scopeSelector.Focus();
+                    Application.DoEvents();
+                    _scopeSelector.OpenMenuForSmoke();
+                    Application.DoEvents();
+                }
+
+                if (!menu.Visible
+                    || (_scopeSelector.AccessibilityObject.State & AccessibleStates.Expanded) == 0)
+                {
+                    throw new InvalidOperationException(
+                        "Better UI select did not expose an open dropdown/accessibility state:"
+                        + " openedBeforePump=" + openedBeforePump
+                        + ", openedCount=" + opens
+                        + ", lastCloseReason=" + (lastCloseReason.HasValue
+                            ? lastCloseReason.Value.ToString() : "none")
+                        + ", enabled=" + _scopeSelector.Enabled
+                        + ", visible=" + _scopeSelector.Visible
+                        + ", focused=" + _scopeSelector.Focused
+                        + ", canFocus=" + _scopeSelector.CanFocus
+                        + ", handleCreated=" + _scopeSelector.IsHandleCreated
+                        + ", items=" + _scopeSelector.Items.Count + "."
+                    );
+                }
+
+                menu.Location = new Point(-10000, -10000);
+                Application.DoEvents();
+                if (!menu.Visible
+                    || (_scopeSelector.AccessibilityObject.State & AccessibleStates.Expanded) == 0)
+                    throw new InvalidOperationException(
+                        "Better UI select menu closed during screenshot preparation;"
+                        + " lastCloseReason=" + (lastCloseReason.HasValue
+                            ? lastCloseReason.Value.ToString() : "none") + "."
+                    );
+                CaptureControl(
+                    menu,
+                    Path.Combine(outputDir, "command-deck-scope-dropdown.png")
                 );
             }
-
-            menu.Location = new Point(-10000, -10000);
-            Application.DoEvents();
-            CaptureControl(
-                menu,
-                Path.Combine(outputDir, "command-deck-scope-dropdown.png")
-            );
-            menu.Close(ToolStripDropDownCloseReason.CloseCalled);
-            Application.DoEvents();
+            finally
+            {
+                try
+                {
+                    if (menu.Visible) menu.Close(ToolStripDropDownCloseReason.CloseCalled);
+                    Application.DoEvents();
+                }
+                finally
+                {
+                    menu.Opened -= onOpened;
+                    menu.Closed -= onClosed;
+                }
+            }
             if ((_scopeSelector.AccessibilityObject.State & AccessibleStates.Collapsed) == 0)
             {
                 throw new InvalidOperationException(
@@ -6266,6 +7936,7 @@ namespace PokePixel.CoupledWorkspace
             );
             SetActiveProfile(ProfileRegistry.Rhyxus.Id);
             AssertGameDockGeometry("dual-1180-selected-rhyxus");
+            CaptureGameDockOverflowVisualSmoke(outputDir);
             var offlinePane = GetPaneForProfile(_workspaceState.ActiveProfileId);
             offlinePane.ResetWorkspaceBridge();
             UpdateGameDock();
@@ -6274,7 +7945,7 @@ namespace PokePixel.CoupledWorkspace
                 _gameDock,
                 Path.Combine(outputDir, "game-dock-offline-1180.png")
             );
-            RunGameDockOfflineBridgeSmoke(offlinePane);
+            await RunGameDockOfflineBridgeSmokeAsync(offlinePane);
             await CaptureWorkspaceCompositeAsync(
                 Path.Combine(outputDir, "workspace-cards-dual-1180.png"),
                 false
@@ -6593,6 +8264,97 @@ namespace PokePixel.CoupledWorkspace
             Application.DoEvents();
         }
 
+        private void CaptureGameDockOverflowVisualSmoke(string outputDir)
+        {
+            var profileId = _workspaceState.ActiveProfileId;
+            var pane = GetPaneForProfile(profileId);
+            if (pane == null || _gameDockOverflowButton == null
+                || !_gameDockOverflowButton.Enabled || _gameDockOverflowMenu == null
+                || FindGameDockOverflowItem("hunt-analyzer") == null)
+                throw new InvalidOperationException("Synthetic Overflow visual setup is not ready.");
+
+            var originalQuick = _workspaceState.QuickSurfacesByProfile[profileId];
+            var analyzerAvailable = pane.AvailableSurfaces.Contains("hunt-analyzer");
+            try
+            {
+                ShowGameDockOverflowMenu();
+                Application.DoEvents();
+                if (!_gameDockOverflowMenu.Visible)
+                    throw new InvalidOperationException("Synthetic Overflow popup did not open.");
+                var retainedItem = FindGameDockOverflowItem("hunt-analyzer");
+                CaptureGameDockOverflowFrame(Path.Combine(outputDir, "game-dock-overflow-open-1180.png"));
+                CaptureControl(_gameDockOverflowMenu,
+                    Path.Combine(outputDir, "game-dock-overflow-menu-1180.png"));
+
+                UpdateGameDock();
+                if (!_gameDockOverflowMenu.Visible
+                    || !object.ReferenceEquals(retainedItem, FindGameDockOverflowItem("hunt-analyzer")))
+                    throw new InvalidOperationException("Unchanged synthetic Overflow menu was replaced.");
+
+                var reordered = new List<string>(originalQuick);
+                var first = reordered[0];
+                reordered[0] = reordered[1];
+                reordered[1] = first;
+                _workspaceState.QuickSurfacesByProfile[profileId] = reordered;
+                UpdateGameDock();
+                if (!_gameDockOverflowMenu.Visible
+                    || !object.ReferenceEquals(retainedItem, FindGameDockOverflowItem("hunt-analyzer")))
+                    throw new InvalidOperationException("Quick reorder closed the unchanged synthetic Overflow popup.");
+                CaptureGameDockOverflowFrame(Path.Combine(outputDir, "game-dock-overflow-reordered-1180.png"));
+
+                pane.AvailableSurfaces.Remove("hunt-analyzer");
+                UpdateGameDock();
+                if (_gameDockOverflowMenu.Visible || FindGameDockOverflowItem("hunt-analyzer") != null)
+                    throw new InvalidOperationException("Revoked synthetic Overflow surface stayed visible.");
+                CaptureControl(_gameDock,
+                    Path.Combine(outputDir, "game-dock-overflow-revoked-1180.png"));
+            }
+            finally
+            {
+                _workspaceState.QuickSurfacesByProfile[profileId] = originalQuick;
+                if (analyzerAvailable) pane.AvailableSurfaces.Add("hunt-analyzer");
+                if (_gameDockOverflowMenu.Visible)
+                    _gameDockOverflowMenu.Close(ToolStripDropDownCloseReason.CloseCalled);
+                UpdateGameDock();
+            }
+        }
+
+        private void CaptureGameDockOverflowFrame(string path)
+        {
+            if (!_gameDockOverflowMenu.Visible || _gameDockOverflowMenu.Width <= 0
+                || _gameDockOverflowMenu.Height <= 0)
+                throw new InvalidOperationException("Cannot capture a closed synthetic Overflow popup.");
+            var dockBounds = _gameDock.RectangleToScreen(_gameDock.ClientRectangle);
+            var menuBounds = _gameDockOverflowMenu.Bounds;
+            var buttonTop = _gameDockOverflowButton.RectangleToScreen(
+                _gameDockOverflowButton.ClientRectangle).Top;
+            var workingArea = Screen.FromControl(_gameDockOverflowButton).WorkingArea;
+            if (menuBounds.Bottom > buttonTop + DpiMetric(2)
+                || !workingArea.Contains(menuBounds)
+                || menuBounds.Width > DpiMetric(320) + DpiMetric(4))
+                throw new InvalidOperationException("Synthetic Overflow popup is clipped or misplaced.");
+
+            var bounds = Rectangle.Union(dockBounds, menuBounds);
+            using (var bitmap = new Bitmap(bounds.Width, bounds.Height))
+            using (var dockImage = new Bitmap(_gameDock.Width, _gameDock.Height))
+            using (var menuImage = new Bitmap(menuBounds.Width, menuBounds.Height))
+            {
+                _gameDock.DrawToBitmap(dockImage,
+                    new Rectangle(Point.Empty, dockImage.Size));
+                _gameDockOverflowMenu.DrawToBitmap(menuImage,
+                    new Rectangle(Point.Empty, menuImage.Size));
+                using (var graphics = Graphics.FromImage(bitmap))
+                {
+                    graphics.Clear(BackColor);
+                    graphics.DrawImageUnscaled(dockImage,
+                        dockBounds.Left - bounds.Left, dockBounds.Top - bounds.Top);
+                    graphics.DrawImageUnscaled(menuImage,
+                        menuBounds.Left - bounds.Left, menuBounds.Top - bounds.Top);
+                }
+                bitmap.Save(path, System.Drawing.Imaging.ImageFormat.Png);
+            }
+        }
+
         private void RunMaintenanceDrawerPreferencesSmoke(string outputDir)
         {
             if (_drawerQuickSelectors.Count != GameDockQuickSurfaces.Length
@@ -6714,21 +8476,70 @@ namespace PokePixel.CoupledWorkspace
                 throw new InvalidOperationException("Maintenance drawer keyboard smoke requires a live drawer.");
             }
 
+            var drawer = _maintenanceDrawer as MaintenanceDrawerForm;
+            if (drawer == null)
+                throw new InvalidOperationException("Maintenance drawer must use its dialog-key handler.");
             _drawerResetLayoutButton.Focus();
             Application.DoEvents();
             if (!_drawerResetLayoutButton.Focused)
                 throw new InvalidOperationException("Maintenance drawer reset control did not receive focus.");
 
-            var tabMessage = Message.Create(
-                _drawerResetLayoutButton.Handle,
-                0x0100,
-                new IntPtr((int)Keys.Tab),
-                IntPtr.Zero
-            );
-            var tabHandled = _drawerResetLayoutButton.PreProcessMessage(ref tabMessage);
-            Application.DoEvents();
-            if (!tabHandled || _maintenanceDrawer.Visible)
-                throw new InvalidOperationException("Maintenance drawer forward Tab boundary did not exit the drawer.");
+            // Record the actual child-message route in this synthetic smoke;
+            // a direct form-level dialog-key call alone would not prove it.
+            var originalHandler = drawer.DialogKeyHandler;
+            var handlerCalled = false;
+            var resetFocusedInHandler = false;
+            var handledInHandler = false;
+            var keyInHandler = Keys.None;
+            var resetFocusedBefore = _drawerResetLayoutButton.Focused;
+            bool tabHandled;
+            try
+            {
+                drawer.DialogKeyHandler = delegate(Keys keyData)
+                {
+                    handlerCalled = true;
+                    keyInHandler = keyData;
+                    resetFocusedInHandler = _drawerResetLayoutButton.Focused;
+                    handledInHandler = originalHandler != null && originalHandler(keyData);
+                    return handledInHandler;
+                };
+                var tabMessage = Message.Create(
+                    _drawerResetLayoutButton.Handle,
+                    0x0100,
+                    new IntPtr((int)Keys.Tab),
+                    IntPtr.Zero
+                );
+                tabHandled = _drawerResetLayoutButton.PreProcessMessage(ref tabMessage);
+                Application.DoEvents();
+                if (!tabHandled
+                    || !handlerCalled
+                    || !handledInHandler
+                    || !resetFocusedInHandler
+                    || (keyInHandler & Keys.KeyCode) != Keys.Tab
+                    || (keyInHandler & Keys.Shift) != Keys.None
+                    || _maintenanceDrawer.Visible
+                    || _maintenanceDrawer.ContainsFocus)
+                {
+                    throw new InvalidOperationException(
+                        "Maintenance drawer forward Tab boundary did not exit the drawer:"
+                        + " preProcessHandled=" + tabHandled
+                        + " handlerCalled=" + handlerCalled
+                        + " handlerKey=" + keyInHandler
+                        + " handlerHandled=" + handledInHandler
+                        + " resetFocusedBefore=" + resetFocusedBefore
+                        + " resetFocusedInHandler=" + resetFocusedInHandler
+                        + " resetFocusedAfter=" + _drawerResetLayoutButton.Focused
+                        + " drawerVisible=" + _maintenanceDrawer.Visible
+                        + " drawerContainsFocus=" + _maintenanceDrawer.ContainsFocus
+                        + " hostActiveControl=" + (ActiveControl == null
+                            ? "none" : ActiveControl.GetType().Name) + "."
+                    );
+                }
+            }
+            finally
+            {
+                drawer.DialogKeyHandler = originalHandler;
+            }
 
             _maintenanceDrawer.Location = new Point(-10000, -10000);
             _maintenanceDrawer.Show(this);
@@ -6737,15 +8548,23 @@ namespace PokePixel.CoupledWorkspace
             if (!_drawerRecoverButton.Focused)
                 throw new InvalidOperationException("Maintenance drawer recover control did not receive focus.");
 
-            var drawer = _maintenanceDrawer as MaintenanceDrawerForm;
-            if (drawer == null
-                || !drawer.ProcessDialogKeyForSmoke(Keys.Tab | Keys.Shift))
+            if (!drawer.ProcessDialogKeyForSmoke(Keys.Tab | Keys.Shift))
             {
                 throw new InvalidOperationException("Maintenance drawer Shift+Tab boundary was not handled as a dialog key.");
             }
             Application.DoEvents();
             if (_maintenanceDrawer.Visible)
                 throw new InvalidOperationException("Maintenance drawer Shift+Tab boundary did not exit the drawer.");
+
+            _maintenanceDrawer.Show(this);
+            _drawerResetLayoutButton.Focus();
+            Application.DoEvents();
+            if (!_drawerResetLayoutButton.Focused
+                || !drawer.ProcessDialogKeyForSmoke(Keys.Tab))
+                throw new InvalidOperationException("Maintenance drawer direct forward Tab handler was not reached.");
+            Application.DoEvents();
+            if (_maintenanceDrawer.Visible || _maintenanceDrawer.ContainsFocus)
+                throw new InvalidOperationException("Maintenance drawer direct forward Tab did not release keyboard focus.");
         }
 
         private async Task PrepareVisualSmokePagesAsync()
@@ -6908,7 +8727,7 @@ namespace PokePixel.CoupledWorkspace
                 + "latestCaptureChance:" + (isRhyxus ? "0.033936651583710405" : "0.004")
                 + ",currentTarget:{speciesId:" + QuoteJs(targetSpeciesId) + ",zoneId:" + QuoteJs(isRhyxus ? "visual-zone-left" : "visual-zone-right") + ",species:" + QuoteJs(targetName) + ",level:" + targetLevel + ",rarity:'epic',shiny:"
                 + (isRhyxus ? "true" : "false") + ",elements:" + (isRhyxus ? "['fire','flying']" : "['dragon','flying']") + ",pokemonExp:" + (isRhyxus ? 4305 : 3920) + "},attemptHistory:attempts.slice(0,32),specialHistory:attempts,lootHistory:lootHistory};"
-                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_PUBLIC__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,getSummary:function(){return Object.assign({},summary,{capturedAtMs:Date.now(),currentTarget:Object.assign({},summary.currentTarget),rarityCounts:Object.fromEntries(Object.entries(summary.rarityCounts).map(function(entry){return [entry[0],Object.assign({},entry[1])];})),attemptHistory:summary.attemptHistory.map(function(item){return Object.assign({},item);}),specialHistory:summary.specialHistory.map(function(item){return Object.assign({},item);}),lootHistory:summary.lootHistory.map(function(item){return Object.assign({},item,{items:(item.items||[]).map(function(entry){return Object.assign({},entry);})});})});}})});"
+                + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_PUBLIC__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,getSummary:function(){return Object.assign({},summary,{capturedAtMs:Date.now()-1000,currentTarget:Object.assign({},summary.currentTarget),rarityCounts:Object.fromEntries(Object.entries(summary.rarityCounts).map(function(entry){return [entry[0],Object.assign({},entry[1])];})),attemptHistory:summary.attemptHistory.map(function(item){return Object.assign({},item);}),specialHistory:summary.specialHistory.map(function(item){return Object.assign({},item);}),lootHistory:summary.lootHistory.map(function(item){return Object.assign({},item,{items:(item.items||[]).map(function(entry){return Object.assign({},entry);})});})});}})});"
                 + "Object.defineProperty(window,'__POKEPIXEL_HUNT_ANALYZER_CONTROL__',{configurable:true,enumerable:false,value:Object.freeze({protocol:1,act:function(action){return Promise.resolve({ok:action==='pause'||action==='resume'||action==='reset'});}})});"
                 + "})();\n";
             await pane.View.CoreWebView2.ExecuteScriptAsync(setup + _betterUiScript);
@@ -7311,6 +9130,85 @@ namespace PokePixel.CoupledWorkspace
                 EnsureControlTreeCreated(child);
         }
 
+        private void RunRepeatedFocusSettingsSmoke()
+        {
+            // Only the explicit local fixture bypasses the ordinary smoke
+            // persistence guard. The real host writes only to its own store.
+            var directory = Path.Combine(_baseDir, "smoke", "settings");
+            Directory.CreateDirectory(directory);
+            var path = Path.Combine(directory, "focus-probe-" + Guid.NewGuid().ToString("N") + ".json");
+            var activeProfile = _workspaceState.ActiveProfileId;
+            var originalScope = _workspaceState.CommandScope;
+            var originalFingerprint = _lastSavedSettingsFingerprint;
+            var originalRatio = _workspaceState.LayoutRatio;
+            var originalLastRatio = _workspaceState.LastDualRatio;
+            _smokeFocusSaveStore = new WorkspaceSettingsStore(path, phase =>
+            {
+                if (_smokeSaveFaultPhase == phase)
+                    throw new IOException("Synthetic settings " + phase + " failure");
+            });
+            _smokeFocusSaveCalls = 0;
+            _smokeFocusSaveProbe = true;
+            try
+            {
+                if (_workspaceState.Mode == WorkspaceMode.Dual && !_split.Panel2Collapsed)
+                {
+                    _workspaceState.LayoutRatio = GetCurrentSplitRatio();
+                    if (!_workspaceState.FocusMode)
+                        _workspaceState.LastDualRatio = _workspaceState.LayoutRatio;
+                }
+                _lastSavedSettingsFingerprint = _smokeFocusSaveStore.NormalizedFingerprint(_workspaceState);
+                SetActiveProfile(activeProfile);
+                SetActiveProfile(activeProfile);
+                if (_smokeFocusSaveCalls != 0 || File.Exists(path))
+                    throw new InvalidOperationException("Repeated focus with unchanged state wrote settings.");
+
+                _workspaceState.CommandScope = originalScope == CommandScope.Both
+                    ? CommandScope.Active : CommandScope.Both;
+                SetActiveProfile(activeProfile);
+                if (_smokeFocusSaveCalls != 1 || !File.Exists(path))
+                    throw new InvalidOperationException("Changed state was not persisted.");
+                var persisted = File.ReadAllText(path);
+                SetActiveProfile(activeProfile);
+                if (_smokeFocusSaveCalls != 1 || File.ReadAllText(path) != persisted)
+                    throw new InvalidOperationException("Repeated focus rewrote unchanged settings.");
+
+                foreach (WorkspaceSavePhase phase in Enum.GetValues(typeof(WorkspaceSavePhase)))
+                {
+                    _workspaceState.CommandScope = _workspaceState.CommandScope == CommandScope.Both
+                        ? CommandScope.Active : CommandScope.Both;
+                    var lastGood = _lastSavedSettingsFingerprint;
+                    var attempts = _smokeFocusSaveCalls;
+                    _smokeSaveFaultPhase = phase;
+                    var failed = false;
+                    try { SetActiveProfile(activeProfile); }
+                    catch (IOException) { failed = true; }
+                    if (!failed || _smokeFocusSaveCalls != attempts + 1
+                        || _lastSavedSettingsFingerprint != lastGood
+                        || File.ReadAllText(path) != persisted
+                        || File.Exists(path + ".tmp"))
+                        throw new InvalidOperationException("Settings " + phase + " failure lost the last good state.");
+                    _smokeSaveFaultPhase = null;
+                    SetActiveProfile(activeProfile);
+                    if (_smokeFocusSaveCalls != attempts + 2 || _lastSavedSettingsFingerprint == lastGood)
+                        throw new InvalidOperationException("Settings " + phase + " failure was not retried.");
+                    persisted = File.ReadAllText(path);
+                }
+                Console.WriteLine("CW-PERF-005 repeated-focus persistence and three failure retries: PASS");
+            }
+            finally
+            {
+                _smokeSaveFaultPhase = null;
+                _smokeFocusSaveProbe = false;
+                _smokeFocusSaveStore = null;
+                _lastSavedSettingsFingerprint = originalFingerprint;
+                _workspaceState.CommandScope = originalScope;
+                _workspaceState.LayoutRatio = originalRatio;
+                _workspaceState.LastDualRatio = originalLastRatio;
+                UpdateCommandDeck();
+            }
+        }
+
         private void RunWorkspaceSettingsSmoke()
         {
             var settingsDir = Path.Combine(_baseDir, "smoke", "settings");
@@ -7333,7 +9231,13 @@ namespace PokePixel.CoupledWorkspace
             state.CardsViewByProfile[ProfileRegistry.Rhyosa.Id] = true;
             state.MaintenanceDrawerExpanded = true;
 
-            store.Save(state);
+            var perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            try { store.Save(state); }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.SyntheticSettingsSave, perfStarted);
+            }
             var loaded = store.LoadOrDefault();
             if (loaded.Mode != WorkspaceMode.Single
                 || !string.Equals(loaded.SingleProfileId, ProfileRegistry.Rhyosa.Id, StringComparison.OrdinalIgnoreCase)
@@ -7394,7 +9298,13 @@ namespace PokePixel.CoupledWorkspace
                     != "npc-shop,hunts,team,storage,settings,auto-helper,guild"
                 || rhyxusQuick.Count != 7 || rhyosaQuick.Count != 7)
                 throw new InvalidOperationException("Version-2 mixed-case quick destinations were not canonicalized.");
-            store.Save(mixedCase);
+            perfStarted = _perfMetrics == null ? 0 : _perfMetrics.Start();
+            try { store.Save(mixedCase); }
+            finally
+            {
+                if (_perfMetrics != null)
+                    _perfMetrics.Observe(WorkspacePerfSpan.SyntheticSettingsSave, perfStarted);
+            }
             var persistedJson = File.ReadAllText(settingsPath);
             var reloaded = store.LoadOrDefault();
             if (persistedJson.IndexOf("HUNT-ANALYZER", StringComparison.Ordinal) >= 0
@@ -7481,6 +9391,43 @@ namespace PokePixel.CoupledWorkspace
             EnableDpiAwareness();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+            WorkspaceSavePhase? shutdownSaveSmokePhase = null;
+            var shutdownSaveSuccessSmoke = false;
+            var requestedShutdownFaultFlags = 0;
+            if (args != null)
+            {
+                foreach (var argument in args)
+                {
+                    if (!argument.StartsWith("--smoke-shutdown-save-", StringComparison.Ordinal)) continue;
+                    requestedShutdownFaultFlags++;
+                    if (argument == "--smoke-shutdown-save-create")
+                        shutdownSaveSmokePhase = WorkspaceSavePhase.Create;
+                    else if (argument == "--smoke-shutdown-save-flush")
+                        shutdownSaveSmokePhase = WorkspaceSavePhase.Flush;
+                    else if (argument == "--smoke-shutdown-save-replace")
+                        shutdownSaveSmokePhase = WorkspaceSavePhase.Replace;
+                    else if (argument == "--smoke-shutdown-save-success")
+                        shutdownSaveSuccessSmoke = true;
+                    else
+                    {
+                        Console.Error.WriteLine("Unknown synthetic shutdown fault stage.");
+                        Environment.ExitCode = 2;
+                        return;
+                    }
+                }
+            }
+            if (requestedShutdownFaultFlags != 0
+                && (requestedShutdownFaultFlags != 1 || (!shutdownSaveSmokePhase.HasValue && !shutdownSaveSuccessSmoke)
+                    || args.Length != 3
+                    || Array.IndexOf(args, "--smoke") < 0
+                    || Array.IndexOf(args, "--perf-metrics") < 0
+                    || !string.Equals(Path.GetFileName(Application.ExecutablePath),
+                        "PokePixelCoupledWorkspace.candidate.exe", StringComparison.OrdinalIgnoreCase)))
+            {
+                Console.Error.WriteLine("Shutdown fault fixture requires candidate --smoke --perf-metrics and one exclusive stage.");
+                Environment.ExitCode = 2;
+                return;
+            }
             if (args != null && Array.IndexOf(args, "--pptools-privacy-smoke") >= 0)
             {
                 PptoolsRunnerSmoke.RunPrivacySmoke();
@@ -7505,9 +9452,32 @@ namespace PokePixel.CoupledWorkspace
                 args != null && Array.IndexOf(args, "--smoke-close-during-init") >= 0;
             var shutdownDuringSwitchSmoke =
                 args != null && Array.IndexOf(args, "--smoke-close-during-switch") >= 0;
+            var perfBaselineSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-baseline") >= 0;
+            var perfCyclesSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-cycles") >= 0;
+            var perfIdleCardsSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-idle-cards") >= 0;
+            var perfIdleGameSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-idle-game") >= 0;
+            var perfIdleMixedSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-idle-mixed") >= 0;
+            var perfIdlePreflightSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-idle-preflight") >= 0;
+            var perfVisibleFocusSmoke =
+                args != null && Array.IndexOf(args, "--smoke-perf-focus-visible") >= 0;
+            var perfExtendedVisualSmoke =
+                args != null && Array.IndexOf(args, "--smoke-visual-extended") >= 0;
+            var perfIdleSmoke = perfIdleCardsSmoke || perfIdleGameSmoke || perfIdleMixedSmoke;
             var smoke =
                 shutdownDuringInitSmoke
                 || shutdownDuringSwitchSmoke
+                || perfBaselineSmoke
+                || perfCyclesSmoke
+                || perfVisibleFocusSmoke
+                || perfExtendedVisualSmoke
+                || perfIdlePreflightSmoke
+                || perfIdleSmoke
                 || (args != null && Array.IndexOf(args, "--smoke") >= 0);
             var evidenceProbe =
                 args != null && Array.IndexOf(args, "--evidence-probe") >= 0;
@@ -7515,6 +9485,47 @@ namespace PokePixel.CoupledWorkspace
                 args != null && Array.IndexOf(args, "--pptools-oneclick") >= 0 ||
                 string.Equals(Path.GetFileName(Application.ExecutablePath),
                     "PokePixelCoupledWorkspace.pptools.candidate.exe", StringComparison.OrdinalIgnoreCase);
+            var perfMetricsEnabled = args != null && Array.IndexOf(args, "--perf-metrics") >= 0;
+            if ((perfBaselineSmoke && (shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke))
+                || (perfCyclesSmoke && (perfBaselineSmoke || shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke)))
+            {
+                Console.Error.WriteLine("Performance smoke variants are mutually exclusive with each other and shutdown-only modes.");
+                Environment.ExitCode = 2;
+                return;
+            }
+            if (((int)(perfIdleCardsSmoke ? 1 : 0) + (int)(perfIdleGameSmoke ? 1 : 0)
+                    + (int)(perfIdleMixedSmoke ? 1 : 0) > 1)
+                || (perfIdleSmoke && (perfBaselineSmoke || perfCyclesSmoke || shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke))
+                || (perfVisibleFocusSmoke && (shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke))
+                || (perfIdlePreflightSmoke && (shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfExtendedVisualSmoke))
+                || (perfExtendedVisualSmoke && (shutdownDuringInitSmoke || shutdownDuringSwitchSmoke)))
+            {
+                Console.Error.WriteLine("Idle performance smoke variants are mutually exclusive with other synthetic variants.");
+                Environment.ExitCode = 2;
+                return;
+            }
+            if ((perfBaselineSmoke || perfCyclesSmoke || perfIdleSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke) && (evidenceProbe || pptoolsBackgroundEnabled))
+            {
+                Console.Error.WriteLine(
+                    "Performance smoke variants require isolated synthetic execution without PPTools/evidence flags.");
+                Environment.ExitCode = 2;
+                return;
+            }
+            // CW-PERF-001 is synthetic-only. Never let a metrics flag turn a
+            // normal/live workspace into an implicit game profiling session.
+            if (perfMetricsEnabled && (!smoke || evidenceProbe || pptoolsBackgroundEnabled))
+            {
+                Console.Error.WriteLine(
+                    "--perf-metrics requires synthetic --smoke without PPTools/evidence; live game profiling is disabled.");
+                Environment.ExitCode = 2;
+                return;
+            }
+            if ((perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke) && !perfMetricsEnabled)
+            {
+                Console.Error.WriteLine("Focus/idle-preflight/extended-visual synthetic variants require --perf-metrics.");
+                Environment.ExitCode = 2;
+                return;
+            }
             ThreadExceptionEventHandler smokeThreadException = null;
             if (smoke)
             {
@@ -7539,7 +9550,18 @@ namespace PokePixel.CoupledWorkspace
                         shutdownDuringInitSmoke,
                         shutdownDuringSwitchSmoke,
                         evidenceProbe,
-                        pptoolsBackgroundEnabled
+                        pptoolsBackgroundEnabled,
+                        perfMetricsEnabled,
+                        perfBaselineSmoke,
+                        perfCyclesSmoke,
+                        perfIdleSmoke,
+                        perfIdleGameSmoke,
+                        perfIdleMixedSmoke,
+                        perfIdlePreflightSmoke,
+                        perfVisibleFocusSmoke,
+                        perfExtendedVisualSmoke,
+                        shutdownSaveSmokePhase,
+                        shutdownSaveSuccessSmoke
                     )
                 );
             }

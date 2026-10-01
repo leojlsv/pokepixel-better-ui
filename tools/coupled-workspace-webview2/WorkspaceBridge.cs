@@ -47,6 +47,24 @@ namespace PokePixel.CoupledWorkspace
         [DataMember(Name = "viewMode", EmitDefaultValue = false)]
         public string ViewMode { get; set; }
 
+        [DataMember(Name = "sessionId", EmitDefaultValue = false)]
+        public string SessionId { get; set; }
+
+        [DataMember(Name = "documentEpoch", EmitDefaultValue = false)]
+        public string DocumentEpoch { get; set; }
+
+        [DataMember(Name = "documentUrl", EmitDefaultValue = false)]
+        public string DocumentUrl { get; set; }
+
+        [DataMember(Name = "mountOrdinal", EmitDefaultValue = false)]
+        public int MountOrdinal { get; set; }
+
+        [DataMember(Name = "capabilitySeq", EmitDefaultValue = false)]
+        public int CapabilitySeq { get; set; }
+
+        [DataMember(Name = "viewRevision", EmitDefaultValue = false)]
+        public int ViewRevision { get; set; }
+
         [DataMember(Name = "leaderId", EmitDefaultValue = false)]
         public string LeaderId { get; set; }
 
@@ -72,6 +90,9 @@ namespace PokePixel.CoupledWorkspace
         public const int Version = 1;
         public const string CapabilitiesType = "ppbui.coupled.capabilities";
         public const string CapabilitiesAcceptedType = "ppbui.coupled.capabilities-accepted";
+        public const string SessionHelloType = "ppbui.coupled.session-hello";
+        public const string SessionReadyType = "ppbui.coupled.session-ready";
+        public const string ResyncCapabilitiesType = "ppbui.coupled.resync-capabilities";
         public const string OpenSurfaceType = "ppbui.coupled.open-surface";
         public const string OpenSurfaceResultType = "ppbui.coupled.open-surface-result";
         public const string SetViewType = "ppbui.coupled.set-view";
