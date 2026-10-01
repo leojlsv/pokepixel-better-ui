@@ -6,7 +6,7 @@ export function createCoupledWorkspaceModule() {
   return {
     id: coupledWorkspaceConfig.id,
     shouldMount: () => isCoupledWorkspaceHost(document.defaultView),
-    reconcile: () => mounted?.sync(),
+    reconcile: trigger => mounted?.sync(trigger === "observer"),
     mount() {
       mounted = mountCoupledWorkspaceAdapter(document.defaultView);
       return () => {

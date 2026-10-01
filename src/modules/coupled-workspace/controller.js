@@ -4,12 +4,28 @@ import { createCoupledCards } from "./cards.js";
 const messageType = Object.freeze({
   capabilities: "ppbui.coupled.capabilities",
   capabilitiesAccepted: "ppbui.coupled.capabilities-accepted",
+  resyncCapabilities: "ppbui.coupled.resync-capabilities",
+  sessionHello: "ppbui.coupled.session-hello",
+  sessionReady: "ppbui.coupled.session-ready",
   openSurface: "ppbui.coupled.open-surface",
   openSurfaceResult: "ppbui.coupled.open-surface-result",
   setView: "ppbui.coupled.set-view",
 });
 
 const ANALYZER_NUMBER_LIMIT = 1e15;
+// The per-document ordinal survives a new injected bundle/module instance in
+// the same page; a module-scoped WeakMap would restart at 1 on hot re-injection.
+const documentMountOrdinalKey = Symbol.for("ppbui.coupled.mount-ordinal");
+const documentSessionProbeKey = Symbol.for("ppbui.coupled.document-session-probe");
+const documentAdapterKey = Symbol.for("ppbui.coupled.active-adapter");
+
+function newViewSessionId(win) {
+  if (typeof win?.crypto?.getRandomValues !== "function") return "";
+  try {
+    return [...win.crypto.getRandomValues(new Uint8Array(16))]
+      .map(value => value.toString(16).padStart(2, "0")).join("");
+  } catch { return ""; }
+}
 
 function boundedNumber(value, { min = -ANALYZER_NUMBER_LIMIT, max = ANALYZER_NUMBER_LIMIT } = {}) {
   if (!Number.isFinite(value)) return null;
@@ -27,6 +43,10 @@ function boundedCount(value) {
 
 function boundedRateOrNull(value) {
   return Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+}
+
+function boundedSessionTimestamp(value) {
+  return Number.isFinite(value) && value >= 0 && value <= ANALYZER_NUMBER_LIMIT ? value : null;
 }
 
 function boundedIvTotal(value) {
@@ -72,6 +92,13 @@ function sanitizeCurrentTarget(raw) {
     elements: sanitizeElements(raw.elements),
     pokemonExp: boundedNumber(raw.pokemonExp, { min: 0 }),
   };
+}
+
+function sanitizeCurrentSessionSpecies(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const species = boundedText(raw.species, 64);
+  if (!species) return null;
+  return { speciesId: boundedText(raw.speciesId, 64), species };
 }
 
 const ATTEMPT_RARITIES = new Set(["unknown", "weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"]);
@@ -169,6 +196,12 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
     appVersion: boundedText(raw.appVersion),
     leadershipActive: raw.leadershipActive === true,
     status,
+    sessionGeneration: Number.isSafeInteger(raw.sessionGeneration)
+      && raw.sessionGeneration >= 0 && raw.sessionGeneration <= ANALYZER_NUMBER_LIMIT
+      ? raw.sessionGeneration : null,
+    activityKind: raw.activityKind === "expedition" ? "expedition" : "hunt",
+    startedAtMs: boundedSessionTimestamp(raw.startedAtMs),
+    endedAtMs: boundedSessionTimestamp(raw.endedAtMs),
     activeMs: count(raw.activeMs),
     seen: count(raw.seen),
     seenPerHour: count(raw.seenPerHour),
@@ -204,7 +237,10 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
     seenMythical: boundedCount(raw.seenMythical),
     rarityCounts: sanitizeRarityCounts(raw.rarityCounts),
     latestCaptureChance: boundedRateOrNull(raw.latestCaptureChance),
-    currentTarget: sanitizeCurrentTarget(raw.currentTarget),
+    currentTarget: status === "running" && raw.activityKind !== "expedition"
+      ? sanitizeCurrentTarget(raw.currentTarget) : null,
+    currentSessionSpecies: status === "running" && raw.activityKind === "expedition"
+      ? null : sanitizeCurrentSessionSpecies(raw.currentSessionSpecies),
     attemptHistory: sanitizeAttemptHistory(raw.attemptHistory),
     specialHistory: sanitizeSpecialHistory(raw.specialHistory),
     lootHistory: sanitizeLootHistory(raw.lootHistory),
@@ -283,8 +319,22 @@ function findAction(doc, surfaceId) {
 export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
   if (!isCoupledWorkspaceHost(win)) throw new Error("Coupled Workspace host bridge is unavailable.");
   const doc = win.document;
+  // Hot re-injection may load a second copy of this module into one document.
+  // Retire the previous adapter before it can own the same toolbar and probe.
+  doc[documentAdapterKey]?.cleanup?.();
   const bridge = hostBridge(win);
   const root = doc.documentElement;
+  const strictViewCorrelation = win[config.hostMarker].viewCorrelation === 2;
+  const viewSessionId = strictViewCorrelation ? newViewSessionId(win) : "";
+  const previousMount = doc[documentMountOrdinalKey];
+  const mountOrdinal = strictViewCorrelation
+    ? Number.isSafeInteger(previousMount) && previousMount >= 0
+      && previousMount < Number.MAX_SAFE_INTEGER ? previousMount + 1 : 1 : 0;
+  if (strictViewCorrelation) {
+    Object.defineProperty(doc, documentMountOrdinalKey, {
+      configurable: true, value: mountOrdinal,
+    });
+  }
   const beforeRootAttribute = root.getAttribute(config.rootAttribute);
   const style = doc.createElement("style");
   style.dataset.ppbuiStyle = config.id;
@@ -299,29 +349,104 @@ export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
   let capabilitySequence = 0;
   let pendingCapabilityRequestId = "";
   let pendingCapabilitySignature = "";
+  let pendingCapabilitySeq = 0;
+  let acceptedCapabilitySeq = 0;
   let acknowledgementTimer = null;
   let capabilityRetryTimer = null;
+  let sessionRequestTimer = null;
+  let pendingSessionRequestId = "";
+  let sessionRequestSequence = 0;
+  let documentEpoch = "";
+  let latestViewRevision = 0;
+  let latestOpenSurfaceSequence = 0;
   let analyzerTimer = null;
-  let currentAnalyzer = null;
   let hostAccepted = false;
+  let currentView = "game";
+  let entryReconcilePending = false;
+  let lastAnalyzerReadAt = 0;
+  let viewSequence = 0;
+  let disposed = false;
   const cards = createCoupledCards({ win });
+  // Read-only identity probe for an interrupted top-level WebView2 navigation.
+  // The host may restore this SAME document only after checking its live tuple;
+  // a newly loaded error/document page cannot inherit this closure.
+  const documentSessionProbe = () => ({
+    type: "ppbui.coupled.document-probe", protocol: config.protocol,
+    sessionId: viewSessionId, mountOrdinal, documentEpoch,
+    documentUrl: doc.location.href,
+  });
+  if (strictViewCorrelation && viewSessionId) {
+    Object.defineProperty(doc, documentSessionProbeKey, {
+      configurable: true, value: documentSessionProbe,
+    });
+  }
+  const isCurrentDocument = () => !disposed && win.document === doc
+    && doc.documentElement === root && root.isConnected && isCoupledWorkspaceHost(win);
   const restoreStandaloneToolbar = () => {
+    const focusedInsideCards = cards.root.contains(doc.activeElement);
     hostAccepted = false;
+    acceptedCapabilitySeq = 0;
+    viewSequence += 1;
+    currentView = "game";
+    entryReconcilePending = false;
     cards.setMode("game");
     if (beforeRootAttribute === null) root.removeAttribute(config.rootAttribute);
     else root.setAttribute(config.rootAttribute, beforeRootAttribute);
+    // If a Cards button had keyboard focus when ACK expired, the native game
+    // toolbar is now visible and needs a reachable focus target.
+    if (focusedInsideCards) {
+      const toolbar = doc.querySelector(config.selectors.toolbar);
+      const focusTarget = [...(toolbar?.querySelectorAll("button") || [])]
+        .find(button => actionAvailable(button));
+      if (focusTarget) focusTarget.focus({ preventScroll: true });
+      else {
+        const landmark = toolbar || doc.body;
+        const previous = landmark.getAttribute("tabindex");
+        if (previous === null) landmark.setAttribute("tabindex", "-1");
+        landmark.focus({ preventScroll: true });
+        if (previous === null) landmark.removeAttribute("tabindex");
+      }
+    }
   };
   const post = payload => {
     try { bridge.postMessage(payload); return true; } catch { return false; }
   };
   const scheduleCapabilityRetry = () => {
-    if (capabilityRetryTimer !== null) return;
+    if (!isCurrentDocument() || capabilityRetryTimer !== null) return;
     capabilityRetryTimer = win.setTimeout(() => {
       capabilityRetryTimer = null;
       syncCapabilities();
     }, 750);
   };
+  const requestSession = () => {
+    if (!strictViewCorrelation || !viewSessionId || documentEpoch || pendingSessionRequestId || !isCurrentDocument()) return;
+    const requestId = `view-session-${++sessionRequestSequence}`;
+    pendingSessionRequestId = requestId;
+    if (!post({ type: messageType.sessionHello, protocol: config.protocol,
+      requestId, sessionId: viewSessionId, mountOrdinal })) {
+      pendingSessionRequestId = "";
+      restoreStandaloneToolbar();
+      scheduleCapabilityRetry();
+      return;
+    }
+    sessionRequestTimer = win.setTimeout(() => {
+      if (pendingSessionRequestId !== requestId) return;
+      pendingSessionRequestId = "";
+      sessionRequestTimer = null;
+      restoreStandaloneToolbar();
+      scheduleCapabilityRetry();
+    }, 750);
+  };
+  const matchesSession = data => !strictViewCorrelation || (
+    data.sessionId === viewSessionId && data.mountOrdinal === mountOrdinal
+      && data.documentEpoch === documentEpoch && Boolean(documentEpoch)
+  );
   const syncCapabilities = () => {
+    if (!isCurrentDocument()) return;
+    if (strictViewCorrelation && !documentEpoch) {
+      requestSession();
+      return;
+    }
     const surfaces = actionSnapshot(doc);
     const signature = JSON.stringify(surfaces);
     if (pendingCapabilityRequestId && signature === pendingCapabilitySignature) return;
@@ -329,13 +454,18 @@ export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
     const requestId = `caps-${++capabilitySequence}`;
     pendingCapabilityRequestId = requestId;
     pendingCapabilitySignature = signature;
+    pendingCapabilitySeq = capabilitySequence;
     if (acknowledgementTimer !== null) win.clearTimeout(acknowledgementTimer);
     if (capabilityRetryTimer !== null) win.clearTimeout(capabilityRetryTimer);
     capabilityRetryTimer = null;
-    const sent = post({ type: messageType.capabilities, protocol: config.protocol, requestId, surfaces });
+    const sent = post({ type: messageType.capabilities, protocol: config.protocol, requestId, surfaces,
+      ...(strictViewCorrelation ? {
+        sessionId: viewSessionId, mountOrdinal, documentEpoch, capabilitySeq: capabilitySequence,
+      } : {}) });
     if (!sent) {
       pendingCapabilityRequestId = "";
       pendingCapabilitySignature = "";
+      pendingCapabilitySeq = 0;
       restoreStandaloneToolbar();
       scheduleCapabilityRetry();
       return;
@@ -344,36 +474,98 @@ export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
       if (pendingCapabilityRequestId !== requestId) return;
       pendingCapabilityRequestId = "";
       pendingCapabilitySignature = "";
+      pendingCapabilitySeq = 0;
       acknowledgementTimer = null;
       restoreStandaloneToolbar();
       scheduleCapabilityRetry();
     }, 750);
   };
-  const syncAnalyzer = () => {
-    currentAnalyzer = readAnalyzerSummary(win, Date.now());
-    cards.render(currentAnalyzer);
+  const syncAnalyzer = (fromReconcile = false) => {
+    if (!isCurrentDocument() || !hostAccepted || currentView !== "cards") return;
+    // The first observer pass caused by a finished Game→Cards reveal already
+    // has a complete rendered frame. Skip only that redundant reconcile;
+    // a real timer tick must always fetch a fresh public summary.
+    if (fromReconcile && entryReconcilePending) {
+      entryReconcilePending = false;
+      if (Date.now() - lastAnalyzerReadAt < config.analyzerPollMs) return;
+    }
+    const requestedSequence = viewSequence;
+    const readAt = Date.now();
+    const summary = readAnalyzerSummary(win, readAt);
+    if (!isCurrentDocument() || !hostAccepted || currentView !== "cards" || viewSequence !== requestedSequence) return;
+    lastAnalyzerReadAt = readAt;
+    try {
+      cards.render(summary);
+    } catch {
+      restoreStandaloneToolbar();
+      scheduleCapabilityRetry();
+    }
   };
-  const sync = () => {
+  const focusNativeGameAfterCards = () => {
+    const candidates = doc.querySelectorAll("button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])");
+    for (const candidate of candidates) {
+      if (cards.root.contains(candidate) || candidate.closest(config.selectors.toolbar)
+        || candidate.closest('[hidden],[aria-hidden="true"]')) continue;
+      let visible = true;
+      for (let ancestor = candidate; ancestor && ancestor !== doc; ancestor = ancestor.parentElement) {
+        const style = win.getComputedStyle?.(ancestor);
+        if (style?.display === "none" || style?.visibility === "hidden") {
+          visible = false;
+          break;
+        }
+      }
+      if (!visible) continue;
+      candidate.focus({ preventScroll: true });
+      if (doc.activeElement === candidate) return;
+    }
+    // Some host screens are temporarily empty while switching; transfer
+    // focus to a visible document landmark instead of leaving it in hidden Cards.
+    const landmark = [...doc.querySelectorAll("main")]
+      .find(main => !cards.root.contains(main)) || doc.body;
+    const previous = landmark.getAttribute("tabindex");
+    if (previous === null) landmark.setAttribute("tabindex", "-1");
+    landmark.focus({ preventScroll: true });
+    if (previous === null) landmark.removeAttribute("tabindex");
+  };
+  const sync = (fromObserver = false) => {
     syncCapabilities();
-    syncAnalyzer();
+    syncAnalyzer(fromObserver);
   };
   const onMessage = event => {
+    if (!isCurrentDocument()) return;
     let data = event?.data;
     if (typeof data === "string") {
       try { data = JSON.parse(data); } catch { return; }
     }
     if (!data || data.protocol !== config.protocol) return;
+    if (strictViewCorrelation && data.type === messageType.sessionReady) {
+      if (!pendingSessionRequestId || data.requestId !== pendingSessionRequestId
+        || data.sessionId !== viewSessionId || data.mountOrdinal !== mountOrdinal
+        || typeof data.documentEpoch !== "string"
+        || !/^[a-f0-9]{32}$/.test(data.documentEpoch)) return;
+      pendingSessionRequestId = "";
+      if (sessionRequestTimer !== null) win.clearTimeout(sessionRequestTimer);
+      sessionRequestTimer = null;
+      documentEpoch = data.documentEpoch;
+      syncCapabilities();
+      return;
+    }
     if (data.type === messageType.capabilitiesAccepted) {
       if (!pendingCapabilityRequestId || data.requestId !== pendingCapabilityRequestId) return;
+      if (!matchesSession(data)) return;
+      if (strictViewCorrelation && data.capabilitySeq !== pendingCapabilitySeq) return;
       const acceptedSignature = pendingCapabilitySignature;
+      const acceptedSequence = pendingCapabilitySeq;
       pendingCapabilityRequestId = "";
       pendingCapabilitySignature = "";
+      pendingCapabilitySeq = 0;
       if (acknowledgementTimer !== null) win.clearTimeout(acknowledgementTimer);
       acknowledgementTimer = null;
       if (data.ok === true) {
         if (capabilityRetryTimer !== null) win.clearTimeout(capabilityRetryTimer);
         capabilityRetryTimer = null;
         lastSignature = acceptedSignature;
+        acceptedCapabilitySeq = acceptedSequence;
         hostAccepted = true;
         root.setAttribute(config.rootAttribute, "true");
       } else {
@@ -383,12 +575,65 @@ export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
       return;
     }
     if (data.type === messageType.setView) {
+      if (data.viewMode !== "cards" && data.viewMode !== "game") return;
+      if (strictViewCorrelation) {
+        if (!hostAccepted || !matchesSession(data)
+          || data.capabilitySeq !== acceptedCapabilitySeq
+          || !Number.isSafeInteger(data.viewRevision) || data.viewRevision <= latestViewRevision) return;
+        latestViewRevision = data.viewRevision;
+      }
+      const requestedSequence = ++viewSequence;
       const requested = data.viewMode === "game" ? "game" : "cards";
-      cards.setMode(requested === "cards" && hostAccepted ? "cards" : "game");
-      if (requested === "cards" && hostAccepted) cards.render(currentAnalyzer);
+      const nextView = requested === "cards" && hostAccepted ? "cards" : "game";
+      if (currentView === nextView) return;
+      if (nextView === "game") {
+        const hadCardsFocus = cards.root.contains(doc.activeElement);
+        currentView = "game";
+        entryReconcilePending = false;
+        cards.setMode("game");
+        if (hadCardsFocus) focusNativeGameAfterCards();
+        return;
+      }
+      // Render a fresh public summary while the old dashboard is still hidden.
+      // The provider can synchronously trigger host callbacks or cleanup, so
+      // reject a superseded transition before exposing the completed frame.
+      const entryTime = Date.now();
+      const summary = readAnalyzerSummary(win, entryTime);
+      if (viewSequence !== requestedSequence || !isCurrentDocument() || !hostAccepted || currentView !== "game") return;
+      try {
+        cards.render(summary);
+      } catch {
+        restoreStandaloneToolbar();
+        scheduleCapabilityRetry();
+        return;
+      }
+      if (viewSequence !== requestedSequence || !isCurrentDocument() || !hostAccepted || currentView !== "game") return;
+      lastAnalyzerReadAt = entryTime;
+      entryReconcilePending = true;
+      currentView = "cards";
+      cards.setMode("cards");
+      return;
+    }
+    if (strictViewCorrelation && data.type === messageType.resyncCapabilities) {
+      if (!matchesSession(data) || data.capabilitySeq !== acceptedCapabilitySeq) return;
+      // A failed native post can leave the host offline with an unchanged DOM
+      // signature. Force a new advertisement from the currently bound adapter.
+      lastSignature = "";
+      if (!pendingCapabilityRequestId) syncCapabilities();
       return;
     }
     if (data.type !== messageType.openSurface) return;
+    if ((strictViewCorrelation && (!hostAccepted || data.capabilitySeq !== acceptedCapabilitySeq))
+      || !matchesSession(data)) return;
+    if (strictViewCorrelation) {
+      // The native host uses <profile>-<monotone integer>. A second delivery
+      // must never click the native game control twice, even after a retry.
+      const request = typeof data.requestId === "string"
+        ? /^([a-z][a-z0-9_-]{0,63})-([1-9]\d*)$/.exec(data.requestId) : null;
+      const sequence = request ? Number(request[2]) : NaN;
+      if (!Number.isSafeInteger(sequence) || sequence <= latestOpenSurfaceSequence) return;
+      latestOpenSurfaceSequence = sequence;
+    }
     const surfaceId = typeof data.surfaceId === "string" ? data.surfaceId.trim() : "";
     const button = surfaceId ? findAction(doc, surfaceId) : null;
     const available = actionAvailable(button);
@@ -400,6 +645,7 @@ export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
       surfaceId,
       ok: available,
       error: available ? "" : "surface-unavailable",
+      ...(strictViewCorrelation ? { sessionId: viewSessionId, mountOrdinal, documentEpoch } : {}),
     });
     syncCapabilities();
   };
@@ -407,16 +653,28 @@ export function mountCoupledWorkspaceAdapter(win = globalThis.window) {
   bridge.addEventListener?.("message", onMessage);
   sync();
   analyzerTimer = win.setInterval(syncAnalyzer, config.analyzerPollMs);
-  return {
+  const adapter = {
     sync,
     cleanup() {
+      if (disposed) return;
+      disposed = true;
       bridge.removeEventListener?.("message", onMessage);
       if (acknowledgementTimer !== null) win.clearTimeout(acknowledgementTimer);
+      if (sessionRequestTimer !== null) win.clearTimeout(sessionRequestTimer);
       if (capabilityRetryTimer !== null) win.clearTimeout(capabilityRetryTimer);
       if (analyzerTimer !== null) win.clearInterval(analyzerTimer);
+      if (strictViewCorrelation && doc[documentSessionProbeKey] === documentSessionProbe)
+        delete doc[documentSessionProbeKey];
+      // Move focus while Cards still owns the active element; removing its
+      // subtree first would strand keyboard users on the document body.
+      restoreStandaloneToolbar();
       cards.cleanup();
       style.remove();
-      restoreStandaloneToolbar();
+      if (doc[documentAdapterKey] === adapter) delete doc[documentAdapterKey];
     },
   };
+  Object.defineProperty(doc, documentAdapterKey, {
+    configurable: true, value: adapter,
+  });
+  return adapter;
 }

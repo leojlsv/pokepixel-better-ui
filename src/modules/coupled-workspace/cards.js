@@ -2,7 +2,6 @@ import { teamPresetMemberSnapshot, teamPresetVisualReader } from "../team-preset
 import { levelExperience } from "../team-hud/dom.js";
 import { normalizeNativeMoveset } from "../team-movesets/actions.js";
 import { createMoveIcon } from "../team-movesets/dom.js";
-import { activeHuntZone } from "../hunts/dom.js";
 import { pokemonTypes } from "../hunts/type-chart.js";
 import { createElementIcon } from "../../core/element-icons.js";
 import { explicitNativeLeaderId, runAnalyzerSessionAction, setActiveTeamMember, teamControlSnapshot } from "./hunt-controls.js";
@@ -18,7 +17,7 @@ const LOOT_CATALOG_RETRY_MS = 5_000;
 const COPY = Object.freeze({
   en: Object.freeze({
     locale: "en-US", unavailable: "Unavailable", waitingTarget: "Waiting for target", noAttempts: "No attempts recorded in this Hunt.", noFilteredAttempts: "No attempts match these filters.", analyzerUnavailable: "Hunt Analyzer data unavailable.",
-    huntConsole: "Hunt console", active: "ACTIVE", target: "TARGET", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
+    huntConsole: "Hunt console", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", expeditionInProgress: "Expedition in progress", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
     huntSummary: "Hunt summary", status: "Status", time: "Time", seen: "Seen", captured: "Captured", failed: "Failed", seenHour: "Seen/h", capturedSeen: "Captured / Seen", rarityCaption: "C/S · ✦ Shiny C/S",
     capture: "Capture", huntRate: "Hunt rate", lastAttemptChance: "Last attempt chance", epicFailed: "Epic+ failed", shinySeen: "Shiny seen", shinyCaptured: "Shiny captured",
     economyXp: "Economy / XP", revenue: "Revenue", totalRevenue: "Total revenue", directGold: "Direct gold", lootValue: "Loot value", autoSell: "Auto-sell", result: "Result", totalProfit: "Total profit", profitHour: "Profit/h", expenses: "Expenses", expensesHour: "Expenses/h", experience: "Experience", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Trainer/h", trainerTotal: "Trainer total",
@@ -34,7 +33,7 @@ const COPY = Object.freeze({
   }),
   pt: Object.freeze({
     locale: "pt-BR", unavailable: "Indisponível", waitingTarget: "Aguardando alvo", noAttempts: "Nenhuma tentativa registrada nesta hunt.", noFilteredAttempts: "Nenhuma tentativa corresponde aos filtros.", analyzerUnavailable: "Dados do Hunt Analyzer indisponíveis.",
-    huntConsole: "Console de hunt", active: "ATIVO", target: "ALVO", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
+    huntConsole: "Console de hunt", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", expeditionInProgress: "Expedição em andamento", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
     huntSummary: "Resumo da hunt", status: "Status", time: "Tempo", seen: "Vistos", captured: "Capturados", failed: "Falharam", seenHour: "Vistos/h", capturedSeen: "Capturados / Vistos", rarityCaption: "C/V · ✦ Shiny C/V",
     capture: "Captura", huntRate: "Taxa da hunt", lastAttemptChance: "Chance última tentativa", epicFailed: "Epic+ falharam", shinySeen: "Shiny vistos", shinyCaptured: "Shiny capturados",
     economyXp: "Economia / XP", revenue: "Receita", totalRevenue: "Receita total", directGold: "Gold direto", lootValue: "Loot (valor)", autoSell: "Auto-sell", result: "Resultado", totalProfit: "Lucro total", profitHour: "Lucro/h", expenses: "Gastos", expensesHour: "Gastos/h", experience: "Experiência", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Treinador/h", trainerTotal: "Treinador total",
@@ -384,50 +383,6 @@ function canvasHasVisiblePixels(canvas) {
   }
 }
 
-function nativeNodeSprite(node, win) {
-  if (!node) return "";
-  const image = node.matches?.("img") ? node : node.querySelector?.("img");
-  if (image) {
-    const source = image.currentSrc || image.getAttribute("src") || image.getAttribute("data-src") || "";
-    if (source) return validPlayerSprite(source, win);
-  }
-  const canvas = node.matches?.("canvas") ? node : node.querySelector?.("canvas");
-  if (canvas && canvasHasVisiblePixels(canvas)) {
-    try {
-      const data = canvas.toDataURL?.("image/png");
-      if (data?.startsWith("data:image/png;base64,")) return validPlayerSprite(data, win);
-    } catch {
-    }
-  }
-  for (const candidate of [node, ...(node.querySelectorAll?.(".pokemon-sprite") || [])]) {
-    const inline = cssImageUrl(candidate.style?.backgroundImage) || cssImageUrl(candidate.style?.content);
-    const inlineSprite = validPlayerSprite(inline, win);
-    if (inlineSprite) return inlineSprite;
-    try {
-      const computed = win.getComputedStyle?.(candidate);
-      const computedAsset = cssImageUrl(computed?.backgroundImage) || cssImageUrl(computed?.content);
-      const computedSprite = validPlayerSprite(computedAsset, win);
-      if (computedSprite) return computedSprite;
-    } catch {
-    }
-  }
-  return "";
-}
-
-function activeHuntZoneSnapshot(win, { resolveVisual = true } = {}) {
-  const zone=activeHuntZone(win);
-  if(!zone)return null;
-  const sprite=resolveVisual ? (zone.sprite||nativeNodeSprite(zone.marker?.querySelector?.(".hunt-map-marker__sprite")||zone.marker,win)) : "";
-  return {
-    zoneId:String(zone.zoneId||""),
-    species:text(zone.name,"Pokémon da Hunt"),
-    elements:normalizedElements(zone.elements),
-    minLevel:Number.isFinite(zone.minLevel)?zone.minLevel:null,
-    maxLevel:Number.isFinite(zone.maxLevel)?zone.maxLevel:null,
-    spriteUrl:validPlayerSprite(sprite,win),
-  };
-}
-
 function activePortraitSprite(root, win) {
   const portrait = root?.querySelector?.(".pokeidle-team-hud__active-portrait");
   if (!portrait) return "";
@@ -605,13 +560,8 @@ function renderPlayerMoves(root, state, moves) {
   }
 }
 
-function levelText(target, huntZone) {
-  if (Number.isFinite(target?.level)) return `Lv. ${target.level}`;
-  const min = huntZone?.minLevel;
-  const max = huntZone?.maxLevel;
-  if (Number.isFinite(min) && Number.isFinite(max)) return min === max ? `Lv. ${min}` : `Lv. ${min}–${max}`;
-  if (Number.isFinite(min)) return `Lv. ${min}+`;
-  return "Lv. —";
+function levelText(target) {
+  return Number.isFinite(target?.level) ? `Lv. ${target.level}` : "Lv. —";
 }
 
 function genderLabel(value, copy) {
@@ -1152,6 +1102,32 @@ function styles() {
       .ppbui-cards-attempt-pokemon img{width:18px;height:18px;flex-basis:18px}
       .ppbui-cards-attempt-pokemon strong{font-size:11px}
     }
+    /* Narrow WebView2 panes must not spend the available target-label width
+       on three parallel cards. Reflow the layout instead of hiding CURRENT. */
+    @media(max-width:519px){
+      .ppbui-cards-battle{height:auto;max-height:none}
+      .ppbui-cards-battle-pair{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:108px minmax(112px,auto);height:auto;gap:4px}
+      .ppbui-cards-team-switch{grid-column:1/-1;grid-row:1}
+      .ppbui-cards-combat-card--player{grid-column:1;grid-row:2}
+      .ppbui-cards-combat-card--target{grid-column:2;grid-row:2}
+      .ppbui-cards-combat-card{min-height:112px;align-content:center}
+      .ppbui-cards-combat-card strong,.ppbui-cards-combat-card>div:last-child>span{white-space:normal;overflow-wrap:anywhere}
+    }
+    @media(min-width:520px) and (max-width:899px){
+      .ppbui-cards-combat-card strong,.ppbui-cards-combat-card>div:last-child>span{white-space:normal;overflow-wrap:anywhere}
+      .ppbui-cards-combat-kicker{flex-wrap:wrap;overflow:visible}
+    }
+    @media(min-width:520px) and (max-width:640px){
+      .ppbui-cards-elements{flex-wrap:wrap;overflow:visible}
+      .ppbui-cards-element i{white-space:normal;overflow:visible;text-overflow:clip}
+    }
+    @media(max-width:319px){
+      .ppbui-cards-battle-pair{grid-template-columns:minmax(0,1fr);grid-template-rows:104px minmax(96px,auto) minmax(96px,auto)}
+      .ppbui-cards-team-switch{grid-column:1;grid-row:1}
+      .ppbui-cards-combat-card--player{grid-column:1;grid-row:2}
+      .ppbui-cards-combat-card--target{grid-column:1;grid-row:3}
+      .ppbui-cards-combat-card{min-height:96px}
+    }
     @media(min-width:900px){.ppbui-cards-battle{height:158px}.ppbui-cards-battle-pair{grid-template-columns:minmax(126px,.6fr) minmax(0,1.4fr) minmax(0,1fr);gap:8px}.ppbui-cards-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ppbui-cards-card--overview{min-height:168px}.ppbui-cards-card--rarity{grid-column:auto}.ppbui-cards-economy-groups{grid-template-columns:repeat(3,minmax(0,1fr))}}
   `;
 }
@@ -1193,7 +1169,6 @@ export function createCoupledCards({ win, textOnly = false }) {
     nativeSpeciesRequests: new Map(),
     nativeSpeciesAttempts: new Map(),
     speciesSpriteRevision: 0,
-    targetContext: null,
     lootCatalog: new Map(),
     lootCatalogLoaded: false,
     lootCatalogRequest: null,
@@ -1629,54 +1604,37 @@ export function createCoupledCards({ win, textOnly = false }) {
     writeBoolean(copySummaryButton, "disabled", !summary);
     renderActivePlayerCard();
 
-    const target = summary?.currentTarget || null;
-    let huntZone = null;
-    if (!summary || summary.status === "waiting") {
-      state.targetContext = null;
-    } else {
-      const remembered = activeHuntZoneSnapshot(win, { resolveVisual: !state.textOnly });
-      const targetZoneId = String(target ? (target.zoneId || "") : (state.targetContext?.zoneId || "")).trim();
-      const rememberedZoneId = String(remembered?.zoneId || "").trim();
-      if (remembered && targetZoneId && rememberedZoneId === targetZoneId) {
-        huntZone = remembered;
-      }
-      if (target) {
-        state.targetContext = {
-          speciesId:String(target.speciesId || ""),
-          zoneId:String(target.zoneId || ""),
-          species:target.species,
-          elements:normalizedElements(target.elements),
-        };
-      }
-    }
-    const targetContext = target || state.targetContext || huntZone;
-    const targetSpeciesId = String(target?.speciesId || state.targetContext?.speciesId || "");
-    const targetSpecies = target?.species || state.targetContext?.species || huntZone?.species || "";
-    setText(root, "target-name", summary ? (targetSpecies || state.copy.waitingTarget) : state.copy.unavailable);
-    const targetMeta = !summary
+    const isExpedition = summary?.activityKind === "expedition" && summary?.status === "running";
+    const liveTarget = !isExpedition && summary?.status === "running" ? summary.currentTarget || null : null;
+    const lastSessionSpecies = !isExpedition ? summary?.currentSessionSpecies || null : null;
+    const target = liveTarget || lastSessionSpecies;
+    const lastSeen = !liveTarget && Boolean(lastSessionSpecies);
+    const lastExpeditionSpecies = lastSeen && summary.activityKind === "expedition";
+    writeText(cardNode(root, '[data-card-copy="target"]'),
+      lastExpeditionSpecies ? state.copy.lastExpeditionTarget : lastSeen ? state.copy.lastSessionTarget : state.copy.target);
+    setText(root, "target-name", summary ? (isExpedition ? "EXPEDITION" : target?.species || state.copy.waitingTarget) : state.copy.unavailable);
+    setText(root, "target-meta", !summary
       ? state.copy.analyzerUnavailable
-      : target
-      ? levelText(target, huntZone)
-      : huntZone ? levelText(null, huntZone) : targetContext ? "Lv. —" : state.copy.noCanonicalTarget;
-    setText(root, "target-meta", targetMeta);
+      : isExpedition ? state.copy.expeditionInProgress
+        : liveTarget ? levelText(liveTarget)
+        : lastExpeditionSpecies ? state.copy.lastSeenInExpedition
+          : lastSeen ? state.copy.lastSeenInHunt : state.copy.noCanonicalTarget);
     const targetCard = cardNode(root, '[data-card-combat="target"]');
     if (targetCard) {
-      targetCard.dataset.rarity = target?.rarity || "";
-      targetCard.dataset.shiny = target?.shiny === true ? "true" : "false";
+      targetCard.dataset.rarity = liveTarget?.rarity || "";
+      targetCard.dataset.shiny = liveTarget?.shiny === true ? "true" : "false";
     }
     const shinyBadge = cardNode(root, "[data-card-shiny-badge]");
-    writeBoolean(shinyBadge, "hidden", target?.shiny !== true);
+    writeBoolean(shinyBadge, "hidden", liveTarget?.shiny !== true);
     const rarityBadge = cardNode(root, "[data-card-target-rarity]");
     if (rarityBadge) {
-      writeBoolean(rarityBadge, "hidden", !target?.rarity);
-      writeText(rarityBadge, target?.rarity ? (state.rarityLabels[target.rarity] || target.rarity).toUpperCase() : "—");
+      writeBoolean(rarityBadge, "hidden", !liveTarget?.rarity);
+      writeText(rarityBadge, liveTarget?.rarity ? (state.rarityLabels[liveTarget.rarity] || liveTarget.rarity).toUpperCase() : "—");
     }
-    const nativeTargetSprite = state.textOnly ? "" : requestNativeSpeciesSprite(win, state, targetSpeciesId, false);
-    if (!state.textOnly) setSprite(root, state, "target", huntZone?.spriteUrl || nativeTargetSprite || "", targetContext ? state.copy.noImage : state.copy.noTarget);
-    const targetElements = normalizedElements(target?.elements).length
-      ? normalizedElements(target?.elements)
-      : huntZone?.elements?.length ? huntZone.elements : normalizedElements(state.targetContext?.elements);
-    renderElements(root, "target", targetElements, win, state.localeKey, state.copy, { textOnly: state.textOnly });
+    const nativeTargetSprite = !state.textOnly && target
+      ? requestNativeSpeciesSprite(win, state, String(target.speciesId || ""), false) : "";
+    if (!state.textOnly) setSprite(root, state, "target", nativeTargetSprite || "", target ? state.copy.noImage : state.copy.noTarget);
+    renderElements(root, "target", liveTarget?.elements, win, state.localeKey, state.copy, { textOnly: state.textOnly });
     renderAnalyzerControl();
 
     setText(root, "status", !summary ? state.copy.unavailable : summary.status === "running" ? state.copy.running : summary.status === "paused" ? state.copy.paused : state.copy.waiting);

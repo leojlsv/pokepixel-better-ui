@@ -4,6 +4,126 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Cards CURRENT / persistência Windows — revisão técnica final do candidato
+  `0.2.129` (não publicado):** matriz sintética ampliada para dez estados em
+  235/269/270/319/320/390/519/520 px, com detecção do corte real a 270/520 px.
+  Team/Player/Target agora empilham abaixo de 320 px; acima disso, rótulos,
+  metadados e tipos podem quebrar linha sem desaparecer. A tupla final v19
+  gerou 131 screenshots e passou o smoke. Preferências existentes ilegíveis
+  ficam protegidas contra sobregravação, enquanto snapshots concorrentes
+  acionam conflito seguro; testes físicos de Create/Replace, duas gravações
+  simultâneas e liberação de mutex passaram em diretório temporário. Os avisos
+  WinForms sanitizados distinguem encerramento, falha durante uso e conflito;
+  a caixa de shutdown foi comprovada visível, com owner e Enter em formulário
+  Windows sintético. Novo teste físico integra CI Windows. O contrato CURRENT
+  depende do Analyzer `1.15.1`; validação live do PO e aprovação de release
+  continuam pendentes. Evidências, SHA e limites:
+  `docs/PM_GATE_2026-10-01_CURRENT_VISUAL_PERSISTENCE_V24.md`.
+
+- **Cards CURRENT / WebView2 — candidato inicial 0.2.129, tupla v07 (histórico):** a
+  revisão render-first do candidato `0.2.128` encontrou rótulos de última
+  espécie e de Expedição cortados em panes estreitos. Cards passou a
+  reorganizar Team/ativo/alvo em vez de esconder rótulos: duas linhas em
+  270–519px e três linhas abaixo de 270px, preservando a distinção entre
+  alvo live e espécie histórica. Uma Expedição em andamento exibe
+  `Expedição em andamento`, sem descrever erroneamente a ausência de alvo
+  de Hunt como erro. O host sintético passou a capturar dez estados CURRENT
+  em 235/320/390px e a produzir um aviso WinForms sanitizado caso falhe
+  o salvamento final de preferências, após descartar panes e controles.
+  As falhas pré-I/O continuam separadas de falhas físicas do Windows;
+  aviso visual, UX/live e medição pareada de performance ainda requerem
+  seus respectivos gates. A suíte Node agora tem CI próprio e a verificação
+  C# isolada roda em Windows CI; nada promove o host normal ou altera
+  arquivos de contas/jogo. Evidência em
+  `docs/PM_GATE_2026-10-01_CURRENT_VISUAL_PERSISTENCE_V23.md`.
+
+- **Cards — identidade de sessão CURRENT (candidato 0.2.128, após v19):** o
+  Analyzer entrega `sessionGeneration` (contador opaco local ao runtime),
+  `activityKind`, `startedAtMs` e `endedAtMs`, sem expor UUID, run ID ou
+  identificadores de transporte. Cards apresenta `EXPEDITION` quando uma
+  Expedição está ativa e distingue a última espécie de Expedição pausada/
+  encerrada da última espécie de Hunt. Testes sintéticos cobrem as mudanças
+  entre Hunts, Expedições, pausas, término e reset; sem build/publicação em
+  `dist/` ou validação live do PO.
+- **Cards — retorno à opção A do CURRENT (candidato sintético v19, Better UI
+  `0.2.127`):** o PO substituiu a decisão temporária B pela espécie mais
+  recente da **sessão CURRENT** do Hunt Analyzer, inclusive entre combates e
+  após login, sem consultar History de outras Hunts ou abrir o mapa. O Analyzer
+  original `1.15.0` expõe `currentSessionSpecies` bounded/read-only e memoiza
+  o seletor por revisão do encontro, mantendo `currentTarget` exclusivo para
+  combate realmente ativo. Cards distingue visualmente **ALVO** live de
+  **ÚLTIMO DA HUNT** quando exibe só a espécie da sessão; raridade, Shiny,
+  nível e tipos sem confirmação live não são inferidos. Sprite da espécie só
+  usa a API nativa existente quando há ID autorizado. O host permanece o v17;
+  bundle Better UI e Analyzer foram compilados exclusivamente na tupla
+  `cwperf002005-current-session-po-0127-v19`, com proveniência das fontes.
+  Sem publicação, alteração de `dist/` compartilhado ou validação live feita
+  pelo agente.
+
+- **CW-PERF-002/005 — Cards exclusivamente alvo live (candidato sintético v18,
+  Better UI `0.2.126`):** o campo ALVO deixou de reter identidade, sprite ou
+  faixa de níveis do último combate e do mapa Hunts; usa apenas
+  `currentTarget` confirmado pelo Analyzer em status `running` e limpa
+  imagem, nome, raridade, Shiny e tipos em terminal/paused/waiting. Sprite
+  opcional do metadado de espécie nativa é consultado apenas para o ID live;
+  respostas tardias não ressuscitam alvo antigo. Manteve métricas e Story
+  da sessão atual, sem usar eventos de Story para escolher o alvo. Novo
+  bundle isolado na tupla `cwperf002005-strict-live-po-0126-v18`, host v17
+  inalterado. Testes RED→PASS, suite Node, benchmark 13/13, core/close e
+  visual sintético 51 PNG passaram; aceite de target live no jogo pertence
+  ao PO. Não há publicação nem mudanças no `dist/` normal.
+
+- **CW-PERF-002 — correlação WebView2 Cards/Game (candidato pré-live 0.2.125):**
+  o host correlaciona intenções por epoch de navegação, sessão de montagem,
+  geração de capabilities e revisão monotônica. Better UI descarta ACKs,
+  ações e `set-view` atrasados/repetidos, preserva foco nativo em Game e
+  recupera catálogo após indisponibilidade do bridge. O host limita retries
+  de envio, só recupera uma navegação cancelada quando prova que o documento
+  anterior sobreviveu e mantém ações nativas pendentes descartadas.
+  A reinjeção de uma segunda instância do adapter no mesmo documento agora
+  encerra a anterior antes de registrar probe/listeners ou capturar o estado
+  da toolbar, prevenindo duas instâncias ativas da versão nova. A regressão
+  RED→PASS também cobre transferência de foco de um Cards removido para botão
+  nativo antes do cleanup. Os smokes do host, suíte Node e 47 capturas
+  sintéticas foram verificados no par isolado
+  `cwperf002005-view-epoch-po-0125-v16`. O pacote Better UI possui
+  `@version 0.2.125`, mantendo o host C# congelado da v14;
+  o gate exato e as limitações estão em
+  `docs/PM_GATE_2026-10-01_CW-PERF-002_VIEW_CORRELATION.md`.
+  Nenhuma publicação ou validação em jogo foi realizada.
+
+- **CW-PERF-002/005 — evidência visual sintética Overflow v17:** o host
+  isolado passou a fotografar o popup nativo aberto e sua preservação no
+  reorder e fechamento por revogação. A tupla
+  `cwperf002005-view-epoch-overflow-po-0125-v17` passou smoke visual com
+  51 PNG, revisão visual independente e core isolado; um timeout anterior
+  sob execução concorrente foi preservado como falha de teste. Somente a
+  fixture C# mudou desde a v16; o bundle Better UI `0.2.125` é idêntico.
+  Overflow com teclado/resize/offline e validação no jogo permanecem abertos.
+
+- **CW-PERF-005 e integração sintética 002+005 (candidato pré-live):** o host
+  evita Save redundante de workspace/foco e rebuild de Overflow quando a
+  assinatura efetiva do menu não muda, preservando refresh visual e retries.
+  O `CompleteShutdown` executa limpeza mesmo se o Save lançar exceção.
+  Nova fixture isolada valida falhas pré-I/O em Create/Flush/Replace e o Save
+  positivo em `FormClosed`, incluindo ratio real atualizado a partir do splitter.
+  A tupla combinada `cwperf002005-final-positive-v5` reúne o host 005 e o
+  Better UI 002; smokes core/fechamento/visual sintéticos passam. A análise
+  detalhada, os hashes e os gaps de protocolo/UX/performance estão em
+  `docs/PM_GATE_2026-10-01_CW-PERF-002-005_INTEGRATION.md`. Sem publicação
+  ou validação no jogo nesta entrega.
+
+- **CW-PERF-002 — atualização do Cards quando visível (candidato pré-live):**
+  o Coupled Workspace suspende a leitura e a apresentação do resumo do Hunt
+  Analyzer enquanto Game está ativo; a volta a Cards obtém uma projeção pública
+  nova antes da exibição, com indisponibilidade explícita se o resumo estiver
+  expirado, ausente ou inválido. O reconciliador central distingue a atualização
+  do observador da atualização explícita, preservando Team, Loot, idioma e
+  controles nativos. Testes sintéticos cobrem a transição, reentrância,
+  lifecycle e histórico integral. O pacote de validação isolado e as limitações
+  de protocolo estão em `docs/PM_GATE_2026-10-01_CW-PERF-002.md`. A validação
+  no jogo e a promoção continuam dependentes do Product Owner.
+
 - **0.2.124 — remoção completa do Custom Pokéball:**
   por decisão do Product Owner, removidos editor, botão no menu Treinador,
   configuração de módulo, personalização visual das Poké Balls, integração com

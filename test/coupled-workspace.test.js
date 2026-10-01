@@ -427,8 +427,327 @@ test("card dashboard resolves target identity and native art from Analyzer witho
   assert.equal(cards.querySelector('[data-card-field="target-name"]').textContent,"Typhlosion");
   assert.equal(target.src,"https://pokepixel.nietore.com/native-species/typhlosion.png");
   setAnalyzerSummary({...base,capturedAtMs:Date.now(),currentTarget:null});app.reconcile();
-  assert.equal(cards.querySelector('[data-card-field="target-name"]').textContent,"Typhlosion","last Analyzer-confirmed hunt identity remains visible between encounters");
-  assert.equal(target.src,"https://pokepixel.nietore.com/native-species/typhlosion.png");
+  assert.equal(cards.querySelector('[data-card-field="target-name"]').textContent,"Aguardando alvo","a finished live encounter must not remain in the target card");
+  assert.equal(target.hidden, true);
+  assert.equal(target.hasAttribute("src"), false);
+});
+
+test("card dashboard does not infer a target from Hunts or Story when the Analyzer provides no current-session species", t => {
+  const base = {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+    currentTarget: null,
+    specialHistory: [{ atMs: Date.now() - 1000, species: "Mewtwo", rarity: "mythical", result: "captured" }],
+  };
+  const { app, doc, window, bridge, setAnalyzerSummary } = setup(t, { analyzerSummary: base });
+  const hunt = doc.createElement("div");
+  hunt.className = "hunt-window";
+  hunt.innerHTML = '<div class="pokeidle-panel__body"><button class="hunt-map-marker" data-zone-index="0"><span class="hunt-map-marker__sprite" style="background-image:url(/native-hunt/pikachu.png)"></span></button></div>';
+  doc.body.append(hunt);
+  const body = hunt.querySelector(".pokeidle-panel__body");
+  window.SceneManager = { _scene: { _panel: { body }, _zones: [{ id: "zone-pika", name: "Pikachu", elements: ["electric"], min: 30, max: 35 }], zoneName: zone => zone.name } };
+  rememberActiveHuntZone(hunt, 0);
+
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const name = cards.querySelector('[data-card-field="target-name"]');
+  const meta = cards.querySelector('[data-card-field="target-meta"]');
+  const image = cards.querySelector('[data-card-sprite="target"]');
+  const badge = cards.querySelector("[data-card-target-rarity]");
+  const shinyBadge = cards.querySelector("[data-card-shiny-badge]");
+  const elements = cards.querySelector('[data-card-elements="target"]');
+  const requireEmpty = label => {
+    assert.equal(name.textContent, "Aguardando alvo", label);
+    assert.equal(meta.textContent, "Sem alvo canônico único", label);
+    assert.equal(image.hidden, true, label);
+    assert.equal(image.hasAttribute("src"), false, label);
+    assert.equal(badge.hidden, true, label);
+    assert.equal(shinyBadge.hidden, true, label);
+    assert.equal(elements.hidden, true, label);
+    assert.equal(cards.querySelector('[data-card-combat="target"]').dataset.rarity, "", label);
+    assert.equal(cards.querySelector('[data-card-combat="target"]').dataset.shiny, "false", label);
+  };
+  requireEmpty("cold login cannot use the remembered zone or completed session rows");
+
+  const live = { speciesId: "pikachu", zoneId: "zone-pika", species: "Pikachu", level: 30, rarity: "epic", shiny: true, elements: ["electric"] };
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), currentTarget: live });
+  app.reconcile();
+  assert.equal(name.textContent, "Pikachu");
+  assert.equal(meta.textContent, "Lv. 30");
+  assert.equal(badge.hidden, false);
+  assert.equal(shinyBadge.hidden, false);
+  assert.equal(elements.hidden, false);
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), currentTarget: null });
+  app.reconcile();
+  requireEmpty("finished encounter cannot retain its previous identity or matching Atlas art");
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), status: "paused", currentTarget: live });
+  app.reconcile();
+  requireEmpty("paused summary cannot promote a malformed active-target payload");
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), status: "waiting", currentTarget: live });
+  app.reconcile();
+  requireEmpty("waiting summary cannot expose an active target");
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), status: "running", currentTarget: null });
+  app.reconcile();
+  requireEmpty("new Hunt has no inherited live target");
+});
+
+test("Cards follows the Analyzer CURRENT session heading at cold login and between encounters without opening Hunts", async t => {
+  const summary = {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "paused",
+    currentTarget: null,
+    currentSessionSpecies: { speciesId: "typhlosion", species: "Typhlosion" },
+    specialHistory: [{ atMs: Date.now() - 100, species: "Mewtwo", rarity: "mythical", result: "captured" }],
+  };
+  const { app, doc, window, bridge, setAnalyzerSummary } = setup(t, { analyzerSummary: summary });
+  let speciesReads = 0;
+  window.PokeIdle = { Api: { getSpecies(id) {
+    assert.equal(id, "typhlosion");
+    speciesReads++;
+    return Promise.resolve({ id, normal_sprite_url: "/native-species/typhlosion.png" });
+  } } };
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  await settle();
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const name = cards.querySelector('[data-card-field="target-name"]');
+  const meta = cards.querySelector('[data-card-field="target-meta"]');
+  const label = cards.querySelector('[data-card-copy="target"]');
+  const sprite = cards.querySelector('[data-card-sprite="target"]');
+  const rarity = cards.querySelector("[data-card-target-rarity]");
+  const shiny = cards.querySelector("[data-card-shiny-badge]");
+  const elements = cards.querySelector('[data-card-elements="target"]');
+  assert.equal(doc.querySelector(".hunt-window"), null, "the CURRENT-session identity is available without opening the Hunts window");
+  assert.equal(name.textContent, "Typhlosion", "cold-login recovery uses only the current session species");
+  assert.equal(meta.textContent, "Último visto nesta Hunt");
+  assert.equal(label.textContent, "ÚLTIMO DA HUNT");
+  assert.equal(sprite.src, "https://pokepixel.nietore.com/native-species/typhlosion.png");
+  assert.equal(speciesReads, 1);
+  assert.equal(rarity.hidden, true, "a last-seen species has no claim to live rarity");
+  assert.equal(shiny.hidden, true, "a last-seen species has no claim to live shiny");
+  assert.equal(elements.hidden, true, "a last-seen species has no claim to live elements");
+
+  setAnalyzerSummary({ ...summary, capturedAtMs: Date.now(), status: "running" });
+  app.reconcile();
+  assert.equal(name.textContent, "Typhlosion", "the species remains on CURRENT between encounters");
+  assert.equal(label.textContent, "ÚLTIMO DA HUNT");
+
+  setAnalyzerSummary({ ...summary, capturedAtMs: Date.now(), status: "waiting", currentSessionSpecies: null });
+  app.reconcile();
+  assert.equal(name.textContent, "Aguardando alvo", "a new session with no encounters must not inherit the previous session species");
+  assert.equal(sprite.hidden, true);
+  assert.equal(sprite.hasAttribute("src"), false);
+  assert.equal(label.textContent, "ALVO");
+
+  setAnalyzerSummary({ ...summary, capturedAtMs: Date.now(), status: "running", currentSessionSpecies: null });
+  app.reconcile();
+  assert.equal(name.textContent, "Aguardando alvo", "no fallback from the Mewtwo entry in Story");
+});
+
+test("Cards prioritizes a confirmed live encounter over CURRENT's last-session species and distinguishes the sources", t => {
+  const base = {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+    currentSessionSpecies: { speciesId: "pikachu", species: "Pikachu" },
+    currentTarget: { speciesId: "abra", species: "Abra", level: 32, rarity: "epic", shiny: true, elements: ["psychic"] },
+  };
+  const { app, doc, bridge, setAnalyzerSummary } = setup(t, { analyzerSummary: base });
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const name = cards.querySelector('[data-card-field="target-name"]');
+  const label = cards.querySelector('[data-card-copy="target"]');
+  const meta = cards.querySelector('[data-card-field="target-meta"]');
+  const rarity = cards.querySelector("[data-card-target-rarity]");
+  const shiny = cards.querySelector("[data-card-shiny-badge]");
+  const elements = cards.querySelector('[data-card-elements="target"]');
+  assert.equal(name.textContent, "Abra");
+  assert.equal(label.textContent, "ALVO");
+  assert.equal(meta.textContent, "Lv. 32");
+  assert.equal(rarity.hidden, false);
+  assert.equal(shiny.hidden, false);
+  assert.equal(elements.hidden, false);
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), currentTarget: null });
+  app.reconcile();
+  assert.equal(name.textContent, "Pikachu", "the current-session species is used between observed encounters");
+  assert.equal(label.textContent, "ÚLTIMO DA HUNT");
+  assert.equal(meta.textContent, "Último visto nesta Hunt");
+  assert.equal(rarity.hidden, true);
+  assert.equal(shiny.hidden, true);
+  assert.equal(elements.hidden, true);
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), status: "paused", currentTarget: base.currentTarget });
+  app.reconcile();
+  assert.equal(name.textContent, "Pikachu", "malformed paused currentTarget cannot overwrite CURRENT's last species");
+  assert.equal(label.textContent, "ÚLTIMO DA HUNT");
+
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), status: "running", currentTarget: null, currentSessionSpecies: null });
+  app.reconcile();
+  assert.equal(name.textContent, "Aguardando alvo", "new Hunt clears the last session's species");
+  assert.equal(label.textContent, "ALVO");
+});
+
+test("Cards mirrors CURRENT expedition heading and does not inherit a Hunt species", t => {
+  const base = {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+    sessionGeneration: 2, activityKind: "expedition", startedAtMs: Date.now() - 1000,
+    currentSessionSpecies: { speciesId: "pikachu", species: "Pikachu" },
+    currentTarget: { speciesId: "abra", species: "Abra", level: 32 },
+  };
+  const { app, doc, bridge, setAnalyzerSummary } = setup(t, { analyzerSummary: base });
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const name = cards.querySelector('[data-card-field="target-name"]');
+  const meta = cards.querySelector('[data-card-field="target-meta"]');
+  const sprite = cards.querySelector('[data-card-sprite="target"]');
+  assert.equal(name.textContent, "EXPEDITION");
+  assert.equal(meta.textContent, "Expedição em andamento", "Expedition never reports a missing canonical Hunt target");
+  assert.equal(sprite.hidden, true);
+  setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), sessionGeneration: 3, activityKind: "hunt", currentTarget: null, currentSessionSpecies: null });
+  app.reconcile();
+  assert.equal(name.textContent, "Aguardando alvo");
+  assert.equal(sprite.hidden, true);
+});
+
+test("CURRENT-to-Cards session lifecycle preserves Hunt and Expedition boundaries without remembered targets", t => {
+  const snapshot = {
+    protocol: 1, available: true, capturedAtMs: Date.now(),
+    status: "running", activityKind: "hunt", sessionGeneration: 1, startedAtMs: 1_000,
+    currentTarget: { speciesId: "eevee", species: "Eevee", level: 12, rarity: "rare", shiny: true, elements: ["normal"] },
+    currentSessionSpecies: { speciesId: "eevee", species: "Eevee" },
+  };
+  const { app, doc, bridge, window, setAnalyzerSummary } = setup(t, { analyzerSummary: snapshot });
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const name = cards.querySelector('[data-card-field="target-name"]');
+  const label = cards.querySelector('[data-card-copy="target"]');
+  const meta = cards.querySelector('[data-card-field="target-meta"]');
+  const rarity = cards.querySelector("[data-card-target-rarity]");
+  const shiny = cards.querySelector("[data-card-shiny-badge]");
+  const sprite = cards.querySelector('[data-card-sprite="target"]');
+  const update = (delta) => {
+    setAnalyzerSummary({ ...snapshot, ...delta, capturedAtMs: Date.now() });
+    app.reconcile();
+    const publicView = readAnalyzerSummary(window);
+    assert.equal(publicView.sessionGeneration, delta.sessionGeneration ?? snapshot.sessionGeneration);
+    assert.equal("sessionId" in publicView, false);
+  };
+  assert.equal(name.textContent, "Eevee");
+  assert.equal(meta.textContent, "Lv. 12");
+  assert.equal(rarity.hidden, false);
+  assert.equal(shiny.hidden, false);
+
+  update({ currentTarget: null });
+  assert.equal(name.textContent, "Eevee", "between encounters the current Hunt species remains");
+  assert.equal(label.textContent, "ÚLTIMO DA HUNT");
+  assert.equal(rarity.hidden, true);
+  assert.equal(shiny.hidden, true);
+
+  update({ status: "paused", currentTarget: snapshot.currentTarget });
+  assert.equal(name.textContent, "Eevee", "manual pause preserves only session species");
+  assert.equal(label.textContent, "ÚLTIMO DA HUNT");
+
+  update({ status: "waiting", endedAtMs: 2_000, currentTarget: null });
+  assert.equal(name.textContent, "Eevee", "an ended Hunt still has its CURRENT history");
+
+  update({
+    status: "running", activityKind: "expedition", sessionGeneration: 2, startedAtMs: 3_000,
+    endedAtMs: null, currentTarget: snapshot.currentTarget,
+  });
+  assert.equal(name.textContent, "EXPEDITION", "new Expedition suppresses an inherited Hunt target");
+  assert.equal(sprite.hidden, true);
+  assert.equal(rarity.hidden, true);
+  assert.equal(shiny.hidden, true);
+
+  update({
+    status: "running", activityKind: "expedition", sessionGeneration: 2, startedAtMs: 3_000,
+    currentSessionSpecies: { speciesId: "pidgey", species: "Pidgey" },
+    currentTarget: null,
+  });
+  assert.equal(name.textContent, "EXPEDITION", "Expedition CURRENT heading takes precedence over encounters");
+
+  update({
+    status: "paused", activityKind: "expedition", sessionGeneration: 2, startedAtMs: 3_000,
+    currentSessionSpecies: { speciesId: "pidgey", species: "Pidgey" }, currentTarget: null,
+  });
+  assert.equal(name.textContent, "Pidgey", "paused Expedition shows CURRENT's most recent species");
+  assert.equal(label.textContent, "ÚLTIMO DA EXP.");
+  assert.equal(meta.textContent, "Último visto nesta expedição");
+
+  update({
+    status: "waiting", activityKind: "expedition", sessionGeneration: 2,
+    startedAtMs: 3_000, endedAtMs: 4_000,
+    currentSessionSpecies: { speciesId: "pidgey", species: "Pidgey" }, currentTarget: null,
+  });
+  assert.equal(name.textContent, "Pidgey", "finished Expedition retains only its own last species");
+  assert.equal(label.textContent, "ÚLTIMO DA EXP.");
+
+  update({
+    status: "running", activityKind: "hunt", sessionGeneration: 3,
+    startedAtMs: 5_000, endedAtMs: null, currentSessionSpecies: null, currentTarget: null,
+  });
+  assert.equal(name.textContent, "Aguardando alvo", "new Hunt has no previous Expedition or Hunt target");
+  assert.equal(label.textContent, "ALVO");
+  assert.equal(sprite.hidden, true);
+  assert.equal(rarity.hidden, true);
+  assert.equal(shiny.hidden, true);
+
+  update({
+    status: "running", activityKind: "hunt", sessionGeneration: 3,
+    startedAtMs: 5_000, currentSessionSpecies: { speciesId: "pikachu", species: "Pikachu" },
+    currentTarget: { speciesId: "pikachu", species: "Pikachu", level: 22, rarity: "epic", shiny: false },
+  });
+  assert.equal(name.textContent, "Pikachu");
+  assert.equal(meta.textContent, "Lv. 22");
+
+  update({
+    status: "running", activityKind: "hunt", sessionGeneration: 4,
+    startedAtMs: 6_000, currentSessionSpecies: null, currentTarget: null,
+  });
+  assert.equal(name.textContent, "Aguardando alvo", "Reset/New Hunt must not inherit Pikachu");
+});
+
+test("late native art from a finished encounter cannot resurrect the target after an Analyzer clear", async t => {
+  let resolveSpecies;
+  const pendingSpecies = new Promise(resolve => { resolveSpecies = resolve; });
+  const { app, doc, window, bridge, setAnalyzerSummary } = setup(t, { analyzerSummary: {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+    currentTarget: { speciesId: "pikachu", species: "Pikachu", zoneId: "zone-pika", level: 35, shiny: false, rarity: "rare" },
+  } });
+  let speciesReads = 0;
+  window.PokeIdle = { Api: { getSpecies(id) {
+    assert.equal(id, "pikachu");
+    speciesReads++;
+    return pendingSpecies;
+  } } };
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  await settle();
+  assert.equal(speciesReads, 1);
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const sprite = cards.querySelector('[data-card-sprite="target"]');
+  assert.equal(sprite.hasAttribute("src"), false);
+
+  setAnalyzerSummary({ protocol: 1, available: true, capturedAtMs: Date.now(), status: "running", currentTarget: null });
+  app.reconcile();
+  resolveSpecies({ id: "pikachu", normal_sprite_url: "/native-species/pikachu.png" });
+  await settle();
+  await settle();
+  assert.equal(cards.querySelector('[data-card-field="target-name"]').textContent, "Aguardando alvo");
+  assert.equal(sprite.hidden, true);
+  assert.equal(sprite.hasAttribute("src"), false, "late metadata must not reinstate a completed encounter");
+  assert.equal(speciesReads, 1, "no new species reads without a live target");
 });
 
 test("card dashboard retries transient native target metadata failures without inventing art", async t => {
@@ -585,7 +904,7 @@ test("card dashboard never coerces missing or string Team HUD numerics into fake
   assert.equal(meta.includes("DERROTADO"), false);
 });
 
-test("card dashboard renders active-Hunt zone art and special-session history locally without host telemetry relay", async t => {
+test("card dashboard renders canonical live target and current-session Story without using map art or host telemetry relay", async t => {
   const now = Date.now();
   const rarities = ["epic", "legendary", "mythical", "rare"];
   const attempts = Array.from({ length: 40 }, (_, index) => ({
@@ -687,7 +1006,8 @@ test("card dashboard renders active-Hunt zone art and special-session history lo
   assert.match(cards.querySelector("[data-card-shiny-badge]").textContent, /SHINY/);
   assert.equal(cards.querySelector("[data-card-target-rarity]").textContent, "ÉPICA");
   assert.equal(cards.querySelectorAll("[data-card-attempt-body] .ppbui-cards-attempt").length, 40, "special history is not silently capped at 32");
-  assert.equal(cards.querySelector('[data-card-sprite="target"]').src, "https://pokepixel.nietore.com/native-hunt/charizard.png");
+  assert.equal(cards.querySelector('[data-card-sprite="target"]').hidden, true, "map art cannot impersonate an encounter sprite");
+  assert.equal(cards.querySelector('[data-card-sprite="target"]').hasAttribute("src"), false);
   assert.equal(cards.querySelector(".ppbui-cards-attempt-table").getAttribute("role"), "list");
   assert.equal(window.getComputedStyle(cards.querySelector(".ppbui-cards-attempt-table")).maxHeight, "190px");
   assert.equal(cards.querySelector(".ppbui-cards-attempt-head"), null);
@@ -785,7 +1105,7 @@ test("card dashboard renders active-Hunt zone art and special-session history lo
   assert.equal(cards.querySelector("[data-card-loot-body]").textContent.includes("must-not-cross"), false);
 });
 
-test("card dashboard keeps the active Hunt zone sprite static across normal, Shiny and between encounters", t => {
+test("card dashboard never uses remembered Hunt-zone art as live encounter art", t => {
   const normalSummary = {
     protocol: 1,
     available: true,
@@ -807,8 +1127,10 @@ test("card dashboard keeps the active Hunt zone sprite static across normal, Shi
   bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
   bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
   const target = doc.querySelector('[data-card-sprite="target"]');
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/pikachu.png");
-  assert.equal(target.hidden, false);
+  assert.equal(target.hasAttribute("src"), false, "a map zone image cannot impersonate a live encounter sprite");
+  assert.equal(target.hidden, true);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu");
+  assert.equal(doc.querySelector('[data-card-field="target-meta"]').textContent, "Lv. 30");
 
   setAnalyzerSummary({
     ...normalSummary,
@@ -816,15 +1138,15 @@ test("card dashboard keeps the active Hunt zone sprite static across normal, Shi
     currentTarget: { ...normalSummary.currentTarget, shiny: true },
   });
   app.reconcile();
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/pikachu.png");
-  assert.equal(target.hidden, false, "zone art is intentionally encounter-agnostic");
+  assert.equal(target.hidden, true, "Shiny live metadata cannot reuse generic zone art");
+  assert.equal(target.hasAttribute("src"), false);
 
   setAnalyzerSummary({ ...normalSummary, capturedAtMs: Date.now(), currentTarget: null });
   app.reconcile();
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/pikachu.png");
-  assert.equal(target.hidden, false, "zone art persists between encounters");
-  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu");
-  assert.equal(doc.querySelector('[data-card-field="target-meta"]').textContent, "Lv. 30–35");
+  assert.equal(target.hidden, true, "generic zone art cannot persist between live encounters");
+  assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Aguardando alvo");
+  assert.equal(doc.querySelector('[data-card-field="target-meta"]').textContent, "Sem alvo canônico único");
 
   setAnalyzerSummary({ ...normalSummary, capturedAtMs: Date.now(), status: "waiting", currentTarget: null });
   app.reconcile();
@@ -840,6 +1162,7 @@ test("card dashboard keeps the active Hunt zone sprite static across normal, Shi
   app.reconcile();
   assert.equal(target.hidden, true, "a later Hunt that bypasses Atlas cannot revive the previous zone art");
   assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Abra");
 });
 
 test("card dashboard invalidates remembered Hunt art when currentTarget belongs to another zone", t => {
@@ -864,7 +1187,8 @@ test("card dashboard invalidates remembered Hunt art when currentTarget belongs 
   bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
   bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
   const target = doc.querySelector('[data-card-sprite="target"]');
-  assert.equal(target.hidden, false);
+  assert.equal(target.hidden, true, "zone art cannot be displayed even for a matching live zone ID");
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu");
 
   setAnalyzerSummary({
     ...normalSummary,
@@ -874,6 +1198,7 @@ test("card dashboard invalidates remembered Hunt art when currentTarget belongs 
   app.reconcile();
   assert.equal(target.hidden, true, "zone mismatch must fail closed instead of showing stale native art");
   assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Abra", "live identity follows Analyzer, never a remembered zone");
 
   setAnalyzerSummary({ ...normalSummary, capturedAtMs: Date.now(), currentTarget: null });
   app.reconcile();
@@ -881,7 +1206,7 @@ test("card dashboard invalidates remembered Hunt art when currentTarget belongs 
   assert.equal(target.hasAttribute("src"), false);
 });
 
-test("card dashboard preserves a fresh Atlas zone through a stale prior target until Analyzer confirms the new zone", t => {
+test("card dashboard follows a new live encounter independently of changes to the Atlas zone selection", t => {
   const summaryA = {
     protocol: 1,
     available: true,
@@ -912,12 +1237,14 @@ test("card dashboard preserves a fresh Atlas zone through a stale prior target u
   bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
   bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
   const target = doc.querySelector('[data-card-sprite="target"]');
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/pikachu.png");
+  assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu");
 
   rememberActiveHuntZone(hunt, 1);
   app.reconcile();
-  assert.equal(target.hidden, true, "stale prior target must not render against the newly remembered Atlas zone");
+  assert.equal(target.hidden, true, "Atlas switching cannot fabricate encounter art");
   assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu", "Atlas selection cannot override the confirmed live target");
 
   setAnalyzerSummary({
     ...summaryA,
@@ -925,16 +1252,18 @@ test("card dashboard preserves a fresh Atlas zone through a stale prior target u
     currentTarget: { speciesId: "abra", zoneId: "zone-abra", species: "Abra", level: 32, rarity: "rare", shiny: false },
   });
   app.reconcile();
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/abra.png");
-  assert.equal(target.hidden, false, "new Atlas art recovers when Analyzer catches up without requiring re-entry");
+  assert.equal(target.hidden, true);
+  assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Abra", "new live target updates without map art");
 
   setAnalyzerSummary({ ...summaryA, capturedAtMs: Date.now(), currentTarget: null });
   app.reconcile();
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/abra.png");
-  assert.equal(target.hidden, false, "confirmed zone art persists between encounters");
+  assert.equal(target.hidden, true);
+  assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Aguardando alvo", "no previous live encounter persists between fights");
 });
 
-test("card dashboard preserves a fresh Atlas zone through transient Analyzer waiting until the new zone is confirmed", t => {
+test("card dashboard clears the previous live encounter during Analyzer waiting, regardless of Atlas selection", t => {
   const summaryA = {
     protocol: 1,
     available: true,
@@ -965,7 +1294,8 @@ test("card dashboard preserves a fresh Atlas zone through transient Analyzer wai
   bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
   bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
   const target = doc.querySelector('[data-card-sprite="target"]');
-  assert.equal(target.hidden, false);
+  assert.equal(target.hidden, true, "Atlas art is not an encounter sprite");
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu");
 
   rememberActiveHuntZone(hunt, 1);
   setAnalyzerSummary({ ...summaryA, capturedAtMs: Date.now(), status: "waiting", currentTarget: null });
@@ -980,8 +1310,9 @@ test("card dashboard preserves a fresh Atlas zone through transient Analyzer wai
     currentTarget: { speciesId: "abra", zoneId: "zone-abra", species: "Abra", level: 32, rarity: "rare", shiny: false },
   });
   app.reconcile();
-  assert.equal(target.src, "https://pokepixel.nietore.com/native-hunt/abra.png");
-  assert.equal(target.hidden, false, "fresh Atlas snapshot survives waiting and recovers when its zone is confirmed");
+  assert.equal(target.hidden, true);
+  assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Abra", "new live encounter is shown without relying on fresh Atlas state");
 });
 
 test("card dashboard fails closed when a running current target cannot prove its zone identity", t => {
@@ -1006,7 +1337,8 @@ test("card dashboard fails closed when a running current target cannot prove its
   bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
   bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
   const target = doc.querySelector('[data-card-sprite="target"]');
-  assert.equal(target.hidden, false);
+  assert.equal(target.hidden, true, "zone image cannot be sourced from Atlas for a live encounter");
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Pikachu");
 
   setAnalyzerSummary({
     ...summary,
@@ -1016,6 +1348,7 @@ test("card dashboard fails closed when a running current target cannot prove its
   app.reconcile();
   assert.equal(target.hidden, true, "missing zoneId cannot reuse remembered art");
   assert.equal(target.hasAttribute("src"), false);
+  assert.equal(doc.querySelector('[data-card-field="target-name"]').textContent, "Abra", "live target does not require a zone ID for identity");
 
   setAnalyzerSummary({ ...summary, capturedAtMs: Date.now(), currentTarget: null });
   app.reconcile();
@@ -1266,6 +1599,12 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
     "narrow target must retain a visible, textual rarity instead of relying on border color");
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-combat-kicker\{flex-wrap:wrap;overflow:visible;gap:2px\}/,
     "narrow target must allow its rarity and Shiny badges to wrap without clipping");
+  assert.match(css, /@media\(max-width:319px\)\{\s*\.ppbui-cards-battle-pair\{grid-template-columns:minmax\(0,1fr\);grid-template-rows:104px minmax\(96px,auto\) minmax\(96px,auto\)\}/,
+    "panes below the supported 320px minimum stack team/player/target to retain CURRENT labels");
+  assert.match(css, /@media\(min-width:520px\) and \(max-width:899px\)\{\s*\.ppbui-cards-combat-card strong,\.ppbui-cards-combat-card>div:last-child>span\{white-space:normal;overflow-wrap:anywhere\}/,
+    "CURRENT metadata must wrap rather than clip at the first three-column width");
+  assert.match(css, /@media\(min-width:520px\) and \(max-width:640px\)\{\s*\.ppbui-cards-elements\{flex-wrap:wrap;overflow:visible\}/,
+    "element/type labels in the 520px three-column layout wrap instead of truncating");
   assert.match(css, /\.ppbui-cards-rarity-badge,\.ppbui-cards-shiny-badge\{flex:0 0 auto;min-height:13px;padding:1px 2px;font-size:7px!important;/,
     "narrow rarity and Shiny names remain visible at compact text sizes");
   assert.doesNotMatch(css, /\.ppbui-cards-shiny-badge\{[^}]*font-size:0!important/,
@@ -2040,6 +2379,8 @@ test("Analyzer source remains sanitized locally while the host receives no Hunt 
     activeMs: -5, seen: Infinity, captureRate: 5, trainerExpPerHour: NaN,
     pokemonExpPerHour: -10, dollarPerHour: 1e30, seenWeak: -2, seenCommon: Infinity,
     latestCaptureChance: 5, attemptHistory: [], secretToken: "must-not-cross",
+    sessionId: "internal-uuid-never-exposed", sessionGeneration: 9, activityKind: "expedition",
+    startedAtMs: 1000, endedAtMs: null,
   } });
   app.start();
   const analyzer = readAnalyzerSummary(window);
@@ -2056,6 +2397,11 @@ test("Analyzer source remains sanitized locally while the host receives no Hunt 
   assert.equal(analyzer.seenWeak, 0);
   assert.equal(analyzer.seenCommon, null);
   assert.equal(analyzer.latestCaptureChance, null);
+  assert.equal(analyzer.sessionGeneration, 9);
+  assert.equal(analyzer.activityKind, "expedition");
+  assert.equal(analyzer.startedAtMs, 1000);
+  assert.equal(analyzer.endedAtMs, null);
+  assert.equal("sessionId" in analyzer, false);
   assert.equal("secretToken" in analyzer, false);
   assert.equal(sent.some(message => message.type === "ppbui.coupled.analyzer-summary"), false);
 
@@ -2063,6 +2409,32 @@ test("Analyzer source remains sanitized locally while the host receives no Hunt 
   app.reconcile();
   assert.equal(readAnalyzerSummary(window), null);
   assert.equal(sent.some(message => message.type === "ppbui.coupled.analyzer-summary"), false);
+});
+
+test("sanitized CURRENT lifecycle rejects invalid generations and timestamps and suppresses forged Expedition targets", t => {
+  const { window, setAnalyzerSummary } = setup(t, { analyzerSummary: {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+    activityKind: "expedition", sessionGeneration: 1.5, startedAtMs: -10, endedAtMs: Infinity,
+    currentTarget: { speciesId: "old", species: "Old Hunt Target", level: 99 },
+    currentSessionSpecies: { speciesId: "old", species: "Old Hunt Target" },
+  } });
+  const expedition = readAnalyzerSummary(window);
+  assert.equal(expedition.sessionGeneration, null);
+  assert.equal(expedition.startedAtMs, null);
+  assert.equal(expedition.endedAtMs, null);
+  assert.equal(expedition.currentTarget, null);
+  assert.equal(expedition.currentSessionSpecies, null);
+  setAnalyzerSummary({
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "waiting",
+    activityKind: "expedition", sessionGeneration: 2, startedAtMs: 100, endedAtMs: 500,
+    currentSessionSpecies: { speciesId: "pidgey", species: "Pidgey" },
+  });
+  const finished = readAnalyzerSummary(window);
+  assert.equal(finished.sessionGeneration, 2);
+  assert.equal(finished.startedAtMs, 100);
+  assert.equal(finished.endedAtMs, 500);
+  assert.equal(finished.currentSessionSpecies.species, "Pidgey",
+    "CURRENT may show the last Expedition encounter after the run is no longer active");
 });
 
 test("nullable Analyzer chance and aggregate rates retain unavailable semantics in Cards data", t => {

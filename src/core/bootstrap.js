@@ -10,7 +10,7 @@ export function createBetterUI({ modules = [], debug = false, preferences, appea
   let modeListenerInstalled = false;
   let modeWindow = null;
 
-  const reconcile = () => {
+  const reconcile = (trigger = "explicit") => {
     const textualCardMode = document.documentElement?.getAttribute("data-ppbui-card-mode") === "cards";
     for (const module of modules) {
       try {
@@ -31,14 +31,14 @@ export function createBetterUI({ modules = [], debug = false, preferences, appea
           mountKeys.set(module.id, mountKey);
           logger.debug("mounted", module.id);
         }
-        if (shouldMount) module.reconcile?.();
+        if (shouldMount) module.reconcile?.(trigger === "observer" ? "observer" : "explicit");
       } catch (error) {
         logger.error(`module "${module.id}" failed during reconcile`, error);
       }
     }
   };
 
-  const observer = createDomObserver(reconcile);
+  const observer = createDomObserver(() => reconcile("observer"));
 
   return {
     start() {
