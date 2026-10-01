@@ -4,6 +4,23 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Cards CURRENT / WebView2 — candidato 0.2.129 (não publicado):** a
+  revisão render-first do candidato `0.2.128` encontrou rótulos de última
+  espécie e de Expedição cortados em panes estreitos. Cards passou a
+  reorganizar Team/ativo/alvo em vez de esconder rótulos: duas linhas em
+  270–519px e três linhas abaixo de 270px, preservando a distinção entre
+  alvo live e espécie histórica. Uma Expedição em andamento exibe
+  `Expedição em andamento`, sem descrever erroneamente a ausência de alvo
+  de Hunt como erro. O host sintético passou a capturar dez estados CURRENT
+  em 235/320/390px e a produzir um aviso WinForms sanitizado caso falhe
+  o salvamento final de preferências, após descartar panes e controles.
+  As falhas pré-I/O continuam separadas de falhas físicas do Windows;
+  aviso visual, UX/live e medição pareada de performance ainda requerem
+  seus respectivos gates. A suíte Node agora tem CI próprio e a verificação
+  C# isolada roda em Windows CI; nada promove o host normal ou altera
+  arquivos de contas/jogo. Evidência em
+  `docs/PM_GATE_2026-10-01_CURRENT_VISUAL_PERSISTENCE_V23.md`.
+
 - **Cards — identidade de sessão CURRENT (candidato 0.2.128, após v19):** o
   Analyzer entrega `sessionGeneration` (contador opaco local ao runtime),
   `activityKind`, `startedAtMs` e `endedAtMs`, sem expor UUID, run ID ou

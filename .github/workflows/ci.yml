@@ -37,3 +37,19 @@ jobs:
 
       - name: Verify production bundle builds
         run: npm run build
+
+  webview2-build:
+    name: Compile and verify WebView2 host (isolated)
+    runs-on: windows-2022
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Verify pinned WebView2 SDK and compile in a disposable fixture
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .\tools\coupled-workspace-webview2\Ensure-WebView2Sdk.ps1
+          & .\tools\coupled-workspace-webview2\Test-IsolatedBuild.ps1
