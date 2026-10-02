@@ -1,4 +1,9 @@
-# PPTools → Hunt Atlas — plano de integração e registro PM
+# PPTools → Hunt Atlas — histórico removido
+
+> **Removido do produto em 2026-10-02 por decisão do Product Owner.** Este
+> documento permanece apenas como registro histórico de design, diagnóstico e
+> aceitação. Nenhum fluxo, critério, candidato ou pendência abaixo faz parte do
+> contrato atual do módulo Hunts.
 
 **Decisão final do Product Owner — 2026-09-29:** encerrar o escopo sem
 incorporar o PPTools ao userscript Tampermonkey. A alternativa de aba auxiliar

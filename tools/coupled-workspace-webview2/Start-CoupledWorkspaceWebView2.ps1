@@ -5,7 +5,6 @@ param(
     [switch]$Plan,
     [switch]$Smoke,
     [switch]$Candidate,
-    [switch]$PptoolsCandidate,
     [switch]$EvidenceProbe
 )
 
@@ -16,8 +15,6 @@ $toolDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Resolve-Path (Join-Path $toolDir '..\..')
 $exeName = if ($EvidenceProbe) {
     'PokePixelCoupledWorkspace.evidence-probe.exe'
-} elseif ($PptoolsCandidate) {
-    'PokePixelCoupledWorkspace.pptools.candidate.exe'
 } elseif ($Candidate) {
     'PokePixelCoupledWorkspace.candidate.exe'
 } else {
@@ -25,20 +22,20 @@ $exeName = if ($EvidenceProbe) {
 }
 $exe = Join-Path $toolDir ("bin\" + $exeName)
 
-if (([int]$Candidate.IsPresent + [int]$PptoolsCandidate.IsPresent + [int]$EvidenceProbe.IsPresent) -gt 1) {
+if (([int]$Candidate.IsPresent + [int]$EvidenceProbe.IsPresent) -gt 1) {
     throw 'Choose only one WebView2 host target.'
 }
 if ($Build -and $SkipBuild) {
     throw 'Choose either -Build or -SkipBuild.'
 }
-if ($Build -and -not ($EvidenceProbe -or $PptoolsCandidate -or $Candidate)) {
+if ($Build -and -not ($EvidenceProbe -or $Candidate)) {
     throw 'Normal host promotion is not a launcher operation. Build isolated candidates explicitly.'
 }
 if ($Plan) {
     [pscustomobject]@{
         Executable = $exe
         BuildRequested = [bool]$Build
-        Mode = if ($Smoke) { 'smoke' } elseif ($EvidenceProbe) { 'evidence-probe' } elseif ($PptoolsCandidate) { 'pptools-oneclick' } else { 'launch' }
+        Mode = if ($Smoke) { 'smoke' } elseif ($EvidenceProbe) { 'evidence-probe' } else { 'launch' }
     } | ConvertTo-Json -Compress
     return
 }
@@ -61,8 +58,6 @@ if ($Build) {
 
     if ($EvidenceProbe) {
         & (Join-Path $toolDir 'Build-WebView2Workspace.ps1') -EvidenceProbe
-    } elseif ($PptoolsCandidate) {
-        & (Join-Path $toolDir 'Build-WebView2Workspace.ps1') -PptoolsCandidate
     } elseif ($Candidate) {
         & (Join-Path $toolDir 'Build-WebView2Workspace.ps1') -Candidate
     } else {
@@ -84,8 +79,6 @@ if ($Smoke) {
 
 if ($EvidenceProbe) {
     $process = Start-Process -FilePath $exe -ArgumentList '--evidence-probe' -Wait -PassThru
-} elseif ($PptoolsCandidate) {
-    $process = Start-Process -FilePath $exe -ArgumentList '--pptools-oneclick' -Wait -PassThru
 } else {
     $process = Start-Process -FilePath $exe -Wait -PassThru
 }

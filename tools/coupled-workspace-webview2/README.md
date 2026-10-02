@@ -4,44 +4,13 @@ This is the primary coupled-workspace implementation for PokePixel Better UI.
 It replaces the Electron host after repeated `sandboxed_renderer.bundle.js`
 `binding.startupData = null` failures in the user's Windows environment.
 
-## PPTools one-click diagnostic (2026-09-29)
+## Removed PPTools diagnostic path
 
-The corrected Product Owner flow uses **PPTools Recommendation** for the
-current native leader. An **opt-in** auxiliary WebView2 runs the public PPTools
-page invisibly, with separate temporary storage and a strictly validated,
-request-scoped host relay. The original diagnostic tuple used Better UI
-`0.2.119`, preserved here as historical provenance. The repository currently
-builds Better UI `0.2.122` and uses an independently versioned host; do not
-assume a fresh userscript is byte-identical to the earlier frozen tuple.
-To compile a new **isolated diagnostic candidate only**, use
-`Build-WebView2Workspace.ps1 -PptoolsCandidate`; the previously verified host
-artifact is available separately:
-
-```powershell
-& .\tools\coupled-workspace-webview2\bin\PokePixelCoupledWorkspace.pptools.20260929-verified.exe --pptools-oneclick
-```
-
-The host resolves the Better UI userscript from the repository `dist`
-relative to its `bin` directory and requires `bin/pptools-runner.js`
-alongside the WebView2 runtime dependencies. Keep the standalone candidate
-in that directory; the normal host remains unaffected.
-
-Non-game diagnostics: `--pptools-privacy-smoke`,
-`--pptools-runner-smoke` (minimal synthetic input) and
-`--pptools-full-input-smoke` (richer synthetic attacker, public import and
-simulation). The isolated candidate passed generic `--smoke` and
-both shutdown lifecycle smokes; generic `--smoke` was intermittent under
-its 12-second watchdog on intermediate local runs, including on an earlier
-build. All these checks use no live PokePixel page. The Product Owner later
-provided a real native `COPIAR JSON` creature example without `expBuff` or
-`is_starter`. The public parser expects `expBuff` as a **multiplicative factor**
-and defaults to `1`; Better UI now supplies that neutral simulation factor and
-uses `isStarter=false` only when its native value is unknown. The resulting
-EXP/h and ranking can differ with active bonuses, and complete native
-simulation equivalence remains unproven. Results remain diagnostic and
-require the Product Owner's explicit live in-game validation before
-deployment/promotion. Exact hashes and acceptance gates:
-`docs/COUPLED_WORKSPACE_STATUS.md`.
+The PPTools Recommendation relay and its dedicated diagnostic candidate were
+removed on 2026-10-02 by Product Owner decision. The current host no longer
+accepts PPTools bridge messages, stages a PPTools runner, exposes PPTools CLI
+modes, or builds a PPTools-specific candidate. Historical evidence remains in
+the project records only.
 
 Live-functional baseline candidate (2026-09-20):
 
@@ -578,12 +547,12 @@ userscript, Analyzer bundle or host by default. This also applies to the
 compatibility wrapper and its legacy `-SkipBuild` option. Use `-Plan` to print
 the selected executable/mode **without launching anything**. For intentional
 isolated candidate compilation, use the builder with `-Candidate` (or the
-corresponding PPTools/evidence candidate option); the launcher accepts an
+corresponding evidence candidate option); the launcher accepts an
 explicit `-Build` only with an isolated target. Normal-host recompilation
 requires the builder's separate `-PromoteNormal` flag and user-owned acceptance;
 ordinary launch and smoke flows cannot promote it by accident.
-Shared runtime DLLs and `bin/pptools-runner.js` are preserved when their hashes
-already match the staged sources. A mismatching existing shared dependency now
+Shared runtime DLLs are preserved when their hashes already match the staged
+sources. A mismatching existing shared dependency now
 causes the candidate build to fail rather than overwriting another host's
 runtime; upgrade that dependency only through a separately reviewed artifact
 tuple. An explicitly approved normal-host promotion backs up the previous EXE

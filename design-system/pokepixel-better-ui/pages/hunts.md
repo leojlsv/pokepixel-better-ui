@@ -1,12 +1,333 @@
 # Hunts — Hunt Atlas Design Override
 
-Status: **approved functional direction; Miyazaki 16 visual migration pending Product Owner live validation**
-Direction: **Hunt Atlas**
+Status: **native-first current Hunt selector refinement implemented; regional GYMS navigation and MAP/LIST visual unification user-validated on 2026-10-02**
+Direction: **Native Hunts + Better UI hierarchy refinement**
 Product Owner approval: **2026-09-12**
 Migration classification: **redesign**
 Validation status: **historical Hunt Atlas behavior user-validated; current Miyazaki 16 candidate pending fresh live validation**
 Product Owner live validation: **2026-09-12 — All green**
 Validated implementation: **`3faa712`**
+
+## Previous native-first baseline — 2026-10-02
+
+The Product Owner explicitly judged the current PokéPixel Hunts model better than
+the Better UI composition and requested that future UI/UX improvements build on
+top of the native structure. This direction supersedes the historical requirement
+to make the current upstream Hunt list resemble the older Hunt Atlas rails.
+
+The rules immediately below record the first native-first pass. The later
+`AC-HUNTS-UX-*` implementation supersedes its strict current-list child-order/layout
+requirements where explicitly documented, while preserving native node identity,
+handlers, gameplay behavior and cleanup.
+
+For the current native Hunt list (`hunt-list-*`):
+
+- preserve the native title, header, toolbar, summary and table hierarchy;
+- preserve native child order and layout ownership; Better UI must not turn the
+  header into an Atlas rail or the filter toolbar into its own grid;
+- world navigation remains the dominant context control; presentation mode is a
+  subordinate utility and must not receive the same selected/current emphasis;
+- Search, Element, Sort and Level retain the native order and control affordances;
+- Clear is tertiary/reversible utility rather than a peer of the filter fields;
+- `Hunt` is the primary row action; `Details` is secondary/disclosure;
+- Better UI may refine typography, semantic action states, focus visibility,
+  control surfaces, separators and narrow-width overflow without moving or
+  recreating native controls;
+- native select arrows, number steppers, search affordances and other useful host
+  control cues remain unless a later validated issue justifies owning them;
+- the legacy map adapter remains compatibility behavior and does not define the
+  current-list composition.
+
+### Acceptance criteria for this pass
+
+- **AC-HUNTS-NATIVE-01:** mounting current-list Hunts keeps the visible native
+  title text and preserves header/toolbar/table child order.
+- **AC-HUNTS-NATIVE-02:** Better UI adds no current-list Atlas-rail class and no
+  toolbar/surface data wrappers used to impose a replacement layout.
+- **AC-HUNTS-NATIVE-03:** current-list CSS does not force the native filter toolbar
+  into a Better UI grid or the native header into a replacement flex rail.
+- **AC-HUNTS-NATIVE-04:** Hunt, Details and Clear expose three distinct semantic
+  visual tiers: primary, secondary and tertiary respectively.
+- **AC-HUNTS-NATIVE-05:** world navigation and presentation-mode state do not share
+  one equal selected/current treatment; presentation stays visually subordinate.
+- **AC-HUNTS-NATIVE-06:** keyboard focus remains explicit on native tabs, fields,
+  utilities and row actions.
+- **AC-HUNTS-NATIVE-07:** constrained list panes preserve usable row/action geometry
+  through the native table shell as the horizontal scroll owner without changing
+  filter order.
+- **AC-HUNTS-NATIVE-08:** cleanup restores the exact native DOM/title/style state and
+  Hunt still delegates to the native action exactly once.
+
+### Regional Hunts → Gyms navigation — 2026-10-02
+
+Hunts now exposes `GYMS` as a **secondary regional destination**, not as a Hunt
+filter and not as a gameplay action. The player flow is:
+
+`Region → activity (Hunts/Gyms) → refine/select → explicit gameplay action`.
+
+The control belongs in the regional header between world context and lower-priority
+view/presentation utilities. Its visible label remains compact (`GYMS`); accessible
+name and tooltip include the current region.
+
+- **AC-HUNTS-GYM-01:** the button follows the authoritative active Hunt region.
+- **AC-HUNTS-GYM-02:** Kanto opens the native Gym scene with Kanto selected; Johto
+  opens the same native scene with Johto selected.
+- **AC-HUNTS-GYM-03:** navigation uses `Scene_Gym`/`SceneManager`; Better UI does not
+  fetch Gym APIs, reserve a battle, click `gym-start`, or recreate the Gym UI.
+- **AC-HUNTS-GYM-04:** regions unsupported by the native Gym scene fail closed with
+  a disabled control. Current native Gym source supports Kanto and Johto only.
+- **AC-HUNTS-GYM-05:** repeated reconciliation keeps one stable button and performs
+  no DOM mutation when region/availability are unchanged.
+- **AC-HUNTS-GYM-06:** the button is keyboard-focusable when available, has explicit
+  focus-visible treatment, and exposes localized region context through its
+  accessible name.
+- **AC-HUNTS-GYM-07:** cleanup removes the Better UI navigation control and restores
+  the underlying native Hunts structure exactly.
+
+### Current-list UI/UX implementation — 2026-10-02
+
+The Product Owner approved the regional `GYMS` control in-game, requested the broader
+Hunts UI/UX study and then authorized implementation. The approved `GYMS`
+placement/behavior is frozen; the current candidate applies the documented Hunts
+hierarchy while preserving native controls/handlers.
+
+#### Observed narrow-pane problem
+
+The Product Owner supplied a representative **249×712 px** Hunts capture. In that
+state the player sees, in order:
+
+1. title;
+2. four full-width region controls;
+3. the approved `GYMS` destination;
+4. `MAP / LIST`;
+5. `MODO CLÁSSICO / MODO PLATAFORMA`;
+6. region/level context;
+7. an always-expanded filter card containing Search, Element, Sort, Level range and
+   a full-width Clear action.
+
+The first Hunt result is completely below the fold. Roughly the whole 712 px viewport
+is consumed by context/navigation/refinement before the player reaches the content
+they opened Hunts to inspect. This is the dominant usability problem; changing color,
+border or typography alone cannot solve it.
+
+#### Current player flow
+
+`Region → regional destination → view → presentation/mode → search/filter/sort → results → Details/Hunt`
+
+The functional ordering is valid, but the screen gives almost every stage similar
+visual area and framing. This makes secondary setup controls compete with the Hunt
+results and pushes the primary task down the page.
+
+#### Target hierarchy
+
+`Region → Hunts/Gyms → view → Search → results → explicit Hunt action`
+
+Element/Level are **advanced refinement**, Sort is a **result-order utility**, and the
+Classic/Platform control is a **secondary mode/presentation setting**. They remain
+available, but should no longer consume the same persistent vertical weight as region,
+Search and results.
+
+#### Findings and recommended changes
+
+| Priority | Finding | Recommended direction |
+| --- | --- | --- |
+| High | Four full-width region buttons consume disproportionate height in a narrow pane. | At constrained widths, keep the same native region buttons and order but arrange them in a compact 2-column grid. This is an explicit narrow-width exception to the earlier “native layout ownership” rule; Better UI may alter only the visual grid of the existing native region controls, without cloning/reordering them. Wider panes retain the native row/desktop behavior. |
+| High | The entire filter surface is permanently expanded even when the player only needs Search or browsing. | Keep Search persistently visible. Put Element + Level range behind one Better UI `Filters` disclosure. When hidden filters are active, the trigger must expose an active state and Clear must remain reachable outside the collapsed disclosure. |
+| High | Search, filtering and sorting are visually presented as one concept. | Treat Search as discovery, Element/Level as filters, and Sort as a list utility. Keep Sort visible beside the results/filter utility row instead of giving it the same semantic grouping as Element/Level. |
+| High | No result is visible above the fold in the supplied 249×712 state. | Narrow-layout acceptance must require the result summary and start of the results surface to be visible without scrolling when advanced filters are collapsed. |
+| Medium | `MAP / LIST` and `MODO CLÁSSICO / MODO PLATAFORMA` use similarly heavy framed segmented controls, making two different dimensions look equally primary. | Keep `MAP / LIST` as the stronger view switch. Visually demote the second segmented control through lighter chrome/typography while retaining its native behavior and full keyboard access. |
+| Medium | Repeated framed containers create border noise: segmented wrappers, filter card and every field all read as separate boxes. | Follow MASTER §6: remove decorative outer framing where spacing + one separator is sufficient; keep borders on actual interactive controls/value wells. |
+| Medium | Full-width `Clear` reads more like a primary action than a reversible utility despite current color treatment. | Keep the native action but present it as a compact tertiary reset near filter state, not as the final full-width CTA of the filter card. |
+| Medium | The two Level inputs share a visual label but need distinct accessible identities. | Ensure explicit accessible names for minimum and maximum level, preserving native number-input behavior and exact cleanup. |
+| Low | Disabled region state is visually quiet but its reason may be unclear. | Preserve native disabled state and add/retain concise accessible/title text when the host does not already explain availability. |
+
+#### Recommended narrow-pane composition
+
+```text
+HUNTS
+
+[ KANTO ] [ JOHTO ]
+[ ILHAS LENDÁRIAS ] [ HOENN ]
+
+            [ GYMS ]        ← approved, unchanged
+
+[ MAP | LIST ]
+[ CLÁSSICO | PLATAFORMA ]   ← visually subordinate
+
+[ Search Pokémon or area........................ ]
+[ Filters ]   [ Sort: Level low → high ]   [ Clear ]
+
+──────── Results / summary · Kanto · Lv. 1–100 ────────
+Hunt rows become visible here without first scrolling.
+
+Expanded Filters only when requested:
+[ Element ...................................... ]
+[ Min level ............ ] [ Max level ......... ]
+```
+
+This is an information-architecture target, not a requirement to recreate native
+controls. Existing native Search, Element, Sort, level inputs, Clear, world buttons,
+view/presentation controls and Hunt rows remain the functional authority.
+
+#### Implementation constraints for the current pass
+
+- do not change Hunt eligibility, filters, sort semantics or native gameplay actions;
+- do not clone native fields/buttons solely to obtain the new composition;
+- preserve native handlers/private state; a layout-only visual reorder may use scoped
+  Better UI CSS or reversible ownership only after inspecting the actual host node;
+- one Better UI disclosure state may control advanced-filter visibility, but it must
+  not become a parallel copy of filter values;
+- active hidden filters must remain obvious while the disclosure is collapsed. Prefer
+  a binary active indicator unless native/default filter state can be derived
+  authoritatively for the current region; do not invent a numeric filter count;
+- native Clear remains compact and reachable while advanced filters are collapsed;
+- existing native state changes/re-renders must not reset Search, Sort, filter values,
+  region or keyboard focus;
+- collapsing advanced filters while focus is inside them returns focus to the Filters
+  trigger before hiding the focused field; the disclosure exposes `aria-expanded` and
+  an explicit relationship to the controlled native fields;
+- the region/level context line may be folded into the result summary or hidden when
+  it only duplicates selected region/default range; preserve it when it communicates
+  unique gameplay, unlock or availability information;
+- disabled-region explanations must use host-provided visible/described context when
+  available rather than relying on `title` alone; never invent an unlock reason;
+- responsive adaptation uses the Hunts module container and keeps DOM/tab order
+  aligned with the visual order; do not use CSS `order` to create a different keyboard
+  sequence;
+- the already approved `GYMS` navigation contract remains unchanged.
+
+#### Acceptance criteria for the current UI pass
+
+- **AC-HUNTS-UX-01:** in the representative ~249×712 narrow pane, collapsed advanced
+  filters expose the result summary and the beginning of the results surface without
+  requiring vertical scroll.
+- **AC-HUNTS-UX-02:** constrained region navigation uses at most two rows while
+  preserving every native region control, disabled state, DOM order and handler. This
+  is the approved narrow-width exception to native layout ownership.
+- **AC-HUNTS-UX-03:** Search remains always visible; Element and Level are available
+  through one explicit advanced-filter disclosure.
+- **AC-HUNTS-UX-04:** collapsing advanced filters never hides the fact that an active
+  hidden filter is affecting the result set, and Clear remains reachable outside the
+  collapsed disclosure. A numeric filter count is used only if authoritative defaults
+  make it exact; otherwise the trigger exposes a binary active state.
+- **AC-HUNTS-UX-05:** Sort remains independently reachable and is visually identified
+  as result ordering rather than filtering.
+- **AC-HUNTS-UX-06:** `MAP / LIST` remains visually stronger than the secondary
+  Classic/Platform control without changing either native interaction.
+- **AC-HUNTS-UX-07:** Clear is visually tertiary and does not compete with Hunt as a
+  primary gameplay action.
+- **AC-HUNTS-UX-08:** minimum and maximum Level inputs expose distinct accessible
+  names; the Filters disclosure exposes `aria-expanded`, returns focus to its trigger
+  before hiding a focused advanced field, and all tabs/toggles/fields retain visible
+  keyboard focus.
+- **AC-HUNTS-UX-09:** stable reconciliation introduces no mutations when layout state,
+  filter disclosure, region and host structure are unchanged.
+- **AC-HUNTS-UX-10:** cleanup restores the exact current native DOM attributes/order
+  for any nodes Better UI temporarily owns or annotates.
+- **AC-HUNTS-UX-11:** responsive compaction is container-scoped, preserves visual and
+  keyboard order, and does not shrink controls below the project control geometry for
+  the active pointer mode.
+- **AC-HUNTS-UX-12:** redundant region/default-level context does not consume a
+  permanent standalone row; unique gameplay/unlock/availability context remains
+  visible or associated with the result summary.
+
+### MAP/LIST visual-unification correction — 2026-10-02
+
+The Product Owner rejected the preceding candidate as functionally improved but still
+visually under-designed. The concrete failures were: `MAP / LIST` was too small for the
+available width, MAP and LIST exposed visibly different menu composition, and `GYMS`
+disappeared in the current MAP view.
+
+Current upstream `HuntSelectionScene` source was re-inspected after that feedback. The
+current game now uses the **same** `hunt-list-header`, `hunt-list-world-tabs` and
+`hunt-list-toolbar` for both MAP and LIST. Only the content surface changes:
+
+- MAP: `hunt-world-viewport` + map markers + `hunt-region-controls`;
+- LIST: `hunt-list-table-shell` + Hunt rows/details.
+
+The native header also renders two separate controls with the same host class
+`hunt-presentation-toggle`: the first is the MAP/LIST view switch and the second is
+Classic/Platform presentation preference. Better UI therefore assigns scoped semantic
+classes to the existing native groups instead of treating them as one visual family.
+
+#### Unified current-selector hierarchy
+
+```text
+HUNTS
+
+[ KANTO             ] [ JOHTO             ]
+[ ILHAS LENDÁRIAS   ] [ HOENN             ]
+
+[                   GYMS                   ]  ← regional activity navigation
+
+[                MAP | LIST                ]  ← primary view navigation
+[        CLÁSSICO | PLATAFORMA             ]  ← secondary preference
+
+[ Search .................................. ]
+[ Filters ]      [ Sort ................ ] [ Clear ]
+
+──────── result/context summary ────────
+
+MAP  → atlas + map-only zoom controls
+LIST → table + Details/Hunt actions
+```
+
+The approved `GYMS` behavior remains unchanged, but its reopened visual treatment now
+uses the full navigation width so it does not read as a tiny orphan between region and
+view controls. MAP/LIST consumes the same width with equal 50/50 segments and stronger
+selected-state/height than Classic/Platform. The latter stays full width for alignment
+but uses quieter chrome, smaller geometry and muted default text.
+
+The selector shell is also explicitly owned as one composition: a bounded discovery
+sidebar and a content workspace. The native result summary becomes the attached top rail
+of that workspace; MAP viewport and LIST table shell use the same structural frame below
+it. This gives the two views one visual identity without forcing their content models to
+be identical. LIST table headers/rows are normalized to the same current-game tokens;
+MAP retains native atlas imagery/markers and only restyles the existing zoom/reset group.
+
+#### UI/UX Pro Max application note
+
+`/ui_ux_pro_max` was explicitly requested for this correction. Its installed
+`SKILL.md` guidance was applied for hierarchy, navigation consistency, progressive
+disclosure, interaction states and responsive layout. The skill's referenced local
+search datasets, `references/quick-reference.md`, `references/pro-rules.md` and search
+script are not present in the installed `/skills/ui_ux_pro` package in this workspace,
+so no external/search result is claimed. Project `MASTER.md`, the current native
+HuntSelection source and Product Owner feedback remain the design authorities.
+
+#### Additional acceptance criteria
+
+- **AC-HUNTS-UX-13:** current MAP and LIST use the same region → GYMS → view →
+  presentation → filter hierarchy; switching view does not expose a different menu
+  architecture.
+- **AC-HUNTS-UX-14:** `GYMS` is present in both current MAP and LIST, follows the active
+  region, and one stable Better UI button is rehomed after the native MAP/LIST refresh
+  without duplication.
+- **AC-HUNTS-UX-15:** MAP/LIST spans the available navigation width in two equal
+  segments and receives visibly stronger geometry/selected treatment than the
+  Classic/Platform preference immediately below it.
+- **AC-HUNTS-UX-16:** Better UI distinguishes the two native
+  `hunt-presentation-toggle` groups through reversible scoped classes; cleanup restores
+  the exact native classes/DOM, and MAP/LIST refresh reacquires new native groups.
+- **AC-HUNTS-UX-17:** current MAP keeps its content-specific navigation controls
+  (`hunt-region-controls`) as a compact map overlay using the same Better UI control
+  language and focus treatment; LIST-only table actions remain LIST-only.
+- **AC-HUNTS-UX-18:** current MAP and LIST share the same bounded discovery-sidebar +
+  workspace composition; the native summary is visually attached to the content surface
+  instead of reading as a detached intermediate row.
+- **AC-HUNTS-UX-19:** `GYMS` uses the available current-header width in both views while
+  remaining a secondary regional navigation action; its behavior, supported-region gate
+  and native `Scene_Gym` destination are unchanged.
+- **AC-HUNTS-UX-20:** MAP viewport and LIST table shell consume the same Better UI
+  structural frame. LIST may normalize table header/row chrome; MAP may normalize the
+  native zoom/reset overlay, but neither view recreates native gameplay/content state.
+  At the current-selector narrow threshold the MAP may reduce the host desktop atlas
+  minimum to 300px so the 249×712 workflow keeps meaningful workspace without forcing
+  the navigation stack to overflow the window before the map begins.
+
+Sections below remain historical Hunt Atlas design evidence for the legacy map
+adapter unless they describe non-visual lifecycle/integration invariants that are
+still referenced by current code.
 
 **Current visual authority — 2026-10-01:** the Product Owner now requires Better UI to
 blend into the current PokéPixel as part of the game. Historical Miyazaki 16, mandatory

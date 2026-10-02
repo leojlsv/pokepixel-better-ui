@@ -4,6 +4,56 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Hunts — MAP/LIST UI unificada (2026-10-02):** após reprovação visual do candidato
+  anterior, o adapter foi reconciliado com o `HuntSelectionScene` nativo atual: MAP e
+  LIST agora compartilham o mesmo shell Better UI de regiões, `GYMS`, view, modo de
+  apresentação e filtros. Corrigido o caso em que o MAP atual era confundido com o
+  adapter legado e podia perder `GYMS`. `MAP | LIST` passa a ocupar toda a largura em
+  segmentos 50/50 com hierarquia visual dominante; `Clássico | Plataforma` permanece
+  alinhado em largura, porém secundário. `GYMS` mantém o comportamento regional aprovado,
+  mas passa a usar a largura disponível em vez de ficar como botão pequeno/isolado. O
+  shell atual ganha sidebar de descoberta + workspace compartilhado; summary e conteúdo
+  ficam visualmente anexados, MAP/LIST usam o mesmo frame estrutural e a LIST recebe
+  cabeçalho/linhas coerentes com o mesmo chrome. Controles de zoom/reset do MAP recebem
+  tratamento segmentado/foco Better UI sem alterar a lógica nativa. O mesmo
+  GYMS/disclosure é readquirido após refresh MAP↔LIST sem duplicação. Aplicado
+  `/ui_ux_pro_max`; datasets/referências auxiliares do skill
+  não estavam instalados no workspace, então MASTER + source nativo + feedback do PO
+  foram usados como autoridades. Adicionados `AC-HUNTS-UX-13..20`.
+
+- **Hunts — refinamento geral de UI/UX (2026-10-02):** implementada a direção aprovada
+  após a auditoria da tela estreita de 249×712. Os mesmos controles nativos agora são
+  reorganizados reversivelmente para reduzir o custo vertical: regiões usam duas
+  colunas no estreito, Search permanece visível, Element + Level ficam sob `Filters`,
+  Sort + Clear formam uma linha utilitária compacta e o contexto regional é incorporado
+  ao resumo dos resultados. O disclosure expõe estado ativo binário, `aria-expanded`,
+  nomes distintos para Min/Max Level e retorno de foco ao recolher; cleanup restaura a
+  estrutura/ARIA nativa exata. Classic/Platform recebe tratamento visual subordinado e
+  o `GYMS` já aprovado permanece inalterado. Critérios `AC-HUNTS-UX-01..12` implementados;
+  validação visual/in-game aprovada pelo Product Owner em 2026-10-02.
+
+- **Hunts — navegação regional para Gyms (2026-10-02):** adicionado `GYMS` no
+  contexto regional do Hunts. A ação segue Kanto/Johto e abre exclusivamente o
+  `Scene_Gym` nativo já configurado para a região ativa; não consulta endpoints,
+  não seleciona líder e não inicia/reserva batalha. Regiões sem suporte no Gym
+  nativo permanecem desabilitadas. O botão é secundário à navegação de mundo e
+  separado dos filtros e das ações `Hunt`/`Details`.
+
+- **Hunts — current list native-first (2026-10-02):** o layout atual do PokéPixel
+  passa a ser a composição autoritativa do Hunts. Better UI deixa de renomear a
+  janela para `HUNT ATLAS`, não transforma header/toolbar em rails próprios e não
+  assume a ordem/layout dos filtros. A camada passa a reforçar somente a hierarquia:
+  mundo como contexto principal, apresentação como utilitário, `Clear` terciário,
+  `Hunt` como ação primária por linha e `Details` como ação secundária, mantendo
+  foco explícito e overflow horizontal apenas na tabela em panes estreitos. Hunts
+  **43/43 PASS**, suíte completa **577/577 PASS**, build PASS.
+
+- **Hunts — PPTools Recommendation removida (2026-10-02):** removida integralmente
+  a feature de recomendação PPTools do módulo Hunts, incluindo widget, integração
+  de runtime, projeção do líder/input, parser/resolver, testes dedicados e tooling
+  manual de extração/preview. O histórico do experimento permanece documentado
+  apenas como referência; o contrato ativo de Hunts volta aos fluxos nativos de
+  lista/mapa, inspeção, localização e entrada explícita na Hunt.
 - **Toggle Cards/Game fixo + editor nativo de moves — candidato `0.2.131` (2026-10-01):**
   o HUD móvel `Cards / Game` foi removido. O standalone agora usa um único ícone de
   interruptor dentro da própria menu bar, com posição DOM estável em Cards e Game,

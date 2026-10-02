@@ -26,6 +26,18 @@ const markup=()=>`
     <button class="hunt-map-marker" data-zone-index="1" style="left:10%;top:20%"><span class="hunt-map-marker__sprite"></span><strong class="hunt-map-marker__name">Abra Lv. 10–15</strong></button>
   </div></div>`;
 
+function installGymRuntime(win,scene) {
+  let pushes=0;
+  function SceneGym(){this.initialize();}
+  SceneGym.prototype.initialize=function(){this._region='kanto';};
+  win.Scene_Gym=SceneGym;
+  win.SceneManager={
+    _scene:scene,_nextScene:null,
+    push(SceneClass){pushes++;this._nextScene=new SceneClass();},
+  };
+  return {pushes:()=>pushes,next:()=>win.SceneManager._nextScene};
+}
+
 function setup(t){
   const dom=new JSDOM(`<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunt Map</span><button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div></div>`,{url:'https://test.local',pretendToBeVisual:true});
   const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
@@ -45,7 +57,7 @@ function setup(t){
     _navigationCleanup(){cleanups++;},
     setupWorldMapNavigation(v,stage){setups++;this._worldMapState={...this._worldMapStates[this._tab]};stage.style.transform=`translate3d(${this._worldMapState.x}px,${this._worldMapState.y}px,0) scale(${this._worldMapState.scale})`;},
   };
-  dom.window.SceneManager={_scene:scene};
+  const gym=installGymRuntime(dom.window,scene);
   dom.window.PokeIdle={
     Localization:{get:()=>"pt-BR"},
     t:(key,args)=>key==='hunt_selection.element_singular'?'Elemento':key==='hunt_selection.element_plural'?'Elementos':key==='hunt_selection.level_abbr'?`Lv. ${args.level}`:key==='hunt_selection.level_range'?`Lv. ${args.min}–${args.max}`:key,
@@ -77,21 +89,25 @@ function setup(t){
   const reset=()=>root.querySelectorAll('.ppbui-hunts-results button')[1];
   const dossier=()=>root.querySelector('.ppbui-hunts-inspector');
   const choose=(i='0')=>{select().value=i;select().dispatchEvent(new dom.window.Event('change'));};
-  return {dom,doc,root,body,scene,c,before,bind,select,locate,reset,dossier,choose,stats:()=>({nativeClicks,starts,hovers,focusInfos,saves,cleanups,setups,modeClicks})};
+  return {dom,doc,root,body,scene,c,before,bind,select,locate,reset,dossier,choose,gym,stats:()=>({nativeClicks,starts,hovers,focusInfos,saves,cleanups,setups,modeClicks})};
 }
 
 const currentListMarkup=()=>[
+  '<div class="hunt-selection-shell"><aside class="hunt-selection-sidebar">',
   '<div class="hunt-list-header">',
-  '<nav class="hunt-list-world-tabs"><button class="pokeidle-ui-button hunt-list-world-tab is-active" aria-current="page">Kanto</button></nav>',
-  '<div class="hunt-presentation-toggle"><button class="hunt-presentation-toggle__button is-active" aria-pressed="true">Modo clássico</button></div>',
+  '<nav class="hunt-list-world-tabs"><button class="pokeidle-ui-button hunt-list-world-tab is-active" aria-current="page">Kanto</button><button class="pokeidle-ui-button hunt-list-world-tab">Johto</button><button class="pokeidle-ui-button hunt-list-world-tab" disabled>Ilhas Lendárias</button><button class="pokeidle-ui-button hunt-list-world-tab">Hoenn</button></nav>',
+  '<div class="hunt-presentation-toggle" role="group" aria-label="View"><button class="hunt-presentation-toggle__button" aria-pressed="false">MAP</button><button class="hunt-presentation-toggle__button is-active" aria-pressed="true">LIST</button></div>',
+  '<div class="hunt-presentation-toggle" role="group" aria-label="Apresentação da caçada"><button class="hunt-presentation-toggle__button is-active" aria-pressed="true">Modo clássico</button><button class="hunt-presentation-toggle__button" aria-pressed="false">Modo plataforma</button></div>',
   '</div>',
+  '<div class="hunt-list-world-note">Kanto · hunts dos níveis 1 a 100</div>',
   '<div class="hunt-list-toolbar">',
   '<label class="hunt-list-field hunt-list-search-field"><span>Search</span><input type="search"></label>',
-  '<label class="hunt-list-field hunt-list-element-filter"><span>Element</span><select><option>All</option></select></label>',
+  '<label class="hunt-list-field hunt-list-element-filter"><span>Element</span><select><option value="all">All</option><option value="fire">Fire</option></select></label>',
   '<label class="hunt-list-field hunt-list-sort-field"><span>Sort</span><select><option>Level</option></select></label>',
-  '<div class="hunt-list-field hunt-list-range-field"><span>Level</span><div class="hunt-list-range-inputs"><input type="number" value="1"><span>–</span><input type="number" value="100"></div></div>',
+  '<div class="hunt-list-field hunt-list-range-field"><span>Level</span><div class="hunt-list-range-inputs"><input type="number" min="1" max="100" value="1"><span>–</span><input type="number" min="1" max="100" value="100"></div></div>',
   '<button class="pokeidle-ui-button hunt-list-clear">Clear</button>',
   '</div>',
+  '</aside><div class="hunt-selection-content">',
   '<div class="hunt-list-summary"><strong>2 areas</strong><span>EXP note</span></div>',
   '<div class="hunt-list-table-shell"><table class="hunt-list-table"><tbody>',
   '<tr class="hunt-list-row"><td class="hunt-list-action-cell"><button class="pokeidle-ui-button hunt-list-hunt-button">Hunt</button><button class="pokeidle-ui-button hunt-list-details-button" aria-controls="hunt-list-details-0">Details</button></td><td class="hunt-list-name-cell"><div class="hunt-list-identity"><img class="hunt-list-sprite" src="/native-hunt/pikachu.png"><strong>Pikachu Forest</strong></div></td></tr>',
@@ -99,10 +115,36 @@ const currentListMarkup=()=>[
   '<tr class="hunt-list-row"><td class="hunt-list-action-cell"><button class="pokeidle-ui-button hunt-list-hunt-button">Hunt</button><button class="pokeidle-ui-button hunt-list-details-button" aria-controls="hunt-list-details-1">Details</button></td><td class="hunt-list-name-cell"><div class="hunt-list-identity"><canvas class="hunt-list-sprite" width="2" height="2"></canvas><strong>Abra Cave</strong></div></td></tr>',
   '<tr id="hunt-list-details-1" class="hunt-list-detail-row" hidden><td>Details</td></tr>',
   '</tbody></table></div>',
+  '</div></div>',
 ].join('');
 
-function setupCurrentList(t,{startHunt,inheritedStartHunt=false}={}){
-  const dom=new JSDOM('<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunts</span><button type="button">×</button></div><div class="pokeidle-panel__body">'+currentListMarkup()+'</div></div>',{url:'https://test.local',pretendToBeVisual:true});
+const currentMapMarkup=()=>[
+  '<div class="hunt-selection-shell"><aside class="hunt-selection-sidebar">',
+  '<div class="hunt-list-header">',
+  '<nav class="hunt-list-world-tabs"><button class="pokeidle-ui-button hunt-list-world-tab is-active" aria-current="page">Kanto</button><button class="pokeidle-ui-button hunt-list-world-tab">Johto</button><button class="pokeidle-ui-button hunt-list-world-tab" disabled>Ilhas Lendárias</button><button class="pokeidle-ui-button hunt-list-world-tab">Hoenn</button></nav>',
+  '<div class="hunt-presentation-toggle" role="group" aria-label="View"><button class="hunt-presentation-toggle__button is-active" aria-pressed="true">MAP</button><button class="hunt-presentation-toggle__button" aria-pressed="false">LIST</button></div>',
+  '<div class="hunt-presentation-toggle" role="group" aria-label="Apresentação da caçada"><button class="hunt-presentation-toggle__button is-active" aria-pressed="true">Modo clássico</button><button class="hunt-presentation-toggle__button" aria-pressed="false">Modo plataforma</button></div>',
+  '</div>',
+  '<div class="hunt-list-world-note">Kanto · hunts dos níveis 1 a 100</div>',
+  '<div class="hunt-list-toolbar">',
+  '<label class="hunt-list-field hunt-list-search-field"><span>Search</span><input type="search"></label>',
+  '<label class="hunt-list-field hunt-list-element-filter"><span>Element</span><select><option value="all">All</option><option value="fire">Fire</option></select></label>',
+  '<label class="hunt-list-field hunt-list-sort-field"><span>Sort</span><select><option>Level</option></select></label>',
+  '<div class="hunt-list-field hunt-list-range-field"><span>Level</span><div class="hunt-list-range-inputs"><input type="number" min="1" max="100" value="1"><span>–</span><input type="number" min="1" max="100" value="100"></div></div>',
+  '<button class="pokeidle-ui-button hunt-list-clear">Clear</button>',
+  '</div>',
+  '</aside><div class="hunt-selection-content">',
+  '<div class="hunt-list-summary"><strong>2 areas</strong><span>EXP note</span></div>',
+  '<div class="hunt-world-viewport"><div class="hunt-world-stage">',
+  '<button class="hunt-map-marker" data-zone-index="0"><span class="hunt-map-marker__name">Pikachu Lv. 20–30</span></button>',
+  '<button class="hunt-map-marker" data-zone-index="1"><span class="hunt-map-marker__name">Abra Lv. 10–15</span></button>',
+  '</div><div class="hunt-region-controls"><button class="pokeidle-ui-button">+</button><button class="pokeidle-ui-button">−</button><button class="pokeidle-ui-button">↺</button></div></div>',
+  '</div></div>',
+].join('');
+
+function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list'}={}){
+  const markup=mode==='map'?currentMapMarkup():currentListMarkup();
+  const dom=new JSDOM('<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunts</span><button type="button">×</button></div><div class="pokeidle-panel__body">'+markup+'</div></div>',{url:'https://test.local',pretendToBeVisual:true});
   const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
   const zones=[
     {id:'pika',name:'Pikachu Forest',elements:['electric'],min:20,max:30},
@@ -111,31 +153,64 @@ function setupCurrentList(t,{startHunt,inheritedStartHunt=false}={}){
   let starts=0;
   const nativeStartHunt=function(...args){starts++;return startHunt?startHunt.apply(this,args):Promise.resolve('native');};
   const scene={
-    _panel:{body},_zones:zones,_selectedIndex:-1,
+    _panel:{body},_zones:zones,_selectedIndex:-1,_selectionView:mode,_tab:'kanto',_worlds:[{id:'kanto',label:'Kanto'},{id:'johto',label:'Johto'},{id:'hoenn',label:'Hoenn'}],
     zoneName:zone=>zone.name,zoneElements:zone=>zone.elements,zoneMinMaxLevel:zone=>({min:zone.min,max:zone.max}),
   };
   if(inheritedStartHunt)Object.setPrototypeOf(scene,{startHunt:nativeStartHunt});
   else Object.defineProperty(scene,'startHunt',{configurable:true,enumerable:false,writable:true,value:nativeStartHunt});
   const nativeStartHuntDescriptor=Object.getOwnPropertyDescriptor(scene,'startHunt');
-  dom.window.SceneManager={_scene:scene};
+  const gym=installGymRuntime(dom.window,scene);
   dom.window.PokeIdle={Localization:{get:()=> 'pt-BR'}};
   root.querySelectorAll('.hunt-list-hunt-button').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
+  root.querySelectorAll('.hunt-map-marker').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
   const before=root.outerHTML,c=mountHunts(root);
   t.after(()=>{c.cleanup();dom.window.close();});
-  return {dom,doc,root,body,scene,c,before,nativeStartHunt,nativeStartHuntDescriptor,stats:()=>({starts})};
+  return {dom,doc,root,body,scene,c,before,nativeStartHunt,nativeStartHuntDescriptor,gym,stats:()=>({starts})};
 }
 
-test('current Hunt list contract mounts Better UI without reimplementing native Hunt actions',async t=>{
+test('current Hunt list keeps native controls while Better UI compacts discovery hierarchy',async t=>{
   const s=setupCurrentList(t),current=parts(s.root);
   const css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
-  assert.equal(current.mode,'list');
+  assert.equal(current.mode,'current-list');
   assert.equal(current.toolbar.classList.contains('hunt-list-toolbar'),true);
   assert.equal(current.viewport.classList.contains('hunt-list-table-shell'),true);
   assert.equal(s.root.classList.contains('ppbui-hunts-current-list'),true);
-  assert.equal(s.root.querySelector('.pokeidle-panel__title').textContent,'HUNT ATLAS');
-  assert.ok(s.root.querySelector('[data-ppbui-hunts-list-toolbar]'));
-  assert.ok(s.root.querySelector('[data-ppbui-hunts-list-surface]'));
-  assert.match(css,/@container \(max-width:780px\)[\s\S]*\[data-ppbui-hunts-list-surface\] \{ overflow-x:auto; overscroll-behavior-x:contain; \}/,'split Hunt list gets an explicit horizontal scroll owner instead of crushing table columns');
+  assert.equal(s.root.querySelector('.pokeidle-panel__title').textContent,'Hunts','current native title remains authoritative');
+  assert.equal(s.root.querySelector('.hunt-list-header').classList.contains('ppbui-hunts-atlas-rail'),false);
+  assert.equal(s.root.querySelector('[data-ppbui-hunts-list-toolbar]'),null);
+  assert.equal(s.root.querySelector('[data-ppbui-hunts-list-surface]'),null);
+  assert.deepEqual([...s.root.querySelector('.hunt-list-header').children].map(node=>node.className),[
+    'hunt-list-world-tabs','ppbui-hunts-gym','hunt-presentation-toggle ppbui-hunts-view-toggle','hunt-presentation-toggle ppbui-hunts-presentation-toggle'
+  ],'Gym navigation is inserted between native region context and presentation utility');
+  assert.deepEqual([...s.root.querySelector('.hunt-list-toolbar').children].filter(node=>node.nodeType===1).map(node=>node.className),[
+    'hunt-list-field hunt-list-search-field','ppbui-hunts-list-utility','ppbui-hunts-list-advanced'
+  ],'Search remains persistent while utility and advanced native controls get scoped layout owners');
+  assert.deepEqual([...s.root.querySelector('.ppbui-hunts-list-utility').children].map(node=>node.className),[
+    'ppbui-hunts-filter-toggle','hunt-list-field hunt-list-sort-field','pokeidle-ui-button hunt-list-clear'
+  ],'Filters, Sort and Clear form the compact result utility row');
+  assert.deepEqual([...s.root.querySelector('.ppbui-hunts-list-advanced').children].map(node=>node.className),[
+    'hunt-list-field hunt-list-element-filter','hunt-list-field hunt-list-range-field'
+  ],'Element and Level remain the original native controls inside advanced refinement');
+  assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,true,'advanced filters start collapsed');
+  assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true,'native region context is folded into result summary instead of occupying a standalone pre-filter row');
+  assert.equal(s.root.querySelector('.hunt-list-world-tab[disabled]').textContent,'Ilhas Lendárias','native unavailable-region state is preserved');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-selection-shell \{[^}]*grid-template-columns:minmax\(220px,280px\) minmax\(0,1fr\)/s,'current MAP/LIST share one explicit sidebar/workspace composition');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-selection-sidebar \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border\) !important;[^}]*background:var\(--ppbui-bg-1\) !important;/s,'discovery controls read as one bounded current-selector surface');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-header \{[\s\S]*display:grid !important;/,'current MAP/LIST share one explicit navigation stack');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-header > \.ppbui-hunts-gym \{[^}]*width:100%;[^}]*min-height:calc\(var\(--ppbui-control-height\) \+ 4px\)/s,'GYMS uses the regional navigation width instead of collapsing into a small centered control');
+  assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-view-toggle \{[\s\S]*width:100%;/,'MAP/LIST owns the available header width');
+  assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-view-toggle \.hunt-presentation-toggle__button \{[\s\S]*min-height:calc\(var\(--ppbui-control-height\) \+ 8px\)/,'MAP/LIST receives the strongest segmented-control geometry');
+  assert.match(css,/\.hunt-list-toolbar\.ppbui-hunts-list-refined \{[\s\S]*display:grid !important;/,'approved compact current-list toolbar owns the refined composition');
+  assert.match(css,/@container \(max-width:620px\)[\s\S]*\.ppbui-hunts-current \.hunt-list-world-tabs \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/,'narrow current region navigation uses a balanced two-column grid without reordering controls');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tab\.is-active,[\s\S]*color:var\(--ppbui-selected\)/,'world navigation retains selected/current emphasis');
+  assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-presentation-toggle \.hunt-presentation-toggle__button\.is-active,[\s\S]*color:var\(--ppbui-text\)/,'presentation mode stays subordinate to MAP/LIST');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-summary \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\) !important;[^}]*border-bottom:0 !important;/s,'summary is an attached workspace rail instead of detached copy');
+  assert.match(css,/\.ppbui-hunts-current-map \.hunt-world-viewport,[\s\S]*\.ppbui-hunts-current-list \.hunt-list-table-shell \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\) !important;[^}]*border-radius:0 0 var\(--ppbui-radius\) var\(--ppbui-radius\) !important;/s,'MAP and LIST content surfaces share the same attached workspace frame');
+  assert.match(css,/\.ppbui-hunts-current-list \.hunt-list-table th \{[^}]*background:var\(--ppbui-bg-2\) !important;[^}]*color:var\(--ppbui-text-muted\) !important;/s,'LIST table header adopts the same current-selector hierarchy');
+  assert.match(css,/\.ppbui-hunts-current-list \.hunt-list-hunt-button \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-accent\)[^}]*color:var\(--ppbui-accent-hi\)/s,'Hunt is the primary row action');
+  assert.match(css,/\.ppbui-hunts-current-list \.hunt-list-details-button \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border\)[^}]*background:transparent/s,'Details is visually secondary');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-clear \{[^}]*background:transparent[^}]*color:var\(--ppbui-text-muted\)/s,'Clear is a tertiary utility');
+  assert.match(css,/@container \(max-width:780px\)[\s\S]*\.ppbui-hunts-current-list \.hunt-list-table-shell \{ overflow-x:auto; overscroll-behavior-x:contain; \}/,'split Hunt list gets an explicit horizontal scroll owner instead of crushing table columns');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-table \{ width:max-content; min-width:100%; \}/,'split Hunt table preserves intrinsic row geometry while still filling wider panes');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-action-cell,[\s\S]*\.hunt-list-identity \{ white-space:nowrap; \}/,'Hunt actions and Pokémon identity do not wrap into unusable stacked fragments');
   const button=s.root.querySelector('.hunt-list-hunt-button');
@@ -149,11 +224,192 @@ test('current Hunt list contract mounts Better UI without reimplementing native 
   assert.equal(snapshot.marker,zoneNode(s.root,0));
 });
 
+test('current MAP uses the same Better UI navigation stack, filters and regional Gym destination as LIST',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),current=parts(s.root),header=s.root.querySelector('.hunt-list-header');
+  const css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
+  assert.equal(current.mode,'current-map');
+  assert.equal(current.viewport.classList.contains('hunt-world-viewport'),true);
+  assert.equal(s.root.classList.contains('ppbui-hunts-current'),true);
+  assert.equal(s.root.classList.contains('ppbui-hunts-current-map'),true);
+  assert.equal(s.root.classList.contains('ppbui-hunts-current-list'),false);
+  assert.ok(s.root.querySelector('.ppbui-hunts-gym'),'GYMS remains present in MAP');
+  assert.equal(s.root.querySelector('.ppbui-hunts-gym').parentElement,header);
+  assert.equal(s.root.querySelector('.ppbui-hunts-view-toggle').textContent,'MAPLIST');
+  assert.equal(s.root.querySelector('.ppbui-hunts-presentation-toggle').textContent,'Modo clássicoModo plataforma');
+  assert.ok(s.root.querySelector('.ppbui-hunts-filter-toggle'));
+  assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,true);
+  assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true);
+  assert.match(css,/\.ppbui-hunts-current-map \.hunt-region-controls \{[\s\S]*position:absolute;[\s\S]*background:var\(--ppbui-bg-0\) !important;/,'MAP-only navigation receives scoped Better UI overlay chrome');
+  assert.match(css,/\.ppbui-hunts-current-map \.hunt-region-controls > button \{[\s\S]*min-width:34px;[\s\S]*min-height:34px;/,'MAP zoom/reset actions have deliberate current-selector geometry');
+  assert.match(css,/\.ppbui-hunts-current-map \.hunt-region-controls > button \+ button \{[^}]*border-left:var\(--ppbui-separator-width\) solid var\(--ppbui-border-strong\) !important;/s,'MAP zoom/reset actions read as one compact segmented overlay');
+  assert.match(css,/@container \(max-width:620px\)[\s\S]*\.ppbui-hunts-current \.hunt-selection-shell \{[\s\S]*grid-template-columns:minmax\(0,1fr\) !important;/,'narrow current MAP and LIST collapse to the same one-column shell');
+  assert.match(css,/@container \(max-width:620px\)[\s\S]*\.ppbui-hunts-current-map \.hunt-world-viewport \{ min-height:300px; \}/,'narrow current MAP releases the desktop atlas minimum so the workspace remains reachable at the 249×712 target');
+  s.c.cleanup();assert.equal(s.root.outerHTML,s.before,'MAP cleanup restores the exact native current-selector DOM');
+});
+
+test('current MAP to LIST reconstruction keeps one GYMS control and the same navigation hierarchy',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),gym=s.root.querySelector('.ppbui-hunts-gym'),filter=s.root.querySelector('.ppbui-hunts-filter-toggle');
+  filter.click();assert.equal(filter.getAttribute('aria-expanded'),'true');
+  s.scene._selectionView='list';s.body.innerHTML=currentListMarkup();s.c.sync();
+  assert.equal(parts(s.root).mode,'current-list');
+  assert.equal(s.root.classList.contains('ppbui-hunts-current-map'),false);
+  assert.equal(s.root.classList.contains('ppbui-hunts-current-list'),true);
+  assert.equal(s.root.querySelector('.ppbui-hunts-gym'),gym,'the same GYMS control is rehomed after native mode refresh');
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-gym').length,1);
+  assert.equal(s.root.querySelector('.ppbui-hunts-filter-toggle'),filter,'the same disclosure survives MAP→LIST');
+  assert.equal(filter.getAttribute('aria-expanded'),'true');
+  assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,false);
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-view-toggle').length,1);
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-presentation-toggle').length,1);
+  assert.notEqual(s.root.querySelector('.ppbui-hunts-view-toggle'),s.root.querySelector('.ppbui-hunts-presentation-toggle'));
+});
+
+test('current Hunt list advanced filters preserve native controls, active state and focus',t=>{
+  const s=setupCurrentList(t),toggle=s.root.querySelector('.ppbui-hunts-filter-toggle'),advanced=s.root.querySelector('.ppbui-hunts-list-advanced');
+  const element=s.root.querySelector('.hunt-list-element-filter select'),levels=[...s.root.querySelectorAll('.hunt-list-range-inputs input')],clear=s.root.querySelector('.hunt-list-clear');
+  assert.ok(toggle);assert.equal(toggle.textContent,'Filtros');assert.equal(toggle.getAttribute('aria-expanded'),'false');
+  assert.equal(toggle.getAttribute('aria-controls'),advanced.id);assert.equal(toggle.dataset.active,'false');
+  assert.equal(levels[0].getAttribute('aria-label'),'Nível mínimo');assert.equal(levels[1].getAttribute('aria-label'),'Nível máximo');
+  assert.equal(clear.parentElement.classList.contains('ppbui-hunts-list-utility'),true,'Clear stays reachable while advanced filters are collapsed');
+
+  element.selectedIndex=1;element.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));
+  assert.equal(toggle.dataset.active,'true');assert.equal(toggle.getAttribute('aria-label'),'Filtros ativos');
+  toggle.click();assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.equal(advanced.hidden,false);
+  levels[0].focus();toggle.click();
+  assert.equal(toggle.getAttribute('aria-expanded'),'false');assert.equal(advanced.hidden,true);assert.equal(s.doc.activeElement,toggle,'collapsing focused advanced controls returns focus to the disclosure trigger');
+
+  element.selectedIndex=0;element.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));
+  assert.equal(toggle.dataset.active,'false');assert.equal(toggle.getAttribute('aria-label'),'Filtros');
+});
+
+test('current Hunt list stable reconciliation is mutation-free and cleanup restores exact native structure',async t=>{
+  const s=setupCurrentList(t);let mutations=0;const observer=new s.dom.window.MutationObserver(records=>mutations+=records.length);
+  observer.observe(s.root,{subtree:true,childList:true,attributes:true});
+  for(let i=0;i<5;i++)s.c.sync();await Promise.resolve();observer.disconnect();
+  assert.equal(mutations,0);
+  s.c.cleanup();assert.equal(s.root.outerHTML,s.before);
+});
+
+test('current Hunt list reacquires native controls after body reconstruction without duplicate refinement surfaces',t=>{
+  const s=setupCurrentList(t),oldToggle=s.root.querySelector('.ppbui-hunts-filter-toggle');
+  oldToggle.click();assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,false);
+  s.body.innerHTML=currentListMarkup();s.c.sync();
+  const toggle=s.root.querySelector('.ppbui-hunts-filter-toggle'),advanced=s.root.querySelector('.ppbui-hunts-list-advanced');
+  assert.equal(toggle,oldToggle,'the same Better UI disclosure is rehomed over reconstructed native controls');
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-filter-toggle').length,1);
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-list-utility').length,1);
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-list-advanced').length,1);
+  assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.equal(advanced.hidden,false,'user disclosure state survives native reconstruction');
+  assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true);
+  s.c.cleanup();assert.equal(s.root.outerHTML,s.before);
+});
+
+test('Gym navigation follows the active Hunt region and only opens the native Gym scene',t=>{
+  const s=setupCurrentList(t),gym=s.root.querySelector('.ppbui-hunts-gym'),tabs=[...s.root.querySelectorAll('.hunt-list-world-tab')];
+  assert.ok(gym);
+  assert.equal(gym.dataset.region,'kanto');
+  assert.equal(gym.disabled,false);
+  assert.equal(gym.getAttribute('aria-label'),'Abrir Gyms de KANTO');
+  gym.click();
+  assert.equal(s.gym.pushes(),1);
+  assert.equal(s.gym.next().constructor,s.dom.window.Scene_Gym);
+  assert.equal(s.gym.next()._region,'kanto');
+  gym.click();
+  assert.equal(s.gym.pushes(),1,'pending native scene transition blocks duplicate Gym pushes');
+  s.dom.window.SceneManager._nextScene=null;
+
+  tabs[0].classList.remove('is-active');tabs[0].removeAttribute('aria-current');
+  tabs[1].classList.add('is-active');tabs[1].setAttribute('aria-current','page');
+  s.scene._tab='johto';
+  s.c.sync();
+  assert.equal(gym.dataset.region,'johto');
+  assert.equal(gym.getAttribute('aria-label'),'Abrir Gyms de JOHTO');
+  gym.click();
+  assert.equal(s.gym.pushes(),2);
+  assert.equal(s.gym.next()._region,'johto');
+  s.dom.window.SceneManager._nextScene=null;
+
+  tabs[1].classList.remove('is-active');tabs[1].removeAttribute('aria-current');
+  tabs[3].classList.add('is-active');tabs[3].setAttribute('aria-current','page');
+  s.scene._tab='hoenn';
+  s.c.sync();
+  assert.equal(gym.dataset.region,'hoenn');
+  assert.equal(gym.disabled,true,'unsupported native Gym regions fail closed');
+  assert.equal(gym.getAttribute('aria-label'),'Gyms indisponíveis: HOENN');
+  assert.equal(gym.title,'Gyms indisponíveis: HOENN');
+  gym.click();
+  assert.equal(s.gym.pushes(),2,'disabled navigation cannot open a fallback/wrong region');
+
+  tabs[3].classList.remove('is-active');tabs[3].removeAttribute('aria-current');
+  tabs[0].classList.add('is-active');tabs[0].setAttribute('aria-current','page');
+  s.scene._tab='hoenn';s.scene._worlds=[{id:'hoenn',label:'Hoenn'}];
+  s.c.sync();
+  assert.equal(gym.dataset.region,'hoenn','authoritative unsupported scene region wins over stale active-tab DOM');
+  assert.equal(gym.getAttribute('aria-label'),'Gyms indisponíveis: HOENN');
+  assert.equal(gym.disabled,true);
+  gym.click();
+  assert.equal(s.gym.pushes(),2,'stale Kanto DOM cannot reopen the wrong Gym region');
+});
+
+test('Gym navigation is removed exactly on current-list cleanup',t=>{
+  const s=setupCurrentList(t),button=s.root.querySelector('.ppbui-hunts-gym');
+  assert.ok(button?.isConnected);
+  s.c.cleanup();
+  assert.equal(button.isConnected,false);
+  assert.equal(s.root.outerHTML,s.before);
+});
+
+test('Gym navigation rolls back the native stack entry when Gym scene construction throws',t=>{
+  const s=setupCurrentList(t),button=s.root.querySelector('.ppbui-hunts-gym'),manager=s.dom.window.SceneManager;
+  let stops=0;
+  s.scene.stop=()=>{stops++;};
+  manager._scene=s.scene;manager._stack=[];manager._nextScene=null;
+  function BrokenGym(){throw new Error('synthetic Gym constructor failure');}
+  s.dom.window.Scene_Gym=BrokenGym;
+  manager.push=function(SceneClass){
+    this._stack.push(this._scene.constructor);
+    this._nextScene=new SceneClass();
+    this._scene.stop();
+  };
+  s.c.sync();
+  assert.equal(button.disabled,false);
+  button.click();
+  assert.equal(manager._stack.length,0,'failed native construction does not leak a back-stack entry');
+  assert.equal(stops,0,'native goto semantics do not stop the current scene when construction throws');
+  assert.equal(manager._nextScene,null);
+});
+
+test('Gym navigation preserves the native stack when failure happens after Gym construction',t=>{
+  const s=setupCurrentList(t),button=s.root.querySelector('.ppbui-hunts-gym'),manager=s.dom.window.SceneManager;
+  let stops=0;
+  s.scene.stop=()=>{stops++;throw new Error('synthetic current-scene stop failure');};
+  manager._scene=s.scene;manager._stack=[];manager._nextScene=null;
+  manager.push=function(SceneClass){
+    this._stack.push(this._scene.constructor);
+    this._nextScene=new SceneClass();
+    this._scene.stop();
+  };
+  s.c.sync();
+  button.click();
+  assert.equal(stops,1);
+  assert.equal(manager._stack.length,1,'post-construction failure keeps the native back-stack entry intact');
+  assert.equal(manager._nextScene?.constructor,s.dom.window.Scene_Gym);
+  assert.equal(button.disabled,true,'pending native transition blocks another push after a later failure phase');
+});
+
 test('current Hunt list satisfies the module mount gate after upstream selector drift',t=>{
   const s=setupCurrentList(t),previous=Object.getOwnPropertyDescriptor(globalThis,'document');
   Object.defineProperty(globalThis,'document',{configurable:true,value:s.doc});
   t.after(()=>{if(previous)Object.defineProperty(globalThis,'document',previous);else delete globalThis.document;});
   assert.equal(createHuntsModule().shouldMount(),true);
+});
+
+test('current Hunt MAP satisfies the same module mount gate as LIST',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),previous=Object.getOwnPropertyDescriptor(globalThis,'document');
+  Object.defineProperty(globalThis,'document',{configurable:true,value:s.doc});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,'document',previous);else delete globalThis.document;});
+  assert.equal(parts(s.root).mode,'current-map');
+  assert.equal(createHuntsModule().shouldMount(),true,'current MAP is not mistaken for the removed legacy map structure');
 });
 
 test('current Hunt list captures a rendered native canvas without synthesizing a URL',t=>{
@@ -286,6 +542,28 @@ test('native presentation toggle is moved intact into inspector and restored exa
   s.c.cleanup();
   assert.equal(header.contains(toggle),true);
   assert.equal(s.root.outerHTML,s.before);
+});
+
+test('legacy Hunt map exposes the same region-scoped Gym navigation without starting gameplay',t=>{
+  const s=setup(t),button=s.root.querySelector('.ppbui-hunts-gym'),header=s.root.querySelector('.hunt-world-header-actions');
+  assert.ok(button);
+  assert.equal(button.parentElement,header);
+  assert.equal(header.firstElementChild,button,'Gym navigation precedes lower-priority zoom/presentation utilities');
+  assert.equal(button.dataset.region,'kanto');
+  assert.equal(s.stats().starts,0);
+  button.click();
+  assert.equal(s.gym.pushes(),1);
+  assert.equal(s.gym.next()._region,'kanto');
+  assert.equal(s.stats().starts,0,'opening Gyms does not enter a Hunt or Gym battle');
+  s.dom.window.SceneManager._nextScene=null;
+
+  s.scene._tab='johto';
+  s.c.sync();
+  assert.equal(button.dataset.region,'johto');
+  assert.equal(button.getAttribute('aria-label'),'Abrir Gyms de JOHTO');
+  button.click();
+  assert.equal(s.gym.pushes(),2);
+  assert.equal(s.gym.next()._region,'johto');
 });
 
 test('Hunt Atlas Finder rail keeps native query, element and count nodes intact without old card groups',t=>{

@@ -65,24 +65,6 @@ namespace PokePixel.CoupledWorkspace
         [DataMember(Name = "viewRevision", EmitDefaultValue = false)]
         public int ViewRevision { get; set; }
 
-        [DataMember(Name = "leaderId", EmitDefaultValue = false)]
-        public string LeaderId { get; set; }
-
-        [DataMember(Name = "leaderSpeciesId", EmitDefaultValue = false)]
-        public string LeaderSpeciesId { get; set; }
-
-        [DataMember(Name = "nativeProfileId", EmitDefaultValue = false)]
-        public string NativeProfileId { get; set; }
-
-        [DataMember(Name = "leaderLevel", EmitDefaultValue = false)]
-        public int LeaderLevel { get; set; }
-
-        [DataMember(Name = "inputJson", EmitDefaultValue = false)]
-        public string InputJson { get; set; }
-
-        [DataMember(Name = "resultJson", EmitDefaultValue = false)]
-        public string ResultJson { get; set; }
-
     }
 
     internal static class WorkspaceBridgeProtocol
@@ -96,9 +78,6 @@ namespace PokePixel.CoupledWorkspace
         public const string OpenSurfaceType = "ppbui.coupled.open-surface";
         public const string OpenSurfaceResultType = "ppbui.coupled.open-surface-result";
         public const string SetViewType = "ppbui.coupled.set-view";
-        public const string PptoolsRunType = "ppbui.pptools.run";
-        public const string PptoolsCancelType = "ppbui.pptools.cancel";
-        public const string PptoolsResultType = "ppbui.pptools.result";
 
         public static WorkspaceBridgeMessage Deserialize(string json)
         {

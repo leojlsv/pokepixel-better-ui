@@ -36,7 +36,7 @@ independentes (`AccountPane.cs:74-86`; `WorkspaceModels.cs:47-99`).
 (c) candidato versus host normal somente como verificação de compatibilidade,
 sem atribuir toda diferença à mudança. Registrar versão de Windows, WebView2
 Runtime, GPU/driver, potência, DPI, zoom, layout, tela, cargas de fundo, hash dos
-scripts e modo PPTools/evidence. O launcher padrão **não** recompila ao abrir
+scripts e modo evidence quando aplicável. O launcher padrão **não** recompila ao abrir
 (`Start-CoupledWorkspaceWebView2.ps1:46-49`).
 
 **P1 de reprodutibilidade:** o EXE não contém o Better UI nem o Analyzer; o
@@ -103,7 +103,7 @@ sem degradar tempo de startup, segurança ou manutenção.
 | **CW-PERF-006** | P2 — robustez | Limitar requests pendentes de Game Dock e recuperar corretamente após timeouts; Eng. C# | 001/005 ou independente, gate protocolo. |
 | **CW-PERF-007** | P2 — experimento | PoC de **um Environment + dois profiles distintos**, sem migrar UDF do usuário; Eng. Arquitetura/C# | 001 e estabilização da baseline 002–006. Decisão explícita de adoção. |
 | **CW-PERF-008** | P2 — experimento | Cold start, Single/Dual e descarte/recriação: medir alternativas sem bloquear UI | 001; medição independente da 007, decisão final considera comparação com a PoC 007. |
-| **CW-PERF-009** | Condicional | PPTools/background e captura CDP: medir somente se caminho opt-in for gargalo relevante | 001; não habilitar probe na baseline normal. |
+| **CW-PERF-009** | Condicional | Captura CDP/evidence probe: medir somente se o caminho diagnóstico for gargalo relevante | 001; não habilitar probe na baseline normal. PPTools background foi removido em 2026-10-02. |
 | **CW-PERF-010** | Fechamento | QA independente, matriz before/after, candidato isolado e decisão PM/PO | Tasks adotadas e suas evidências. |
 | **CW-PERF-011** | Fora do ciclo atual | Pesquisa de suporte real a quatro contas / multi-instância | Nova decisão de produto e arquitetura; não extrapolar benchmark Dual. |
 
@@ -311,7 +311,7 @@ sem degradar tempo de startup, segurança ou manutenção.
   justificar risco, compatibilidade SDK/Runtime for demonstrada e Product
   Owner aprovar estratégia de backup, reversão e login. **Nunca** copiar
   UDF ou cookies atuais automaticamente, nem apontar duas contas para um
-  mesmo perfil. Isolar PPTools InPrivate da proposta.
+  mesmo perfil. O antigo PPTools InPrivate não participa mais desta proposta.
 
 ### CW-PERF-008 — cold start e política Single/Dual
 
@@ -326,13 +326,11 @@ sem degradar tempo de startup, segurança ou manutenção.
 
 ### CW-PERF-009 — ferramentas opcionais
 
-- **Escopo:** PPTools background é opt-in e cria WebView2 temporário isolado,
-  com até dois bootstraps simultâneos (`PptoolsBackgroundExecutor.cs:28-40,
-  219-257`); evidence probe habilita CDP/Network só no modo diagnóstico
-  (`CoupledWorkspace.cs:3819-3826`).
-- **AC-009:** nenhum custo PPTools/CDP no host normal quando desativado;
-  contagem de processos e limpeza após execução opcional; se surgir gargalo,
-  otimizar somente esse caminho sem compartilhá-lo com UDF/credenciais de conta.
+- **Escopo atual:** evidence probe habilita CDP/Network somente no modo
+  diagnóstico. O antigo PPTools background foi removido em 2026-10-02 e não
+  participa mais do baseline ou da matriz de performance.
+- **AC-009:** nenhum custo de CDP no host normal quando desativado; contagem de
+  processos e limpeza após execução opcional do evidence probe.
 
 ### CW-PERF-010 — integração/release
 
@@ -372,7 +370,7 @@ baseline 0.2.124 (main, imutável)
    |      +-- 007 multi-profile (PoC isolada)
    |      +-- 008 cold-start (independente; comparar com 007 na decisão)
    |      |
-   |      +-- 009 PPTools/CDP (somente se resultado apontar)
+   |      +-- 009 CDP/evidence probe (somente se resultado apontar)
    |
    +-- 010 gates independentes + delta de performance + PO live
    |

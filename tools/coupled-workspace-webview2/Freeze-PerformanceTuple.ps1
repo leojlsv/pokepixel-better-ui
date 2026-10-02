@@ -16,7 +16,6 @@ param(
     [ValidateSet(
         'PokePixelCoupledWorkspace.candidate.exe',
         'PokePixelCoupledWorkspace.exe',
-        'PokePixelCoupledWorkspace.pptools.candidate.exe',
         'PokePixelCoupledWorkspace.evidence-probe.exe'
     )]
     [string]$HostExeName = 'PokePixelCoupledWorkspace.candidate.exe',
@@ -82,9 +81,6 @@ $requiredPaths = @(
     'dist/pokepixel-better-ui.user.js',
     'dist/pokepixel-hunt-analyzer.embed.js'
 )
-if ($HostExeName -eq 'PokePixelCoupledWorkspace.pptools.candidate.exe') {
-    $requiredPaths += ($binPrefix + 'pptools-runner.js')
-}
 
 function Get-Hash([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {

@@ -830,21 +830,6 @@ namespace PokePixel.CoupledWorkspace
         private bool _shutdownSmokeToolTipDisposed;
         private readonly string _dataRoot;
         private readonly WorkspacePerfMetrics _perfMetrics;
-        private readonly PptoolsBackgroundExecutor _pptoolsExecutor;
-        private readonly SemaphoreSlim _pptoolsEnvironmentGate = new SemaphoreSlim(2, 2);
-        private sealed class PptoolsPendingRequest
-        {
-            public AccountPane Pane;
-            public string RequestId;
-            public string LeaderId;
-            public string LeaderSpeciesId;
-            public string NativeProfileId;
-            public int LeaderLevel;
-            public ulong NavigationId;
-            public CancellationTokenSource Cancellation;
-        }
-        private readonly Dictionary<string, PptoolsPendingRequest> _pptoolsByProfile =
-            new Dictionary<string, PptoolsPendingRequest>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, AccountPane> _panesByProfile =
             new Dictionary<string, AccountPane>(StringComparer.OrdinalIgnoreCase);
         private readonly SplitContainer _split;
@@ -939,7 +924,6 @@ namespace PokePixel.CoupledWorkspace
             bool shutdownDuringInitSmoke,
             bool shutdownDuringSwitchSmoke,
             bool evidenceProbeEnabled,
-            bool pptoolsBackgroundEnabled,
             bool perfMetricsEnabled,
             bool perfBaselineSmoke,
             bool perfCyclesSmoke,
@@ -985,7 +969,6 @@ namespace PokePixel.CoupledWorkspace
                     : Path.Combine(_baseDir, "smoke-user-data")
                 : stateRoot;
             Directory.CreateDirectory(_dataRoot);
-            _pptoolsExecutor = new PptoolsBackgroundExecutor(_baseDir, _dataRoot, pptoolsBackgroundEnabled);
             _shutdownSmokeSettingsPath = Path.Combine(stateRoot, "workspace.json");
             _settingsStore = _shutdownSaveSmokePhase.HasValue
                 ? new WorkspaceSettingsStore(_shutdownSmokeSettingsPath, InjectShutdownSaveFault)
@@ -1179,10 +1162,6 @@ namespace PokePixel.CoupledWorkspace
         {
             if (_isClosing) return;
             _isClosing = true;
-
-            foreach (var request in _pptoolsByProfile.Values)
-                request.Cancellation.Cancel();
-            _pptoolsByProfile.Clear();
 
             _smokeTimer.Stop();
 
@@ -2465,356 +2444,6 @@ namespace PokePixel.CoupledWorkspace
             return message;
         }
 
-        private void CancelPptoolsForProfile(string profileId, string requestId = null)
-        {
-            PptoolsPendingRequest active;
-            if (profileId == null || !_pptoolsByProfile.TryGetValue(profileId, out active)) return;
-            if (requestId != null && !string.Equals(active.RequestId, requestId, StringComparison.Ordinal)) return;
-            _pptoolsByProfile.Remove(profileId);
-            active.Cancellation.Cancel();
-        }
-
-        private static bool IsPptoolsRequestId(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value) || value.Length > 100 ||
-                !value.StartsWith("pptools-", StringComparison.Ordinal)) return false;
-            foreach (var symbol in value)
-                if (!char.IsLetterOrDigit(symbol) && symbol != '-' && symbol != '_') return false;
-            return true;
-        }
-
-        private static bool IsPptoolsLeaderId(string value)
-        {
-            if (string.IsNullOrWhiteSpace(value) || value.Length > 128) return false;
-            foreach (var symbol in value)
-                if (char.IsControl(symbol)) return false;
-            return true;
-        }
-
-        [DataContract]
-        private sealed class PptoolsAttackerInput
-        {
-            [DataMember(Name = "pokemon", IsRequired = true)] public string Pokemon { get; set; }
-            [DataMember(Name = "level", IsRequired = true)] public int Level { get; set; }
-            [DataMember(Name = "trainerLevel", IsRequired = true)] public int TrainerLevel { get; set; }
-            [DataMember(Name = "qualityTier", IsRequired = true)] public string QualityTier { get; set; }
-            [DataMember(Name = "quality", IsRequired = true)] public string Quality { get; set; }
-            [DataMember(Name = "exactMultiplier", IsRequired = true)] public double ExactMultiplier { get; set; }
-            [DataMember(Name = "nature", IsRequired = true)] public string Nature { get; set; }
-            [DataMember(Name = "gender", IsRequired = true)] public string Gender { get; set; }
-            [DataMember(Name = "isShiny", IsRequired = true)] public bool IsShiny { get; set; }
-            [DataMember(Name = "isStarter", IsRequired = true)] public bool IsStarter { get; set; }
-            [DataMember(Name = "expBuff", IsRequired = true)] public double ExpBuff { get; set; }
-            [DataMember(Name = "ivs", IsRequired = true)] public PptoolsAttackerIvs Ivs { get; set; }
-        }
-
-        // Read dynamic JSON primitives before typed serialization: the serializer
-        // otherwise coerces e.g. "false" into bool false.
-        [DataContract]
-        private sealed class PptoolsWireInput
-        {
-            [DataMember(Name = "pokemon", IsRequired = true)] public object Pokemon { get; set; }
-            [DataMember(Name = "level", IsRequired = true)] public object Level { get; set; }
-            [DataMember(Name = "trainerLevel", IsRequired = true)] public object TrainerLevel { get; set; }
-            [DataMember(Name = "qualityTier", IsRequired = true)] public object QualityTier { get; set; }
-            [DataMember(Name = "quality", IsRequired = true)] public object Quality { get; set; }
-            [DataMember(Name = "exactMultiplier", IsRequired = true)] public object ExactMultiplier { get; set; }
-            [DataMember(Name = "nature", IsRequired = true)] public object Nature { get; set; }
-            [DataMember(Name = "gender", IsRequired = true)] public object Gender { get; set; }
-            [DataMember(Name = "isShiny", IsRequired = true)] public object IsShiny { get; set; }
-            [DataMember(Name = "isStarter", IsRequired = true)] public object IsStarter { get; set; }
-            [DataMember(Name = "expBuff", IsRequired = true)] public object ExpBuff { get; set; }
-            [DataMember(Name = "ivs", IsRequired = true)] public PptoolsWireIvs Ivs { get; set; }
-        }
-
-        [DataContract]
-        private sealed class PptoolsWireIvs
-        {
-            [DataMember(Name = "hp", IsRequired = true)] public object Hp { get; set; }
-            [DataMember(Name = "atk", IsRequired = true)] public object Atk { get; set; }
-            [DataMember(Name = "def", IsRequired = true)] public object Def { get; set; }
-            [DataMember(Name = "spAtk", IsRequired = true)] public object SpAtk { get; set; }
-            [DataMember(Name = "spDef", IsRequired = true)] public object SpDef { get; set; }
-            [DataMember(Name = "speed", IsRequired = true)] public object Speed { get; set; }
-        }
-
-        [DataContract]
-        private sealed class PptoolsAttackerIvs
-        {
-            [DataMember(Name = "hp", IsRequired = true)] public int Hp { get; set; }
-            [DataMember(Name = "atk", IsRequired = true)] public int Atk { get; set; }
-            [DataMember(Name = "def", IsRequired = true)] public int Def { get; set; }
-            [DataMember(Name = "spAtk", IsRequired = true)] public int SpAtk { get; set; }
-            [DataMember(Name = "spDef", IsRequired = true)] public int SpDef { get; set; }
-            [DataMember(Name = "speed", IsRequired = true)] public int Speed { get; set; }
-        }
-
-        private static bool IsPptoolsText(string value, int limit)
-        {
-            if (string.IsNullOrWhiteSpace(value) || value.Length > limit) return false;
-            foreach (var symbol in value)
-                if (char.IsControl(symbol)) return false;
-            return true;
-        }
-
-        private static bool TryPptoolsNumber(object raw, double min, double max, out double result)
-        {
-            result = 0;
-            if (!(raw is int || raw is long || raw is decimal || raw is double || raw is float))
-                return false;
-            result = Convert.ToDouble(raw, System.Globalization.CultureInfo.InvariantCulture);
-            return !double.IsNaN(result) && !double.IsInfinity(result) && result >= min && result <= max;
-        }
-
-        private static bool TryPptoolsInteger(object raw, int min, int max, out int result)
-        {
-            result = 0;
-            double number;
-            if (!TryPptoolsNumber(raw, min, max, out number) || Math.Truncate(number) != number)
-                return false;
-            result = (int)number;
-            return true;
-        }
-
-        private static bool IsPptoolsQuality(string value)
-        {
-            return value == "weak" || value == "common" || value == "uncommon" || value == "rare" ||
-                value == "epic" || value == "legendary" || value == "mythical";
-        }
-
-        private static string JsonStringForScript(string value)
-        {
-            var serializer = new DataContractJsonSerializer(typeof(string));
-            using (var stream = new MemoryStream())
-            {
-                serializer.WriteObject(stream, value);
-                return Encoding.UTF8.GetString(stream.ToArray());
-            }
-        }
-
-        internal static bool TryBuildCanonicalPptoolsInput(WorkspaceBridgeMessage message, out string canonicalJson)
-        {
-            canonicalJson = null;
-            if (message == null || message.LeaderLevel < 1 || message.LeaderLevel > 10000 ||
-                string.IsNullOrWhiteSpace(message.LeaderSpeciesId) ||
-                message.LeaderSpeciesId.Length > 80 || string.IsNullOrWhiteSpace(message.InputJson) ||
-                Encoding.UTF8.GetByteCount(message.InputJson) > PptoolsBackgroundExecutor.MaxInputBytes) return false;
-            try
-            {
-                // Read raw JSON types, then serialize a separate, explicitly allowed shape.
-                // Extras (including trainer buffs) never enter the third-party payload.
-                var settings = new DataContractJsonSerializerSettings { UseSimpleDictionaryFormat = true };
-                var reader = new DataContractJsonSerializer(typeof(PptoolsWireInput), settings);
-                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(message.InputJson)))
-                {
-                    var input = reader.ReadObject(stream) as PptoolsWireInput;
-                    int level, trainerLevel, hp, atk, def, spAtk, spDef, speed;
-                    double exactMultiplier, expBuff;
-                    if (input == null || !IsPptoolsText(input.Pokemon as string, 100) ||
-                        !string.Equals(input.Pokemon as string, message.LeaderSpeciesId, StringComparison.Ordinal) ||
-                        !TryPptoolsInteger(input.Level, 1, 10000, out level) || level != message.LeaderLevel ||
-                        !TryPptoolsInteger(input.TrainerLevel, 1, 10000, out trainerLevel) ||
-                        !IsPptoolsQuality(input.QualityTier as string) ||
-                        !string.Equals(input.Quality as string, input.QualityTier as string, StringComparison.Ordinal) ||
-                        !TryPptoolsNumber(input.ExactMultiplier, 0.01, 10, out exactMultiplier) ||
-                        !IsPptoolsText(input.Nature as string, 100) ||
-                        !(input.Gender is string) ||
-                        ((string)input.Gender != "male" && (string)input.Gender != "female" &&
-                            (string)input.Gender != "genderless") ||
-                        !(input.IsShiny is bool) || !(input.IsStarter is bool) ||
-                        !TryPptoolsNumber(input.ExpBuff, double.Epsilon, 1000000, out expBuff) ||
-                        input.Ivs == null ||
-                        !TryPptoolsInteger(input.Ivs.Hp, 0, 31, out hp) ||
-                        !TryPptoolsInteger(input.Ivs.Atk, 0, 31, out atk) ||
-                        !TryPptoolsInteger(input.Ivs.Def, 0, 31, out def) ||
-                        !TryPptoolsInteger(input.Ivs.SpAtk, 0, 31, out spAtk) ||
-                        !TryPptoolsInteger(input.Ivs.SpDef, 0, 31, out spDef) ||
-                        !TryPptoolsInteger(input.Ivs.Speed, 0, 31, out speed))
-                        return false;
-
-                    var clean = new PptoolsAttackerInput
-                    {
-                        Pokemon = (string)input.Pokemon,
-                        Level = level,
-                        TrainerLevel = trainerLevel,
-                        QualityTier = (string)input.QualityTier,
-                        Quality = (string)input.Quality,
-                        ExactMultiplier = exactMultiplier,
-                        Nature = (string)input.Nature,
-                        Gender = (string)input.Gender,
-                        IsShiny = (bool)input.IsShiny,
-                        IsStarter = (bool)input.IsStarter,
-                        ExpBuff = expBuff,
-                        Ivs = new PptoolsAttackerIvs
-                        {
-                            Hp = hp, Atk = atk, Def = def, SpAtk = spAtk, SpDef = spDef, Speed = speed
-                        }
-                    };
-                    using (var output = new MemoryStream())
-                    {
-                        new DataContractJsonSerializer(typeof(PptoolsAttackerInput), settings).WriteObject(output, clean);
-                        if (output.Length > PptoolsBackgroundExecutor.MaxInputBytes) return false;
-                        canonicalJson = Encoding.UTF8.GetString(output.ToArray());
-                        return true;
-                    }
-                }
-            }
-            catch (SerializationException) { return false; }
-            catch (FormatException) { return false; }
-            catch (OverflowException) { return false; }
-        }
-
-        private async Task<bool> IsSameNativePptoolsLeaderAsync(PptoolsPendingRequest request)
-        {
-            var pane = request == null ? null : request.Pane;
-            if (_isClosing || !IsCurrentPane(pane) || pane.View == null ||
-                pane.View.CoreWebView2 == null || request.NavigationId != pane.ActiveNavigationId ||
-                !IsAllowedGameUrl(pane.View.CoreWebView2.Source)) return false;
-            var source = @"(() => {
-                const doc = document, game = window.PokeIdle, hud = game?.PersistentHud?._teamHud;
-                const node = hud?.el, list = hud?._creatures;
-                if (!node?.isConnected || node.ownerDocument !== doc ||
-                    doc.querySelector('.pokeidle-team-hud') !== node || !Array.isArray(list)) return false;
-                const leaders = list.filter(creature => creature?.is_leader === true);
-                if (leaders.length !== 1) return false;
-                const item = leaders[0], id = String(item?.id ?? '').trim();
-                if (list.filter(creature => String(creature?.id ?? '').trim() === id).length !== 1) return false;
-                const species = String(item?.species_id ?? item?.species?.id ?? '').trim();
-                const teamBodies = new Set(doc.querySelectorAll('.pokeidle-team-panel > .pokeidle-panel__body, .pokeidle-team-panel .pokeidle-panel__body'));
-                const scenes = [...(game?.ReactiveWindows?.cached?.() || []),window.SceneManager?._scene];
-                for (const scene of scenes) {
-                    if (!teamBodies.has(scene?._panel?.body) || !Array.isArray(scene?._team?.member_ids)) continue;
-                    const roster = scene._team.member_ids.map(value => String(value ?? '').trim());
-                    if (roster.length !== list.length || roster.some(value => !list.some(item => String(item?.id ?? '').trim() === value))) continue;
-                    if (String(scene._team.leader_id ?? '').trim() !== id) return false;
-                }
-                const profileIds = [game?.WorldPresence?.getSelfTrainerId?.(),
-                    game?.Auth?.getTrainerSummary?.()?.id]
-                    .filter(value => value != null && String(value).trim()).map(value => String(value).trim());
-                if (!profileIds.length || profileIds.some(value => value !== profileIds[0])) return false;
-                return profileIds[0] === __PROFILE__ && id === __ID__ &&
-                    item.level === __LEVEL__ && species === __SPECIES__;
-            })()";
-            source = source.Replace("__ID__", JsonStringForScript(request.LeaderId))
-                .Replace("__LEVEL__", request.LeaderLevel.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                .Replace("__SPECIES__", JsonStringForScript(request.LeaderSpeciesId))
-                .Replace("__PROFILE__", JsonStringForScript(request.NativeProfileId));
-            try
-            {
-                var cancellation = request.Cancellation.Token;
-                cancellation.ThrowIfCancellationRequested();
-                var proof = pane.View.CoreWebView2.ExecuteScriptAsync(source);
-                using (var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellation))
-                {
-                    var elapsed = Task.Delay(10000, limit.Token);
-                    if (await Task.WhenAny(proof, elapsed) != proof)
-                    {
-                        // WebView2 cannot cancel a running ExecuteScriptAsync; observe late faults.
-                        var faultObserver = proof.ContinueWith(task => { var ignored = task.Exception; },
-                            TaskContinuationOptions.OnlyOnFaulted);
-                        return false;
-                    }
-                    limit.Cancel();
-                }
-                var result = await proof;
-                return !cancellation.IsCancellationRequested && result == "true" &&
-                    IsCurrentPane(pane) && request.NavigationId == pane.ActiveNavigationId;
-            }
-            catch { return false; }
-        }
-
-        private void PostPptoolsResult(AccountPane pane, string requestId, bool ok,
-            string error = null, string resultJson = null)
-        {
-            if (_isClosing || !IsCurrentPane(pane)) return;
-            TryPostWorkspaceBridgeMessage(pane, new WorkspaceBridgeMessage
-            {
-                Type = WorkspaceBridgeProtocol.PptoolsResultType,
-                Protocol = WorkspaceBridgeProtocol.Version,
-                RequestId = requestId,
-                Ok = ok,
-                Error = error,
-                ResultJson = resultJson
-            });
-        }
-
-        private async Task ExecutePptoolsRequestAsync(AccountPane pane, WorkspaceBridgeMessage message)
-        {
-            if (!IsCurrentPane(pane)) return;
-            string canonicalInput;
-            if (!_pptoolsExecutor.Available || !IsPptoolsRequestId(message.RequestId) ||
-                !IsPptoolsLeaderId(message.LeaderId) ||
-                !IsPptoolsLeaderId(message.NativeProfileId) ||
-                !TryBuildCanonicalPptoolsInput(message, out canonicalInput))
-            {
-                PostPptoolsResult(pane, message.RequestId, false, "Executor ou dados do líder indisponíveis.");
-                return;
-            }
-
-            CancelPptoolsForProfile(pane.Profile.Id);
-            var request = new PptoolsPendingRequest
-            {
-                Pane = pane,
-                RequestId = message.RequestId,
-                LeaderId = message.LeaderId,
-                LeaderLevel = message.LeaderLevel,
-                LeaderSpeciesId = message.LeaderSpeciesId,
-                NativeProfileId = message.NativeProfileId,
-                NavigationId = pane.ActiveNavigationId,
-                Cancellation = new CancellationTokenSource()
-            };
-            _pptoolsByProfile[pane.Profile.Id] = request;
-            string result = null, error = null;
-            try
-            {
-                try
-                {
-                    await _pptoolsEnvironmentGate.WaitAsync(request.Cancellation.Token);
-                    try
-                    {
-                        if (!request.Cancellation.IsCancellationRequested &&
-                            !await IsSameNativePptoolsLeaderAsync(request))
-                            error = "Líder ou perfil alterado antes da consulta PPTools.";
-                        else if (!request.Cancellation.IsCancellationRequested)
-                            result = await _pptoolsExecutor.RunAsync(this, request.RequestId,
-                                canonicalInput, request.Cancellation.Token);
-                    }
-                    finally { _pptoolsEnvironmentGate.Release(); }
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception failure)
-                {
-                    error = failure is TimeoutException ? "Tempo de simulação esgotado." : failure.Message;
-                }
-                PptoolsPendingRequest active;
-                var isCurrent = _pptoolsByProfile.TryGetValue(pane.Profile.Id, out active)
-                    && object.ReferenceEquals(active, request);
-                if (isCurrent && !request.Cancellation.IsCancellationRequested &&
-                    !_isClosing && IsCurrentPane(pane) && request.NavigationId == pane.ActiveNavigationId)
-                {
-                    if (await IsSameNativePptoolsLeaderAsync(request))
-                    {
-                        if (!request.Cancellation.IsCancellationRequested &&
-                            _pptoolsByProfile.TryGetValue(pane.Profile.Id, out active) &&
-                            object.ReferenceEquals(active, request))
-                            PostPptoolsResult(pane, request.RequestId, result != null,
-                                result == null ? error ?? "Consulta PPTools indisponível." : null, result);
-                    }
-                    else if (!request.Cancellation.IsCancellationRequested &&
-                        _pptoolsByProfile.TryGetValue(pane.Profile.Id, out active) &&
-                        object.ReferenceEquals(active, request))
-                        PostPptoolsResult(pane, request.RequestId, false, "O líder mudou durante a simulação.");
-                }
-            }
-            finally
-            {
-                PptoolsPendingRequest active;
-                if (_pptoolsByProfile.TryGetValue(pane.Profile.Id, out active) &&
-                    object.ReferenceEquals(active, request)) _pptoolsByProfile.Remove(pane.Profile.Id);
-                request.Cancellation.Dispose();
-            }
-        }
-
         private void HandleWorkspaceBridgeMessage(AccountPane pane, string json)
         {
             if (!IsCurrentPane(pane)) return;
@@ -2843,18 +2472,6 @@ namespace PokePixel.CoupledWorkspace
                     MountOrdinal = message.MountOrdinal,
                     DocumentEpoch = pane.ViewDocumentEpoch
                 });
-                return;
-            }
-
-            if (string.Equals(message.Type, WorkspaceBridgeProtocol.PptoolsRunType, StringComparison.Ordinal))
-            {
-                var pending = ExecutePptoolsRequestAsync(pane, message);
-                return;
-            }
-            if (string.Equals(message.Type, WorkspaceBridgeProtocol.PptoolsCancelType, StringComparison.Ordinal))
-            {
-                if (IsPptoolsRequestId(message.RequestId))
-                    CancelPptoolsForProfile(pane.Profile.Id, message.RequestId);
                 return;
             }
 
@@ -4462,7 +4079,6 @@ namespace PokePixel.CoupledWorkspace
 
         private void DisposePane(string profileId)
         {
-            CancelPptoolsForProfile(profileId);
             AccountPane pane;
             if (!_panesByProfile.TryGetValue(profileId, out pane)) return;
             if (pane.View != null && pane.View.Parent != null)
@@ -5635,7 +5251,6 @@ namespace PokePixel.CoupledWorkspace
                     && pane.ActiveNavigationId == args.NavigationId;
                 if (!samePendingNavigation)
                 {
-                    CancelPptoolsForProfile(profileId);
                     pane.BeginViewDocument();
                     RecordPendingWorkspaceRequests();
                     if (string.Equals(
@@ -5736,7 +5351,6 @@ namespace PokePixel.CoupledWorkspace
             {
                 if (_isClosing) return;
                 if (!IsCurrentPane(pane)) return;
-                CancelPptoolsForProfile(profileId);
                 pane.BeginViewDocument();
                 RecordPendingWorkspaceRequests();
                 if (_perfMetrics != null)
@@ -5850,7 +5464,7 @@ namespace PokePixel.CoupledWorkspace
                 "if(!window.__PPBUI_COUPLED_WORKSPACE__){"
                 + "Object.defineProperty(window,'__PPBUI_COUPLED_WORKSPACE__',{"
                 + "value:Object.freeze({protocol:" + WorkspaceBridgeProtocol.Version
-                + ",viewCorrelation:2,pptoolsBackground:" + (_pptoolsExecutor.Available ? "true" : "false") + "}),"
+                + ",viewCorrelation:2}),"
                 + "configurable:false,enumerable:false,writable:false});"
                 + "}\n";
         }
@@ -9722,26 +9336,6 @@ namespace PokePixel.CoupledWorkspace
                 Environment.ExitCode = 2;
                 return;
             }
-            if (args != null && Array.IndexOf(args, "--pptools-privacy-smoke") >= 0)
-            {
-                PptoolsRunnerSmoke.RunPrivacySmoke();
-                return;
-            }
-            if (args != null && Array.IndexOf(args, "--pptools-runner-smoke") >= 0)
-            {
-                PptoolsRunnerSmoke.Run();
-                return;
-            }
-            if (args != null && Array.IndexOf(args, "--pptools-full-input-smoke") >= 0)
-            {
-                PptoolsRunnerSmoke.Run(true);
-                return;
-            }
-            if (args != null && Array.IndexOf(args, "--pptools-smoke") >= 0)
-            {
-                PptoolsHiddenSmoke.Run();
-                return;
-            }
             var shutdownDuringInitSmoke =
                 args != null && Array.IndexOf(args, "--smoke-close-during-init") >= 0;
             var shutdownDuringSwitchSmoke =
@@ -9775,10 +9369,6 @@ namespace PokePixel.CoupledWorkspace
                 || (args != null && Array.IndexOf(args, "--smoke") >= 0);
             var evidenceProbe =
                 args != null && Array.IndexOf(args, "--evidence-probe") >= 0;
-            var pptoolsBackgroundEnabled =
-                args != null && Array.IndexOf(args, "--pptools-oneclick") >= 0 ||
-                string.Equals(Path.GetFileName(Application.ExecutablePath),
-                    "PokePixelCoupledWorkspace.pptools.candidate.exe", StringComparison.OrdinalIgnoreCase);
             var perfMetricsEnabled = args != null && Array.IndexOf(args, "--perf-metrics") >= 0;
             if ((perfBaselineSmoke && (shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke))
                 || (perfCyclesSmoke && (perfBaselineSmoke || shutdownDuringInitSmoke || shutdownDuringSwitchSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke)))
@@ -9798,19 +9388,19 @@ namespace PokePixel.CoupledWorkspace
                 Environment.ExitCode = 2;
                 return;
             }
-            if ((perfBaselineSmoke || perfCyclesSmoke || perfIdleSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke) && (evidenceProbe || pptoolsBackgroundEnabled))
+            if ((perfBaselineSmoke || perfCyclesSmoke || perfIdleSmoke || perfVisibleFocusSmoke || perfIdlePreflightSmoke || perfExtendedVisualSmoke) && evidenceProbe)
             {
                 Console.Error.WriteLine(
-                    "Performance smoke variants require isolated synthetic execution without PPTools/evidence flags.");
+                    "Performance smoke variants require isolated synthetic execution without evidence flags.");
                 Environment.ExitCode = 2;
                 return;
             }
             // CW-PERF-001 is synthetic-only. Never let a metrics flag turn a
             // normal/live workspace into an implicit game profiling session.
-            if (perfMetricsEnabled && (!smoke || evidenceProbe || pptoolsBackgroundEnabled))
+            if (perfMetricsEnabled && (!smoke || evidenceProbe))
             {
                 Console.Error.WriteLine(
-                    "--perf-metrics requires synthetic --smoke without PPTools/evidence; live game profiling is disabled.");
+                    "--perf-metrics requires synthetic --smoke without evidence; live game profiling is disabled.");
                 Environment.ExitCode = 2;
                 return;
             }
@@ -9844,7 +9434,6 @@ namespace PokePixel.CoupledWorkspace
                         shutdownDuringInitSmoke,
                         shutdownDuringSwitchSmoke,
                         evidenceProbe,
-                        pptoolsBackgroundEnabled,
                         perfMetricsEnabled,
                         perfBaselineSmoke,
                         perfCyclesSmoke,

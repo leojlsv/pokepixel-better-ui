@@ -4,6 +4,9 @@ export const selectors = {
   legacyHeader: '.hunt-world-header', listHeader: '.hunt-list-header',
   headerActions: '.hunt-world-header-actions', presentation: '.hunt-presentation-toggle',
   legacyTabs: '.hunt-world-tabs', listTabs: '.hunt-list-world-tabs',
+  listSearchField: '.hunt-list-search-field', listSortField: '.hunt-list-sort-field',
+  listRangeField: '.hunt-list-range-field', listClear: '.hunt-list-clear', listSummary: '.hunt-list-summary',
+  listWorldNote: '.hunt-list-world-note',
   zoom: '.hunt-world-zoom', notice: '.hunt-world-notice',
   legacyElements: '.hunt-world-elements', listElements: '.hunt-list-element-filter',
   legacyCount: '.hunt-world-count', listCount: '.hunt-list-summary > strong',
@@ -54,40 +57,54 @@ function nativeMarkerSprite(marker,view) {
   return '';
 }
 const texts = {
-  pt: ['Hunts (Map)', 'Encontrar hunts nos resultados dos filtros', 'Todos', 'Localizar no mapa', 'Reset', 'Nenhuma hunt corresponde aos filtros neste mundo.', 'Selecione uma hunt nos resultados.', 'Hunt localizada.', 'Não foi possível localizar esta hunt. Use o mapa nativo.', 'Filtros', 'Alvo'],
-  en: ['Hunts (Map)', 'Find hunts in filtered results', 'All', 'Locate on map', 'Reset', 'No hunts match the filters in this world.', 'Select a hunt from the results.', 'Hunt located.', 'Unable to locate this hunt. Use the native map.', 'Filters', 'Target'],
-  es: ['Hunts (Map)', 'Encontrar hunts en los resultados filtrados', 'Todos', 'Localizar en el mapa', 'Reset', 'Ninguna hunt coincide con los filtros en este mundo.', 'Selecciona una hunt en los resultados.', 'Hunt localizada.', 'No se pudo localizar esta hunt. Usa el mapa original.', 'Filtros', 'Objetivo'],
-  zh: ['Hunts (Map)', '在筛选结果中查找狩猎地点', '全部', '在地图上定位', '重置', '当前世界没有符合筛选条件的狩猎地点。', '请从结果中选择狩猎地点。', '已定位。', '无法定位，请使用原生地图。', '筛选', '目标'],
+  pt: ['Hunts (Map)', 'Encontrar hunts nos resultados dos filtros', 'Todos', 'Localizar no mapa', 'Reset', 'Nenhuma hunt corresponde aos filtros neste mundo.', 'Selecione uma hunt nos resultados.', 'Hunt localizada.', 'Não foi possível localizar esta hunt. Use o mapa nativo.', 'Filtros', 'Alvo', 'GYMS', 'Abrir Gyms de', 'Gyms indisponíveis', 'Filtros ativos', 'Nível mínimo', 'Nível máximo'],
+  en: ['Hunts (Map)', 'Find hunts in filtered results', 'All', 'Locate on map', 'Reset', 'No hunts match the filters in this world.', 'Select a hunt from the results.', 'Hunt located.', 'Unable to locate this hunt. Use the native map.', 'Filters', 'Target', 'GYMS', 'Open Gyms for', 'Gyms unavailable', 'Filters active', 'Minimum level', 'Maximum level'],
+  es: ['Hunts (Map)', 'Encontrar hunts en los resultados filtrados', 'Todos', 'Localizar en el mapa', 'Reset', 'Ninguna hunt coincide con los filtros en este mundo.', 'Selecciona una hunt en los resultados.', 'Hunt localizada.', 'No se pudo localizar esta hunt. Usa el mapa original.', 'Filtros', 'Objetivo', 'GYMS', 'Abrir Gyms de', 'Gyms no disponibles', 'Filtros activos', 'Nivel mínimo', 'Nivel máximo'],
+  zh: ['Hunts (Map)', '在筛选结果中查找狩猎地点', '全部', '在地图上定位', '重置', '当前世界没有符合筛选条件的狩猎地点。', '请从结果中选择狩猎地点。', '已定位。', '无法定位，请使用原生地图。', '筛选', '目标', 'GYMS', '打开地区道馆', '道馆不可用', '筛选已启用', '最低等级', '最高等级'],
 };
 export function huntsText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || 'pt';
-  const [name, description, results, locate, reset, empty, choose, located, unavailable, filters, target] = texts[lang.split(/[-_]/)[0]] || texts.en;
-  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target};
+  const [name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, gyms, openGyms, gymsUnavailable, filtersActive, minLevel, maxLevel] = texts[lang.split(/[-_]/)[0]] || texts.en;
+  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, gyms, openGyms, gymsUnavailable, filtersActive, minLevel, maxLevel};
 }
 export const findHunts = () => document.querySelector(selectors.root);
 export function parts(root) {
   const legacyToolbar = root.querySelector(`${selectors.legacyToolbar}:not([data-ppbui-module])`);
-  const listToolbar = root.querySelector(`${selectors.listToolbar}:not([data-ppbui-module])`);
-  const mode = legacyToolbar ? 'map' : listToolbar ? 'list' : null;
-  const toolbar = legacyToolbar || listToolbar;
+  const currentToolbar = root.querySelector(`${selectors.listToolbar}:not([data-ppbui-module])`);
+  const listViewport=root.querySelector(selectors.listViewport),mapViewport=root.querySelector(selectors.legacyViewport);
+  const mode = legacyToolbar ? 'legacy-map' : currentToolbar ? (listViewport?'current-list':mapViewport?'current-map':'current') : null;
+  const current=mode?.startsWith('current');
+  const toolbar = legacyToolbar || currentToolbar;
   const levels=toolbar?.querySelectorAll('input[type="number"]')||[];
+  const header=root.querySelector(current?selectors.listHeader:selectors.legacyHeader);
+  const currentToggles=current&&header?[...header.children].filter(node=>node.matches?.(selectors.presentation)):[];
+  const viewToggle=currentToggles.length>1?currentToggles[0]:null;
+  const presentation=current?currentToggles[currentToggles.length>1?1:0]||null:root.querySelector(selectors.presentation);
   return {
     mode,
+    current,
     body:root.querySelector(selectors.body),
-    header:root.querySelector(mode==='list'?selectors.listHeader:selectors.legacyHeader),
+    header,
     headerActions:root.querySelector(selectors.headerActions),
-    presentation:root.querySelector(selectors.presentation),
-    tabs:root.querySelector(mode==='list'?selectors.listTabs:selectors.legacyTabs),
+    viewToggle,
+    presentation,
+    tabs:root.querySelector(current?selectors.listTabs:selectors.legacyTabs),
     zoom:root.querySelector(selectors.zoom),
     notice:root.querySelector(selectors.notice),
-    elements:root.querySelector(mode==='list'?selectors.listElements:selectors.legacyElements),
-    count:root.querySelector(mode==='list'?selectors.listCount:selectors.legacyCount),
+    elements:root.querySelector(current?selectors.listElements:selectors.legacyElements),
+    count:root.querySelector(current?selectors.listCount:selectors.legacyCount),
     toolbar,
+    searchField:current?toolbar?.querySelector(selectors.listSearchField):null,
+    sortField:current?toolbar?.querySelector(selectors.listSortField):null,
+    rangeField:current?toolbar?.querySelector(selectors.listRangeField):null,
+    clear:current?toolbar?.querySelector(selectors.listClear):null,
+    summary:current?root.querySelector(selectors.listSummary):null,
+    worldNote:current?root.querySelector(selectors.listWorldNote):null,
     search:toolbar?.querySelector(selectors.search),
     minLevel:levels[0]||null,
     maxLevel:levels[1]||null,
-    viewport:root.querySelector(mode==='list'?selectors.listViewport:selectors.legacyViewport),
-    stage:root.querySelector(mode==='list'?selectors.listStage:selectors.legacyStage),
+    viewport:mode==='current-list'?listViewport:mapViewport,
+    stage:mode==='current-list'?root.querySelector(selectors.listStage):root.querySelector(selectors.legacyStage),
   };
 }
 export function huntScene(root) {

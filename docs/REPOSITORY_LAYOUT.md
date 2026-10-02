@@ -24,8 +24,9 @@ Its `sdk/` retains the three DLLs used by the current x64 C# builder; the pinned
 `Microsoft.Web.WebView2.1.0.4191.47.nupkg` preserves the complete SDK for
 later extraction without another download. Extracted C++ static libraries and
 unused platform-specific SDK files were retired. Do not remove the three DLLs,
-the package, the live `PokePixelCoupledWorkspace.pptools.candidate.exe`, the
-normal host or the pending candidate aliases. The sprite source ZIP, extracted
+the package, the normal host or pending non-PPTools candidate aliases. The
+PPTools-specific host/runner path was removed from current tooling on 2026-10-02;
+any surviving local binary is historical evidence only. The sprite source ZIP, extracted
 PNGs and manifests under `tools/nayakoko-sprite-extractor/` are retained.
 
 The Nayakoko source caches use transparent gzip compression for extensionless
@@ -46,8 +47,9 @@ archives under `.local-evidence/visual-archive/` or
 `.local-evidence/deep-clean/`. The original cancelled Tampermonkey experiment's
 README is now `docs/archive/PPTOOLS_TAMPERMONKEY_0.2.120_CANCELLED.md`; its
 binary snapshot and superseded manual PPTools candidates are in verified local
-archives. The latest frozen historical manual PPTools `0.2.118-r2` directory,
-current opt-in host and documented synthetic render captures remain accessible.
+archives. The latest frozen historical manual PPTools `0.2.118-r2` directory and
+documented synthetic render captures may remain accessible as historical evidence;
+there is no current opt-in PPTools host capability.
 
 **Local evidence archives are Git-ignored.** They are recoverable on this
 computer but will not travel with a new checkout unless explicitly copied or

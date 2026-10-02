@@ -1,7 +1,6 @@
 [CmdletBinding()]
 param(
     [switch]$Candidate,
-    [switch]$PptoolsCandidate,
     [switch]$EvidenceProbe,
     [switch]$PromoteNormal
 )
@@ -9,13 +8,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if (([int]$Candidate.IsPresent + [int]$PptoolsCandidate.IsPresent + [int]$EvidenceProbe.IsPresent) -gt 1) {
+if (([int]$Candidate.IsPresent + [int]$EvidenceProbe.IsPresent) -gt 1) {
     throw 'Choose one isolated WebView2 build target.'
 }
-if (-not ($Candidate -or $PptoolsCandidate -or $EvidenceProbe) -and -not $PromoteNormal) {
+if (-not ($Candidate -or $EvidenceProbe) -and -not $PromoteNormal) {
     throw 'Refusing to overwrite the normal host. Use an isolated candidate or explicitly request -PromoteNormal after user-owned validation.'
 }
-if ($PromoteNormal -and ($Candidate -or $PptoolsCandidate -or $EvidenceProbe)) {
+if ($PromoteNormal -and ($Candidate -or $EvidenceProbe)) {
     throw '-PromoteNormal is incompatible with isolated candidate targets.'
 }
 
@@ -30,8 +29,6 @@ $csc = 'C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $outDir = Join-Path $toolDir 'bin'
 $outputName = if ($EvidenceProbe) {
     'PokePixelCoupledWorkspace.evidence-probe.exe'
-} elseif ($PptoolsCandidate) {
-    'PokePixelCoupledWorkspace.pptools.candidate.exe'
 } elseif ($Candidate) {
     'PokePixelCoupledWorkspace.candidate.exe'
 } else {
@@ -99,10 +96,10 @@ function Copy-DependencyIfChanged([string]$source, [string]$destination) {
         if ($sourceHash -eq $destinationHash) {
             return
         }
-        # Runtime DLLs and the PPTools runner are shared by every EXE in bin/.
+        # Runtime DLLs are shared by every EXE in bin/.
         # Updating one while another host is in use can break a validated
         # candidate even if the new compilation later fails. Never silently
-        # mutate shared dependencies; a SDK/runner migration needs its own
+        # mutate shared dependencies; a SDK migration needs its own
         # separately staged toolchain and explicit acceptance.
         throw "Refusing to overwrite shared WebView2 dependency: $destination"
     }
@@ -113,14 +110,6 @@ function Copy-DependencyIfChanged([string]$source, [string]$destination) {
     Copy-DependencyIfChanged $coreDll (Join-Path $outDir 'Microsoft.Web.WebView2.Core.dll')
     Copy-DependencyIfChanged $winFormsDll (Join-Path $outDir 'Microsoft.Web.WebView2.WinForms.dll')
     Copy-DependencyIfChanged $loaderDll (Join-Path $outDir 'WebView2Loader.dll')
-
-    if ($PptoolsCandidate) {
-        $runnerSource = Join-Path $toolDir 'pptools-runner.js'
-        if (-not (Test-Path -LiteralPath $runnerSource -PathType Leaf)) {
-            throw "Required PPTools runner missing: $runnerSource"
-        }
-        Copy-DependencyIfChanged $runnerSource (Join-Path $outDir 'pptools-runner.js')
-    }
 
     if (Test-Path -LiteralPath $outputPath -PathType Leaf) {
         $backup = Join-Path $outDir ('.' + $outputName + '.' + [guid]::NewGuid().ToString('N') + '.previous.exe')

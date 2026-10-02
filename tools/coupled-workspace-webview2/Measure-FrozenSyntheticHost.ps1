@@ -69,7 +69,7 @@ $manifest = Get-Content -LiteralPath $manifestPath -Encoding UTF8 -Raw | Convert
 $name = [string]$manifest.hostExecutable
 if ($name -notin @(
     'PokePixelCoupledWorkspace.candidate.exe', 'PokePixelCoupledWorkspace.exe',
-    'PokePixelCoupledWorkspace.pptools.candidate.exe', 'PokePixelCoupledWorkspace.evidence-probe.exe'
+    'PokePixelCoupledWorkspace.evidence-probe.exe'
 )) { throw 'Unexpected executable in frozen tuple.' }
 
 # This script can start ONLY a cryptographically verified, campaign-local
