@@ -60,7 +60,7 @@ function mountStandaloneCardMode(win = globalThis.window) {
   const cards = createCoupledCards({ win, textOnly: true });
   cards.root.dataset.ppbuiModule = moduleId;
   cards.root.setAttribute(surfaceAttribute, "");
-  let mode = "cards";
+  let mode = "game";
   let analyzerTimer = null;
   let observedToolbar = null;
   let toolbarHadMarker = false;
@@ -134,7 +134,7 @@ function mountStandaloneCardMode(win = globalThis.window) {
   toggle.addEventListener("click", onSwitch);
   doc.addEventListener("click", onNativeAction, true);
   syncToolbar();
-  setMode("cards");
+  setMode("game");
   analyzerTimer = win.setInterval(() => {
     if (mode === "cards") syncAnalyzer();
   }, config.analyzerPollMs);

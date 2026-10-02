@@ -1,5 +1,11 @@
 export const menuBarConfig = Object.freeze({
   id: "menu-bar",
+  orientationStorageKey: "ppbui:menu-bar-orientation:v1",
+  orientations: ["horizontal", "vertical"],
+  events: {
+    orientationChange: "ppbui:menu-orientation-change",
+    collapseChange: "ppbui:menu-collapse-change",
+  },
   selectors: {
     toolbar: ".pokeidle-top-toolbar",
     action: 'button[data-menu-id]:not([aria-haspopup="menu"])',

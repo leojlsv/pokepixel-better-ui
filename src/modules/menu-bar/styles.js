@@ -10,6 +10,41 @@ export default `
     border-radius:var(--ppbui-window-radius) !important;
   }
 
+  .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="horizontal"] {
+    display:grid !important;
+    grid-auto-flow:column !important;
+    grid-template-columns:repeat(13,minmax(54px,1fr)) !important;
+    grid-template-rows:minmax(56px,auto) !important;
+    grid-auto-rows:0 !important;
+    width:max-content !important;
+    max-width:calc(100vw - 16px) !important;
+    min-width:min(100%,766px) !important;
+    overflow:visible !important;
+  }
+
+  .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="horizontal"] > :is(.pokeidle-top-toolbar__btn,.pokeidle-top-toolbar__group,[data-ppbui-module="module-controls"],[data-ppbui-card-mode-toggle]) {
+    grid-row:1 !important;
+    min-width:54px !important;
+  }
+
+  .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] {
+    display:grid !important;
+    grid-auto-flow:row !important;
+    grid-template-columns:minmax(68px,auto) !important;
+    grid-template-rows:none !important;
+    grid-auto-rows:minmax(56px,auto) !important;
+    width:max-content !important;
+    min-width:68px !important;
+    max-width:min(180px,calc(100vw - 16px)) !important;
+    max-height:calc(100dvh - 16px) !important;
+    overflow:visible !important;
+  }
+
+  .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] > :is(.pokeidle-top-toolbar__btn,.pokeidle-top-toolbar__group,[data-ppbui-module="module-controls"],[data-ppbui-card-mode-toggle]) {
+    grid-column:1 !important;
+    min-width:68px !important;
+  }
+
   .pokeidle-top-toolbar[data-ppbui-menu-bar] > :is(.pokeidle-top-toolbar__btn,.pokeidle-top-toolbar__group),
   .pokeidle-top-toolbar[data-ppbui-menu-bar] > .pokeidle-top-toolbar__group > .pokeidle-top-toolbar__btn {
     border-radius:var(--ppbui-control-radius) !important;
@@ -20,11 +55,11 @@ export default `
   }
 
   .pokeidle-top-toolbar[data-ppbui-menu-bar] > .pokeidle-top-toolbar__group > .ppbui-menu-popup {
-    position:absolute !important;
-    left:50% !important;
+    position:fixed !important;
+    left:8px !important;
     right:auto !important;
-    top:auto !important;
-    bottom:100% !important;
+    top:8px !important;
+    bottom:auto !important;
     z-index:2147483646 !important;
     display:grid !important;
     box-sizing:border-box !important;
@@ -38,7 +73,7 @@ export default `
     overflow-x:hidden !important;
     overflow-y:auto !important;
     overscroll-behavior:contain !important;
-    transform:translateX(-50%) !important;
+    transform:none !important;
     border-radius:var(--ppbui-window-radius) !important;
     background:var(--ppbui-surface-window) !important;
     box-shadow:var(--ppbui-shadow-raised) !important;
@@ -133,11 +168,57 @@ export default `
     right:4px !important;
   }
 
-  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed {
-    min-height:38px !important;
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] {
+    padding:32px 3px !important;
   }
 
-  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed > :is(.pokeidle-pokehub__handle,.pokeidle-pokehub__toggle) {
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] > .pokeidle-pokehub__handle {
+    top:4px !important;
+    left:3px !important;
+    right:auto !important;
+    width:calc(100% - 6px) !important;
+    height:24px !important;
+    min-height:24px !important;
+  }
+
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] > .pokeidle-pokehub__toggle {
+    top:auto !important;
+    bottom:4px !important;
+    left:3px !important;
+    right:auto !important;
+    width:calc(100% - 6px) !important;
+    height:24px !important;
+    min-height:24px !important;
+  }
+
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed {
+    display:block !important;
+    box-sizing:border-box !important;
+    width:32px !important;
+    min-width:32px !important;
+    max-width:32px !important;
+    height:32px !important;
+    min-height:32px !important;
+    max-height:32px !important;
+    padding:0 !important;
+    overflow:visible !important;
+  }
+
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed > .pokeidle-top-toolbar__btn:not(.pokeidle-pokehub__toggle),
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed > .pokeidle-top-toolbar__group,
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed > .pokeidle-pokehub__handle {
+    display:none !important;
+  }
+
+  .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar].is-collapsed > .pokeidle-pokehub__toggle {
+    position:absolute !important;
+    display:grid !important;
+    top:0 !important;
+    bottom:auto !important;
+    left:0 !important;
+    right:auto !important;
+    width:32px !important;
+    min-width:32px !important;
     height:32px !important;
     min-height:32px !important;
   }

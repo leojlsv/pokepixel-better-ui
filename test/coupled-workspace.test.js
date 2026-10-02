@@ -2152,7 +2152,7 @@ test("standalone Better UI does not hide the native toolbar", t => {
   assert.equal(sent.length, 0);
 });
 
-test("standalone userscript Card Mode defaults to Cards and toggles directly to Game and back", t => {
+test("standalone userscript starts in Game and toggles directly to Cards and back", t => {
   const summary = {
     protocol: 1, available: true, capturedAtMs: Date.now(), leadershipActive: true,
     status: "running", seen: 42, captured: 7, failed: 35, specialHistory: [], lootHistory: [],
@@ -2169,6 +2169,11 @@ test("standalone userscript Card Mode defaults to Cards and toggles directly to 
   assert.ok(toggle && cards);
   assert.equal(cards.querySelector("[data-card-shortcuts]"), null,
     "standalone keeps navigation in the menu bar without a competing host-only scroller");
+  assert.equal(cards.hidden, true);
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "game");
+  assert.equal(toggle.parentElement, toolbar);
+  toggle.click();
   assert.equal(cards.hidden, false);
   assert.equal(toggle.getAttribute("aria-pressed"), "true");
   assert.equal(toggle.parentElement, toolbar);
@@ -2176,10 +2181,6 @@ test("standalone userscript Card Mode defaults to Cards and toggles directly to 
   toggle.click();
   assert.equal(cards.hidden, true);
   assert.equal(toggle.getAttribute("aria-pressed"), "false");
-  assert.equal(toggle.parentElement, toolbar);
-  toggle.click();
-  assert.equal(cards.hidden, false);
-  assert.equal(toggle.getAttribute("aria-pressed"), "true");
   assert.equal(toggle.parentElement, toolbar);
 });
 
@@ -2194,6 +2195,8 @@ test("standalone native menu actions preserve their handler and return Card Mode
   inventory.addEventListener("click", () => { clicks += 1; });
   app.start();
   const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  assert.equal(cards.hidden, true);
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
   assert.equal(cards.hidden, false);
   inventory.click();
   assert.equal(clicks, 1, "Better UI must not replace the native menu handler");
@@ -2211,7 +2214,7 @@ test("standalone Card Mode picks up Analyzer public summary when it becomes avai
   app.start();
   const cards = doc.querySelector("[data-ppbui-coupled-cards]");
   assert.ok(cards);
-  assert.equal(cards.hidden, false);
+  assert.equal(cards.hidden, true);
   Object.defineProperty(window, "__POKEPIXEL_HUNT_ANALYZER_PUBLIC__", {
     configurable: true,
     value: {
@@ -2223,6 +2226,9 @@ test("standalone Card Mode picks up Analyzer public summary when it becomes avai
     },
   });
   app.reconcile();
+  assert.equal(cards.hidden, true);
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  assert.equal(cards.hidden, false);
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "99");
   app.stop();
   assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]"), null);

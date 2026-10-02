@@ -58,7 +58,7 @@ function setup(t, { coupled = false, analyzerSummary = undefined, extraModules =
   };
 }
 
-test("standalone userscript mounts Card Mode by default from the Analyzer public summary", t => {
+test("standalone userscript starts in Game and renders Analyzer data after entering Cards", t => {
   const { app, doc } = setup(t, {
     analyzerSummary: {
       protocol: 1,
@@ -79,9 +79,15 @@ test("standalone userscript mounts Card Mode by default from the Analyzer public
   const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
   assert.ok(cards);
   assert.ok(toggle);
-  assert.equal(cards.hidden, false);
+  assert.equal(cards.hidden, true);
   assert.equal(toggle.parentElement, toolbar, "Cards/Game is a stable native-toolbar control instead of a movable HUD");
   assert.equal(toggle.querySelector(".pokeidle-top-toolbar__label")?.textContent, "Cards/Game");
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  assert.equal(toggle.dataset.ppbuiCardModeState, "game");
+  assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "game");
+  assert.notEqual(doc.defaultView.getComputedStyle(doc.querySelector("#native-game-surface")).display, "none");
+  toggle.click();
+  assert.equal(cards.hidden, false);
   assert.equal(toggle.getAttribute("aria-pressed"), "true");
   assert.equal(toggle.dataset.ppbuiCardModeState, "cards");
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "12");
@@ -104,6 +110,7 @@ test("textual Card Mode keeps the only native type labels visible at narrow widt
     },
   });
   app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
   const cards = doc.querySelector('[data-ppbui-text-only="true"]');
   const target = cards.querySelector('[data-card-elements="target"]');
   assert.equal(target.querySelector("i")?.textContent, "Fogo");
@@ -122,24 +129,27 @@ test("one fixed menu-bar toggle switches Cards and Game without moving DOM posit
   const initialParent = toggle.parentElement;
   const initialIndex = [...toolbar.children].indexOf(toggle);
 
-  toggle.click();
   assert.equal(cards.hidden, true);
-  assert.equal(toggle.isConnected, true);
-  assert.equal(toggle.parentElement, initialParent);
-  assert.equal(toggle.parentElement, toolbar);
-  assert.equal([...toolbar.children].indexOf(toggle), initialIndex, "Game keeps the toggle in the same toolbar slot");
-  assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "game");
-  assert.notEqual(doc.defaultView.getComputedStyle(doc.querySelector("#native-game-surface")).display, "none");
   assert.equal(toggle.getAttribute("aria-pressed"), "false");
   assert.equal(toggle.dataset.ppbuiCardModeState, "game");
-
   toggle.click();
   assert.equal(cards.hidden, false);
   assert.equal(toggle.isConnected, true);
   assert.equal(toggle.parentElement, initialParent);
+  assert.equal(toggle.parentElement, toolbar);
   assert.equal([...toolbar.children].indexOf(toggle), initialIndex, "Cards keeps the toggle in the same toolbar slot");
+  assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "cards");
+  assert.equal(doc.defaultView.getComputedStyle(doc.querySelector("#native-game-surface")).display, "none");
   assert.equal(toggle.getAttribute("aria-pressed"), "true");
   assert.equal(toggle.dataset.ppbuiCardModeState, "cards");
+
+  toggle.click();
+  assert.equal(cards.hidden, true);
+  assert.equal(toggle.isConnected, true);
+  assert.equal(toggle.parentElement, initialParent);
+  assert.equal([...toolbar.children].indexOf(toggle), initialIndex, "Game keeps the toggle in the same toolbar slot");
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  assert.equal(toggle.dataset.ppbuiCardModeState, "game");
 
   stop();
   assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]"), null);
@@ -174,7 +184,6 @@ test("toolbar reconstruction rehomes the same Cards/Game toggle without changing
   const { app, doc } = setup(t);
   app.start();
   const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
-  toggle.click();
   const oldToolbar = doc.querySelector(".pokeidle-top-toolbar");
   const replacement = doc.createElement("nav"); replacement.className = "pokeidle-top-toolbar";
   replacement.innerHTML = '<button data-menu-id="inventory">Inventory</button>';
@@ -197,6 +206,7 @@ test("Cards keeps only the toolbar path and Cards surface visible even when the 
   const game = doc.querySelector("#native-game-surface");
   toolbar.before(shell); shell.append(toolbar, game);
   app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
   assert.equal(doc.defaultView.getComputedStyle(shell).display,"block");
   assert.notEqual(doc.defaultView.getComputedStyle(toolbar).display,"none");
   assert.equal(doc.defaultView.getComputedStyle(game).display,"none","nested game sibling is suppressed while toolbar stays visible");
@@ -210,6 +220,7 @@ test("Cards refreshes toolbar-path ownership when the same native toolbar is rep
   toolbar.before(firstShell); firstShell.append(toolbar);
   app.start();
   const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
+  toggle.click();
   assert.equal(firstShell.hasAttribute("data-ppbui-card-mode-toolbar-path"),true);
 
   const secondShell = doc.createElement("div"); secondShell.id = "second-shell";
@@ -236,13 +247,13 @@ test("Card Mode preserves the mounted Better UI menu bar instead of tearing it d
 
   toggle.click();
   await new Promise(resolve => window.setTimeout(resolve,0));
-  assert.equal(doc.querySelector('style[data-ppbui-style="menu-bar"]'),style,"Game reuses the same Better UI menu-bar mount");
+  assert.equal(doc.querySelector('style[data-ppbui-style="menu-bar"]'),style,"Cards keeps the customized game bar mounted while the native surface is hidden");
   assert.equal(toolbar.hasAttribute("data-ppbui-menu-bar"),true);
   assert.equal(toggle.parentElement,toolbar);
 
   toggle.click();
   await new Promise(resolve => window.setTimeout(resolve,0));
-  assert.equal(doc.querySelector('style[data-ppbui-style="menu-bar"]'),style,"Cards keeps the customized game bar mounted while the native surface is hidden");
+  assert.equal(doc.querySelector('style[data-ppbui-style="menu-bar"]'),style,"Game reuses the same Better UI menu-bar mount");
   assert.equal(toolbar.hasAttribute("data-ppbui-menu-bar"),true);
   assert.equal(toggle.parentElement,toolbar);
 });
@@ -269,6 +280,7 @@ test("native game navigation switches to Game before preserving the native actio
   app.start();
   cards = doc.querySelector("[data-ppbui-coupled-cards]");
   const toggle = doc.querySelector('[data-ppbui-card-mode-toggle]');
+  toggle.click();
   assert.equal(cards.hidden, false);
 
   inventory.click();
@@ -290,6 +302,7 @@ test("standalone Card Mode polls late Analyzer availability without remounting",
   const before = cards;
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "—");
   assert.equal(typeof analyzerPoll, "function");
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
 
   Object.defineProperty(window, "__POKEPIXEL_HUNT_ANALYZER_PUBLIC__", {
     configurable: true,
@@ -334,9 +347,14 @@ test("textual Cards suspends other Better UI modules and Game remounts them", as
   app.start();
   await new Promise(resolve => window.setTimeout(resolve, 0));
   assert.equal(mounts, 1);
-  assert.equal(cleanups, 1, "Cards unmounts non-essential Better UI modules after entering textual mode");
+  assert.equal(cleanups, 0, "Game keeps normal Better UI modules mounted on startup");
 
   const toggle = doc.querySelector('[data-ppbui-card-mode-toggle]');
+  toggle.click();
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  assert.equal(mounts, 1);
+  assert.equal(cleanups, 1, "Cards unmounts non-essential Better UI modules after entering textual mode");
+
   toggle.click();
   await new Promise(resolve => window.setTimeout(resolve, 0));
   assert.equal(mounts, 2, "Game restores normal Better UI modules");

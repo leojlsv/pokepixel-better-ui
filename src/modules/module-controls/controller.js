@@ -1,7 +1,7 @@
 import { moduleControlsConfig as config } from "./config.js";
 import { closeNativeGroups, controlsText } from "./dom.js";
 
-export function mountControls({ toolbar, icon }, preferences, modules) {
+export function mountControls({ toolbar, icon }, preferences, modules, menuBar) {
   const { classes } = config;
   const create = (tag, className) => {
     const node = document.createElement(tag);
@@ -75,19 +75,30 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     return { id, fieldset, legend, heading, count, members };
   });
   const close = create("button", "pokeidle-btn ppbui-button ppbui-button--compact ppbui-module-close"); close.type = "button";
+  const orientationField = create("label", "ppbui-module-orientation");
+  const orientationLabel = create("span", "ppbui-module-orientation-label");
+  const orientationSelect = create("select", "ppbui-select");
+  for (const value of ["horizontal", "vertical"]) {
+    const option = create("option");
+    option.value = value;
+    orientationSelect.append(option);
+  }
+  orientationField.append(orientationLabel, orientationSelect);
   const list = create("div", "ppbui-module-list ppbui-scroll");
   list.append(...groups.map(group => group.fieldset));
-  panel.append(title, list, status, close);
+  panel.append(title, orientationField, list, status, close);
   const style = create("style");
   style.dataset.ppbuiStyle = config.id;
   style.textContent = `
     .pokeidle-top-toolbar:has(> [data-ppbui-module="module-controls"].is-open) { z-index:2147483647 !important; }
     [data-ppbui-module="module-controls"] { position:relative !important; }
     [data-ppbui-module="module-controls"].is-open { z-index:2147483647; }
-    [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:absolute !important; inset:auto 0 calc(100% + 4px) auto !important; display:grid; min-width:220px; grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
+    [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:absolute !important; inset:auto 0 calc(100% + 4px) auto !important; display:grid; min-width:220px; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
     .ppbui-module-panel > #ppbui-module-title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; }
     .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
+    .ppbui-module-orientation { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; min-width:0; }
+    .ppbui-module-orientation > select { min-width:112px; max-width:148px; }
     .ppbui-module-panel .ppbui-module-section { min-width:0; margin:4px 0; padding:0; border:0; text-align:left; }
     .ppbui-module-section > summary { cursor:pointer; padding:6px 0; color:var(--ppbui-text); font:inherit; font-weight:700; }
     .ppbui-module-group-count { color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-meta); font-weight:400; white-space:nowrap; }
@@ -120,8 +131,15 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     const text = controlsText();
     const content = (node, value) => { if (node.textContent !== value) node.textContent = value; };
     content(title, text.title);
+    content(orientationLabel, text.orientation);
+    const horizontalOption = orientationSelect.querySelector('option[value="horizontal"]');
+    const verticalOption = orientationSelect.querySelector('option[value="vertical"]');
+    content(horizontalOption, text.horizontal);
+    content(verticalOption, text.vertical);
+    const currentOrientation = menuBar?.getOrientation?.() || "horizontal";
+    if (orientationSelect.value !== currentOrientation) orientationSelect.value = currentOrientation;
     content(close, text.close);
-    content(status, preferences.isPersistent() && disclosurePersistent ? text.saved : text.unsaved);
+    content(status, preferences.isPersistent() && disclosurePersistent && (menuBar?.isOrientationPersistent?.() ?? true) ? text.saved : text.unsaved);
     for (const group of groups) {
       content(group.heading, text.groups[group.id]);
       content(group.count, `${group.members.filter(row => preferences.isEnabled(row.module.id)).length}/${group.members.length} ${text.activeCount}`);
@@ -141,6 +159,12 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     unlisten.push(() => node.removeEventListener(type, handler, capture));
   };
   listen(trigger, "click", event => { event.stopPropagation(); setOpen(!open); });
+  listen(orientationSelect, "change", event => {
+    event.stopPropagation();
+    menuBar?.setOrientation?.(orientationSelect.value);
+    sync();
+    orientationSelect.focus();
+  });
   listen(close, "click", () => setOpen(false, true));
   for (const { id, fieldset } of groups) listen(fieldset, "toggle", () => {
     if (!fieldset.isConnected || disclosureState[id] === fieldset.open) return;

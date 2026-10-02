@@ -22,6 +22,7 @@ const designSystem = createDesignSystemRuntime({
 const moduleControls = createModuleControls({
   preferences,
   modules: registry.controls,
+  menuBar: registry.modules.find(module => module.id === "menu-bar"),
 });
 
 createBetterUI({
