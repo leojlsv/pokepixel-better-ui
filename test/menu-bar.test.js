@@ -174,6 +174,185 @@ test("native Poké Hub drag and minimize controls share the navigation rail with
   assert.equal(toolbar.outerHTML, before);
 });
 
+test("fresh Poké Hub geometry is materialized inside the viewport before any drag and restores when untouched", t => {
+  const { app, window, toolbar } = setup(t);
+  toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:38, right:862, top:632, bottom:700, width:824, height:68 });
+  const before = toolbar.getAttribute("style");
+
+  app.start();
+
+  assert.equal(toolbar.style.getPropertyValue("left"), "38px");
+  assert.equal(toolbar.style.getPropertyValue("top"), "624px", "native 8px viewport margin is applied immediately instead of waiting for moveHub()");
+  assert.equal(toolbar.style.getPropertyValue("bottom"), "auto");
+  assert.equal(toolbar.style.getPropertyValue("transform"), "none");
+  for (const property of ["left", "top", "bottom", "transform"]) {
+    assert.equal(toolbar.style.getPropertyPriority(property), "important");
+  }
+
+  app.stop();
+  assert.equal(toolbar.getAttribute("style"), before, "untouched host geometry is restored on cleanup");
+});
+
+test("late measurable Poké Hub geometry normalizes on reconcile and before the first popup opens", t => {
+  const { app, window, toolbar } = setup(t);
+  toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  let measurable = false;
+  toolbar.getBoundingClientRect = () => measurable ?
+    ({ left:38, right:862, top:632, bottom:700, width:824, height:68 }) :
+    ({ left:0, right:0, top:0, bottom:0, width:0, height:0 });
+
+  app.start();
+  assert.equal(toolbar.style.getPropertyValue("transform"), "translateX(-50%)");
+  measurable = true;
+  app.reconcile();
+  assert.equal(toolbar.style.getPropertyValue("top"), "624px");
+  assert.equal(toolbar.style.getPropertyValue("bottom"), "auto");
+  assert.equal(toolbar.style.getPropertyValue("transform"), "none");
+
+  app.stop();
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  measurable = false;
+  app.start();
+  measurable = true;
+  const city = toolbar.querySelector('[data-ppbui-group="city"]');
+  city.dispatchEvent(new window.Event("pointerenter"));
+  assert.equal(toolbar.style.getPropertyValue("top"), "624px", "popup activation retries geometry after late layout hydration");
+  assert.equal(toolbar.style.getPropertyValue("transform"), "none");
+});
+
+test("native Poké Hub movement after mount remains authoritative on cleanup", t => {
+  const { app, doc, window, toolbar } = setup(t);
+  toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:38, right:862, top:632, bottom:700, width:824, height:68 });
+  const handle = doc.createElement("button");
+  handle.className = "pokeidle-pokehub__handle";
+  toolbar.prepend(handle);
+
+  app.start();
+  handle.dispatchEvent(new window.Event("pointerdown", { bubbles:true }));
+  toolbar.style.setProperty("left", "120px", "important");
+  toolbar.style.setProperty("top", "100px", "important");
+  toolbar.style.setProperty("bottom", "auto", "important");
+  toolbar.style.setProperty("transform", "none", "important");
+  app.stop();
+
+  assert.equal(toolbar.style.getPropertyValue("left"), "120px");
+  assert.equal(toolbar.style.getPropertyValue("top"), "100px");
+  assert.equal(toolbar.style.getPropertyValue("bottom"), "auto");
+  assert.equal(toolbar.style.getPropertyValue("transform"), "none");
+});
+
+test("silent host geometry writes preserve the whole normalized geometry set on cleanup", t => {
+  const { app, window, toolbar } = setup(t);
+  toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:38, right:862, top:632, bottom:700, width:824, height:68 });
+
+  app.start();
+  toolbar.style.setProperty("left", "120px", "important");
+  toolbar.style.setProperty("top", "100px", "important");
+  app.stop();
+
+  assert.equal(toolbar.style.getPropertyValue("left"), "120px");
+  assert.equal(toolbar.style.getPropertyValue("top"), "100px");
+  assert.equal(toolbar.style.getPropertyValue("bottom"), "auto", "cleanup does not reintroduce the startup bottom anchor after any host geometry change");
+  assert.equal(toolbar.style.getPropertyValue("transform"), "none", "cleanup keeps the host-compatible normalized transform as part of the same geometry set");
+});
+
+test("City adds native-controller shortcuts for Geneticista, Nature and Evolution Center", t => {
+  const { app, window, toolbar } = setup(t);
+  const opened = [];
+  window.PokeIdle = {
+    Localization: { get: () => "pt-BR" },
+    NPC: { open: meta => opened.push(meta) },
+  };
+
+  app.start();
+  for (let i = 0; i < 5; i++) app.reconcile();
+
+  const city = toolbar.querySelector('[data-ppbui-group="city"]');
+  const trigger = city.querySelector(":scope > button");
+  const shortcuts = [...city.querySelectorAll("[data-ppbui-city-action]")];
+  assert.deepEqual(shortcuts.map(button => button.lastElementChild.textContent), ["Geneticista", "Nature", "Evolution Center"]);
+  assert.deepEqual(shortcuts.map(button => button.getAttribute("aria-label")), ["Geneticista", "Nature", "Evolution Center"]);
+  for (const button of shortcuts) {
+    const icon = button.querySelector("svg.pokeidle-menu-vector-icon.ppbui-menu-city-icon");
+    assert.ok(icon, "City shortcuts use bundled vector artwork instead of emoji interface icons");
+    assert.equal(icon.getAttribute("viewBox"), "0 0 24 24");
+    assert.equal(icon.getAttribute("aria-hidden"), "true");
+    assert.equal(button.querySelector(".pokeidle-top-toolbar__emoji"), null);
+  }
+  assert.equal(toolbar.querySelectorAll('button[data-menu-id]:not([aria-haspopup])').length, 33, "Better UI shortcuts never impersonate native destination IDs");
+  assert.equal(shortcuts.length, 3, "stable reconciliation does not duplicate City shortcuts");
+
+  for (const button of shortcuts) button.click();
+  assert.deepEqual(opened, [
+    { kind:"iv", name:"Geneticista" },
+    { kind:"nature", name:"Nature" },
+    { kind:"evolution", name:"Evolution Center" },
+  ]);
+
+  trigger.focus();
+  trigger.dispatchEvent(new window.KeyboardEvent("keydown", { key:"End", bubbles:true }));
+  assert.equal(window.document.activeElement, shortcuts[2], "existing menu keyboard navigation includes the new City actions");
+  shortcuts[2].dispatchEvent(new window.KeyboardEvent("keydown", { key:"Escape", bubbles:true }));
+  assert.equal(window.document.activeElement, trigger, "Escape returns focus from a Better UI City action to the City trigger");
+
+  app.stop();
+  assert.equal(toolbar.querySelectorAll("[data-ppbui-city-action]").length, 0);
+  assert.equal(toolbar.querySelectorAll('button[data-menu-id]:not([aria-haspopup])').length, 33);
+});
+
+test("City shortcuts recover when the native NPC controller becomes available after mount", t => {
+  const { app, window, toolbar } = setup(t);
+  window.PokeIdle = { Localization: { get: () => "pt-BR" } };
+  app.start();
+
+  const city = toolbar.querySelector('[data-ppbui-group="city"]');
+  const shortcuts = [...city.querySelectorAll("[data-ppbui-city-action]")];
+  assert.equal(shortcuts.every(button => button.disabled), true);
+  const css = window.document.querySelector('[data-ppbui-style="menu-bar"]').textContent;
+  assert.match(css, /pokeidle-top-toolbar__dropdown-btn:hover:not\(:disabled\)/, "disabled popup actions are excluded from hover styling");
+  assert.match(css, /pokeidle-top-toolbar__dropdown-btn:disabled \{[^}]*border-color:var\(--ppbui-border\)[^}]*background:var\(--ppbui-bg-1\)[^}]*color:var\(--ppbui-text-subtle\)[^}]*cursor:default/s, "disabled popup actions have an explicit design-system state");
+
+  const opened = [];
+  window.PokeIdle.NPC = { open: meta => opened.push(meta) };
+  city.dispatchEvent(new window.Event("pointerenter"));
+  assert.equal(shortcuts.every(button => !button.disabled), true, "opening City refreshes native capability without waiting for a DOM mutation/reconcile");
+  shortcuts[0].click();
+  assert.deepEqual(opened, [{ kind:"iv", name:"Geneticista" }]);
+});
+
+test("focused City trigger includes late native NPC shortcuts on the first keyboard command", t => {
+  const { app, window, toolbar } = setup(t);
+  window.PokeIdle = { Localization: { get: () => "pt-BR" } };
+  app.start();
+
+  const city = toolbar.querySelector('[data-ppbui-group="city"]');
+  const trigger = city.querySelector(":scope > button");
+  const shortcuts = [...city.querySelectorAll("[data-ppbui-city-action]")];
+  trigger.focus();
+  assert.equal(shortcuts.every(button => button.disabled), true);
+
+  window.PokeIdle.NPC = { open() {} };
+  trigger.dispatchEvent(new window.KeyboardEvent("keydown", { key:"End", bubbles:true }));
+
+  assert.equal(shortcuts.every(button => !button.disabled), true);
+  assert.equal(window.document.activeElement, shortcuts[2], "the first End after late NPC hydration reaches Evolution Center");
+});
+
 test("every grouped dropdown keeps viewport-owned positioning under hostile live rules", t => {
   const { app, doc, window, toolbar } = setup(t);
   const hostile = doc.createElement("style");

@@ -78,6 +78,18 @@ test("Profile detaches events from the original native Bus and rebinds after reh
   s.mounted.cleanup();
   assert.equal(attached.size, 0, "teardown must detach from the exact registered Bus");
 });
+
+test("stable Profile sync is mutation-free and cannot feed the central observer", t => {
+  const s = setup(t);
+  const observer = new s.dom.window.MutationObserver(() => {});
+  observer.observe(s.doc.body, { childList:true, subtree:true, attributes:true });
+
+  s.mounted.sync();
+  assert.equal(observer.takeRecords().length, 0, "first stable sync must not rewrite copy or reflected attributes");
+  s.mounted.sync();
+  assert.equal(observer.takeRecords().length, 0, "a second stable sync must remain mutation-free instead of sustaining a reconcile loop");
+  observer.disconnect();
+});
 test("Profile Refresh and state.resynced re-read authoritative current moves instead of a prior cache", async t => {
   const s=setup(t),nativeRead=s.dom.window.PokeIdle.Api.getMoveset;
   let reads=0;

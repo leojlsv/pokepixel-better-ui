@@ -38,7 +38,22 @@ export function createBetterUI({ modules = [], debug = false, preferences, desig
     }
   };
 
-  const observer = createDomObserver(() => reconcile("observer"));
+  const reconcileObserverScope = (scope) => {
+    if (!scope || scope === "global") return reconcile("observer");
+    const textualCardMode = document.documentElement?.getAttribute("data-ppbui-card-mode") === "cards";
+    for (const module of modules) {
+      if (!module.observerScopes?.includes(scope) || !lifecycle.isMounted(module.id)) continue;
+      try {
+        const allowedByMode = !textualCardMode || module.runsInCardMode === true;
+        if (!allowedByMode || !(preferences?.isEnabled(module.id) ?? true)) continue;
+        module.reconcile?.(`observer:${scope}`);
+      } catch (error) {
+        logger.error(`module "${module.id}" failed during scoped reconcile`, error);
+      }
+    }
+  };
+
+  const observer = createDomObserver(reconcileObserverScope);
 
   return {
     start() {

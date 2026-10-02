@@ -25,3 +25,39 @@
   --ui-border-start: transparent !important;
   --ui-border-end: transparent !important;
 }
+
+/*
+ * The host owns this ring in @layer pokeidle-glass with !important. Layered
+ * important declarations outrank unlayered important declarations, so this
+ * override must join the same layer; an unlayered animation:none loses while
+ * will-change:auto still wins, which is worse than leaving the host untouched.
+ */
+@layer pokeidle-glass {
+  .npc-nature-window::after,
+  .npc-iv-window::after {
+    animation: none !important;
+    will-change: auto !important;
+  }
+
+  /*
+   * These roster-card rings are already visually neutralized above, but the
+   * host still starts its animated custom property on hover/focus. On a large
+   * Nature/IV roster that invisible animation forces repeated style work, so
+   * stop it only on the roster cards. Tabs/actions and Evolution stay native.
+   */
+  .npc-nature-window .npc-nature__pokemon::after,
+  .npc-iv-window .npc-iv__pokemon::after {
+    animation: none !important;
+  }
+}
+
+/*
+ * Wallet ownership stays native, but Better UI no longer exposes it beside the
+ * persistent Team HUD. Inventory temporarily reparents the exact same node, so
+ * this adjacency-only rule stops applying while Backpack presents the Wallet.
+ * Keeping this in the design-system layer makes the HUD suppression independent
+ * from the separately-toggleable Team HUD enhancement module.
+ */
+.pokeidle-team-hud + .pokeidle-team-hud__wallet {
+  display: none !important;
+}

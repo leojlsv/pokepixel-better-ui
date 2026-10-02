@@ -255,6 +255,30 @@ test("mount target requires NPC-owned shop shell, not a different NPC panel", t 
   const s = setup(t), previous = globalThis.document; globalThis.document = s.dom.window.document; t.after(() => { globalThis.document = previous; });
   assert.equal(findShop(), s.root); s.npc.panel = { body: s.dom.window.document.createElement('div') }; assert.equal(findShop(), null);
 });
+test("non-shop NPC windows are rejected by the shop sentinel before their large subtree is scanned", t => {
+  const dom = new JSDOM("<!doctype html><html><body></body></html>", { pretendToBeVisual: true });
+  const { document } = dom.window, previous = globalThis.document;
+  globalThis.document = document;
+  t.after(() => { globalThis.document = previous; dom.window.close(); });
+  const root = document.createElement("section"); root.className = "game-window npc-shop-window npc-nature-window";
+  const body = document.createElement("div"); body.className = "pokeidle-panel__body";
+  const tabs = document.createElement("nav"); tabs.className = "npc-shop__tabs";
+  tabs.append(document.createElement("button"), document.createElement("button"));
+  const list = document.createElement("div"); list.className = "npc-shop__list npc-nature__pokemon-list";
+  for (let i = 0; i < 500; i++) {
+    const card = document.createElement("button"); card.className = "npc-nature__pokemon npc-iv__pokemon";
+    card.innerHTML = `<img><span><b>Pokemon ${i}</b><small>metadata</small><em>nature</em></span><span>cost</span>`;
+    list.append(card);
+  }
+  body.append(tabs, list); root.append(body); document.body.append(root);
+  dom.window.PokeIdle = { NPC: { panel: { body } } };
+  let subtreeQueries = 0;
+  const querySelector = root.querySelector.bind(root), querySelectorAll = root.querySelectorAll.bind(root);
+  root.querySelector = (...args) => { subtreeQueries++; return querySelector(...args); };
+  root.querySelectorAll = (...args) => { subtreeQueries++; return querySelectorAll(...args); };
+  assert.equal(findShop(), null);
+  assert.equal(subtreeQueries, 0, "Nature/Geneticist impostors must fail the exclusive shop-shell check before any root scan");
+});
 test("changed protected state and a sale in progress block group selection", t => {
   const s = setup(t, "pokemon"), group = s.root.querySelector('.ppbui-shop-group input');
   s.npc.shopCreatures[0].locked = true; group.click(); assert.equal(s.npc.selectedCreatures.size, 0);

@@ -51,6 +51,10 @@ O redesign é de apresentação e fluxo visual. O cliente continua sendo a autor
 ## Lifecycle e ownership
 
 - A loja pertence a `PokeIdle.NPC` e não a uma Scene. O mount exige o body realmente pertencente ao controlador, shell da loja e as quatro abas.
+- O discovery parte do sentinel exclusivo `.npc-shop__shell` antes de inspecionar a
+  raiz `.npc-shop-window`. Isso é obrigatório porque Nature e Geneticista reutilizam
+  `.npc-shop-window`, mas não são Mark’s Shop e podem conter centenas de cards. O
+  módulo não percorre essas árvores para depois rejeitá-las.
 - O observer central reconcilia reconstruções; não há observer local, polling, patch global nem interceptação de rede.
 - Classes PPBUI adicionadas a nós nativos têm ownership reversível e são aplicadas de forma idempotente; `sync()` estável não gera mutations.
 - Linhas movidas para grupos recebem anchors reversíveis. Cleanup só devolve linhas que ainda pertencem a um wrapper PPBUI; se o host tiver reparentado uma linha, a posição do host vence e o anchor antigo é descartado.
@@ -73,10 +77,27 @@ O redesign é de apresentação e fluxo visual. O cliente continua sendo a autor
 ## Verificação atual
 
 - Fixture determinística cobre as quatro abas e não executa transações reais.
-- Focused suite: **25/25 PASS**, incluindo List/Cards sem clonagem, quick-buy nativo preservado porém fora do fluxo visual, quantidade principal, rodapé único de Select All, identidade de nós/handlers, replacement repetido do Search com cleanup exato, reconciliação mutation-free, locale `pt_BR`, host reparent, stale checkbox, fail-closed, valores nativos sem piso local, Group ARIA, Sell Items, Buyback e inventário agrupado grande.
-- Full suite exact-current do repositório: **442/442 PASS**; build e `git diff --check` também PASS.
+- Focused suite: **26/26 PASS**, incluindo List/Cards sem clonagem, quick-buy nativo preservado porém fora do fluxo visual, quantidade principal, rodapé único de Select All, identidade de nós/handlers, replacement repetido do Search com cleanup exato, reconciliação mutation-free, locale `pt_BR`, host reparent, stale checkbox, fail-closed, valores nativos sem piso local, Group ARIA, Sell Items, Buyback, inventário agrupado grande e rejeição sentinel-first de NPCs não-loja com 500 cards.
+- O sentinel-first continua presente no candidato `0.2.137`; a validação final da suíte/build
+  do candidato está registrada em `docs/MARKS_SHOP_NPC_DISCOVERY_PERF_STATUS.md`.
 - Preview local usa Chrome headless com CSS nativo snapshottado + design system atual em 880 px e 390 px. A regressão de inventário grande também verifica que a lista mantém scroll próprio e que o corpo expandido fica limitado a `min(360px, 50vh)`. É evidência representativa, não validação no jogo.
 - A única validação final no cliente real/Tampermonkey pertence ao Product Owner.
+
+### Regressão de performance — 2026-10-02
+
+O caso reportado ocorre com Nature/Geneticista abertos durante uma Hunt, enquanto o
+Evolution Center permanece estável. O código nativo atual explica a diferença:
+Nature (`npc-nature-window`) e Geneticista (`npc-iv-window`) também carregam
+`.npc-shop-window`, constroem listas amplas de criaturas e usam `PokemonCard.bindSlot`;
+Evolution Center usa `.npc-evolution-window` e não entra no discovery da loja.
+
+Antes da correção, `findShop()` chamava `parts(root)` em toda `.npc-shop-window` que
+pertencesse ao `PokeIdle.NPC`, fazendo múltiplas consultas na árvore inteira antes de
+descobrir que faltava `.npc-shop__shell`. Um probe sintético JSDOM com 500 cards mediu
+~42,15 ms por rejeição. Com discovery pelo sentinel da loja, o mesmo probe mede
+~0,005 ms por rejeição e o teste garante zero consultas na subárvore da janela falsa.
+Esses números medem custo relativo do detector em JSDOM; não são uma medição de FPS do
+jogo. A confirmação de FPS na Hunt continua sendo evidência live do Product Owner.
 
 ## Referências
 

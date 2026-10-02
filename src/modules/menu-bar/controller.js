@@ -14,11 +14,18 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   const popupPlacement = new Map();
   const collapsedStyles = new Map();
   const groups = [];
+  const ownedCityActions = [];
   let hoveredEntry = null;
   const placements = new Map();
   let orientation = "horizontal";
   let orientationPersistent = true;
   let collapsedState = null;
+  let nativeGeometryTouched = false;
+  let geometryFrame = null;
+  let geometryClaimed = false;
+  const geometryHadStyleBefore = toolbar.hasAttribute("style");
+  const geometryBefore = new Map();
+  const geometryApplied = new Map();
   const orientationBefore = toolbar.getAttribute("data-ppbui-menu-orientation");
   const byId = new Map(actions.map(button => [button.dataset.menuId, button]));
   const iconSignature = node => node?.outerHTML || "";
@@ -55,6 +62,29 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   const listen = (node, event, fn, capture = false) => {
     node.addEventListener(event, fn, capture);
     undo.push(() => node.removeEventListener(event, fn, capture));
+  };
+  const claimInitialGeometry = (property, value) => {
+    if (!geometryBefore.has(property)) {
+      geometryBefore.set(property, [
+        toolbar.style.getPropertyValue(property),
+        toolbar.style.getPropertyPriority(property),
+      ]);
+    }
+    toolbar.style.setProperty(property, value, "important");
+    geometryApplied.set(property, [
+      toolbar.style.getPropertyValue(property),
+      toolbar.style.getPropertyPriority(property),
+    ]);
+  };
+  const restoreInitialGeometry = () => {
+    const hostChangedGeometry = nativeGeometryTouched || [...geometryApplied].some(([property, [value, priority]]) =>
+      toolbar.style.getPropertyValue(property) !== value || toolbar.style.getPropertyPriority(property) !== priority);
+    if (hostChangedGeometry) return;
+    for (const [property, [value, priority]] of geometryBefore) {
+      if (value) toolbar.style.setProperty(property, value, priority);
+      else toolbar.style.removeProperty(property);
+    }
+    if (!geometryHadStyleBefore && !toolbar.style.cssText) toolbar.removeAttribute("style");
   };
   const emitToolbarState = (eventName, detail) => {
     if (!win?.dispatchEvent || !win.CustomEvent) return;
@@ -211,6 +241,40 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     return !node.hidden && node.getAttribute("aria-hidden") !== "true" &&
       (masked ? masked[0] !== "none" : display !== "none");
   };
+  const menuItems = dropdown => [...dropdown.querySelectorAll(`${selectors.action}, ${selectors.cityAction}`)];
+  const createCityActionIcon = shortcut => {
+    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.7");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    svg.setAttribute("aria-hidden", "true");
+    svg.classList.add("pokeidle-top-toolbar__icon", "pokeidle-menu-vector-icon", "ppbui-menu-city-icon");
+    for (const d of shortcut.iconPaths) {
+      const path = doc.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", d);
+      svg.append(path);
+    }
+    return svg;
+  };
+  const syncOwnedCityActions = () => {
+    const disabled = typeof win?.PokeIdle?.NPC?.open !== "function";
+    for (const { button } of ownedCityActions) if (button.disabled !== disabled) button.disabled = disabled;
+  };
+  const stylePopupItem = button => {
+    styleProperty(button, "position", "relative");
+    styleProperty(button, "box-sizing", "border-box");
+    styleProperty(button, "width", "100%");
+    styleProperty(button, "min-width", "0px");
+    styleProperty(button, "min-height", "64px");
+    styleProperty(button, "flex-direction", "column");
+    styleProperty(button, "align-items", "center");
+    styleProperty(button, "justify-content", "center");
+    styleProperty(button, "gap", "3px");
+    styleProperty(button, "transform", "none");
+  };
   const sources = new Map(actions.map(button => {
     const parents = [];
     for (let parent = button.parentElement; parent && parent !== toolbar; parent = parent.parentElement) parents.push(parent);
@@ -307,18 +371,28 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       token(button, classes.item, true);
       token(button, "ppbui-menu-popup-item", true);
       token(button.querySelector(selectors.label), classes.label, false);
-      styleProperty(button, "position", "relative");
-      styleProperty(button, "box-sizing", "border-box");
-      styleProperty(button, "width", "100%");
-      styleProperty(button, "min-width", "0px");
-      styleProperty(button, "min-height", "64px");
-      styleProperty(button, "flex-direction", "column");
-      styleProperty(button, "align-items", "center");
-      styleProperty(button, "justify-content", "center");
-      styleProperty(button, "gap", "3px");
-      styleProperty(button, "transform", "none");
+      stylePopupItem(button);
       dropdown.append(button);
       placements.set(button, dropdown);
+    }
+    if (definition.id === "city") {
+      for (const shortcut of config.cityActions) {
+        const button = doc.createElement("button");
+        button.type = "button";
+        button.className = `${classes.item} ppbui-menu-popup-item`;
+        button.dataset.ppbuiCityAction = shortcut.id;
+        button.setAttribute("aria-label", shortcut.label);
+        const label = doc.createElement("span");
+        label.textContent = shortcut.label;
+        button.append(createCityActionIcon(shortcut), label);
+        stylePopupItem(button);
+        listen(button, "click", () => {
+          const npc = win?.PokeIdle?.NPC;
+          if (typeof npc?.open === "function") npc.open({ kind: shortcut.kind, name: shortcut.label });
+        });
+        dropdown.append(button);
+        ownedCityActions.push({ button, shortcut, dropdown });
+      }
     }
     groups.push({ id: definition.id, group, trigger, dropdown, rename, source, ownedTrigger, sourceIconSignature: iconSignature(source?.querySelector(selectors.icon)) });
   });
@@ -334,13 +408,46 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   }
   const ordered = config.order.map(id => slots.get(id)).filter(Boolean);
   for (const node of ordered) toolbar.append(node);
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
+  const normalizeHubGeometry = () => {
+    if (geometryClaimed || !toolbar.classList.contains("pokeidle-pokehub") || !toolbar.classList.contains("pokeidle-island")) return geometryClaimed;
+    const rect = toolbar.getBoundingClientRect();
+    const viewportWidth = doc.documentElement?.clientWidth || win?.innerWidth || 0;
+    const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
+    if (!(rect.width > 0 && rect.height > 0 && viewportWidth > 0 && viewportHeight > 0)) return false;
+    const margin = 8;
+    const left = clamp(rect.left, margin, viewportWidth - rect.width - margin);
+    const top = clamp(rect.top, margin, viewportHeight - rect.height - margin);
+    claimInitialGeometry("left", `${Math.round(left)}px`);
+    claimInitialGeometry("top", `${Math.round(top)}px`);
+    claimInitialGeometry("bottom", "auto");
+    claimInitialGeometry("transform", "none");
+    geometryClaimed = true;
+    return true;
+  };
+  const queueGeometryNormalization = attempts => {
+    if (normalizeHubGeometry() || attempts <= 0 || typeof win?.requestAnimationFrame !== "function") return;
+    geometryFrame = win.requestAnimationFrame(() => {
+      geometryFrame = null;
+      queueGeometryNormalization(attempts - 1);
+    });
+  };
+  queueGeometryNormalization(2);
+  const handle = toolbar.querySelector(selectors.handle);
+  if (handle) {
+    listen(handle, "pointerdown", () => { nativeGeometryTouched = true; }, true);
+    listen(handle, "keydown", event => {
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) nativeGeometryTouched = true;
+    }, true);
+  }
   const itemOrder = groups.map(({ dropdown }) => ({
     dropdown,
     items: [...dropdown.querySelectorAll(selectors.action)].filter(button => placements.has(button)),
   }));
-  const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
   const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
   const positionDropdown = entry => {
+    if (!geometryClaimed) normalizeHubGeometry();
+    if (entry.id === "city") syncOwnedCityActions();
     const win = doc.defaultView;
     const viewportWidth = doc.documentElement?.clientWidth || win?.innerWidth || 0;
     const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
@@ -439,7 +546,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     });
     listen(entry.group, "focusin", () => positionDropdown(entry));
     // Native action handlers may stop bubbling before the dropdown is reached.
-    for (const button of entry.dropdown.querySelectorAll(selectors.action)) listen(button, "click", () => close(entry));
+    for (const button of menuItems(entry.dropdown)) listen(button, "click", () => close(entry));
     listen(entry.group, "focusout", event => {
       if (!entry.group.contains(event.relatedTarget)) setOpen(entry, false);
     });
@@ -451,7 +558,8 @@ export function mountMenuBar({ toolbar, actions, structure }) {
         return;
       }
       if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
-      const items = [...entry.dropdown.querySelectorAll(selectors.action)].filter(isAvailable);
+      if (entry.id === "city") syncOwnedCityActions();
+      const items = menuItems(entry.dropdown).filter(isAvailable);
       if (!items.length) return;
       event.preventDefault();
       event.stopPropagation();
@@ -464,6 +572,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     });
   }
   listen(doc.defaultView, "resize", () => {
+    nativeGeometryTouched = true;
     for (const entry of groups) positionDropdown(entry);
   });
   listen(doc.defaultView, buffStripConfig.events.geometryChange, event => {
@@ -481,7 +590,9 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   listen(document, "pointerdown", outside, true);
   listen(toolbar, "click", outside, true);
   const sync = () => {
+    if (!geometryClaimed) normalizeHubGeometry();
     syncCollapsed();
+    syncOwnedCityActions();
     for (const [button, parents] of sources) mask(button, !nativeVisible(button) || parents.some(parent => !nativeVisible(parent)));
     for (const entry of groups) {
       if (entry.ownedTrigger) {
@@ -497,7 +608,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
         }
       }
       entry.rename();
-      const empty = ![...entry.dropdown.querySelectorAll(selectors.action)].some(isVisible);
+      const empty = !menuItems(entry.dropdown).some(isVisible);
       mask(entry.group, empty);
       if (empty) close(entry);
     }
@@ -512,6 +623,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     setOrientation,
     isOrientationPersistent: () => orientationPersistent,
     isIntact: () => groups.every(({ group, trigger, dropdown }) => group.parentNode === toolbar && trigger.parentNode === group && dropdown.parentNode === group) &&
+      ownedCityActions.every(({ button, dropdown }) => button.parentNode === dropdown) &&
       [...placements].every(([button, parent]) => button.parentNode === parent) &&
       itemOrder.every(({ dropdown, items }) => {
         const current = [...dropdown.querySelectorAll(selectors.action)].filter(button => items.includes(button));
@@ -520,6 +632,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       ordered.every((node, index) => [...toolbar.children].filter(child => ordered.includes(child))[index] === node),
     cleanup() {
       toolbarStateObserver?.disconnect();
+      if (geometryFrame !== null) win?.cancelAnimationFrame?.(geometryFrame);
       clearCollapsedStyles();
       for (const node of [...masks.keys()]) mask(node, false);
       for (const [node, properties] of popupPlacement) {
@@ -535,7 +648,9 @@ export function mountMenuBar({ toolbar, actions, structure }) {
           node !== button && node.dataset.menuId === button.dataset.menuId);
         if (replacement) button.remove();
       }
+      for (const { button } of ownedCityActions) button.remove();
       for (const restore of undo.reverse()) restore();
+      restoreInitialGeometry();
       for (const [node, anchor] of [...positions].reverse()) {
         const current = node.nodeType === 1 && node.matches(selectors.action) ?
           [...toolbar.querySelectorAll(selectors.action)].find(button => button.dataset.menuId === node.dataset.menuId) : node;

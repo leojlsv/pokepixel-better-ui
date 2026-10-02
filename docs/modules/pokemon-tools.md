@@ -26,7 +26,9 @@ Slots show a single neutral symbol without changing the rarity border; the title
 
 ## Filters
 
-Only More Filters remains as the added disclosure. Tag is directly after Gender and offers All, Untagged and the ten fixed tags. Rarity/element are inside that disclosure in Backpack and Trade; Storage retains its native independent controls. Existing level, IV, quality-multiplier and status filter behavior remains; the user-facing quality label is **`Min Quality`**. Better UI-created More Filters inputs/selects use the square PPBUI field chrome even when hostile host rules attempt to restore rounded fields. Different filter types combine with AND. Native eligibility and offer payloads are untouched.
+More Filters remains the single advanced-filter surface. In Backpack its visible trigger is a button immediately to the right of Search; opening it selects the Pokémon category through the existing native/proxy category flow before exposing the fields. Trade keeps the disclosure presentation and Storage retains its native independent controls. Tag is directly after Gender and offers All, Untagged and the ten fixed tags. Rarity/element remain inside the advanced surface in Backpack and Trade. Existing level, IV, quality-multiplier and status filter behavior remains; the user-facing quality label is **`Min Quality`**. Better UI-created More Filters inputs/selects use the PPBUI field chrome even when hostile host rules attempt to restore host styling. Different filter types combine with AND. Native eligibility and offer payloads are untouched.
+
+Backpack filtering now evaluates the complete set of already-loaded Backpack/Team Pokémon from the owning scene instead of inheriting only the host's visible Load More batch. It never requests more creatures from the server and never pulls Pokémon from Storage; if the native renderer still caps the visible batch after filtering, Better UI fills the remaining rows with the native `createSlot()` renderer and removes the Load More control only after the loaded filtered set is fully represented.
 
 ## Persistence and migration
 

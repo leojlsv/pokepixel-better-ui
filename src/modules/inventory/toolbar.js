@@ -13,6 +13,9 @@ export function mountSortControl(root, order, bar, clear, nextControl) {
       if (searchOriginal.placeholder === null) searchOriginal.node.removeAttribute("placeholder");
       else searchOriginal.node.setAttribute("placeholder", searchOriginal.placeholder);
     }
+    if (searchOriginal?.ariaLabel === null && searchOriginal.appliedAriaLabel && searchOriginal.node.getAttribute("aria-label") === searchOriginal.appliedAriaLabel) {
+      searchOriginal.node.removeAttribute("aria-label");
+    }
   };
   const releaseVisualOwnership = () => {
     if (!visualOwnership) return;
@@ -86,7 +89,8 @@ export function mountSortControl(root, order, bar, clear, nextControl) {
       [data-ppbui-order-anchor] { min-width:0; }
     }
     @container (max-width:440px) {
-      [data-ppbui-inventory-toolbar] > input.game-window__search { flex-basis:100%; }
+      [data-ppbui-inventory-toolbar] > select.game-window__select { flex-basis:100%; }
+      [data-ppbui-inventory-toolbar] > input.game-window__search { min-width:0; flex:1 1 140px; }
       [data-ppbui-inventory-views] { width:100%; }
       [data-ppbui-inventory-views] > .ppbui-button { flex:1 1 0; }
     }
@@ -120,7 +124,8 @@ export function mountSortControl(root, order, bar, clear, nextControl) {
     if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) return;
     let target;
     const categoryControl = categoryFocusTarget(parts.category);
-    const previous = clear.disabled ? (parts.search || categoryControl) : clear;
+    const moreFilters = parts.toolbar?.querySelector("[data-ppbui-inventory-more-filters]");
+    const previous = clear.disabled ? (moreFilters || parts.search || categoryControl) : clear;
     if (event.target === previous && !event.shiftKey) target = order;
     if (event.target === order) target = event.shiftKey ? previous : nextControl();
     if (event.target === nextControl() && event.shiftKey) target = order;
@@ -142,12 +147,25 @@ export function mountSortControl(root, order, bar, clear, nextControl) {
   categoryProxy.addEventListener("change", changeCategory);
   return {
     position,
-    sync(next, categoryLabel = "") {
+    sync(next, categoryLabel = "", searchLabel = "") {
       if (searchOriginal?.node !== next.search) {
         restoreSearch();
-        searchOriginal = next.search ? { node: next.search, placeholder: next.search.getAttribute("placeholder") } : null;
+        searchOriginal = next.search ? { node: next.search, placeholder: next.search.getAttribute("placeholder"), ariaLabel: next.search.getAttribute("aria-label"), appliedAriaLabel: null } : null;
       }
       if (next.search && next.search.placeholder !== "Search") next.search.placeholder = "Search";
+      if (next.search && searchOriginal && searchLabel) {
+        const currentLabel = next.search.getAttribute("aria-label");
+        if (searchOriginal.appliedAriaLabel && currentLabel !== searchOriginal.appliedAriaLabel) {
+          searchOriginal.ariaLabel = currentLabel;
+          searchOriginal.appliedAriaLabel = null;
+        } else if (!searchOriginal.appliedAriaLabel && currentLabel !== searchOriginal.ariaLabel) {
+          searchOriginal.ariaLabel = currentLabel;
+        }
+        if (searchOriginal.ariaLabel === null) {
+          if (next.search.getAttribute("aria-label") !== searchLabel) next.search.setAttribute("aria-label", searchLabel);
+          searchOriginal.appliedAriaLabel = searchLabel;
+        }
+      }
       const toolbarChanged = parts.toolbar !== next.toolbar;
       const ownershipChanged = Boolean(visualOwnership && (
         visualOwnership.toolbar !== next.toolbar ||
@@ -185,12 +203,14 @@ export function mountSortControl(root, order, bar, clear, nextControl) {
           if (nativeTabs) ownNativeTabs(nativeTabs); else releaseNativeTabs();
           categoryProxy.remove();
           if (next.search && next.category.nextElementSibling !== next.search) next.search.before(next.category);
-          if (next.search && clear.previousElementSibling !== next.search) next.search.after(clear);
+          const afterSearch = next.toolbar.querySelector("[data-ppbui-inventory-more-filters]") || next.search;
+          if (afterSearch && clear.previousElementSibling !== afterSearch) afterSearch.after(clear);
         } else {
           ownNativeTabs(next.category);
           syncCategoryProxy(next.category, categoryLabel || next.category.getAttribute("aria-label") || "Category");
           if (next.search && categoryProxy.nextElementSibling !== next.search) next.search.before(categoryProxy);
-          if (next.search && clear.previousElementSibling !== next.search) next.search.after(clear);
+          const afterSearch = next.toolbar.querySelector("[data-ppbui-inventory-more-filters]") || next.search;
+          if (afterSearch && clear.previousElementSibling !== afterSearch) afterSearch.after(clear);
         }
       } else {
         releaseNativeTabs();

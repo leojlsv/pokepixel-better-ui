@@ -208,8 +208,12 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     manager = mountTeamPresetManager(nextRoot, { store, hudRoot: root, apply, capture, runExclusive, onChange: notifyChanged });
   }
 
-  function syncManager() {
+  function syncManager({ hudScoped = false } = {}) {
     if (disposed) return;
+    // The HUD preset panel is collapsed by default. Combat-driven Team HUD
+    // refreshes must not search the whole document for a Team window when no
+    // manager exists; opening Manage mounts it explicitly in onManage().
+    if (hudScoped && panel.hidden && !manager) return;
     const nextRoot = doc.querySelector(config.selectors.teamPanel);
     if (!nextRoot?.isConnected) return mountManager(null);
     mountManager(nextRoot); manager?.sync();
@@ -239,9 +243,9 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     list.querySelectorAll('[data-ppbui-team-preset-action="apply"]').forEach(button => { if (button.textContent !== copy.apply) button.textContent = copy.apply; });
   }
 
-  function sync() {
+  function sync({ hudScoped = false } = {}) {
     if (disposed) return;
-    syncLabels(); syncManager(); syncPreviewVisuals();
+    syncLabels(); syncManager({ hudScoped }); syncPreviewVisuals();
     if (busy) return;
     setDisabled(toggle, false); setDisabled(manage, false); setDisabled(name, false); setDisabled(save, !canCaptureTeamPreset(root));
     const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];

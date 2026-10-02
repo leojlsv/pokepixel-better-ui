@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { JSDOM } from 'jsdom';
 import { createBetterUI } from '../src/core/bootstrap.js';
 import { createInventoryModule } from '../src/modules/inventory/index.js';
 import { createInventoryOrder } from '../src/modules/inventory/preferences.js';
+const nativeOverridesCss = readFileSync(new URL('../src/styles/native-overrides.css', import.meta.url), 'utf8');
 const slot = (name, quantity, pokemon = false) => `<button class="inventory-slot${pokemon ? ' inventory-slot--pokemon' : ''}" aria-label="${name}, ${pokemon ? 1 : quantity} units"><span class="${pokemon ? 'inventory-slot__pokemon-level' : 'inventory-slot__quantity'}">${pokemon ? 'Lv.' : ''}${quantity}</span></button>`;
 const tabs = (category = 'all', extra = '') => `<div class="inventory-category-tabs" role="tablist" aria-label="Categories"><button type="button" class="inventory-category-tab${category === 'all' ? ' is-active' : ''}" data-category="all" role="tab" aria-selected="${category === 'all'}" tabindex="${category === 'all' ? 0 : -1}">All</button><button type="button" class="inventory-category-tab${category === 'pokemon' ? ' is-active' : ''}" data-category="pokemon" role="tab" aria-selected="${category === 'pokemon'}" tabindex="${category === 'pokemon' ? 0 : -1}">Pokémon</button>${extra}</div>`;
 const body = (query = '', category = 'all', extraTabs = '') => `${tabs(category, extraTabs)}<div class="inventory-slots-toolbar"><input type="search" class="game-window__search" value="${query}"></div><div class="inventory-slot-grid">${slot('Zubat',10,true)}${slot('Abra',25,true)}${slot('Potion',7)}${slot('Ball',15)}<div class="inventory-slot is-empty"></div></div>`;
@@ -29,7 +31,7 @@ test('sort moves original slots, preserves empty cells and actions, and restores
   const root=doc.querySelector('.inventory-window--slots'); const before=root.outerHTML;
   const originals=[...doc.querySelectorAll('button.inventory-slot')];let actions=0;
   originals.forEach(n=>n.addEventListener('click',()=>actions++));
-  app.start();assert.deepEqual(names(),['Zubat','Abra','Potion','Ball']);assert.ok(root.classList.contains('ppbui-window'));assert.ok(root.querySelector('.pokeidle-panel__body').classList.contains('ppbui-scroll'));assert.ok(doc.querySelector('[data-ppbui-inventory-shell-style]'));
+  app.start();assert.deepEqual(names(),['Zubat','Abra','Potion','Ball']);assert.ok(root.classList.contains('ppbui-window'));assert.equal(root.querySelector('.pokeidle-panel__body').classList.contains('ppbui-scroll'),false);assert.ok(doc.querySelector('[data-ppbui-inventory-shell-style]'));
   order('quantity');assert.deepEqual(names(),['Zubat','Abra','Ball','Potion']);
   order('level');assert.deepEqual(names(),['Abra','Zubat','Potion','Ball']);
   order('name');assert.deepEqual(names(),['Abra','Ball','Potion','Zubat']);
@@ -75,6 +77,108 @@ test('stable reconciliation produces no DOM mutations or additional listeners', 
   const {app,doc,window,order}=setup(t);app.start();order('name');
   await new Promise(r=>window.setTimeout(r,60));let mutations=0;const probe=new window.MutationObserver(r=>mutations+=r.length);probe.observe(doc.body,{childList:true,subtree:true,attributes:true});
   for(let i=0;i<8;i++)app.reconcile();await new Promise(r=>window.setTimeout(r,60));probe.disconnect();assert.equal(mutations,0);
+});
+test('Backpack moves the exact native Wallet onto the Sort rail and restores it with handlers intact', t=>{
+  const {app,doc}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const team=doc.createElement('div');team.className='pokeidle-team-hud';
+  const wallet=doc.createElement('div');wallet.className='pokeidle-team-hud__wallet is-hidden';wallet.innerHTML='<button type="button">Coins: 123</button>';
+  const resize=doc.createElement('div');resize.className='pokeidle-resize-handle';root.append(resize);
+  root.before(team,wallet);let clicks=0;wallet.firstElementChild.addEventListener('click',()=>clicks++);
+  wallet.firstElementChild.focus();
+  app.start();
+  const sortRail=root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar');
+  assert.equal(wallet.parentNode,sortRail,'the native Wallet joins the Sort rail instead of becoming a footer or clone');
+  assert.equal(wallet.nextElementSibling,root.querySelector('[data-ppbui-inventory-views]'),'Wallet precedes Views in DOM so keyboard order matches the responsive visual order');
+  const focusables=[...sortRail.querySelectorAll('button:not([disabled]),select:not([disabled]),input:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+  assert.ok(focusables.indexOf(wallet.firstElementChild)<focusables.indexOf(root.querySelector('[data-ppbui-view-mode]')),'focus order reaches Wallet before Views when Views wrap below');
+  assert.equal(resize.parentNode,root,'native window resize affordances remain in the outer window');
+  assert.equal(doc.querySelectorAll('.pokeidle-team-hud__wallet').length,1);
+  assert.equal(wallet.hasAttribute('data-ppbui-inventory-wallet'),true);
+  assert.equal(doc.activeElement,wallet.firstElementChild,'reparenting preserves focus when a native Wallet control owns it');
+  assert.equal(doc.defaultView.getComputedStyle(wallet).display,'flex','Team collapse state must not hide the Wallet while it lives in Backpack');
+  wallet.firstElementChild.click();assert.equal(clicks,1,'native Wallet listeners remain attached');
+  doc.querySelector('.pokeidle-panel__body').innerHTML=body();app.reconcile();
+  assert.equal(wallet.parentNode,sortRail,'native Backpack body rebuilds cannot remove the Wallet from the Sort rail');
+  app.stop();
+  assert.equal(team.nextElementSibling,wallet,'cleanup restores the original Team -> Wallet adjacency');
+  assert.equal(wallet.hasAttribute('data-ppbui-inventory-wallet'),false);
+  assert.equal(wallet.classList.contains('is-hidden'),true,'native collapse state remains owned by the host');
+  assert.notEqual(doc.activeElement,wallet.firstElementChild,'cleanup must not force focus back into the HUD Wallet that Better UI hides');
+  wallet.firstElementChild.click();assert.equal(clicks,2,'native Wallet listeners survive the round trip');
+});
+test('Wallet is visible only in Backpack and stays globally removed from HUD even with Team HUD module absent', t=>{
+  const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const team=doc.createElement('div');team.className='pokeidle-team-hud';team.innerHTML='<div class="pokeidle-team-hud__list"></div>';
+  const wallet=doc.createElement('div');wallet.className='pokeidle-team-hud__wallet';wallet.textContent='Coins';root.before(team,wallet);
+  window.PokeIdle={PersistentHud:{_teamHud:{el:team,_walletEl:wallet,_creatures:[]}}};
+  const globalStyle=doc.createElement('style');globalStyle.textContent=nativeOverridesCss;doc.head.append(globalStyle);
+  assert.equal(window.getComputedStyle(wallet).display,'none','Better UI design-system override removes HUD Wallet without mounting Team HUD module');
+  app.start();
+  assert.equal(wallet.parentNode,root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'));
+  assert.equal(window.getComputedStyle(wallet).display,'flex','moving the same native node into Backpack makes it visible there');
+  app.stop();
+  assert.equal(team.nextElementSibling,wallet);
+  assert.equal(window.getComputedStyle(wallet).display,'none','closing Backpack never brings Wallet back visually on HUD even when Team HUD enhancement is disabled');
+});
+test('Backpack removes Wallet value backplate color without erasing native icon backgrounds', t=>{
+  const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const team=doc.createElement('div');team.className='pokeidle-team-hud';
+  const wallet=doc.createElement('div');wallet.className='pokeidle-team-hud__wallet';
+  wallet.innerHTML='<span class="wallet-value"><i class="wallet-icon"></i><b>123</b></span>';
+  const host=doc.createElement('style');host.textContent='.wallet-value{padding:0!important;border:0!important;background-color:#000!important;background-image:url("currency-backplate.png")!important;box-shadow:0 0 4px #000!important}.wallet-icon{background-image:url("currency-icon.png")!important}';doc.head.append(host);
+  root.before(team,wallet);app.start();
+  const value=wallet.firstElementChild,icon=value.firstElementChild,computed=window.getComputedStyle(value);
+  assert.equal(computed.backgroundColor,'rgba(0, 0, 0, 0)','Backpack neutralizes only the dark Wallet value fill');
+  assert.notEqual(computed.paddingLeft,'0px','Wallet value box gains horizontal breathing room around the number');
+  assert.notEqual(computed.borderTopWidth,'0px','Wallet value box gains a visible boundary instead of floating text');
+  assert.equal(computed.minHeight,'24px','Wallet value box gets a stable useful height without changing native content');
+  assert.match(computed.backgroundImage,/currency-backplate\.png/,'native value background-image is preserved instead of being reset by background shorthand');
+  assert.match(window.getComputedStyle(icon).backgroundImage,/currency-icon\.png/,'nested native currency/icon artwork remains untouched');
+});
+test('Wallet survives native Backpack window replacement and returns to Team on final cleanup', async t=>{
+  const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const team=doc.createElement('div');team.className='pokeidle-team-hud';
+  const wallet=doc.createElement('div');wallet.className='pokeidle-team-hud__wallet';wallet.textContent='Coins';root.before(team,wallet);
+  app.start();assert.equal(wallet.parentNode,root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'));
+  root.outerHTML=`<div class="inventory-window--slots"><div class="pokeidle-panel__body">${body()}</div></div>`;
+  await new Promise(resolve=>window.setTimeout(resolve,60));
+  const replacement=doc.querySelector('.inventory-window--slots');
+  assert.equal(wallet.parentNode,replacement.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'),'central lifecycle remount moves the same Wallet into the replacement Backpack Sort rail');
+  assert.equal(doc.querySelectorAll('.pokeidle-team-hud__wallet').length,1);
+  app.stop();assert.equal(team.nextElementSibling,wallet);assert.equal(wallet.hasAttribute('data-ppbui-inventory-wallet'),false);
+});
+test('Backpack follows an authoritative native Wallet replacement without keeping a stale duplicate', t=>{
+  const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const team=doc.createElement('div');team.className='pokeidle-team-hud';
+  const walletA=doc.createElement('div');walletA.className='pokeidle-team-hud__wallet';walletA.textContent='Coins A';root.before(team,walletA);
+  window.PokeIdle={PersistentHud:{_teamHud:{el:team,_walletEl:walletA}}};
+  app.start();assert.equal(walletA.parentNode,root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'));
+  const walletB=doc.createElement('div');walletB.className='pokeidle-team-hud__wallet';walletB.textContent='Coins B';team.after(walletB);
+  window.PokeIdle.PersistentHud._teamHud._walletEl=walletB;app.reconcile();
+  assert.equal(walletA.isConnected,false,'the stale Wallet survives only because Better UI moved it, so a native replacement retires it');
+  assert.equal(walletB.parentNode,root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'),'current native _walletEl becomes the sole Backpack Sort-rail Wallet');
+  assert.equal(doc.querySelectorAll('.pokeidle-team-hud__wallet').length,1);
+  delete window.PokeIdle.PersistentHud._teamHud._walletEl;app.reconcile();
+  assert.equal(walletB.parentNode,root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'),'temporary runtime gaps keep the already-established current Wallet');
+  app.stop();assert.equal(team.nextElementSibling,walletB,'cleanup restores the latest native Wallet beside Team');
+});
+test('Wallet fallback fails closed when more than one Team HUD ownership candidate exists', t=>{
+  const {app,doc}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const teamA=doc.createElement('div'),walletA=doc.createElement('div'),teamB=doc.createElement('div'),walletB=doc.createElement('div');
+  teamA.className=teamB.className='pokeidle-team-hud';walletA.className=walletB.className='pokeidle-team-hud__wallet';
+  root.before(teamA,walletA,teamB,walletB);app.start();
+  assert.equal(root.querySelector('[data-ppbui-inventory-wallet]'),null,'ambiguous document-level Wallets are not claimed without runtime authority');
+  assert.equal(teamA.nextElementSibling,walletA);assert.equal(teamB.nextElementSibling,walletB);
+});
+test('Wallet reconciliation is mutation-free after ownership is established', async t=>{
+  const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots');
+  const team=doc.createElement('div');team.className='pokeidle-team-hud';
+  const wallet=doc.createElement('div');wallet.className='pokeidle-team-hud__wallet';wallet.innerHTML='<span>123</span>';root.before(team,wallet);
+  window.PokeIdle={PersistentHud:{_teamHud:{el:team,_walletEl:wallet}}};app.start();await Promise.resolve();
+  let mutations=0;const observer=new window.MutationObserver(records=>mutations+=records.length);observer.observe(doc.body,{subtree:true,childList:true,attributes:true});
+  for(let i=0;i<8;i++)app.reconcile();await Promise.resolve();observer.disconnect();
+  assert.equal(mutations,0);assert.equal(wallet.parentNode,root.querySelector('[data-ppbui-inventory-tools] > .inventory-slots-toolbar'));
+  wallet.firstElementChild.textContent='456';assert.equal(root.querySelector('[data-ppbui-inventory-wallet] span').textContent,'456','native content updates continue on the same moved node');
 });
 test('central observer handles replacement window and preserves latest native slots on cleanup',async t=>{
   const {app,doc,window,order}=setup(t);app.start();order('name');
@@ -152,17 +256,26 @@ test('unknown advanced values remain unavailable, including partial IVs and miss
 });
 
 test('keyboard tab order follows current tab/search contract, persistent sort and visible enabled actions', t => {
-  const { app, doc, window, order } = setup(t); app.start();
+  const { app, doc, window, order } = setup(t);
+  const root=doc.querySelector('.inventory-window--slots'),team=doc.createElement('div'),wallet=doc.createElement('div');
+  team.className='pokeidle-team-hud';wallet.className='pokeidle-team-hud__wallet';wallet.innerHTML='<button type="button">Wallet</button>';root.before(team,wallet);
+  app.start();
   const search = doc.querySelector('.inventory-slots-toolbar input');
   const category = doc.querySelector('.inventory-category-tab[aria-selected="true"]');
   const select = doc.querySelector('[data-ppbui-order]');
   const firstView = doc.querySelector('[data-ppbui-view-mode=grid]');
+  const walletButton = wallet.firstElementChild;
   const tab = (node, shiftKey = false) => node.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
   assert.equal(category.dataset.category, 'all');
   search.focus(); tab(search); assert.equal(doc.activeElement, select);
-  tab(select); assert.equal(doc.activeElement, firstView);
-  tab(firstView, true); assert.equal(doc.activeElement, select);
+  tab(select); assert.equal(doc.activeElement, walletButton,'disabled Re-Sort makes Wallet the next visual and keyboard stop after Sort');
+  tab(walletButton, true); assert.equal(doc.activeElement, select,'Shift+Tab from the first Wallet control returns to Sort');
+  assert.equal(wallet.nextElementSibling,firstView.closest('[data-ppbui-inventory-views]'),'Wallet remains before Views in DOM');
   tab(select, true); assert.equal(doc.activeElement, search);
+  const more = doc.createElement('button');more.type='button';more.dataset.ppbuiInventoryMoreFilters='';search.after(more);app.reconcile();
+  more.focus();tab(more);assert.equal(doc.activeElement,select);
+  tab(select,true);assert.equal(doc.activeElement,more);
+  more.remove();app.reconcile();
   order('name');
   const apply = [...doc.querySelectorAll('[data-ppbui-module=inventory] button')].find(node => node.textContent === 'Aplicar');
   assert.equal(apply.closest('details'), null);
@@ -306,27 +419,26 @@ test('two rows keep Clear with filters and keyboard navigation follows the visib
   assert.match(shellCss,/> \.pokeidle-panel__body \{[^}]*padding:0!important[^}]*background:var\(--ppbui-bg-0\)/s,"Backpack body is a content bay rather than a padded outer card");
   assert.match(shellCss,/\[data-ppbui-inventory-toolbar\] \{[^}]*border:0!important[^}]*border-bottom:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)!important[^}]*background:var\(--ppbui-bg-1\)!important/s,"native filters form the first continuous utility rail");
   assert.match(shellCss,/\[data-ppbui-inventory-tools\] \{[^}]*border:0[^}]*border-bottom:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)[^}]*background:var\(--ppbui-bg-2\)/s,"sort and view controls form a second organization rail");
-  assert.match(shellCss,/\[data-ppbui-inventory-tools\] > \.inventory-slots-toolbar \{[^}]*grid-template-columns:minmax\(160px,235px\) auto max-content[^}]*justify-content:start/s,"Sort gains exactly 15px of normal width while keeping the validated bounded control track");
+  assert.match(shellCss,/\[data-ppbui-inventory-tools\] > \.inventory-slots-toolbar \{[^}]*grid-template-columns:minmax\(160px,235px\) auto minmax\(0,1fr\) max-content[^}]*justify-content:start/s,"Sort rail reserves the flexible middle track for Wallet between Re-Sort and Views");
   assert.match(shellCss,/> select\[data-ppbui-order\] \{[^}]*width:235px!important[^}]*min-width:160px!important[^}]*max-width:235px!important/s,"Sort has the same +15px hard scoped fallback even if proxy measurement is delayed in the live host");
   assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \{[^}]*container-type:inline-size[^}]*max-width:calc\(100vw - 16px\)/s,"Backpack establishes module-local responsive ownership instead of depending on whole-window media queries");
   assert.match(shellCss,/\.inventory-category-tabs\[data-ppbui-inventory-native-categories\]\[hidden\] \{[^}]*display:none!important/s,"native category tabs leave the visual layout while their handlers remain authoritative");
   assert.match(shellCss,/\[data-ppbui-inventory-category-proxy\] \{[^}]*min-width:140px[^}]*max-width:190px[^}]*flex:0 1 190px/s,"category dropdown stays compact to the left of the flexible Search field");
-  assert.match(shellCss,/@container \(max-width:519px\)[\s\S]*\.inventory-slots-toolbar \{ grid-template-columns:minmax\(0,1fr\) auto max-content; \}/,"Sort contracts only after the pane falls below the validated 520px desktop minimum");
-  assert.match(shellCss,/@container \(max-width:440px\)[\s\S]*\[data-ppbui-inventory-views\] \{ grid-column:1\/-1; width:100%; \}/,"view controls move to their own row before they can force outer horizontal overflow");
+  assert.match(shellCss,/@container \(max-width:680px\)[\s\S]*\.inventory-slots-toolbar \{ grid-template-columns:minmax\(0,1fr\) auto max-content; \}[\s\S]*\[data-ppbui-inventory-views\] \{ grid-column:1\/-1; width:100%; \}/,"Views move below early enough to keep Sort plus Wallet on one overflow-safe top row");
   assert.match(toolsCss,/@container \(max-width:519px\)[\s\S]*\[data-ppbui-inventory-toolbar\] \{ flex-wrap:wrap!important; \}/,"native Search/Category/Clear controls wrap only when the pane is narrower than the validated desktop minimum");
   const responsiveMinimum=doc.querySelector('.inventory-window--slots').style.getPropertyValue('min-width');
   assert.ok(responsiveMinimum.startsWith('min(520px,')&&responsiveMinimum.includes('100vw')&&responsiveMinimum.includes('16px'),'the browser may canonicalize calc() ordering, but the runtime minimum must remain viewport bounded');
   assert.match(shellCss,/\[data-ppbui-inventory-toolbar\] > input\.game-window__search\.ppbui-input \{[^}]*appearance:none!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background-image:none!important[^}]*box-shadow:none!important/s,"native search chrome cannot restore rounded input treatment inside Backpack");
-  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \* \{[^}]*scrollbar-width:auto!important[^}]*scrollbar-color:var\(--ppbui-scrollbar-thumb\) var\(--ppbui-scrollbar-track\)!important/s,"every descendant live scroller inside Backpack receives the Miyazaki scrollbar bridge");
-  assert.match(shellCss,/@supports selector\(::-webkit-scrollbar\) \{[\s\S]*\.inventory-window--slots\.ppbui-window\[data-ppbui-inventory-scroll\],[\s\S]*\.inventory-window--slots\.ppbui-window \[data-ppbui-inventory-scroll\] \{ scrollbar-color:auto!important; \}/,"Blink/WebKit override includes the higher-specificity owned scrollers so standardized scrollbar-color cannot re-suppress square webkit geometry");
-  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \*::-webkit-scrollbar-thumb \{[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-scrollbar-thumb\)!important/s,"unknown nested host scrollers cannot retain rounded native scrollbar chrome");
-  assert.match(shellCss,/\.inventory-window--slots\.ppbui-window \*::-webkit-scrollbar-button \{[^}]*display:none!important[^}]*width:0!important[^}]*height:0!important/s,"Backpack removes native scrollbar arrow buttons instead of mixing them with pixel thumb chrome");
-  assert.match(shellCss,/\[data-ppbui-inventory-scroll\] \{[^}]*scrollbar-gutter:stable!important/s,"Backpack reserves stable pixel-scroll geometry on every owned scroll surface");
-  assert.match(shellCss,/\[data-ppbui-inventory-scroll\]::-webkit-scrollbar \{[^}]*width:var\(--ppbui-scrollbar-size\)!important[^}]*height:var\(--ppbui-scrollbar-size\)!important/s,"Backpack bridges the actual native scroller to the shared pixel size");
-  assert.match(shellCss,/\[data-ppbui-inventory-scroll\]::-webkit-scrollbar-thumb \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-scrollbar-thumb\)!important/s,"Backpack vertical scroll keeps square Miyazaki thumb chrome even against host CSS");
+  assert.doesNotMatch(shellCss,/::-webkit-scrollbar|scrollbar-color|scrollbar-width|scrollbar-gutter/,"host-owned Backpack scrollers keep the current native game scrollbar");
+  assert.match(shellCss,/\.inventory-slot:focus-visible \{[^}]*outline:var\(--ppbui-focus-width\) solid var\(--ppbui-focus\)!important[^}]*outline-offset:var\(--ppbui-pixel-unit\)/s,"native slot actions receive the shared visible focus treatment without replacing their handlers");
+  assert.match(shellCss,/\.inventory-slots-toolbar > \.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] \{[^}]*position:static!important[^}]*display:flex!important[^}]*flex-wrap:nowrap!important[^}]*justify-content:center!important[^}]*justify-self:center[^}]*width:auto!important[^}]*background:transparent!important[^}]*box-shadow:none!important/s,"native Wallet is centered in the flexible space between Re-Sort and Views without retaining HUD positioning");
+  assert.match(shellCss,/\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] > \* \{[^}]*min-height:24px[^}]*padding:2px 6px!important[^}]*border:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)!important[^}]*background-color:transparent!important[^}]*box-shadow:none!important/s,"Wallet value wrappers gain a bordered useful box with breathing room while keeping a transparent fill");
+  assert.doesNotMatch(shellCss,/\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\][^}]*> \*[^}]*background:transparent!important/s,"Wallet value cleanup must not use background shorthand that can erase native icon imagery");
+  assert.match(shellCss,/@container \(max-width:680px\)[\s\S]*\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] \{ grid-column:3; grid-row:1; \}/,"narrow/intermediate Backpack keeps Wallet on the same first row as Sort while Views move below");
   assert.match(shellCss,/\.ppbui-pokemon-tools \{[^}]*width:calc\(100% - \(var\(--ppbui-space-4\) \+ var\(--ppbui-space-4\)\)\)!important[^}]*margin:0 var\(--ppbui-space-4\)!important[^}]*padding:var\(--ppbui-space-3\) 0!important/s,"More filters uses physical horizontal inset instead of relying only on internal padding");
   assert.match(shellCss,/\.inventory-slot-grid \{[^}]*border:0!important[^}]*background:var\(--ppbui-bg-0\)!important[^}]*box-shadow:none!important/s,"slot content no longer sits inside an extra generic framed box");
   assert.match(toolsCss,/\[data-ppbui-inventory-views\] \{[^}]*gap:0/s,"view switching reads as one compact segmented control");
+  assert.match(toolsCss,/@container \(max-width:440px\)[\s\S]*\[data-ppbui-inventory-toolbar\] > select\.game-window__select \{ flex-basis:100%; \}[\s\S]*\[data-ppbui-inventory-toolbar\] > input\.game-window__search \{ min-width:0; flex:1 1 140px; \}/,"narrow Backpack gives category its own row so Search keeps More Filters immediately beside it");
   assert.match(viewsCss,/\[data-ppbui-inventory-view="grouped"\] \{[^}]*padding:0!important[^}]*border:0!important[^}]*background:var\(--ppbui-bg-0\)!important/s,"grouped inventory uses sections, not cards inside a card");
 });
 
@@ -344,10 +456,10 @@ test('Sort proxy width beats shared native-select width ownership and stays boun
   assert.equal(order.style.getPropertyPriority('max-width'),'important');
 });
 
-test('Backpack owns root body and active grid as reversible pixel-scroll surfaces',t=>{
+test('Backpack preserves native scroll surfaces without claiming visual ownership',t=>{
   const {app,doc}=setup(t);const root=doc.querySelector('.inventory-window--slots'),body=doc.querySelector('.pokeidle-panel__body'),grid=doc.querySelector('.inventory-slot-grid');
   app.start();
-  for(const node of [root,body,grid]){assert.ok(node.classList.contains('ppbui-scroll'));assert.ok(node.hasAttribute('data-ppbui-inventory-scroll'));}
+  for(const node of [root,body,grid]){assert.equal(node.classList.contains('ppbui-scroll'),false);assert.equal(node.hasAttribute('data-ppbui-inventory-scroll'),false);}
   app.stop();
   for(const node of [root,body,grid]){assert.equal(node.classList.contains('ppbui-scroll'),false);assert.equal(node.hasAttribute('data-ppbui-inventory-scroll'),false);}
 });
@@ -371,10 +483,36 @@ test('Backpack search bridge owns field chrome while corner geometry follows the
   app.start();
   const search=doc.querySelector('input.game-window__search'),computed=doc.defaultView.getComputedStyle(search);
   assert.equal(search.type,'search');
+  assert.equal(search.getAttribute('aria-label'),'Busca');
   assert.equal(computed.backgroundImage,'none');
   assert.equal(computed.boxShadow,'none');
   const shellCss=doc.querySelector('[data-ppbui-inventory-shell-style]').textContent;
   assert.match(shellCss,/input\.game-window__search\.ppbui-input \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-bg-0\)!important[^}]*color:var\(--ppbui-text\)!important/s,"hostile important fill/border/text cannot bypass the scoped Search bridge and radius remains preference-driven");
+});
+
+test('Backpack preserves a native search accessible name when the host already provides one', t => {
+  const {app,doc}=setup(t);
+  const search=doc.querySelector('input.game-window__search');
+  search.setAttribute('aria-label','Native backpack search');
+  app.start();
+  assert.equal(search.getAttribute('aria-label'),'Native backpack search');
+  app.stop();
+  assert.equal(search.getAttribute('aria-label'),'Native backpack search');
+});
+
+test('Backpack reacquires search naming when the host changes aria-label on the same node', t => {
+  const {app,doc}=setup(t);
+  const search=doc.querySelector('input.game-window__search');
+  search.setAttribute('aria-label','Native backpack search');
+  app.start();
+  search.removeAttribute('aria-label');
+  app.reconcile();
+  assert.equal(search.getAttribute('aria-label'),'Busca');
+  search.setAttribute('aria-label','Updated native search');
+  app.reconcile();
+  assert.equal(search.getAttribute('aria-label'),'Updated native search');
+  app.stop();
+  assert.equal(search.getAttribute('aria-label'),'Updated native search');
 });
 
 test('price sorting uses unit NPC prices, preserves Pokémon and updates on explicit re-sort', t => {
