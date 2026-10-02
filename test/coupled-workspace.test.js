@@ -1629,11 +1629,12 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
     "ppbui-cards-combat-card", "ppbui-cards-combat-art", "ppbui-cards-team-switch",
     "ppbui-cards-card", "ppbui-cards-rarity>div", "ppbui-cards-attempt-table,.ppbui-cards-loot-table",
     "ppbui-cards-rarity-filter fieldset", "ppbui-cards-economy-group",
-  ]) assert.match(css, new RegExp(`\\.${selector.replace(/[> ]/g, match => match === ">" ? ">" : " ")}\\{[^}]*border-radius:var\\(--ppbui-radius,0px\\)`));
-  assert.match(css, /\.ppbui-cards-team-member\{[^}]*border-radius:var\(--ppbui-radius-badge,0px\)/);
-  assert.match(css, /\.ppbui-cards-rarity-filter>summary\{[^}]*border-radius:var\(--ppbui-control-radius,var\(--ppbui-radius,0px\)\)/);
-  assert.match(css, /\.ppbui-cards-rarity-badge,\.ppbui-cards-shiny-badge\{[^}]*border-radius:var\(--ppbui-radius-badge,0px\)/);
-  assert.match(css, /\.ppbui-cards-hp-meter,\.ppbui-cards-exp-meter\{[^}]*border-radius:var\(--ppbui-radius-badge,0px\)/);
+  ]) assert.match(css, new RegExp(`\\.${selector.replace(/[> ]/g, match => match === ">" ? ">" : " ")}\\{[^}]*border-radius:var\\(--ppbui-radius,5px\\)`));
+  assert.match(css, /\.ppbui-cards-team-member\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
+  assert.match(css, /\.ppbui-cards-rarity-filter>summary\{[^}]*border-radius:var\(--ppbui-control-radius,5px\)/);
+  assert.match(css, /\.ppbui-cards-rarity-badge,\.ppbui-cards-shiny-badge\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
+  assert.match(css, /\.ppbui-cards-hp-meter,\.ppbui-cards-exp-meter\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
+  assert.doesNotMatch(css, /--ppbui-(?:radius|radius-badge|control-radius),0px/);
 });
 
 test("Cards navigation appears only after scroll, jumps within its own pane and releases listeners on cleanup", t => {
@@ -2162,22 +2163,24 @@ test("standalone userscript Card Mode defaults to Cards and toggles directly to 
     modules: [createStandaloneCardModeModule()],
   });
   app.start();
-  const switcher = doc.querySelector("[data-ppbui-card-mode-switch]");
+  const toolbar = doc.querySelector(".pokeidle-top-toolbar");
+  const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
   const cards = doc.querySelector("[data-ppbui-coupled-cards]");
-  const cardsButton = switcher.querySelector('[data-ppbui-card-mode="cards"]');
-  const gameButton = switcher.querySelector('[data-ppbui-card-mode="game"]');
-  assert.ok(switcher && cards);
+  assert.ok(toggle && cards);
   assert.equal(cards.querySelector("[data-card-shortcuts]"), null,
-    "standalone keeps its existing sticky Cards/Game switch without a competing host-only scroller");
+    "standalone keeps navigation in the menu bar without a competing host-only scroller");
   assert.equal(cards.hidden, false);
-  assert.equal(cardsButton.getAttribute("aria-pressed"), "true");
+  assert.equal(toggle.getAttribute("aria-pressed"), "true");
+  assert.equal(toggle.parentElement, toolbar);
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "42");
-  gameButton.click();
+  toggle.click();
   assert.equal(cards.hidden, true);
-  assert.equal(gameButton.getAttribute("aria-pressed"), "true");
-  cardsButton.click();
+  assert.equal(toggle.getAttribute("aria-pressed"), "false");
+  assert.equal(toggle.parentElement, toolbar);
+  toggle.click();
   assert.equal(cards.hidden, false);
-  assert.equal(cardsButton.getAttribute("aria-pressed"), "true");
+  assert.equal(toggle.getAttribute("aria-pressed"), "true");
+  assert.equal(toggle.parentElement, toolbar);
 });
 
 test("standalone native menu actions preserve their handler and return Card Mode to Game", t => {
@@ -2196,8 +2199,8 @@ test("standalone native menu actions preserve their handler and return Card Mode
   assert.equal(clicks, 1, "Better UI must not replace the native menu handler");
   assert.equal(cards.hidden, true);
   assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "game");
-  assert.equal(doc.querySelector("[data-ppbui-card-mode-switch]")?.parentElement, doc.querySelector("[data-ppbui-card-mode-dock]"));
-  assert.equal(doc.querySelector(".pokeidle-top-toolbar")?.contains(doc.querySelector("[data-ppbui-card-mode-switch]")), false, "standalone Game/Card does not widen native navigation into adjacent server controls");
+  assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]")?.parentElement, doc.querySelector(".pokeidle-top-toolbar"));
+  assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]")?.dataset.ppbuiCardModeState, "game");
 });
 
 test("standalone Card Mode picks up Analyzer public summary when it becomes available later and cleans up exactly", t => {
@@ -2222,7 +2225,7 @@ test("standalone Card Mode picks up Analyzer public summary when it becomes avai
   app.reconcile();
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "99");
   app.stop();
-  assert.equal(doc.querySelector("[data-ppbui-card-mode-switch]"), null);
+  assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]"), null);
   assert.equal(doc.querySelector("[data-ppbui-coupled-cards]"), null);
   assert.ok(doc.querySelector(".pokeidle-top-toolbar"), "native toolbar survives standalone Card Mode cleanup");
 });

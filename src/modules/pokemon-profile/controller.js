@@ -108,11 +108,6 @@ function styleText() {
     [data-ppbui-profile-status] { margin:0; color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-secondary); }
     [data-ppbui-profile-status][data-error="true"] { color:var(--ppbui-danger-text); font-weight:700; }
     [data-ppbui-profile-save] { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--ppbui-space-2); }
-    [data-ppbui-profile-move-editor] { display:grid; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); border:var(--ppbui-border-width) solid #3d4842; background:#141b18; box-shadow:none; }
-    [data-ppbui-profile-move-editor-slots] { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--ppbui-space-1); }
-    [data-ppbui-profile-move-editor-slot] { display:grid; gap:2px; min-width:0; color:var(--ppbui-text-muted); font:600 var(--ppbui-font-size-meta)/1 var(--ppbui-font-body); text-transform:uppercase; }
-    [data-ppbui-profile-move-editor-slot] select { min-width:0; width:100%; }
-    [data-ppbui-profile-move-editor-actions] { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:var(--ppbui-space-1); }
     [data-ppbui-profile-saved-list], [data-ppbui-profile-team-list] { display:grid; gap:0; }
     [data-ppbui-profile-saved] { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--ppbui-space-2) var(--ppbui-space-3); align-items:start; padding:var(--ppbui-space-3) 0; border-top:var(--ppbui-separator-width) solid #354039; }
     [data-ppbui-profile-saved] > [data-ppbui-profile-move-list] { grid-column:1/-1; width:100%; }
@@ -165,11 +160,12 @@ function styleText() {
       --ppbui-border-width:1px;
       --ppbui-separator-width:1px;
       border:1px solid #6b6543!important;
+      border-radius:var(--ppbui-window-radius)!important;
       background:rgba(22,29,32,.92)!important;
       color:#eef1df!important;
       box-shadow:none!important;
     }
-    [data-ppbui-pokemon-profile-window] :focus-visible { outline-width:1px!important; }
+    [data-ppbui-pokemon-profile-window] :focus-visible { outline-width:var(--ppbui-focus-width)!important; }
     [data-ppbui-profile-titlebar] { border-bottom:1px solid #6b6543!important; background:rgba(35,44,46,.96)!important; box-shadow:none!important; }
     [data-ppbui-profile-title], [data-ppbui-profile-section] h3 { color:#e0c46d!important; }
     [data-ppbui-profile-close] { border-left:1px solid #6b6543!important; background:rgba(35,44,46,.96)!important; color:#eef1df!important; }
@@ -181,7 +177,7 @@ function styleText() {
     [data-ppbui-profile-choice] { border:1px solid #6b6543!important; background:rgba(35,44,46,.96)!important; box-shadow:none!important; color:#eef1df!important; }
     [data-ppbui-profile-choice][aria-pressed="true"] { border:1px solid #d2b45d!important; background:rgba(35,44,46,.96)!important; box-shadow:none!important; }
     [data-ppbui-profile-choice-visual], [data-ppbui-profile-choice-element], [data-ppbui-profile-type-icon], [data-ppbui-profile-move-element] { border-width:1px!important; }
-    [data-ppbui-profile-choice-stats], [data-ppbui-profile-picker-state], [data-ppbui-profile-filter-field], [data-ppbui-profile-meta], [data-ppbui-profile-fact] small, [data-ppbui-profile-move-category], [data-ppbui-profile-move-cooldown], [data-ppbui-profile-status], [data-ppbui-profile-move-editor-slot] { color:#a6aa9f!important; }
+    [data-ppbui-profile-choice-stats], [data-ppbui-profile-picker-state], [data-ppbui-profile-filter-field], [data-ppbui-profile-meta], [data-ppbui-profile-fact] small, [data-ppbui-profile-move-category], [data-ppbui-profile-move-cooldown], [data-ppbui-profile-status] { color:#a6aa9f!important; }
     [data-ppbui-profile-power], [data-ppbui-profile-move-power] { color:#ffe27a!important; }
     [data-ppbui-profile-hp], [data-ppbui-profile-section], [data-ppbui-profile-saved], [data-ppbui-profile-team-row] { border-color:#6b6543!important; }
     [data-ppbui-profile-hp-track] { border:1px solid #6b6543!important; background:rgba(22,29,32,.85)!important; }
@@ -192,7 +188,6 @@ function styleText() {
     [data-ppbui-profile-move] { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; color:#eef1df!important; }
     [data-ppbui-profile-move-position] { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius-badge)!important; background:rgba(22,29,32,.85)!important; color:#eef1df!important; }
     [data-ppbui-profile-move-name], [data-ppbui-profile-move-power] { border-width:1px!important; }
-    [data-ppbui-profile-move-editor] { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(35,44,46,.96)!important; box-shadow:none!important; }
     [data-ppbui-profile-team-member] { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; }
     [data-ppbui-pokemon-profile-window] input, [data-ppbui-pokemon-profile-window] select { border:1px solid #6b6543!important; background:rgba(22,29,32,.85)!important; color:#eef1df!important; box-shadow:none!important; }
     [data-ppbui-pokemon-profile-window] button { border-width:1px!important; border-color:#6b6543!important; background:rgba(35,44,46,.96)!important; color:#eef1df!important; box-shadow:none!important; }
@@ -213,7 +208,7 @@ function styleText() {
       -webkit-text-size-adjust:100%;
       text-size-adjust:100%;
     }
-    .pokemon-card[data-ppbui-profile-native-card] :focus-visible { outline-width:1px!important; }
+    .pokemon-card[data-ppbui-profile-native-card] :focus-visible { outline-width:var(--ppbui-focus-width)!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__header { border-bottom:1px solid #6b6543!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__portrait { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(35,44,46,.96)!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__identity strong, .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__title { color:#e0c46d!important; }
@@ -241,7 +236,6 @@ function styleText() {
       [data-ppbui-profile-fact]:nth-child(4) { border-top:var(--ppbui-separator-width) solid var(--ppbui-border); }
       [data-ppbui-profile-team-row] { grid-template-columns:minmax(0,1fr); gap:var(--ppbui-space-2); }
       [data-ppbui-profile-saved-actions] { justify-content:flex-start; }
-      [data-ppbui-profile-move-editor-slots] { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
     /* Expedition-inspired readability pass: one clear outer card per section, quieter internals. */
     [data-ppbui-profile-main] { gap:10px!important; padding:10px!important; }
@@ -277,7 +271,6 @@ function styleText() {
     [data-ppbui-profile-current] { padding:0!important; }
     [data-ppbui-profile-current] > [data-ppbui-profile-move-list] { padding:8px!important; background:rgba(22,29,32,.92); }
     [data-ppbui-profile-current] > [data-ppbui-profile-status] { margin:8px!important; }
-    [data-ppbui-profile-current] > [data-ppbui-profile-move-editor] { margin:0 8px 8px; }
 
     [data-ppbui-profile-move-list] { grid-template-columns:repeat(4,minmax(136px,1fr))!important; gap:6px!important; padding-bottom:0!important; }
     [data-ppbui-profile-move] { padding:5px!important; border:0!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; }
@@ -499,6 +492,8 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const rarityOptions=pokemonRarities.map(value=>[value,win?.PokeIdle?.t?.(`common.quality_m.${value}`)||value]),elementOptions=pokemonElements.map(value=>[value,win?.PokeIdle?.t?.(`common.element.${value}`)||value]),tagOptions=[["untagged",text.untagged],...fixedTags.map(tag=>[tag.id,`${tag.icon} ${tag.name}`])];
     const signature=JSON.stringify([text.all,text.untagged,rarityOptions,elementOptions,tagOptions]);
     if(signature!==filterCopySignature){const fill=(select,values,current)=>{select.replaceChildren();for(const [value,label] of [["",text.all],...values]){const option=doc.createElement("option");option.value=value;option.textContent=label;select.append(option);}select.value=current;};fill(rarityFilter,rarityOptions,filters.rarity);fill(elementFilter,elementOptions,filters.element);fill(tagFilter,tagOptions,filters.tags[0]||"");filterCopySignature=signature;}
+    const canConfigureMoves=typeof win?.PokeIdle?.MovesetConfig?.open==="function";
+    root.querySelectorAll("[data-ppbui-profile-configure-moves]").forEach(button=>{button.disabled=!canConfigureMoves;});
   }
 
   async function enrichCreature(creature) {
@@ -607,20 +602,6 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     toggle.addEventListener("click",()=>{const state={...(collapseState.get(id)||{})};state[key]=!collapsed(id,key);collapseState.set(id,state);sync();});sync();
   }
 
-  function buildMoveEditor(id,current,metadata,configureButton){
-    const text=copy(),availableMap=new Map();
-    for(const move of enrichedMoves(current?.available||[],metadata)){const moveId=String(move?.id||"");if(moveId&&!availableMap.has(moveId))availableMap.set(moveId,move);}
-    for(const move of enrichedMoves(current?.moves||[],metadata)){const moveId=String(move?.id||"");if(moveId&&!availableMap.has(moveId))availableMap.set(moveId,move);}
-    const available=[...availableMap.values()],required=Math.min(4,available.length),editor=doc.createElement("div");editor.dataset.ppbuiProfileMoveEditor="";editor.id="ppbui-profile-move-editor";editor.setAttribute("role","region");editor.setAttribute("aria-label",text.configureMoves);
-    const slots=doc.createElement("div");slots.dataset.ppbuiProfileMoveEditorSlots="";const selects=[];
-    for(let index=0;index<required;index+=1){const label=doc.createElement("label");label.dataset.ppbuiProfileMoveEditorSlot="";const caption=doc.createElement("span");caption.textContent=text.moveSlot(index+1);const select=doc.createElement("select");select.className="ppbui-select";select.setAttribute("aria-label",text.moveSlot(index+1));for(const move of available){const option=doc.createElement("option");option.value=String(move.id);const power=finite(move.power);option.textContent=[move.name||move.id,move.element?String(move.element).toUpperCase():"",power!==null?`${text.movePower} ${power}`:""].filter(Boolean).join(" · ");select.append(option);}select.value=String(current?.moves?.[index]?.id||available[index]?.id||"");label.append(caption,select);slots.append(label);selects.push(select);}
-    const status=statusNode();const actions=doc.createElement("div");actions.dataset.ppbuiProfileMoveEditorActions="";const save=button(text.saveMoves,"ppbui-button--primary"),cancel=button(text.cancelMoves);actions.append(cancel,save);editor.append(slots,status,actions);
-    const syncOptions=()=>{const chosen=new Set(selects.map(select=>select.value).filter(Boolean));for(const select of selects)for(const option of select.options)option.disabled=Boolean(option.value&&option.value!==select.value&&chosen.has(option.value));};selects.forEach(select=>select.addEventListener("change",syncOptions));syncOptions();
-    cancel.addEventListener("click",()=>{configureButton.setAttribute("aria-expanded","false");editor.remove();configureButton.focus({preventScroll:true});});
-    save.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;const moveIds=selects.map(select=>select.value).filter(Boolean),unique=new Set(moveIds);if(moveIds.length!==required||unique.size!==required){status.textContent=text.moveSelectionInvalid;status.dataset.error="true";return;}busy=true;save.disabled=true;cancel.disabled=true;status.textContent=text.applying;status.dataset.error="false";const result=await applyTeamMoveset(win,id,{moves:moveIds.map(moveId=>availableMap.get(moveId))});busy=false;if(!alive||selectedId!==id)return;if(!result?.ok){status.textContent=errorText(result);status.dataset.error="true";save.disabled=false;cancel.disabled=false;return;}movesCache.set(id,Promise.resolve(result.current));await renderSelected(id,true,text.movesConfigured,false);main.querySelector("[data-ppbui-profile-configure-moves]")?.focus({preventScroll:true});});
-    return editor;
-  }
-
   function errorText(result){const text=copy();return text.errors[result?.reason]||result?.reason||text.movesError;}
 
   async function saveCurrent(id,input,status) {
@@ -666,10 +647,10 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const meta=doc.createElement("div");meta.dataset.ppbuiProfileMeta="";const level=doc.createElement("span");const levelValue=finite(creature.level);level.textContent=levelValue!==null?`${text.level}${levelValue}`:"—";meta.append(level);for(const element of elementNames(creature))meta.append(elementBadge(doc,element));const origin=doc.createElement("span");origin.textContent=`${text.source}: ${sourceLabel(text,creature)}`;meta.append(origin);
     const hp=doc.createElement("div");hp.dataset.ppbuiProfileHp="";const hpLabel=doc.createElement("span");hpLabel.textContent=text.hp;const track=doc.createElement("span");track.dataset.ppbuiProfileHpTrack="";const fill=doc.createElement("i");fill.dataset.ppbuiProfileHpFill="";const hpValue=finite(creature.hp),maxHp=finite(creature.max_hp),percent=hpValue!==null&&maxHp>0?Math.max(0,Math.min(100,Math.round(hpValue/maxHp*100))):0;fill.style.width=`${percent}%`;track.append(fill);const hpText=doc.createElement("span");hpText.textContent=hpValue!==null&&maxHp!==null?`${hpValue.toLocaleString()} / ${maxHp.toLocaleString()}`:"—";hp.append(hpLabel,track,hpText);identity.append(identityHead,meta,hp);hero.append(portrait,identity);
     const facts=doc.createElement("div");facts.dataset.ppbuiProfileFacts="";const fact=(label,value,key,decorate)=>{const node=doc.createElement("div");node.dataset.ppbuiProfileFact=key;const caption=doc.createElement("small");caption.textContent=label;const strong=doc.createElement("strong");strong.textContent=value||"—";decorate?.(strong);node.append(caption,strong);facts.append(node);};const quality=String(creature.quality||"").trim(),iv=ivTotal(creature);fact(text.rarityFact,quality?qualityLabel(doc,quality):"—","rarity",strong=>{if(quality)strong.className=`ppbui-quality-badge quality-${qualityKey(quality)}`;});fact(text.gender,nativeCreatureLabel(doc,"gender",creature.gender),"gender",strong=>{strong.dataset.genderTone=genderTone(creature.gender);});fact(text.nature,nativeCreatureLabel(doc,"nature",creature.nature),"nature");fact(text.iv,iv!==null?`${iv}/${IV_MAX_TOTAL}`:`—/${IV_MAX_TOTAL}`,"iv");identity.append(facts);
-    const currentSection=doc.createElement("section");currentSection.dataset.ppbuiProfileSection="";currentSection.dataset.ppbuiProfileCurrent="";const currentHeader=doc.createElement("header");const currentTitle=doc.createElement("h3");currentTitle.textContent=text.currentMoves;const currentActions=doc.createElement("div");currentActions.dataset.ppbuiProfileSectionActions="";const configure=button(text.configureMoves,"ppbui-button--primary");configure.dataset.ppbuiProfileConfigureMoves="";configure.setAttribute("aria-expanded","false");configure.setAttribute("aria-controls","ppbui-profile-move-editor");configure.disabled=!current?.available?.length;if(!moveError)currentActions.append(configure);currentHeader.append(currentTitle,currentActions);currentSection.append(currentHeader);
+    const currentSection=doc.createElement("section");currentSection.dataset.ppbuiProfileSection="";currentSection.dataset.ppbuiProfileCurrent="";const currentHeader=doc.createElement("header");const currentTitle=doc.createElement("h3");currentTitle.textContent=text.currentMoves;const currentActions=doc.createElement("div");currentActions.dataset.ppbuiProfileSectionActions="";const configure=button(text.configureMoves,"ppbui-button--primary");configure.dataset.ppbuiProfileConfigureMoves="";configure.disabled=typeof win?.PokeIdle?.MovesetConfig?.open!=="function";currentActions.append(configure);currentHeader.append(currentTitle,currentActions);currentSection.append(currentHeader);
     currentSection.tabIndex=-1; currentSection.setAttribute("aria-label",text.currentMoves);
     if(moveError){const state=statusNode(text.movesError,true),retry=button(text.retry);retry.addEventListener("click",async()=>{const keepFocus=doc.activeElement===retry;main.tabIndex=-1;if(keepFocus)main.focus({preventScroll:true});await renderSelected(id,true);if(keepFocus){const next=main.querySelector("[data-ppbui-profile-current]");next?.focus({preventScroll:true});}});currentSection.append(state,retry);}else if(!current?.moves?.length)currentSection.append(statusNode(text.noMoves));else currentSection.append(moveList(enrichedMoves(current.moves,metadata),{label:text.currentMoves}));
-    configure.addEventListener("click",()=>{const existing=currentSection.querySelector("[data-ppbui-profile-move-editor]");if(existing){existing.remove();configure.setAttribute("aria-expanded","false");return;}const editor=buildMoveEditor(id,current,metadata,configure);configure.setAttribute("aria-expanded","true");currentSection.append(editor);editor.querySelector("select")?.focus({preventScroll:true});});
+    configure.addEventListener("click",()=>{if(!alive||selectedId!==id)return;const nativeMoveset=win?.PokeIdle?.MovesetConfig;if(typeof nativeMoveset?.open!=="function"){configure.disabled=true;return;}nativeMoveset.open.call(nativeMoveset,id);});
     const savedSection=doc.createElement("section");savedSection.dataset.ppbuiProfileSection="";const savedHeader=doc.createElement("header");const savedTitle=doc.createElement("h3");savedTitle.textContent=text.savedMoves;const savedHeadActions=doc.createElement("div");savedHeadActions.dataset.ppbuiProfileSectionActions="";const savedToggle=button("−","ppbui-icon-button");savedToggle.dataset.ppbuiProfileCollapse="savedMoves";savedHeadActions.append(savedToggle);savedHeader.append(savedTitle,savedHeadActions);const savedBody=doc.createElement("div");savedBody.dataset.ppbuiProfileSectionBody="savedMoves";const input=doc.createElement("input");input.type="text";input.maxLength=40;input.className="ppbui-input";input.placeholder=text.presetName;input.setAttribute("aria-label",text.presetName);const save=button(text.saveCurrent);const saveRow=doc.createElement("div");saveRow.dataset.ppbuiProfileSave="";const opStatus=statusNode(message,messageError);save.addEventListener("click",()=>saveCurrent(id,input,opStatus));input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveCurrent(id,input,opStatus);}});saveRow.append(input,save);const savedList=doc.createElement("div");savedList.dataset.ppbuiProfileSavedList="";renderSavedMoves(savedList,id,current,metadata);savedBody.append(saveRow,opStatus,savedList);savedSection.append(savedHeader,savedBody);bindCollapse(savedToggle,savedBody,id,"savedMoves",text.collapseSavedMoves,text.expandSavedMoves);
     const teamSection=doc.createElement("section");teamSection.dataset.ppbuiProfileSection="";const teamHeader=doc.createElement("header");const teamTitle=doc.createElement("h3");teamTitle.textContent=text.savedTeams;const teamHeadActions=doc.createElement("div");teamHeadActions.dataset.ppbuiProfileSectionActions="";const teamToggle=button("−","ppbui-icon-button");teamToggle.dataset.ppbuiProfileCollapse="savedTeams";teamHeadActions.append(teamToggle);teamHeader.append(teamTitle,teamHeadActions);const teamBody=doc.createElement("div");teamBody.dataset.ppbuiProfileSectionBody="savedTeams";const teamList=doc.createElement("div");teamList.dataset.ppbuiProfileTeamList="";renderTeams(teamList,id);teamBody.append(teamList);teamSection.append(teamHeader,teamBody);bindCollapse(teamToggle,teamBody,id,"savedTeams",text.collapseSavedTeams,text.expandSavedTeams);teamStoreSignature=JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)]));
     main.replaceChildren(hero,currentSection,savedSection,teamSection);

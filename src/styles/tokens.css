@@ -80,10 +80,12 @@
 
   --ppbui-border-width: var(--ppbui-line-width);
   --ppbui-separator-width: var(--ppbui-line-width);
-  --ppbui-window-radius: 0px;
-  --ppbui-radius: 0px;
-  --ppbui-control-radius: 0px;
-  --ppbui-radius-badge: 0px;
+  --ppbui-focus-width: 2px;
+  /* Single project geometry: match the current native PokéPixel reference. */
+  --ppbui-window-radius: 8px;
+  --ppbui-radius: 5px;
+  --ppbui-control-radius: 5px;
+  --ppbui-radius-badge: 4px;
   --ppbui-shadow-color: rgba(0, 0, 0, .28);
   --ppbui-shadow: 0 8px 24px var(--ppbui-shadow-color);
   --ppbui-shadow-raised: var(--ppbui-shadow);
@@ -106,11 +108,4 @@
 
   --ppbui-motion-fast: 100ms;
   --ppbui-motion-panel: 160ms;
-}
-
-html[data-ppbui-corners="rounded"] {
-  --ppbui-window-radius: 8px;
-  --ppbui-radius: 5px;
-  --ppbui-control-radius: 5px;
-  --ppbui-radius-badge: 4px;
 }

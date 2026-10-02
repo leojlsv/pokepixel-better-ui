@@ -7,8 +7,8 @@ Functional UI/UX and QoL layer for PokePixel Idle.
 Better UI prioritizes functional layout, clear controls, responsiveness and safe
 native integration while preserving the game rules and authoritative state.
 Better UI now follows the current game's visual language instead of maintaining a
-separate pixel-art chrome: shared Game Palette surfaces, game typography and one
-global `Squared` / `Rounded` corner preference apply across owned modules.
+separate pixel-art chrome: shared Game Palette surfaces, game typography and the
+current PokéPixel corner geometry apply across owned modules.
 
 ## Scope
 
@@ -148,11 +148,11 @@ nodes, native groups and styling, preserves conditional access, and restores
 the original structure on cleanup.
 
 The Better UI icon at the end of the native toolbar opens module preferences.
-Menu bar can be enabled or disabled immediately, and **Aparência → Cantos** selects
-exactly one global Better UI geometry: `Squared` (`0px`) or game-style `Rounded`.
-The selected mode applies consistently to Better UI-owned/opted-in surfaces without
-changing unrelated host-game geometry. Choices are saved in this browser. The preferences
-icon remains available when Menu bar is disabled.
+Menu bar and the other optional modules can be enabled or disabled immediately.
+Corner geometry is not configurable: Better UI-owned surfaces use the current game-style
+geometry (8px windows, 5px controls/cards and 4px badges) without changing unrelated
+host-game geometry. Module choices are saved in this browser. The preferences icon remains
+available when Menu bar is disabled.
 See `docs/modules/module-controls-plan.md` for behavior and validation scope.
 
 Buff strip keeps the game's native buff HUD in a compact single-line surface

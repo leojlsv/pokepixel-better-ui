@@ -63,23 +63,21 @@ no longer evidence of a pixel-art identity.
 - multi-pixel strokes remain allowed inside domain artwork or tiny CSS glyphs
   (for example arrows or the illustrated Pokéball), not as panel chrome.
 
-### Corner preference
+### Corner geometry
 
-Corner geometry is a **global persisted Better UI preference**, exposed under
-**Better UI → Appearance/Aparência → Corners/Cantos**:
+Corner geometry is **fixed** to the current PokéPixel reference and is not a user
+preference:
 
-| Mode | Window | Card/control | Badge/pill |
-| --- | ---: | ---: | ---: |
-| `Squared` | 0px | 0px | 0px |
-| `Rounded` | 8px | 5px | 4px |
+| Role | Radius |
+| --- | ---: |
+| Window | 8px |
+| Card/control | 5px |
+| Badge/pill | 4px |
 
-`Squared` is the migration/default mode so existing users are not silently switched.
-`Rounded` follows the current game reference geometry. The preference is exclusive:
-one mode owns all Better UI structural corner geometry at a time. Both modes use
-identical palette, alpha, typography, semantics and interaction behavior.
-
-Better UI must never enforce this preference on arbitrary host-game elements. Only
-Better UI-owned/opted-in surfaces consume these radius tokens.
+The former `Squared`/`Rounded` selector is retired. Runtime must not expose, persist or
+honor a 0px corner mode; the legacy `ppbui:appearance:v1` storage entry is deleted on
+startup. Better UI must never enforce its geometry on arbitrary host-game elements.
+Only Better UI-owned/opted-in surfaces consume these radius tokens.
 
 ### Shadows
 
@@ -228,9 +226,9 @@ state mapping:
 
 | State | Surface | Border/text | Additional cue |
 | --- | --- | --- | --- |
-| Default | `bg-0`/`bg-2` | 2px `border-strong` + `text` | flat control surface |
+| Default | `bg-0`/`bg-2` | 1px `border-strong` + `text` | flat control surface |
 | Hover | `bg-3` | `accent-hi` for primary, `border-strong` otherwise | pointer-only; no meaning depends on it |
-| Pressed | `bg-3` | same semantic family as default; primary may use `accent-low` for compact-text contrast | subtle inset 2px depth cue |
+| Pressed | `bg-3` | same semantic family as default; primary may use `accent-low` for compact-text contrast | flat state/surface change |
 | Selected/current | `bg-3` | `selected` edge + `text` | explicit edge/surface change, not color-only text |
 | Focus-visible | current state surface | current state border | independent 2px `focus` outline |
 | Disabled | `bg-1` | `text-subtle` + `border` | disabled semantics/attribute; no hover elevation |
@@ -241,7 +239,7 @@ For primary buttons, replace the default neutral edge with `accent` and use read
 `accent-hi` text. Hover/pressed states use `action-bg` with `accent-hi` edge/text so
 12px labels retain WCAG text contrast. Do not add a separate lower rail or a filled-gold
 button family. For danger buttons use
-`danger`. Inputs use the dark `bg-0` well and a 2px hard edge, adopt the normal
+`danger`. Inputs use the dark `bg-0` well and a 1px structural edge, adopt the normal
 focus outline on focus-visible, and use `danger` plus an adjacent message for
 invalid state. Tabs use the selected mapping for the current tab while keyboard
 focus remains independently visible.
@@ -270,10 +268,10 @@ small chrome actions such as close or disclosure, not major actions.
 **Danger:** red semantic edge/text or surface treatment. Keep spatial distance
 from the primary action when accidental activation is costly.
 
-Pressed buttons use a subtle hard inset depth; never inherit native scale/translate
-animation. Standard buttons and fields use the same 2px Miyazaki 16 hard-edge
-grammar. Internal separators may use 1px.
-Base `.ppbui-button` provides the square pixel-control defaults. When a native game button is
+Pressed buttons stay flat and communicate through surface/edge state; never inherit
+native scale/translate animation unless the native component itself is being reused.
+Standard Better UI buttons and fields use the 1px line system and the active global
+corner tokens. When a native game button is
 enhanced, the exact dual-class `.pokeidle-btn.ppbui-button` host bridge owns `appearance`,
 gradient/background-image, text shadow, filter and native transform with stronger `!important`
 specificity so host chrome cannot leak back regardless of stylesheet order. Pure Better UI
@@ -284,10 +282,11 @@ them locally.
 
 ### Inputs and selects
 
-- 2px hard control border;
-- dark `bg-0` input well against the raised Miyazaki 16 section surface;
+- 1px structural control border;
+- dark `bg-0` input well against the current Interactive section surface;
 - native `game-window__search` / `game-window__select` controls that opt into PPBUI must release
-  host height/radius/background chrome so Team-family fields remain square and visually consistent;
+  host height/background chrome only where Better UI owns the full field presentation; corner
+  geometry uses the fixed current-game control radius;
 - visible label when the meaning is not self-evident;
 - placeholder is supplemental, never the sole label for ambiguous forms;
 - search should expose clear/reset when persistent filtering can hide results;
@@ -298,7 +297,7 @@ them locally.
 - selected state must change more than text color: surface/border/edge position;
 - maintain one visual baseline so tabs read as navigation, not unrelated buttons;
 - keyboard focus is independent from selected state;
-- do not use rounded pill navigation as the default pixel-art pattern.
+- use the same current-game corner grammar as adjacent controls; avoid arbitrary pill navigation.
 
 ### Chips/badges
 
@@ -321,7 +320,7 @@ only; rarity names, multipliers, ordering and gameplay meaning remain authoritat
 
 ### Panels/cards
 
-- 2px border + hard shadow when elevated;
+- 1px structural border; use a restrained overlay shadow only when actual elevation is needed;
 - header identifies context and may own window-level actions;
 - body groups related information without unnecessary nested boxes;
 - footer is reserved for persistent actions/status when useful;
@@ -372,18 +371,17 @@ keyboard-accessible surface. Do not design workflows that depend on pointer hove
 
 ### Scrollbars
 
-Every Better UI-owned scroll container uses the shared pixel scrollbar primitive:
-**10px** horizontal/vertical track, square corners, charcoal track and a stone
-2px hard-edged thumb with a weathered-neutral hover state. Horizontal and vertical
-scroll use the same grammar. Modules may add a scoped specificity bridge when host
-scrollbar rules would otherwise override this primitive, but must not ship a separate
-scrollbar palette/rounding unless an approved exception exists. Do not restyle the
-entire host application's scrollbar globally.
+Host-owned scroll containers retain the current PokéPixel scrollbar. A Better UI-owned
+scroll container may use the shared **10px** scrollbar primitive when it cannot reuse a
+native scroller: charcoal track, neutral thumb and geometry consistent with the active
+corner tokens. Horizontal and vertical scroll use the same grammar. Modules may add a
+scoped specificity bridge when host rules would otherwise override an owned scroller,
+but must not ship a separate scrollbar palette/rounding unless an approved exception
+exists. Do not restyle the entire host application's scrollbar globally.
 
 When the host may move `overflow` to an unknown descendant, opt the owned root into
 `.ppbui-scroll-scope`; it extends the same primitive through that subtree, removes native
-WebKit arrow buttons and yields standardized `scrollbar-color` in Blink/WebKit so the
-square `::-webkit-scrollbar-*` geometry remains authoritative. This scope is reversible
+WebKit arrow buttons and yields standardized `scrollbar-color` in Blink/WebKit. This scope is reversible
 and must never be applied to an unrelated host subtree.
 
 ### Progress/status bars
@@ -545,27 +543,24 @@ the user explicitly approves it.
 
 ## 17. Approval gate
 
-The original design-system approval was granted on 2026-09-12. On 2026-09-16 the
-Product Owner explicitly superseded the module-by-module validation strategy and
-approved autonomous implementation until the next live gate. Later that day the
-Product Owner explicitly rejected the white/warm master, then later rejected the
-resulting Sweetie 16 color distribution after live inspection and selected the official
-Miyazaki 16 palette as the new project-wide color authority. The approved monospace,
-square/pixel geometry, density, state language and reversible integration contracts
-remain in force. Miyazaki 16 supersedes the earlier Sweetie 16 candidate; blue is now
-interaction/focus, gold is selected, and green is active/success.
+The original design-system approval was granted on 2026-09-12. The 2026-09-16
+white/warm, Sweetie 16 and Miyazaki 16 directions are retained only as historical
+context. They no longer define neutral chrome, typography, border thickness or corner
+geometry. MASTER 3.0's current-game palette, Inter/Cinzel typography, 1px line system
+and native-aligned geometry supersede those visual rules.
 
-On 2026-09-17 the Product Owner explicitly reported **“Estrutura validada.”** The
-Backpack/Team/Add Pokémon composition therefore stays closed. The current gate is a
-visual-polish pass only: Backpack Sort +15px, the Add Pokémon pixel scrollbar, shared
-square Element icon adoption project-wide and rarity-box chrome. Structural redesign is
-out of scope unless a later Product Owner instruction explicitly reopens it.
+On 2026-09-17 the Product Owner explicitly reported **“Estrutura validada.”** That
+approval remains evidence for the functional composition and interaction structure of
+that candidate. On 2026-10-01 the Product Owner set a newer project-wide visual rule:
+Better UI chrome must match the current PokéPixel closely enough to read as part of the
+game. That later instruction reopens visual chrome where historical square/Miyazaki
+treatment conflicts with the current native reference, while preserving validated
+gameplay behavior and information architecture unless separately changed.
 
 The 2026-09-17 live review further clarified the Element primitive: canonical Element color
-must remain visible as the square swatch/edge, but the backing must be a darker element-tinted
-well rather than the same full-strength color behind the native symbol. The symbol and backing
-must remain visually separable at 20px and 24px. This clarification does not remap domain
-colors to Miyazaki roles and does not reopen the approved structure.
+must remain visible and the symbol/backing must remain visually separable at 20px and 24px.
+The current PokéPixel reference controls its surrounding neutral chrome. Domain colors remain
+authoritative and are not remapped to Better UI neutral roles.
 
 The later correction sequence reinforces the evidence boundary: local Technical/UX/Visual readiness
 never equals in-game approval. Exact `0.2.11` ultimately closed the legacy Shared Stone contamination

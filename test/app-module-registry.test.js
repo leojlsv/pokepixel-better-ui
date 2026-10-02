@@ -38,6 +38,9 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.ok(!controlIds.includes("custom-pokeball"));
   assert.ok(controls.every(({ name, description }) => typeof name === "function" && typeof description === "function"));
   assert.ok(modules.every(module => typeof module.shouldMount === "function" && typeof module.mount === "function"));
+  assert.deepEqual(modules.filter(module => module.runsInCardMode === true).map(module => module.id),
+    ["pokemon-profile", "menu-bar", "standalone-card-mode"],
+    "toolbar owners stay mounted while textual Cards hides the native game surface");
 });
 
 test("obsolete Custom Pokéball preference does not re-enter active defaults", t => {
@@ -51,4 +54,22 @@ test("obsolete Custom Pokéball preference does not re-enter active defaults", t
   preferences.setEnabled("custom-pokeball", false);
   preferences.setEnabled("menu-bar", true);
   assert.ok(!Object.hasOwn(JSON.parse(storage.getItem("ppbui:modules:v1")), "custom-pokeball"));
+});
+
+test("retired appearance cleanup cannot block readable current module preferences", t => {
+  const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://fixture.invalid" });
+  t.after(() => dom.window.close());
+  const nativeStorage = dom.window.localStorage;
+  nativeStorage.setItem("ppbui:modules:v1", JSON.stringify({ "menu-bar": false }));
+  nativeStorage.setItem("ppbui:appearance:v1", JSON.stringify({ corners: "square" }));
+  const partialStorage = {
+    getItem: key => nativeStorage.getItem(key),
+    setItem: (key, value) => nativeStorage.setItem(key, value),
+    removeItem() { throw new Error("remove denied"); },
+  };
+  const registry = createAppModuleRegistry({ teamPresetStore: {}, teamMovesetStore: {} });
+  const preferences = createModulePreferences({ defaults: registry.defaults, storage: () => partialStorage, events: dom.window });
+  assert.equal(preferences.isEnabled("menu-bar"), false);
+  assert.equal(preferences.isPersistent(), true);
+  assert.equal(nativeStorage.getItem("ppbui:appearance:v1"), JSON.stringify({ corners: "square" }), "failed cleanup must not corrupt or rewrite legacy storage");
 });

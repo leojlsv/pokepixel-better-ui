@@ -93,7 +93,7 @@ export default `
   .pokeidle-top-toolbar[data-ppbui-menu-bar] > .pokeidle-top-toolbar__group > .ppbui-menu-popup > .pokeidle-top-toolbar__dropdown-btn:is(:hover,:focus-visible) {
     border-color:var(--ppbui-line) !important;
     background:var(--ppbui-bg-3) !important;
-    outline:var(--ppbui-border-width) solid var(--ppbui-focus) !important;
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus) !important;
     outline-offset:-1px !important;
   }
 

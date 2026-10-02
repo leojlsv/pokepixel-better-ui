@@ -20,7 +20,7 @@ test('Trade dialog keeps filters outside inventory, retains focus and cleans up'
  assert.match(css,/\.trade-confirm:hover:not\(:disabled\)[^{]*\{[^}]*border-color:var\(--ppbui-accent-hi\) !important[^}]*background:var\(--ppbui-action-bg\) !important[^}]*color:var\(--ppbui-accent-hi\) !important/);
  assert.match(css,/\.trade-confirm:active:not\(:disabled\)[^{]*\{[^}]*border-color:var\(--ppbui-accent-hi\) !important[^}]*background:var\(--ppbui-action-bg\) !important[^}]*color:var\(--ppbui-accent-hi\) !important/);
  assert.match(css,/\.trade-confirm:disabled,[^{]+\.trade-inventory-tab\[aria-disabled="true"\][^{]*\{[^}]*color:var\(--ppbui-text-subtle\) !important/);
- assert.match(css,/\.trade-confirm:focus-visible,[^{]+\.trade-inventory-tab:focus-visible\s*\{[^}]*outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\) !important/);
+ assert.match(css,/\.trade-confirm:focus-visible,[^{]+\.trade-inventory-tab:focus-visible\s*\{[^}]*outline:var\(--ppbui-focus-width\) solid var\(--ppbui-focus\) !important/);
  assert.match(css,/\.trade-inventory-tab:hover:not\(\.is-active\):not\(:disabled\):not\(\[aria-disabled="true"\]\) \{[^}]*background:var\(--ppbui-bg-3\) !important/);
  assert.match(css,/\.trade-inventory-tab:active:not\(\.is-active\):not\(:disabled\):not\(\[aria-disabled="true"\]\) \{[^}]*box-shadow:none !important/);
  assert.match(css,/\.trade-inventory-tab\.is-active:hover:not\(:disabled\):not\(\[aria-disabled="true"\]\) \{[^}]*border-color:var\(--ppbui-selected\) !important/);

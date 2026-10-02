@@ -19,6 +19,12 @@ Miyazaki colors; and Team/Picker/HUD consume MASTER's square Element primitive w
 edge plus darker tinted well so native artwork remains distinct. Native candidate nodes/actions/
 order and the validated `Search | Element | Rarity | Clear` rail stay unchanged.**
 
+**Current visual authority — 2026-10-01:** the Product Owner now requires Better UI to
+blend into the current PokéPixel as part of the game. Any older instruction on this page
+that prescribes Miyazaki 16 neutral chrome, mandatory square controls, 0px radii, 2px
+structural borders or pixel-depth shadows is historical. Preserve the validated Team
+behavior/information structure, but use current MASTER/native visual grammar for chrome.
+
 This page defines the approved visual family for the full Team window, persistent
 Team HUD and Team Presets. It specializes `../MASTER.md` for this module family.
 The current validated runtime and frozen functional contracts remain authoritative
@@ -35,6 +41,10 @@ The final direction supersedes the earlier same-day Full-Team dossier override b
 - Team does not host the dossier chapters and does not become the navigation shell for Profile.
 - The Profile selector reads exact owned instances from Team + Backpack and uses exact
   `creatureId` semantics.
+- Pokémon Profile **Configurar moves** delegates that exact `creatureId` to the game's
+  existing `PokeIdle.MovesetConfig.open(...)` editor. Profile must not render or persist
+  a parallel four-move editor; Saved Movesets remain a separate Better UI preset layer
+  over the native authoritative moveset contract.
 - Contextual Pokémon hover may lead into the dedicated Profile, but must not take ownership of
   unrelated Trade/NPC surfaces.
 - The prior 0.2.64 dossier render/hash records remain historical evidence only and must not be

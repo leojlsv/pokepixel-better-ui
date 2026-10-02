@@ -7,7 +7,7 @@ function styleNode(doc) {
   const style = doc.createElement("style");
   style.dataset.ppbuiModule = "team";
   style.textContent = `
-    .pokeidle-team-panel[data-ppbui-team-enhanced] { container-type:inline-size; min-width:min(340px,calc(100vw - 16px))!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text); box-shadow:var(--ppbui-shadow-raised)!important; font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] { container-type:inline-size; min-width:min(340px,calc(100vw - 16px))!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-window-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text); box-shadow:var(--ppbui-shadow-raised)!important; font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced]:not([data-ppbui-team-manual-height]) { width:min(480px,calc(100vw - 16px))!important; min-height:0!important; height:auto!important; max-height:calc(100vh - 16px)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body { display:block!important; overflow-y:auto!important; padding:var(--ppbui-space-2) var(--ppbui-space-4) var(--ppbui-space-4)!important; background:var(--ppbui-bg-0)!important; color:var(--ppbui-text)!important; font-family:var(--ppbui-font-body)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced]:not([data-ppbui-team-manual-height]) > .pokeidle-panel__body { flex:0 1 auto!important; max-height:calc(100vh - 56px); }
@@ -17,7 +17,7 @@ function styleNode(doc) {
     .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar button { min-width:var(--ppbui-icon-button-size); min-height:var(--ppbui-icon-button-size); border:0!important; border-left:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; color:var(--ppbui-text-muted)!important; box-shadow:none!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar button:hover:not(:disabled) { background:var(--ppbui-bg-3)!important; color:var(--ppbui-text)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar button:active:not(:disabled) { background:var(--ppbui-bg-0)!important; box-shadow:none!important; }
-    .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar button:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus); outline-offset:calc(-1 * var(--ppbui-border-width)); }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar button:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:calc(-1 * var(--ppbui-border-width)); }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-section,
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-section :where(button,input,select,textarea) { border-radius:var(--ppbui-radius)!important; box-shadow:none!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-section--roster { margin:0; padding:0; overflow:hidden; border:0; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-1); }
@@ -70,7 +70,7 @@ function styleNode(doc) {
     [data-ppbui-team-picker] .team-equip-card { -webkit-appearance:none!important; appearance:none!important; box-sizing:border-box; width:100%!important; min-width:0; margin:0!important; border:var(--ppbui-border-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; background-image:none!important; color:var(--ppbui-text)!important; box-shadow:none!important; filter:none!important; font-family:var(--ppbui-font-body)!important; text-shadow:none!important; transform:none!important; transition:none!important; }
     [data-ppbui-team-picker] .team-equip-card:hover:not(:disabled) { border-color:var(--ppbui-border-strong)!important; background:var(--ppbui-bg-3)!important; }
     [data-ppbui-team-picker] .team-equip-card:active:not(:disabled) { background:var(--ppbui-bg-0)!important; }
-    [data-ppbui-team-picker] .team-equip-card:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+    [data-ppbui-team-picker] .team-equip-card:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
     .team-equip-picker[data-ppbui-team-picker]::-webkit-scrollbar,
     .team-equip-picker[data-ppbui-team-picker] *::-webkit-scrollbar { width:var(--ppbui-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
     .team-equip-picker[data-ppbui-team-picker]::-webkit-scrollbar-track,

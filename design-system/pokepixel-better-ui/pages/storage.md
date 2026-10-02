@@ -4,6 +4,12 @@ Status: **Product Owner live-validated on exact `0.2.16`; no Storage validation 
 Direction: **Dual-vault transfer console**
 Recorded: **2026-09-17**
 
+**Current visual authority — 2026-10-01:** the Product Owner now requires Better UI to
+blend into the current PokéPixel as part of the game. Historical square/Miyazaki/2px
+chrome prescriptions below document the validated 2026-09-17 candidate but are no
+longer normative for visual styling. Storage behavior and the dual-vault information
+structure remain authoritative; current MASTER/native visual grammar owns chrome.
+
 This page specializes `../MASTER.md` for Storage without changing its gameplay or
 transfer contract. The Product Owner's live screenshot from 2026-09-17 is the
 current visual baseline. The two-column Backpack ↔ Warehouse workflow remains the

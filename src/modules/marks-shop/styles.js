@@ -1,7 +1,7 @@
 export default `
 .npc-shop-window.ppbui-marks-shop.ppbui-window {
   border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important;
-  border-radius:var(--ppbui-radius)!important;
+  border-radius:var(--ppbui-window-radius)!important;
   background:var(--ppbui-bg-1)!important;
   background-image:none!important;
   color:var(--ppbui-text)!important;
@@ -53,7 +53,7 @@ export default `
   font:400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important;
 }
 .npc-shop-window.ppbui-marks-shop .npc-shop__search::placeholder { color:var(--ppbui-text-subtle)!important; opacity:1; }
-.npc-shop-window.ppbui-marks-shop .npc-shop__search:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+.npc-shop-window.ppbui-marks-shop .npc-shop__search:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
 .npc-shop-window.ppbui-marks-shop .ppbui-shop-search-label {
   display:grid;
   flex:0 0 auto;
@@ -113,7 +113,7 @@ export default `
   color:var(--ppbui-selected)!important;
   box-shadow:none!important;
 }
-.npc-shop-window.ppbui-marks-shop .npc-shop__tab:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+.npc-shop-window.ppbui-marks-shop .npc-shop__tab:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
 
 .npc-shop-window.ppbui-marks-shop .npc-shop__content.ppbui-shop-content {
   display:flex!important;
@@ -365,7 +365,7 @@ export default `
   font:700 var(--ppbui-font-size-secondary)/1 var(--ppbui-font-data)!important;
 }
 .npc-shop-window.ppbui-marks-shop .npc-shop__custom-purchase input.ppbui-input:focus-visible {
-  outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important;
+  outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important;
   outline-offset:var(--ppbui-pixel-unit);
 }
 .npc-shop-window.ppbui-marks-shop .ppbui-shop-quantity-steps {
@@ -424,7 +424,7 @@ export default `
 }
 .npc-shop-window.ppbui-marks-shop input[type="checkbox"]:checked { border-color:var(--ppbui-selected)!important; background:var(--ppbui-selected)!important; box-shadow:none!important; }
 .npc-shop-window.ppbui-marks-shop input[type="checkbox"]:indeterminate { border-color:var(--ppbui-selected)!important; background:linear-gradient(var(--ppbui-selected),var(--ppbui-selected)) center/8px 2px no-repeat,var(--ppbui-bg-0)!important; box-shadow:none!important; }
-.npc-shop-window.ppbui-marks-shop input[type="checkbox"]:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+.npc-shop-window.ppbui-marks-shop input[type="checkbox"]:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
 .npc-shop-window.ppbui-marks-shop input[type="checkbox"]:disabled { border-color:var(--ppbui-border)!important; background:var(--ppbui-bg-1)!important; cursor:default; opacity:1!important; }
 .npc-shop-window.ppbui-marks-shop .npc-shop__sell-row { display:grid!important; min-height:54px!important; grid-template-columns:18px 32px minmax(0,1fr) 66px auto!important; align-items:center; gap:var(--ppbui-space-3)!important; }
 .npc-shop-window.ppbui-marks-shop .npc-shop__sell-quantity { display:grid; gap:var(--ppbui-space-1); color:var(--ppbui-text-muted)!important; font:700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-body)!important; text-align:center; }
@@ -533,7 +533,7 @@ export default `
 .npc-shop-window.ppbui-marks-shop .npc-shop__sell-button.ppbui-button--danger { min-width:160px; }
 
 .npc-shop-window.ppbui-marks-shop .npc-shop__buyback-row { display:grid!important; min-height:72px!important; grid-template-columns:52px minmax(0,1fr) 150px!important; align-items:center; gap:var(--ppbui-space-3)!important; }
-.npc-shop-window.ppbui-marks-shop .npc-shop__buyback-row:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+.npc-shop-window.ppbui-marks-shop .npc-shop__buyback-row:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
 .npc-shop-window.ppbui-marks-shop .npc-shop__buyback-sprite { width:48px!important; height:48px!important; object-fit:contain; filter:none!important; }
 .npc-shop-window.ppbui-marks-shop .npc-shop__buyback-controls { display:grid; grid-template-columns:1fr; align-items:center; gap:var(--ppbui-space-2); }
 .npc-shop-window.ppbui-marks-shop .npc-shop__buyback-total { justify-self:end; }

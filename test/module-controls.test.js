@@ -4,13 +4,12 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { createBetterUI } from "../src/core/bootstrap.js";
 import { createModulePreferences } from "../src/core/preferences.js";
-import { createAppearancePreferences } from "../src/core/appearance-preferences.js";
 import { createMenuBarModule } from "../src/modules/menu-bar/index.js";
 import { createModuleControls } from "../src/modules/module-controls/index.js";
 
 const fixture = readFileSync(new URL("./fixtures/menu-bar.html", import.meta.url), "utf8");
 const key = "ppbui:modules:v1";
-function setup(t, stored, fail = false) {
+function setup(t, stored, fail = false, legacyAppearance = null) {
   const dom = new JSDOM(fixture, { pretendToBeVisual: true, url: "https://local.test" });
   const { window } = dom;
   const previous = new Map();
@@ -19,14 +18,14 @@ function setup(t, stored, fail = false) {
     Object.defineProperty(globalThis, name, { configurable: true, value: typeof window[name] === "function" && name !== "MutationObserver" ? window[name].bind(window) : window[name] });
   }
   if (stored) window.localStorage.setItem(key, stored);
+  if (legacyAppearance) window.localStorage.setItem("ppbui:appearance:v1", legacyAppearance);
   const options = { defaults: { "menu-bar": true }, events: window, storage: () => {
     if (fail) throw new Error("Storage denied");
     return window.localStorage;
   } };
   const preferences = createModulePreferences(options);
-  const appearance = createAppearancePreferences({ storage: options.storage, events: window, document: window.document });
-  const controls = createModuleControls({ preferences, appearance, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }] });
-  const app = createBetterUI({ modules: [createMenuBarModule(), controls], preferences, appearance });
+  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }] });
+  const app = createBetterUI({ modules: [createMenuBarModule(), controls], preferences });
   const doc = window.document;
   t.after(() => {
     app.stop(); dom.window.close();
@@ -35,25 +34,24 @@ function setup(t, stored, fail = false) {
       else delete globalThis[name];
     }
   });
-  return { app, doc, window, preferences, appearance, options,
+  return { app, doc, window, preferences, options,
     trigger: () => doc.querySelector('[aria-controls="ppbui-module-panel"]'),
     toggle: () => doc.querySelector('#ppbui-module-panel input[type="checkbox"]'),
   };
 }
 
-test("appearance selector exposes one persistent global Squared or Rounded mode", t => {
-  const { app, doc, window, trigger, appearance } = setup(t);
+test("Module Controls stays mounted while textual Cards hides the native toolbar", () => {
+  const controls = createModuleControls({ preferences: {}, modules: [] });
+  assert.equal(controls.runsInCardMode, true);
+});
+
+test("corner mode UI is removed and legacy Squared storage is retired", t => {
+  const { app, doc, window, trigger } = setup(t, null, false, '{"corners":"square"}');
   app.start(); trigger().click();
-  const select = doc.querySelector(".ppbui-module-appearance select");
-  assert.ok(select);
-  assert.equal(select.value, "square");
-  assert.deepEqual([...select.options].map(option => option.textContent), ["Squared", "Rounded"]);
-  assert.equal(doc.documentElement.dataset.ppbuiCorners, "square");
-  select.value = "rounded";
-  select.dispatchEvent(new window.Event("change", { bubbles: true }));
-  assert.equal(appearance.getCornerMode(), "rounded");
-  assert.equal(doc.documentElement.dataset.ppbuiCorners, "rounded");
-  assert.deepEqual(JSON.parse(window.localStorage.getItem("ppbui:appearance:v1")), { corners: "rounded" });
+  assert.equal(doc.querySelector(".ppbui-module-appearance"), null);
+  assert.equal(doc.querySelector('#ppbui-module-panel select'), null);
+  assert.equal(doc.documentElement.hasAttribute("data-ppbui-corners"), false);
+  assert.equal(window.localStorage.getItem("ppbui:appearance:v1"), null);
 });
 
 test("Better UI panel owns an upward anchor independently from hostile native dropdown CSS", t => {

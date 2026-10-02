@@ -72,7 +72,7 @@ player/target card boundary. Result filters use a three-choice segmented group
 with a selected text/state and roving keyboard focus. Scroll-triggered shortcuts
 jump to Summary, Economy, Story or Top within the **same pane** and hand focus
 to the chosen section. They create no extra persistent row and are omitted in
-standalone Card Mode, which already has its own sticky Cards/Game control.
+standalone Card Mode, which already owns a fixed Cards/Game toggle in the menu bar.
 Copy Summary includes only rendered, available, display-authoritative KPI facts,
 localizes copy/status, rejects an absent clipboard and fences stale async
 settlement on cleanup or Analyzer loss. Live game acceptance remains Owner-only.
@@ -274,6 +274,17 @@ invalid candidate5 architecture.
   Rhyosa may therefore remain in different content views, including across Swap,
   Focus/Restore and Single/Dual transitions. Native Game Dock navigation changes only
   its active target to Game before delegating the native action.
+- In the ordinary standalone userscript, `Cards / Game` is a **single fixed toggle
+  button inside the native menu bar**. Its DOM parent and physical slot do not change
+  when the view changes. Cards keeps the toolbar path visible while suppressing the
+  rest of the native game surface, so the user always reaches the same switch in the
+  same place. No external dock, viewport positioning fallback or mode-driven
+  reparenting is permitted.
+- Toolbar-owning Better UI infrastructure (`menu-bar`, Pokémon Profile launcher and
+  Module Controls) remains mounted while standalone Cards hides the native game
+  surface. Returning to Game therefore reveals the same enhanced toolbar DOM instead
+  of reconstructing it; unrelated gameplay/window modules may still suspend in Cards
+  for the existing performance boundary.
 
 ### Card Mode hunt-data presentation — 2026-09-26 Product Owner correction
 

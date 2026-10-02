@@ -5,8 +5,8 @@ import { isCoupledWorkspaceHost, readAnalyzerSummary } from "./controller.js";
 const moduleId = "standalone-card-mode";
 const modeAttribute = "data-ppbui-card-mode";
 const surfaceAttribute = "data-ppbui-card-mode-surface";
-const dockGap = 6;
-const viewportMargin = 8;
+const toolbarAttribute = "data-ppbui-card-mode-toolbar";
+const toolbarPathAttribute = "data-ppbui-card-mode-toolbar-path";
 
 export function resolveStandaloneRuntimeWindow(fallback = globalThis.window) {
   const candidate = typeof unsafeWindow !== "undefined" ? unsafeWindow : globalThis?.unsafeWindow;
@@ -17,15 +17,15 @@ export function resolveStandaloneRuntimeWindow(fallback = globalThis.window) {
 function switchStyles() {
   return `
     html[${modeAttribute}="cards"] body{margin:0!important;overflow:auto!important;background:var(--ppbui-bg-1,#161d20)!important}
-    html[${modeAttribute}="cards"] body>:not([${surfaceAttribute}]){display:none!important}
-    .ppbui-card-mode-dock{position:fixed;z-index:2147481000;display:block;width:max-content;max-width:calc(100vw - 16px);pointer-events:auto}
-    .ppbui-card-mode-dock[hidden]{display:none!important}
-    .ppbui-card-mode-switch{display:flex;width:max-content;max-width:100%;gap:2px;padding:2px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius,0px);background:var(--ppbui-bg-2,#232c2e);box-shadow:none;font:700 11px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}
-    .ppbui-coupled-cards>.ppbui-card-mode-switch{position:sticky;top:0;z-index:2;margin:0 0 8px auto}
-    .ppbui-card-mode-dock>.ppbui-card-mode-switch{position:relative;inset:auto;margin:0;padding:2px}
-    .ppbui-card-mode-switch button{min-width:54px;min-height:28px;margin:0;padding:5px 8px;border:1px solid transparent;background:transparent;color:var(--ppbui-text-muted,#a6aa9f);font:inherit;cursor:pointer}
-    .ppbui-card-mode-switch button[aria-pressed="true"]{border-color:var(--ppbui-selected,#d2b45d);background:var(--ppbui-bg-1,#161d20);color:var(--ppbui-title,#e0c46d)}
-    .ppbui-card-mode-switch button:focus-visible{outline:2px solid var(--ppbui-focus,#37b4d1);outline-offset:1px}
+    html[${modeAttribute}="cards"] body>:not([${surfaceAttribute}]):not([${toolbarPathAttribute}]){display:none!important}
+    html[${modeAttribute}="cards"] [${toolbarPathAttribute}]:not([${toolbarAttribute}])>:not([${toolbarPathAttribute}]):not([${toolbarAttribute}]){display:none!important}
+    [data-ppbui-card-mode-toggle]{position:relative!important}
+    [data-ppbui-card-mode-toggle] .ppbui-card-mode-toggle-icon{display:grid!important;width:31px!important;height:31px!important;flex:0 0 31px!important;place-items:center!important;margin:0!important}
+    [data-ppbui-card-mode-toggle] .ppbui-card-mode-toggle-track{position:relative;display:block;width:24px;height:12px;border:1px solid var(--ppbui-line,#6b6543);border-radius:6px;background:var(--ppbui-surface-value,rgba(22,29,32,.85));box-sizing:border-box}
+    [data-ppbui-card-mode-toggle] .ppbui-card-mode-toggle-knob{position:absolute;left:1px;top:1px;display:block;width:8px;height:8px;border-radius:50%;background:var(--ppbui-text-muted,#a6aa9f);box-shadow:none;transform:none;transition:none}
+    [data-ppbui-card-mode-toggle][aria-pressed="true"] .ppbui-card-mode-toggle-track{border-color:var(--ppbui-selected,#d2b45d);background:var(--ppbui-surface-interactive,rgba(35,44,46,.96))}
+    [data-ppbui-card-mode-toggle][aria-pressed="true"] .ppbui-card-mode-toggle-knob{left:13px;background:var(--ppbui-selected,#d2b45d)}
+    [data-ppbui-card-mode-toggle]:focus-visible{outline:2px solid var(--ppbui-focus,#37b4d1)!important;outline-offset:1px!important}
   `;
 }
 
@@ -45,75 +45,66 @@ function mountStandaloneCardMode(win = globalThis.window) {
   style.textContent = switchStyles();
   (doc.head || doc.documentElement).append(style);
 
-  const switcher = doc.createElement("div");
-  switcher.className = "ppbui-card-mode-switch";
-  switcher.dataset.ppbuiModule = moduleId;
-  switcher.dataset.ppbuiCardModeSwitch = "";
-  switcher.setAttribute("role", "group");
-  switcher.setAttribute("aria-label", "Hunt view");
-  switcher.innerHTML = `
-    <button type="button" data-ppbui-card-mode="cards" aria-pressed="false">Cards</button>
-    <button type="button" data-ppbui-card-mode="game" aria-pressed="false">Game</button>
+  const toggle = doc.createElement("button");
+  toggle.type = "button";
+  toggle.className = "pokeidle-top-toolbar__btn";
+  toggle.dataset.ppbuiModule = moduleId;
+  toggle.dataset.ppbuiCardModeToggle = "";
+  toggle.setAttribute("aria-pressed", "false");
+  toggle.innerHTML = `
+    <span class="pokeidle-top-toolbar__icon ppbui-card-mode-toggle-icon" aria-hidden="true">
+      <span class="ppbui-card-mode-toggle-track"><span class="ppbui-card-mode-toggle-knob"></span></span>
+    </span>
+    <span class="pokeidle-top-toolbar__label">Cards/Game</span>
   `;
-  const dock = doc.createElement("div");
-  dock.className = "ppbui-card-mode-dock";
-  dock.dataset.ppbuiModule = moduleId;
-  dock.dataset.ppbuiCardModeDock = "";
-  dock.setAttribute(surfaceAttribute, "");
-  dock.hidden = true;
-  (doc.body || doc.documentElement).append(dock);
   const cards = createCoupledCards({ win, textOnly: true });
   cards.root.dataset.ppbuiModule = moduleId;
   cards.root.setAttribute(surfaceAttribute, "");
-  const buttons = [...switcher.querySelectorAll("[data-ppbui-card-mode]")];
   let mode = "cards";
   let analyzerTimer = null;
-  let resizeObserver = null;
   let observedToolbar = null;
+  let toolbarHadMarker = false;
+  let toolbarPath = new Map();
 
   const syncAnalyzer = () => cards.render(readAnalyzerSummary(win));
-  const positionGameDock = () => {
-    if (mode !== "game" || dock.hidden || !switcher.isConnected) return;
+  const clearToolbarOwnership = () => {
+    if (observedToolbar && !toolbarHadMarker) observedToolbar.removeAttribute(toolbarAttribute);
+    for (const [node, hadMarker] of toolbarPath) if (!hadMarker) node.removeAttribute(toolbarPathAttribute);
+    toolbarPath = new Map();
+    observedToolbar = null;
+    toolbarHadMarker = false;
+  };
+  const toolbarPathNodes = toolbar => {
+    const nodes = [];
+    for (let node = toolbar; node && node !== doc.body; node = node.parentElement) nodes.push(node);
+    return nodes;
+  };
+  const syncToolbar = () => {
     const toolbar = doc.querySelector(config.selectors.toolbar);
-    const viewportWidth = Math.max(0, Number(win.innerWidth) || doc.documentElement?.clientWidth || 0);
-    const viewportHeight = Math.max(0, Number(win.innerHeight) || doc.documentElement?.clientHeight || 0);
-    const switchRect = switcher.getBoundingClientRect?.() || {};
-    const width = Number(switchRect.width) || 118;
-    const height = Number(switchRect.height) || 34;
-    let left = viewportWidth > 0 ? (viewportWidth - width) / 2 : viewportMargin;
-    let top = viewportMargin;
-    const toolbarRect = toolbar?.getBoundingClientRect?.();
-    if (toolbarRect && Number(toolbarRect.width) > 0 && Number(toolbarRect.height) > 0) {
-      left = Number(toolbarRect.left) + (Number(toolbarRect.width) - width) / 2;
-      const toolbarMid = Number(toolbarRect.top) + Number(toolbarRect.height) / 2;
-      top = viewportHeight > 0 && toolbarMid > viewportHeight / 2
-        ? Number(toolbarRect.top) - height - dockGap
-        : Number(toolbarRect.bottom) + dockGap;
+    const nextPath = toolbarPathNodes(toolbar);
+    const currentPath = [...toolbarPath.keys()];
+    const pathChanged = nextPath.length !== currentPath.length || nextPath.some((node, index) => currentPath[index] !== node);
+    if (toolbar !== observedToolbar || pathChanged) {
+      clearToolbarOwnership();
+      observedToolbar = toolbar || null;
+      if (observedToolbar) {
+        toolbarHadMarker = observedToolbar.hasAttribute(toolbarAttribute);
+        observedToolbar.setAttribute(toolbarAttribute, "");
+        for (const node of nextPath) {
+          toolbarPath.set(node, node.hasAttribute(toolbarPathAttribute));
+          node.setAttribute(toolbarPathAttribute, "");
+        }
+      }
     }
-    const maxLeft = viewportWidth > 0 ? Math.max(viewportMargin, viewportWidth - width - viewportMargin) : left;
-    const maxTop = viewportHeight > 0 ? Math.max(viewportMargin, viewportHeight - height - viewportMargin) : top;
-    dock.style.left = `${Math.round(Math.max(viewportMargin, Math.min(left, maxLeft)))}px`;
-    dock.style.top = `${Math.round(Math.max(viewportMargin, Math.min(top, maxTop)))}px`;
+    if (observedToolbar && toggle.parentElement !== observedToolbar) observedToolbar.append(toggle);
   };
-  const placeSwitcher = () => {
-    const focusedControl = switcher.contains(doc.activeElement) ? doc.activeElement : null;
-    const host = mode === "cards"
-      ? cards.root
-      : dock;
-    if (dock.hidden !== (mode !== "game")) dock.hidden = mode !== "game";
-    if (switcher.parentElement === host) return;
-    if (host === cards.root) host.prepend(switcher);
-    else host.append(switcher);
-    if (host === dock) positionGameDock();
-    focusedControl?.focus?.({ preventScroll: true });
-  };
-  const syncToolbarObserver = () => {
-    if (!resizeObserver) return;
-    const toolbar = doc.querySelector(config.selectors.toolbar);
-    if (toolbar === observedToolbar) return;
-    resizeObserver.disconnect();
-    observedToolbar = toolbar || null;
-    if (observedToolbar) resizeObserver.observe(observedToolbar);
+  const syncToggle = () => {
+    const cardsActive = mode === "cards";
+    toggle.setAttribute("aria-pressed", String(cardsActive));
+    toggle.dataset.ppbuiCardModeState = mode;
+    const label = cardsActive ? "Cards" : "Game";
+    toggle.setAttribute("aria-label", `Cards/Game: ${label}`);
+    toggle.title = `Cards/Game: ${label}`;
   };
   const setMode = next => {
     mode = next === "game" ? "game" : "cards";
@@ -124,15 +115,14 @@ function mountStandaloneCardMode(win = globalThis.window) {
       root.setAttribute(modeAttribute, "game");
       cards.setMode("game");
     }
-    placeSwitcher();
-    buttons.forEach(button => button.setAttribute("aria-pressed", button.dataset.ppbuiCardMode === mode ? "true" : "false"));
+    syncToolbar();
+    syncToggle();
     if (mode === "cards") syncAnalyzer();
     win.queueMicrotask?.(() => win.dispatchEvent(new win.Event("ppbui:card-mode-change")));
   };
   const onSwitch = event => {
-    const button = event.target?.closest?.("[data-ppbui-card-mode]");
-    if (!button || !switcher.contains(button)) return;
-    setMode(button.dataset.ppbuiCardMode);
+    if (!toggle.contains(event.target)) return;
+    setMode(mode === "cards" ? "game" : "cards");
   };
   const onNativeAction = event => {
     const button = event.target?.closest?.(config.selectors.action);
@@ -141,13 +131,9 @@ function mountStandaloneCardMode(win = globalThis.window) {
     setMode("game");
   };
 
-  switcher.addEventListener("click", onSwitch);
+  toggle.addEventListener("click", onSwitch);
   doc.addEventListener("click", onNativeAction, true);
-  win.addEventListener?.("resize", positionGameDock);
-  if (typeof win.ResizeObserver === "function") {
-    resizeObserver = new win.ResizeObserver(positionGameDock);
-    syncToolbarObserver();
-  }
+  syncToolbar();
   setMode("cards");
   analyzerTimer = win.setInterval(() => {
     if (mode === "cards") syncAnalyzer();
@@ -155,20 +141,17 @@ function mountStandaloneCardMode(win = globalThis.window) {
 
   return {
     sync() {
-      syncToolbarObserver();
-      placeSwitcher();
-      if (mode === "game") positionGameDock();
+      syncToolbar();
+      syncToggle();
       if (mode === "cards") syncAnalyzer();
     },
     cleanup() {
       if (analyzerTimer !== null) win.clearInterval(analyzerTimer);
-      switcher.removeEventListener("click", onSwitch);
+      toggle.removeEventListener("click", onSwitch);
       doc.removeEventListener("click", onNativeAction, true);
-      win.removeEventListener?.("resize", positionGameDock);
-      resizeObserver?.disconnect?.();
       cards.cleanup();
-      switcher.remove();
-      dock.remove();
+      toggle.remove();
+      clearToolbarOwnership();
       style.remove();
       if (previousMode === null) root.removeAttribute(modeAttribute);
       else root.setAttribute(modeAttribute, previousMode);

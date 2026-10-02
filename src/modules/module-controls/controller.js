@@ -1,7 +1,7 @@
 import { moduleControlsConfig as config } from "./config.js";
 import { closeNativeGroups, controlsText } from "./dom.js";
 
-export function mountControls({ toolbar, icon }, preferences, modules, appearance) {
+export function mountControls({ toolbar, icon }, preferences, modules) {
   const { classes } = config;
   const create = (tag, className) => {
     const node = document.createElement(tag);
@@ -47,18 +47,6 @@ export function mountControls({ toolbar, icon }, preferences, modules, appearanc
   title.id = "ppbui-module-title";
   const status = create("div", `${classes.label} ppbui-module-copy`);
   status.setAttribute("role", "status");
-  const appearanceSection = create("div", "ppbui-module-appearance");
-  const appearanceTitle = create("strong", "ppbui-module-appearance-title");
-  const cornerLabel = create("label", "ppbui-module-appearance-field");
-  const cornerCopy = create("span");
-  const cornerSelect = create("select", "ppbui-select");
-  for (const value of ["square", "rounded"]) {
-    const option = create("option");
-    option.value = value;
-    cornerSelect.append(option);
-  }
-  cornerLabel.append(cornerCopy, cornerSelect);
-  appearanceSection.append(appearanceTitle, cornerLabel);
   const rows = modules.map(module => {
     const row = create("label", "ppbui-module-row");
     const button = create("input"); button.type = "checkbox";
@@ -89,25 +77,21 @@ export function mountControls({ toolbar, icon }, preferences, modules, appearanc
   const close = create("button", "pokeidle-btn ppbui-button ppbui-button--compact ppbui-module-close"); close.type = "button";
   const list = create("div", "ppbui-module-list ppbui-scroll");
   list.append(...groups.map(group => group.fieldset));
-  panel.append(title, appearanceSection, list, status, close);
+  panel.append(title, list, status, close);
   const style = create("style");
   style.dataset.ppbuiStyle = config.id;
   style.textContent = `
     .pokeidle-top-toolbar:has(> [data-ppbui-module="module-controls"].is-open) { z-index:2147483647 !important; }
     [data-ppbui-module="module-controls"] { position:relative !important; }
     [data-ppbui-module="module-controls"].is-open { z-index:2147483647; }
-    [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:absolute !important; inset:auto 0 calc(100% + 4px) auto !important; display:grid; min-width:220px; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
+    [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:absolute !important; inset:auto 0 calc(100% + 4px) auto !important; display:grid; min-width:220px; grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
     .ppbui-module-panel > #ppbui-module-title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; }
-    .ppbui-module-appearance { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:end; gap:var(--ppbui-space-3); padding:var(--ppbui-space-3); border:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius); background:var(--ppbui-bg-0); }
-    .ppbui-module-appearance-title { align-self:center; color:var(--ppbui-text); font-weight:700; }
-    .ppbui-module-appearance-field { display:grid; gap:2px; min-width:92px; color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-meta); }
-    .ppbui-module-appearance-field > .ppbui-select { min-height:var(--ppbui-compact-control-height); }
     .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
     .ppbui-module-panel .ppbui-module-section { min-width:0; margin:4px 0; padding:0; border:0; text-align:left; }
     .ppbui-module-section > summary { cursor:pointer; padding:6px 0; color:var(--ppbui-text); font:inherit; font-weight:700; }
     .ppbui-module-group-count { color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-meta); font-weight:400; white-space:nowrap; }
-    .ppbui-module-section > summary:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus); outline-offset:2px; }
+    .ppbui-module-section > summary:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:2px; }
     .ppbui-module-panel .ppbui-module-row { display:flex; align-items:flex-start; gap:8px; padding:6px 4px; cursor:pointer; text-align:left; }
     .ppbui-module-row:hover { background:var(--ppbui-bg-3); }
     .ppbui-module-row:focus-within { outline:var(--ppbui-separator-width) solid var(--ppbui-focus); outline-offset:-1px; }
@@ -136,14 +120,8 @@ export function mountControls({ toolbar, icon }, preferences, modules, appearanc
     const text = controlsText();
     const content = (node, value) => { if (node.textContent !== value) node.textContent = value; };
     content(title, text.title);
-    content(appearanceTitle, text.appearance);
-    content(cornerCopy, text.corners);
-    content(cornerSelect.options[0], text.square);
-    content(cornerSelect.options[1], text.rounded);
-    cornerSelect.setAttribute("aria-label", text.corners);
-    if (appearance && cornerSelect.value !== appearance.getCornerMode()) cornerSelect.value = appearance.getCornerMode();
     content(close, text.close);
-    content(status, preferences.isPersistent() && disclosurePersistent && (appearance?.isPersistent?.() ?? true) ? text.saved : text.unsaved);
+    content(status, preferences.isPersistent() && disclosurePersistent ? text.saved : text.unsaved);
     for (const group of groups) {
       content(group.heading, text.groups[group.id]);
       content(group.count, `${group.members.filter(row => preferences.isEnabled(row.module.id)).length}/${group.members.length} ${text.activeCount}`);
@@ -164,12 +142,6 @@ export function mountControls({ toolbar, icon }, preferences, modules, appearanc
   };
   listen(trigger, "click", event => { event.stopPropagation(); setOpen(!open); });
   listen(close, "click", () => setOpen(false, true));
-  listen(cornerSelect, "change", event => {
-    event.stopPropagation();
-    appearance?.setCornerMode?.(cornerSelect.value);
-    sync();
-    cornerSelect.focus();
-  });
   for (const { id, fieldset } of groups) listen(fieldset, "toggle", () => {
     if (!fieldset.isConnected || disclosureState[id] === fieldset.open) return;
     disclosureState[id] = fieldset.open;
@@ -198,8 +170,6 @@ export function mountControls({ toolbar, icon }, preferences, modules, appearanc
   const outside = event => { if (open && !group.contains(event.target)) setOpen(false); };
   listen(document, "pointerdown", outside, true);
   listen(toolbar, "click", outside, true);
-  const unsubscribeAppearance = appearance?.subscribe?.(sync);
-  if (unsubscribeAppearance) unlisten.push(unsubscribeAppearance);
   setOpen(false);
   sync();
   return {

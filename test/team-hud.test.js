@@ -125,7 +125,7 @@ test("HUD migrates the complete native surface to one PPBUI visual system", t =>
   assert.match(css, /\.pokeidle-trainer-hud__stamina-note \{ display:none!important; \}/);
   assert.match(css, /\.pokeidle-team-card::before \{ display:none!important; content:none!important; \}/);
   assert.match(css, /\.pokeidle-team-card\.ppbui-pokemon-card--hud \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-pokemon-card-border\)!important;[^}]*border-bottom:var\(--ppbui-border-width\) solid var\(--ppbui-pokemon-card-bottom-border\)!important;/s, "HUD consumes the same 2px shared Pokémon-card edge grammar as Team and Presets");
-  assert.match(css, /\+ \.pokeidle-team-hud__wallet \{[^}]*box-sizing:border-box;[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-bg-1\)!important/s);
+  assert.match(css, /\+ \.pokeidle-team-hud__wallet \{[^}]*box-sizing:border-box;[^}]*border-radius:var\(--ppbui-window-radius\)!important[^}]*background:var\(--ppbui-bg-1\)!important/s);
   assert.doesNotMatch(css, /\.pokeidle-team-hud__wallet \{[^}]*width:100%/s, "Wallet keeps its native HUD-relative geometry instead of expanding against the outer viewport");
   assert.match(css, /\.pokeidle-team-hud__list \{[^}]*gap:0!important/s, "HUD Battle Line is contiguous instead of accumulating framed gaps");
   assert.match(css, /\.pokeidle-team-card\.ppbui-pokemon-card--hud \+ \.pokeidle-team-card\.ppbui-pokemon-card--hud \{ border-left:0!important; \}/);

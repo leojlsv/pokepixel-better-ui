@@ -338,7 +338,7 @@ test('Hunt Atlas structure and complete state language consume scoped Better UI 
   assert.match(css,/\.hunt-map-marker:active \.hunt-map-marker__name/);
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-located\s*\{[^}]+--ppbui-hunt-location-rail:var\(--ppbui-info\)[^}]+border-bottom-color:var\(--ppbui-info\) !important/s);
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-selected\.ppbui-hunts-located/);
-  assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\s*\{[^}]+outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\)/s);
+  assert.match(css,/\.hunt-map-marker:focus-visible \.hunt-map-marker__name\s*\{[^}]+outline:var\(--ppbui-focus-width\) solid var\(--ppbui-focus\)/s);
   assert.match(css,/\.hunt-map-marker\.ppbui-hunts-dimmed-marker > \.hunt-map-marker__sprite\s*\{\s*opacity:\.10 !important;/);
   assert.match(css,/\.hunt-map-marker\.ppbui-hunts-located-marker > \.hunt-map-marker__sprite\s*\{\s*opacity:1 !important;/);
   assert.match(css,/\.hunt-map-marker__name\.ppbui-hunts-dimmed\s*\{\s*opacity:\.10/);

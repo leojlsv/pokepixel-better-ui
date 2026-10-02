@@ -2,7 +2,7 @@ import { createDomObserver } from "./observer.js";
 import { createLifecycle } from "./lifecycle.js";
 import { createLogger } from "./logger.js";
 
-export function createBetterUI({ modules = [], debug = false, preferences, appearance, designSystem } = {}) {
+export function createBetterUI({ modules = [], debug = false, preferences, designSystem } = {}) {
   const lifecycle = createLifecycle();
   const logger = createLogger("core", debug);
   const mountKeys = new Map();
@@ -46,7 +46,10 @@ export function createBetterUI({ modules = [], debug = false, preferences, appea
         throw new Error("document.body is not available");
       }
 
-      appearance?.mount?.();
+      // One-way cleanup for the retired Squared/Rounded system. The current
+      // design system has a single native-aligned geometry and never emits this
+      // attribute again, so stale state from a hot reinjection must be inert too.
+      document.documentElement?.removeAttribute("data-ppbui-corners");
       designSystem?.mount?.();
       if (!modeListenerInstalled) {
         modeWindow = document.defaultView || globalThis.window || null;
@@ -74,11 +77,7 @@ export function createBetterUI({ modules = [], debug = false, preferences, appea
         lifecycle.destroy();
         mountKeys.clear();
       } finally {
-        try {
-          designSystem?.unmount?.();
-        } finally {
-          appearance?.unmount?.();
-        }
+        designSystem?.unmount?.();
       }
       logger.debug("stopped");
     },

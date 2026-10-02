@@ -174,7 +174,7 @@ test('Storage preserves desktop density and reflows without horizontal root over
   assert.match(css,/\.pokecentro-transfer-slot\.rarity-rare \{ --ppbui-storage-quality:var\(--quality-rare\)/);
   assert.doesNotMatch(css,/\.pokecentro-transfer-slot\.rarity-rare \{[^}]*border-color/s);
   assert.match(css,/\.pokecentro-transfer-slot\.is-selected[^}]*border-color:var\(--ppbui-selected\) !important[^}]*border-bottom-color:var\(--ppbui-storage-quality\) !important/s);
-  assert.match(css,/\.pokecentro-transfer-slot:focus-visible[^}]*outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\) !important/s);
+  assert.match(css,/\.pokecentro-transfer-slot:focus-visible[^}]*outline:var\(--ppbui-focus-width\) solid var\(--ppbui-focus\) !important/s);
   assert.ok(s.root.classList.contains('ppbui-window'));assert.ok(s.body.classList.contains('ppbui-scroll'));
   assert.match(css,/\.storage-window\.ppbui-window[^}]+border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\) !important[^}]+background:var\(--ppbui-bg-1\) !important/s);
   assert.ok(s.root.querySelector('.pokecentro-vault__bulk').classList.contains('ppbui-button'));
@@ -183,7 +183,7 @@ test('Storage preserves desktop density and reflows without horizontal root over
   assert.ok(s.root.querySelector('.ppbui-storage-search').classList.contains('ppbui-input'));
   assert.ok(s.root.querySelector('.ppbui-storage-filter-row select').classList.contains('ppbui-select'));
   assert.match(css,/input\.ppbui-storage-search\.ppbui-input,[\s\S]*\.ppbui-storage-filter-row > select\.ppbui-select \{[^}]*height:var\(--ppbui-control-height\)!important[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-bg-0\)!important[^}]*background-image:none!important[^}]*box-shadow:none!important/s,'Search and the initial Storage selects explicitly defeat the live host important rounded/dark field chrome');
-  assert.match(css,/input\.ppbui-storage-search\.ppbui-input:focus-visible,[\s\S]*select\.ppbui-select:focus-visible \{[^}]*outline:var\(--ppbui-border-width\) solid var\(--ppbui-focus\)!important/s,'Storage field focus stays cyan instead of falling back to the host gold focus treatment');
+  assert.match(css,/input\.ppbui-storage-search\.ppbui-input:focus-visible,[\s\S]*select\.ppbui-select:focus-visible \{[^}]*outline:var\(--ppbui-focus-width\) solid var\(--ppbui-focus\)!important/s,'Storage field focus stays cyan instead of falling back to the host gold focus treatment');
   assert.match(css,/\.ppbui-pokemon-tools input\.game-window__search\.ppbui-input,[\s\S]*\.ppbui-pokemon-tools select\.game-window__select\.ppbui-select \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important[^}]*background:var\(--ppbui-bg-0\)!important[^}]*color:var\(--ppbui-text\)!important/s,'Storage More Filters fields receive the same hostile-host visual bridge without changing their field DOM');
   assert.ok(s.root.querySelector('.ppbui-storage-filter-row button').classList.contains('ppbui-button'));
   assert.ok(s.root.querySelector('.ppbui-storage-filter-row').classList.contains('pokecentro-filter-bar__controls'),'native filter-control identity is retained');
