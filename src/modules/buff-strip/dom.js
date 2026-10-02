@@ -11,10 +11,10 @@ export function findBuffStripTarget(doc = document) {
 export function buffStripText(doc = document) {
   const lang = (doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "en").split(/[-_]/)[0];
   const copy = {
-    pt: { name: "Barra de bônus", description: "Mantém os bônus visíveis em uma faixa compacta acima do menu." },
-    en: { name: "Buff bar", description: "Keeps buffs visible in a compact strip above the toolbar." },
-    es: { name: "Barra de mejoras", description: "Mantiene las mejoras visibles en una franja compacta sobre el menú." },
-    zh: { name: "增益栏", description: "将增益效果以紧凑条形显示在菜单栏上方。" },
+    pt: { name: "Barra de bônus", description: "Mantém bônus em um dock compacto que acompanha a orientação da menu bar." },
+    en: { name: "Buff bar", description: "Keeps buffs in a compact dock that follows the menu bar orientation." },
+    es: { name: "Barra de mejoras", description: "Mantiene las mejoras en un dock compacto que sigue la orientación del menú." },
+    zh: { name: "增益栏", description: "将增益效果显示在随菜单栏方向调整的紧凑停靠栏中。" },
   };
   return copy[lang] || copy.en;
 }

@@ -1,16 +1,25 @@
 import { menuBarConfig as config } from "./config.js";
 import { groupLabel, isAvailable, isVisible } from "./dom.js";
 import styles from "./styles.js";
+import { buffStripConfig } from "../buff-strip/config.js";
 
 export function mountMenuBar({ toolbar, actions, structure }) {
   const { classes, selectors } = config;
   const doc = toolbar.ownerDocument;
+  const win = doc.defaultView;
   const undo = [];
   const positions = new Map();
   const created = [];
   const masks = new Map();
+  const popupPlacement = new Map();
+  const collapsedStyles = new Map();
   const groups = [];
+  let hoveredEntry = null;
   const placements = new Map();
+  let orientation = "horizontal";
+  let orientationPersistent = true;
+  let collapsedState = null;
+  const orientationBefore = toolbar.getAttribute("data-ppbui-menu-orientation");
   const byId = new Map(actions.map(button => [button.dataset.menuId, button]));
   const iconSignature = node => node?.outerHTML || "";
   const cloneIcon = node => {
@@ -47,6 +56,12 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     node.addEventListener(event, fn, capture);
     undo.push(() => node.removeEventListener(event, fn, capture));
   };
+  const emitToolbarState = (eventName, detail) => {
+    if (!win?.dispatchEvent || !win.CustomEvent) return;
+    win.dispatchEvent(new win.CustomEvent(eventName, {
+      detail: { toolbar, ...detail },
+    }));
+  };
   const styleProperty = (node, property, value, priority = "important") => {
     if (!node) return;
     const before = node.style.getPropertyValue(property);
@@ -62,11 +77,119 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       if (!hadStyle && !node.style.cssText) node.removeAttribute("style");
     });
   };
+  const popupProperty = (node, property, value, priority = "important") => {
+    let properties = popupPlacement.get(node);
+    if (!properties) {
+      properties = new Map();
+      popupPlacement.set(node, properties);
+    }
+    if (!properties.has(property)) {
+      properties.set(property, [
+        node.style.getPropertyValue(property),
+        node.style.getPropertyPriority(property),
+        node.hasAttribute("style"),
+      ]);
+    }
+    if (node.style.getPropertyValue(property) !== value || node.style.getPropertyPriority(property) !== priority) {
+      node.style.setProperty(property, value, priority);
+    }
+  };
+  const collapsedProperty = (node, property, value) => {
+    let state = collapsedStyles.get(node);
+    if (!state) {
+      state = { hadStyle: node.hasAttribute("style"), properties: new Map() };
+      collapsedStyles.set(node, state);
+    }
+    if (!state.properties.has(property)) {
+      state.properties.set(property, [
+        node.style.getPropertyValue(property),
+        node.style.getPropertyPriority(property),
+      ]);
+    }
+    node.style.setProperty(property, value, "important");
+  };
+  const clearCollapsedStyles = () => {
+    for (const [node, state] of collapsedStyles) {
+      for (const [property, [value, priority]] of state.properties) {
+        if (value) node.style.setProperty(property, value, priority);
+        else node.style.removeProperty(property);
+      }
+      if (!state.hadStyle && !node.style.cssText) node.removeAttribute("style");
+    }
+    collapsedStyles.clear();
+  };
+  const syncCollapsed = () => {
+    const collapsed = toolbar.classList.contains("is-collapsed");
+    if (!collapsed) {
+      clearCollapsedStyles();
+    } else {
+      for (const [property, value] of [
+        ["display", "block"],
+        ["box-sizing", "border-box"],
+        ["width", "32px"],
+        ["min-width", "32px"],
+        ["max-width", "32px"],
+        ["height", "32px"],
+        ["min-height", "32px"],
+        ["max-height", "32px"],
+      ]) collapsedProperty(toolbar, property, value);
+      for (const child of toolbar.children) {
+        if (child.matches(selectors.toggle)) {
+          for (const [property, value] of [
+            ["display", "grid"],
+            ["position", "absolute"],
+            ["top", "0px"],
+            ["bottom", "auto"],
+            ["left", "0px"],
+            ["right", "auto"],
+            ["width", "32px"],
+            ["min-width", "32px"],
+            ["height", "32px"],
+            ["min-height", "32px"],
+          ]) collapsedProperty(child, property, value);
+        } else {
+          collapsedProperty(child, "display", "none");
+        }
+      }
+    }
+    if (collapsedState !== collapsed) {
+      collapsedState = collapsed;
+      emitToolbarState(config.events.collapseChange, { collapsed, orientation });
+    }
+  };
   const style = doc.createElement("style");
   style.dataset.ppbuiStyle = config.id;
   style.textContent = styles;
   doc.head.append(style);
   attribute(toolbar, "data-ppbui-menu-bar", "");
+  try {
+    const saved = doc.defaultView?.localStorage?.getItem(config.orientationStorageKey);
+    if (config.orientations.includes(saved)) orientation = saved;
+  } catch {
+    orientationPersistent = false;
+  }
+  const applyOrientation = value => {
+    const before = toolbar.getAttribute("data-ppbui-menu-orientation");
+    orientation = config.orientations.includes(value) ? value : "horizontal";
+    toolbar.setAttribute("data-ppbui-menu-orientation", orientation);
+    if (before !== orientation) {
+      emitToolbarState(config.events.orientationChange, { orientation });
+    }
+  };
+  undo.push(() => {
+    if (orientationBefore === null) toolbar.removeAttribute("data-ppbui-menu-orientation");
+    else toolbar.setAttribute("data-ppbui-menu-orientation", orientationBefore);
+  });
+  const setOrientation = value => {
+    applyOrientation(value);
+    try {
+      doc.defaultView?.localStorage?.setItem(config.orientationStorageKey, orientation);
+      orientationPersistent = true;
+    } catch {
+      orientationPersistent = false;
+    }
+  };
+  applyOrientation(orientation);
   const mask = (node, hide) => {
     if (hide && !masks.has(node)) {
       masks.set(node, [node.style.display, node.style.getPropertyPriority("display"), node.hasAttribute("style")]);
@@ -83,8 +206,10 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   };
   const nativeVisible = node => {
     const masked = masks.get(node);
+    const collapsedDisplay = collapsedStyles.get(node)?.properties?.get("display")?.[0];
+    const display = collapsedDisplay !== undefined ? collapsedDisplay : node.style.display;
     return !node.hidden && node.getAttribute("aria-hidden") !== "true" &&
-      (masked ? masked[0] !== "none" : node.style.display !== "none");
+      (masked ? masked[0] !== "none" : display !== "none");
   };
   const sources = new Map(actions.map(button => {
     const parents = [];
@@ -135,12 +260,12 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     // Keep the dropdown contiguous with the trigger to preserve pointer hover,
     // and bound tall single-column host layouts to the visible viewport.
     styleProperty(group, "position", "relative");
-    styleProperty(dropdown, "position", "absolute");
-    styleProperty(dropdown, "left", "50%");
+    styleProperty(dropdown, "position", "fixed");
+    popupProperty(dropdown, "left", "8px");
     styleProperty(dropdown, "right", "auto");
-    styleProperty(dropdown, "top", "auto");
-    styleProperty(dropdown, "bottom", "100%");
-    styleProperty(dropdown, "transform", "translateX(-50%)");
+    popupProperty(dropdown, "top", "8px");
+    styleProperty(dropdown, "bottom", "auto");
+    styleProperty(dropdown, "transform", "none");
     styleProperty(dropdown, "z-index", "2147483646");
     styleProperty(dropdown, "display", "grid");
     styleProperty(dropdown, "box-sizing", "border-box");
@@ -213,7 +338,77 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     dropdown,
     items: [...dropdown.querySelectorAll(selectors.action)].filter(button => placements.has(button)),
   }));
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
+  const overlaps = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  const positionDropdown = entry => {
+    const win = doc.defaultView;
+    const viewportWidth = doc.documentElement?.clientWidth || win?.innerWidth || 0;
+    const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
+    if (!viewportWidth || !viewportHeight) return;
+    const triggerRect = entry.trigger.getBoundingClientRect();
+    const toolbarRect = toolbar.getBoundingClientRect();
+    popupProperty(entry.dropdown, "max-height", "calc(100dvh - 96px)");
+    const popupRect = entry.dropdown.getBoundingClientRect();
+    const popupWidth = popupRect.width || Math.min(282, Math.max(0, viewportWidth - 16));
+    const popupHeight = popupRect.height || Math.min(240, Math.max(0, viewportHeight - 16));
+    const margin = 8;
+    const gap = 0;
+    const obstacleGap = 4;
+    let left;
+    let top;
+    if (orientation === "vertical") {
+      const right = toolbarRect.right + gap;
+      const leftSide = toolbarRect.left - gap - popupWidth;
+      if (right + popupWidth <= viewportWidth - margin) left = right;
+      else if (leftSide >= margin) left = leftSide;
+      else {
+        const rightSpace = viewportWidth - toolbarRect.right;
+        const leftSpace = toolbarRect.left;
+        left = rightSpace >= leftSpace ? right : leftSide;
+      }
+      top = triggerRect.top + (triggerRect.height - popupHeight) / 2;
+    } else {
+      left = triggerRect.left + (triggerRect.width - popupWidth) / 2;
+      const above = toolbarRect.top - gap - popupHeight;
+      top = above >= margin ? above : toolbarRect.bottom + gap;
+    }
+    left = clamp(left, margin, viewportWidth - popupWidth - margin);
+    top = clamp(top, margin, viewportHeight - popupHeight - margin);
+
+    const buffStrip = doc.querySelector('.pokeidle-buff-strip[data-ppbui-buff-strip]:not([hidden])');
+    const buffRect = buffStrip?.getBoundingClientRect?.();
+    if (buffRect?.width > 0 && buffRect?.height > 0) {
+      const candidate = { left, right:left + popupWidth, top, bottom:top + popupHeight };
+      if (overlaps(candidate, buffRect)) {
+        const minTop = margin;
+        const maxTop = Math.max(minTop, viewportHeight - popupHeight - margin);
+        const above = buffRect.top - obstacleGap - popupHeight;
+        const below = buffRect.bottom + obstacleGap;
+        const canAbove = above >= minTop;
+        const canBelow = below <= maxTop;
+        if (canAbove || canBelow) {
+          if (canAbove && canBelow) top = Math.abs(above - top) <= Math.abs(below - top) ? above : below;
+          else top = canAbove ? above : below;
+        } else {
+          const aboveFree = Math.max(0, buffRect.top - obstacleGap - margin);
+          const belowTop = buffRect.bottom + obstacleGap;
+          const belowFree = Math.max(0, viewportHeight - margin - belowTop);
+          if (belowFree >= aboveFree) {
+            top = belowTop;
+            popupProperty(entry.dropdown, "max-height", `${Math.floor(belowFree)}px`);
+          } else {
+            top = margin;
+            popupProperty(entry.dropdown, "max-height", `${Math.floor(aboveFree)}px`);
+          }
+        }
+      }
+    }
+
+    popupProperty(entry.dropdown, "left", `${Math.round(left)}px`);
+    popupProperty(entry.dropdown, "top", `${Math.round(top)}px`);
+  };
   const setOpen = (entry, open) => {
+    if (open) positionDropdown(entry);
     entry.group.classList.toggle(classes.open, open);
     entry.trigger.setAttribute("aria-expanded", String(open));
   };
@@ -235,6 +430,14 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       if (!nextOpen) entry.trigger.blur();
     });
     listen(entry.dropdown, "click", () => close(entry));
+    listen(entry.group, "pointerenter", () => {
+      hoveredEntry = entry;
+      positionDropdown(entry);
+    });
+    listen(entry.group, "pointerleave", () => {
+      if (hoveredEntry === entry) hoveredEntry = null;
+    });
+    listen(entry.group, "focusin", () => positionDropdown(entry));
     // Native action handlers may stop bubbling before the dropdown is reached.
     for (const button of entry.dropdown.querySelectorAll(selectors.action)) listen(button, "click", () => close(entry));
     listen(entry.group, "focusout", event => {
@@ -260,12 +463,25 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       items[index].focus();
     });
   }
+  listen(doc.defaultView, "resize", () => {
+    for (const entry of groups) positionDropdown(entry);
+  });
+  listen(doc.defaultView, buffStripConfig.events.geometryChange, event => {
+    if (event.detail?.toolbar && event.detail.toolbar !== toolbar) return;
+    const active = new Set();
+    if (hoveredEntry) active.add(hoveredEntry);
+    for (const entry of groups) {
+      if (entry.group.classList.contains(classes.open) || entry.group.contains(document.activeElement)) active.add(entry);
+    }
+    for (const entry of active) positionDropdown(entry);
+  });
   const outside = event => {
     for (const entry of groups) if (!entry.group.contains(event.target)) close(entry);
   };
   listen(document, "pointerdown", outside, true);
   listen(toolbar, "click", outside, true);
   const sync = () => {
+    syncCollapsed();
     for (const [button, parents] of sources) mask(button, !nativeVisible(button) || parents.some(parent => !nativeVisible(parent)));
     for (const entry of groups) {
       if (entry.ownedTrigger) {
@@ -286,9 +502,15 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       if (empty) close(entry);
     }
   };
+  const ToolbarMutationObserver = win?.MutationObserver || globalThis.MutationObserver;
+  const toolbarStateObserver = ToolbarMutationObserver ? new ToolbarMutationObserver(() => sync()) : null;
+  toolbarStateObserver?.observe(toolbar, { attributes:true, attributeFilter:["class"] });
   sync();
   return {
     sync,
+    getOrientation: () => orientation,
+    setOrientation,
+    isOrientationPersistent: () => orientationPersistent,
     isIntact: () => groups.every(({ group, trigger, dropdown }) => group.parentNode === toolbar && trigger.parentNode === group && dropdown.parentNode === group) &&
       [...placements].every(([button, parent]) => button.parentNode === parent) &&
       itemOrder.every(({ dropdown, items }) => {
@@ -297,7 +519,16 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       }) &&
       ordered.every((node, index) => [...toolbar.children].filter(child => ordered.includes(child))[index] === node),
     cleanup() {
+      toolbarStateObserver?.disconnect();
+      clearCollapsedStyles();
       for (const node of [...masks.keys()]) mask(node, false);
+      for (const [node, properties] of popupPlacement) {
+        for (const [property, [value, priority, hadStyle]] of properties) {
+          if (value) node.style.setProperty(property, value, priority);
+          else node.style.removeProperty(property);
+          if (!hadStyle && !node.style.cssText) node.removeAttribute("style");
+        }
+      }
       // A native group rebuild can replace its source while moved actions survive elsewhere.
       for (const button of actions) {
         const replacement = [...toolbar.querySelectorAll(selectors.action)].find(node =>
