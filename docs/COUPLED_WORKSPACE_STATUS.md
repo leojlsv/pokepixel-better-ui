@@ -1,5 +1,10 @@
 # Coupled Workspace — PM Acceptance & Evidence Record
 
+> **Current status — 2026-10-02:** PPTools Recommendation and the Coupled
+> Workspace PPTools relay were removed by Product Owner decision. All PPTools
+> sections and hashes below are historical evidence only and do not describe
+> current runtime capabilities, build targets or pending acceptance work.
+
 ## Standalone Tampermonkey PPTools variant — 2026-09-29, 0.2.120 (historical; cancelled)
 
 > **Historical evidence only.** This experimental variant was cancelled and is
@@ -55,7 +60,7 @@ operation are still unverified. No normal host promotion, gameplay commands,
 Tampermonkey installation or live game/browser validation was performed by
 the agent.
 
-## PPTools Recommendation approved; Search list follow-up — 2026-09-29
+## Historical — PPTools Recommendation approved; Search list follow-up — 2026-09-29
 
 The Product Owner explicitly **approved the existing one-click PPTools
 Recommendation functionality in the game** at 16:57 UTC, then clarified that
@@ -89,7 +94,7 @@ visual evidence, not in-game validation. The existing opt-in host is unchanged
 The approved functionality is not a verification of the simulator's active buff
 assumptions.
 
-## PPTools neutral-EXP correction — 2026-09-29, diagnostic handoff
+## Historical — PPTools neutral-EXP correction — 2026-09-29, diagnostic handoff
 
 The Product Owner supplied a sample from PokePixel's native **COPIAR JSON** for
 an Entei at level 32. The creature document includes species, level, quality,
@@ -126,7 +131,7 @@ It does not constitute live game, screen reader, or exact host visual evidence.
 The existing normal host has not been promoted or replaced. The actual
 one-click result in PokePixel still requires user-owned in-game validation.
 
-## PPTools one-click — isolated diagnostic candidate, 2026-09-29
+## Historical — PPTools one-click — isolated diagnostic candidate, 2026-09-29
 
 The Product Owner's corrected requirement is a single Better UI `PPTools
 Recommendation` click for the **current native leader**, answered by the real

@@ -38,9 +38,7 @@ if ($LASTEXITCODE -ne 0 -or $smoke.BuildRequested -or $smoke.Mode -ne 'smoke') {
 
 Invoke-Rejected $launcher @('-Plan', '-Build')
 Invoke-Rejected $launcher @('-Plan', '-Build', '-Candidate', '-SkipBuild')
-Invoke-Rejected $launcher @('-Plan', '-Candidate', '-PptoolsCandidate')
 Invoke-Rejected $builder @()
-Invoke-Rejected $builder @('-Candidate', '-PptoolsCandidate')
 Invoke-Rejected $builder @('-PromoteNormal', '-Candidate')
 
 $after = if (Test-Path -LiteralPath $bin -PathType Container) {
