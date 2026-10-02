@@ -5,7 +5,7 @@
  * --ui-border-start / --ui-border-end into a shared ::after rule. Neutralize
  * only those effect tokens on the native button surfaces that receive it.
  * Geometry is no longer rewritten globally: the host keeps its own current
- * radius/layout, while Better UI-owned surfaces use the Rounded / 0px tokens.
+ * radius/layout, while Better UI-owned surfaces use the native-aligned radius tokens.
  */
 :where(
   .pokeidle-panel,

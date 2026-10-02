@@ -4,6 +4,32 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Toggle Cards/Game fixo + editor nativo de moves — candidato `0.2.131` (2026-10-01):**
+  o HUD móvel `Cards / Game` foi removido. O standalone agora usa um único ícone de
+  interruptor dentro da própria menu bar, com posição DOM estável em Cards e Game,
+  estado visual/`aria-pressed` e foco de teclado. Cards mantém a toolbar e apenas o
+  caminho DOM necessário para ela visíveis, enquanto o restante da superfície nativa
+  permanece oculto; não há dock externo, cálculo de viewport, `ResizeObserver` nem
+  reparenting do controle ao alternar modos. `menu-bar`, Pokémon Profile e Module Controls
+  permanecem montados enquanto Cards apenas oculta a superfície nativa, evitando
+  teardown/rebuild da game bar e preservando a estrutura/customização Better UI ao
+  voltar para Game. No Pokémon Profile, **Configurar moves** deixa de abrir o editor
+  paralelo do Better UI e delega o `creatureId` exato ao editor oficial
+  `PokeIdle.MovesetConfig.open(...)`; Saved Movesets continuam usando os contratos
+  nativos de leitura/gravação já existentes.
+
+- **Fundação visual — PokéPixel atual como autoridade (2026-10-01):** a antiga opção
+  `Squared` foi removida definitivamente. Better UI agora possui uma única geometria
+  nativa (8px janela / 5px controles e cards / 4px badges), sem seletor de cantos,
+  sem `data-ppbui-corners` e sem fallback 0px. A chave legada
+  `ppbui:appearance:v1` é removida no startup. Janelas/shells PPBUI usam
+  explicitamente o papel de 8px, e foco de
+  teclado usa o papel independente de 2px em vez de herdar a linha estrutural de 1px.
+  MASTER 3.0 e os overrides normativos de Team, Storage, Hunts e Auto
+  Helper agora deixam explícito que Miyazaki 16, 0px/square, bordas estruturais de 2px
+  e pixel-depth antigos são contexto histórico; a referência visual corrente do jogo
+  governa o chrome, preservando comportamento e estrutura funcional já validados.
+
 - **Cards CURRENT / persistência Windows — revisão técnica final do candidato
   `0.2.129` (não publicado):** matriz sintética ampliada para dez estados em
   235/269/270/319/320/390/519/520 px, com detecção do corte real a 270/520 px.

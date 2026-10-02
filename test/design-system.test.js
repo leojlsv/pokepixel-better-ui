@@ -34,7 +34,7 @@ function globals(t, window) {
   });
 }
 
-test("design tokens expose the approved Game Palette, native typography and corner modes", () => {
+test("design tokens expose the approved Game Palette, native typography and fixed native geometry", () => {
   for (const token of [
     "--ppbui-space-1: 2px", "--ppbui-space-7: 24px", "--ppbui-m16-charcoal: #232228",
     "--ppbui-m16-navy: #284261", "--ppbui-m16-stone: #5f5854", "--ppbui-m16-gold: #e3c054", "--ppbui-m16-cyan: #54bad2",
@@ -49,12 +49,31 @@ test("design tokens expose the approved Game Palette, native typography and corn
     '--ppbui-font-display: "Cinzel", Georgia, serif',
     "--ppbui-font-size-body: 12px", "--ppbui-font-size-meta: 10px",
     "--ppbui-control-height: 28px", "--ppbui-action-height: 28px", "--ppbui-button-1x1-size: 28px",
-    "--ppbui-button-2x1-width: 56px", "--ppbui-button-2x1-height: 28px", "--ppbui-border-width: var(--ppbui-line-width)",
-    "--ppbui-window-radius: 0px", "--ppbui-radius: 0px", "--ppbui-control-radius: 0px", "--ppbui-radius-badge: 0px",
+    "--ppbui-button-2x1-width: 56px", "--ppbui-button-2x1-height: 28px", "--ppbui-border-width: var(--ppbui-line-width)", "--ppbui-focus-width: 2px",
+    "--ppbui-window-radius: 8px", "--ppbui-radius: 5px", "--ppbui-control-radius: 5px", "--ppbui-radius-badge: 4px",
     "--ppbui-scrollbar-size: 10px", "--ppbui-shadow-raised: var(--ppbui-shadow)",
   ]) assert.ok(css.includes(token), `missing ${token}`);
-  assert.match(css, /html\[data-ppbui-corners="rounded"\]\s*\{[^}]*--ppbui-window-radius: 8px;[^}]*--ppbui-radius: 5px;[^}]*--ppbui-control-radius: 5px;[^}]*--ppbui-radius-badge: 4px;/s);
+  assert.doesNotMatch(css, /data-ppbui-corners|--ppbui-window-radius:\s*0px|--ppbui-control-radius:\s*0px|--ppbui-radius-badge:\s*0px/);
+  assert.match(css, /\.ppbui-button:focus-visible,[\s\S]*?outline: var\(--ppbui-focus-width\) solid var\(--ppbui-focus\);/);
   assert.doesNotMatch(css, /--(?:ui|quality)-[\w-]+\s*:/i);
+});
+
+test("representative outer module shells use the native window radius role", () => {
+  const cases = [
+    ["inventory/controller.js", /\.inventory-window--slots\.ppbui-window \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["storage/controller.js", /\.storage-window\.ppbui-window \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["team/controller.js", /\.pokeidle-team-panel\[data-ppbui-team-enhanced\] \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["team-hud/controller.js", /\.pokeidle-team-hud\[data-ppbui-team-hud-enhanced\] \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["hunts/styles.js", /\.ppbui-hunts-enhanced \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["marks-shop/styles.js", /\.npc-shop-window\.ppbui-marks-shop\.ppbui-window \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["auto-helper/controller.js", /\.auto-helper-panel\[data-ppbui-auto-helper\]\.ppbui-window \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["pokemon-tools/trade-ui.js", /\.trade-session-window\.ppbui-window \{[^}]*border-radius:var\(--ppbui-window-radius\)/s],
+    ["pokemon-profile/controller.js", /\[data-ppbui-pokemon-profile-window\] \{[^}]*border-radius:var\(--ppbui-window-radius\)!important;/s],
+  ];
+  for (const [name, pattern] of cases) {
+    const moduleCss = readFileSync(new URL(`../src/modules/${name}`, import.meta.url), "utf8");
+    assert.match(moduleCss, pattern, `${name} must use the window radius token for its outer shell`);
+  }
 });
 
 test("public opt-in component classes stay stable for module interoperability", () => {
@@ -171,7 +190,7 @@ test("master fields, boxes and scrollbars use the Game Palette and appearance ra
   assert.match(normalized, /\.ppbui-scroll-y \{ overflow-y: auto; \}/);
 });
 
-test("Element and quality domain primitives preserve semantic colors while following corner preference", () => {
+test("Element and quality domain primitives preserve semantic colors with fixed native-aligned geometry", () => {
   const normalized = css.replace(/\s+/g, " ");
   assert.match(normalized, /\.ppbui-element-icon \{[^}]*--ppbui-element-swatch: var\(--ppbui-element-color, var\(--element-color, var\(--ppbui-border-strong\)\)\);[^}]*width: 24px !important;[^}]*height: 24px !important;[^}]*border: var\(--ppbui-separator-width\) solid var\(--ppbui-element-swatch\) !important;[^}]*border-radius: var\(--ppbui-radius-badge\) !important;[^}]*background: color-mix\(in srgb, var\(--ppbui-element-swatch\) 28%, var\(--ppbui-bg-0\)\) !important;/);
   assert.doesNotMatch(normalized, /\.ppbui-element-icon \{[^}]*background: var\(--ppbui-element-color/, "canonical Element color must not fill the entire tile behind a same-color symbol");
@@ -318,8 +337,8 @@ test("an older runtime remount cannot downgrade the managed design-system genera
   freshRuntime.unmount();
 });
 
-test("bootstrap mounts design system before modules and cleans it across restart", t => {
-  const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", { pretendToBeVisual: true });
+test("bootstrap retires legacy corner state, mounts design system before modules and cleans it across restart", t => {
+  const dom = new JSDOM("<!doctype html><html data-ppbui-corners='square'><head></head><body></body></html>", { pretendToBeVisual: true });
   globals(t, dom.window);
   t.after(() => dom.window.close());
   const runtime = createDesignSystemRuntime({ cssText: ".ppbui-fixture{display:block}" });
@@ -336,6 +355,7 @@ test("bootstrap mounts design system before modules and cleans it across restart
 
   app.start();
   app.start();
+  assert.equal(dom.window.document.documentElement.hasAttribute("data-ppbui-corners"), false);
   assert.equal(mounts, 1);
   assert.equal(dom.window.document.querySelectorAll('style[data-ppbui-design-system="1"]').length, 1);
   app.stop();

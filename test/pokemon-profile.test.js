@@ -22,7 +22,7 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
     { id:"dup", name:"Pikachu stale", species_id:"pikachu", level:49, power:290, hp:90, max_hp:100, elements:["electric"] },
     { id:"bag-1", name:"Rhydon", species_id:"rhydon", level:42, power:411, hp:155, max_hp:155, quality:"rare", quality_multiplier:1.5, iv_total:170, gender:"male", nature:"adamant", elements:["ground","rock"] },
   ];
-  const bus = new Map(), saveCalls=[];
+  const bus = new Map(), saveCalls=[], configureCalls=[];
   let moveFailureConsumed = false;
   const getMoveset = async id => {
     if (movesDelay) await movesDelay(id);
@@ -36,6 +36,7 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
     t:key=>key,
     PokemonCardData:{ async loadDetail(id){ const creature=[...team,...inventory].find(entry=>entry.id===id); return { creature:creature?{...creature}:null, moves:[...currentMoves,move("rock-slide","Rock Slide","rock",75,"physical",3000),move("drill-run","Drill Run","ground",80,"physical",4000),move("ice-fang","Ice Fang","ice",65,"physical",5000)].map(entry=>({id:entry.id,move:{...entry}})) }; } },
     Bus:{ on(name,fn){ if(!bus.has(name))bus.set(name,new Set());bus.get(name).add(fn); }, off(name,fn){ bus.get(name)?.delete(fn); }, emit(name,data){ for(const fn of bus.get(name)||[])fn(data); } },
+    MovesetConfig:{ open(id){ configureCalls.push(String(id)); } },
     Api:{
       async getCreatures(location){ return { data: location === "team" ? team.map(x=>({...x})) : inventory.map(x=>({...x})) }; },
       async getSpecies(id){ return { id, name:id, normal_sprite_url:`/img/${id}.png` }; },
@@ -56,7 +57,7 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
   dom.window.localStorage.setItem("ppbui:pokemon-tags:v2:trainer-1", JSON.stringify({ assigned:{ "bag-1":["boss"], "team-1":["pve"] } }));
   const mounted = mountPokemonProfile(doc);
   t.after(() => { mounted.cleanup(); dom.window.close(); });
-  return { dom, doc, mounted, team, inventory, saveCalls };
+  return { dom, doc, mounted, team, inventory, saveCalls, configureCalls };
 }
 
 test("Profile detaches events from the original native Bus and rebinds after rehydration", t => {
@@ -161,7 +162,7 @@ test("Profile window title uses the shared game display typography", t => {
   const s = setup(t);
   const css = s.doc.querySelector('style[data-ppbui-module="pokemon-profile"]').textContent.replace(/\s+/g, " ");
   assert.match(css, /\[data-ppbui-profile-title\] \{[^}]*font:500 var\(--ppbui-font-size-title\)\/var\(--ppbui-line-height-tight\) var\(--ppbui-font-display\);[^}]*letter-spacing:normal;/);
-  for (const selector of ["profile-hero", "profile-facts", "profile-current", "profile-move", "profile-move-editor", "profile-team-member"])
+  for (const selector of ["profile-hero", "profile-facts", "profile-current", "profile-move", "profile-team-member"])
     assert.match(css, new RegExp(`\\[data-ppbui-${selector}\\] \\{[^}]*border-radius:var\\(--ppbui-radius\\)!important;`));
   assert.match(css, /\[data-ppbui-profile-move-position\] \{[^}]*border-radius:var\(--ppbui-radius-badge\)!important;/);
 });
@@ -223,13 +224,13 @@ test("captured Pokemon Profile moveset writers are inert after cleanup", async t
   const root=s.doc.querySelector("[data-ppbui-pokemon-profile-window]");
   const boss=[...root.querySelectorAll("[data-ppbui-profile-saved]")].find(node=>/Boss/.test(node.textContent));
   const [apply,,remove]=boss.querySelectorAll("[data-ppbui-profile-saved-actions] button");
-  root.querySelector("[data-ppbui-profile-configure-moves]").click();
-  const configureSave=root.querySelector("[data-ppbui-profile-move-editor-actions] .ppbui-button--primary");
+  const configure=root.querySelector("[data-ppbui-profile-configure-moves]");
   const stored=s.dom.window.localStorage.getItem("ppbui:team-movesets:v1");let confirms=0;s.dom.window.confirm=()=>{confirms+=1;return true;};
-  assert.equal(apply.disabled,false);assert.equal(configureSave.disabled,false);assert.equal(s.saveCalls.length,0);
+  assert.equal(apply.disabled,false);assert.equal(configure.disabled,false);assert.equal(s.saveCalls.length,0);
   s.mounted.cleanup();
-  apply.click();configureSave.click();remove.click();await new Promise(resolve=>s.dom.window.setTimeout(resolve,0));
+  apply.click();configure.click();remove.click();await new Promise(resolve=>s.dom.window.setTimeout(resolve,0));
   assert.equal(s.saveCalls.length,0,"detached Profile controls cannot call the authoritative moveset writer after cleanup");
+  assert.equal(s.configureCalls.length,0,"detached Profile controls cannot open the native moveset editor after cleanup");
   assert.equal(confirms,0,"detached local-store removal fails before opening confirmation");
   assert.equal(s.dom.window.localStorage.getItem("ppbui:team-movesets:v1"),stored,"detached removal cannot mutate Saved Movesets");
 });
@@ -291,7 +292,7 @@ test("Profile reuses Pokémon element, sprite, rarity and move visual identity w
   assert.match(css,/\[data-ppbui-pokemon-profile-window\] \{\s*--ppbui-bg-0:rgba\(22,29,32,.85\);[^}]*--ppbui-bg-1:rgba\(22,29,32,.92\);[^}]*--ppbui-bg-2:rgba\(35,44,46,.96\);[^}]*--ppbui-border:#6b6543;[^}]*--ppbui-selected:#d2b45d;[^}]*border:1px solid #6b6543!important;[^}]*background:rgba\(22,29,32,.92\)!important;/s,"Profile applies the approved Game Palette with Values 85%, Window 92%, Interactive 96% and opaque 1px lines");
   assert.match(css,/\[data-ppbui-profile-hero\] \{[^}]*background:rgba\(35,44,46,.96\)!important;/s,"Hero uses the exported Interactive surface with alpha");
   assert.match(css,/\[data-ppbui-profile-current\] \{[^}]*background:rgba\(35,44,46,.96\)!important;/s,"Current Moves uses the exported Interactive surface with alpha");
-  assert.match(css,/\.pokemon-card\[data-ppbui-profile-native-card\] \{[^}]*max-width:100%!important;[^}]*border:1px solid #6b6543!important;[^}]*border-radius:var\(--ppbui-radius\)!important;[^}]*background:rgba\(22,29,32,.92\)!important;/s,"native PokémonCard uses the same approved Window alpha/1px line system, follows the global corner mode and cannot overflow its narrow parent");
+  assert.match(css,/\.pokemon-card\[data-ppbui-profile-native-card\] \{[^}]*max-width:100%!important;[^}]*border:1px solid #6b6543!important;[^}]*border-radius:var\(--ppbui-radius\)!important;[^}]*background:rgba\(22,29,32,.92\)!important;/s,"native PokémonCard uses the approved Window alpha/1px line system, fixed native-aligned radius and cannot overflow its narrow parent");
   const saved=root.querySelector("[data-ppbui-profile-saved]"); assert.equal(saved.querySelector("[data-ppbui-profile-move-power]").textContent,"PW 100","saved moves reuse current authoritative metadata rather than inventing power");
   assert.equal(saved.querySelector("[data-ppbui-profile-move-category]").textContent,"Phys");
   assert.equal(saved.querySelector("[data-ppbui-profile-move-cooldown]").textContent,"5");
@@ -326,13 +327,20 @@ test("Saved Movesets and Teams collapse independently and preserve state across 
   assert.equal(savedToggle.getAttribute("aria-expanded"),"false");assert.equal(teamToggle.getAttribute("aria-expanded"),"false");assert.equal(savedBody.hidden,true);assert.equal(teamBody.hidden,true);
 });
 
-test("Configure Moves edits the exact Profile creature through the authoritative moveset API", async t => {
+test("Configure Moves delegates the exact Profile creature to the native PokéPixel editor", async t => {
   const s=setup(t);await s.dom.window.__PPBUI_POKEMON_PROFILE__.open("bag-1");const root=s.doc.querySelector("[data-ppbui-pokemon-profile-window]"),configure=root.querySelector("[data-ppbui-profile-configure-moves]");
-  assert.ok(configure);assert.equal(configure.getAttribute("aria-expanded"),"false");configure.click();const editor=root.querySelector("[data-ppbui-profile-move-editor]");assert.ok(editor);assert.equal(configure.getAttribute("aria-expanded"),"true");
-  const selects=[...editor.querySelectorAll("select")];assert.equal(selects.length,4);assert.deepEqual(selects.map(select=>select.value),currentMoves.map(entry=>entry.id));
-  editor.querySelector("[data-ppbui-profile-move-editor-actions] .ppbui-button--primary").click();await new Promise(resolve=>s.dom.window.setTimeout(resolve,30));
-  assert.equal(s.saveCalls.at(-1).id,"bag-1","Configure Moves writes the exact Backpack creature, not a same-species or Team selection");assert.deepEqual(s.saveCalls.at(-1).payload.move_ids,currentMoves.map(entry=>entry.id));
-  assert.ok(root.querySelector("[data-ppbui-profile-configure-moves]"),"successful save rerenders the exact Profile with Configure Moves still reachable");
+  assert.ok(configure);assert.equal(configure.disabled,false);assert.equal(configure.hasAttribute("aria-expanded"),false);assert.equal(configure.hasAttribute("aria-controls"),false);
+  configure.click();
+  assert.deepEqual(s.configureCalls,["bag-1"],"Configure Moves opens MovesetConfig for the exact Backpack creature");
+  assert.equal(s.saveCalls.length,0,"Profile does not duplicate the game's move writer");
+  assert.equal(root.querySelector("[data-ppbui-profile-move-editor]"),null,"Profile does not create a parallel move editor");
+});
+
+test("Configure Moves follows a rehydrated native MovesetConfig without retaining a stale owner", async t => {
+  const s=setup(t);await s.dom.window.__PPBUI_POKEMON_PROFILE__.open("bag-1");const configure=s.doc.querySelector("[data-ppbui-profile-configure-moves]");
+  delete s.dom.window.PokeIdle.MovesetConfig;s.mounted.sync();assert.equal(configure.disabled,true);
+  s.dom.window.PokeIdle.MovesetConfig={open(id){s.configureCalls.push(`rehydrated:${id}`);}};s.mounted.sync();assert.equal(configure.disabled,false);
+  configure.click();assert.deepEqual(s.configureCalls,["rehydrated:bag-1"]);
 });
 
 test("Profile source filters keep same-species different creatures distinct and menu is a dedicated destination", async t => {
@@ -469,7 +477,7 @@ test("Profile reconciles a replaced native PokemonCard owner without clobbering 
 
 test("Current Moves Retry preserves keyboard focus through rerender and lands on the refreshed region", async t => {
   const s=setup(t,{movesFailOnce:true}); await s.dom.window.__PPBUI_POKEMON_PROFILE__.open("bag-1");
-  const root=s.doc.querySelector("[data-ppbui-pokemon-profile-window]"), current=root.querySelector("[data-ppbui-profile-current]"), retry=current.querySelector("button");
+  const root=s.doc.querySelector("[data-ppbui-pokemon-profile-window]"), current=root.querySelector("[data-ppbui-profile-current]"), retry=current.querySelector(":scope > button");
   assert.ok(retry,"failed Current Moves read exposes Retry"); retry.focus(); assert.equal(s.doc.activeElement,retry);
   retry.click();
   assert.equal(s.doc.activeElement,root.querySelector("[data-ppbui-profile-main]"),"focus is parked on the persistent main region before Retry replaces its button");

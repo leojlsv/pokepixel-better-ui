@@ -1,7 +1,7 @@
 export const huntsStyles = `
   .ppbui-hunts-enhanced {
     border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important;
-    border-radius:var(--ppbui-radius) !important;
+    border-radius:var(--ppbui-window-radius) !important;
     background:var(--ppbui-bg-1) !important;
     color:var(--ppbui-text);
     font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body);
@@ -48,7 +48,7 @@ export const huntsStyles = `
     box-shadow:none!important;
   }
   .ppbui-hunts-enhanced .pokeidle-panel__titlebar button:focus-visible {
-    outline:var(--ppbui-border-width) solid var(--ppbui-focus);
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus);
     outline-offset:calc(-1 * var(--ppbui-border-width));
   }
   .ppbui-hunts-enhanced .pokeidle-panel__titlebar button:disabled {
@@ -430,7 +430,7 @@ export const huntsStyles = `
   }
   .ppbui-hunts-inspector[hidden] { display:none !important; }
   .ppbui-hunts-inspector:focus-visible {
-    outline:var(--ppbui-border-width) solid var(--ppbui-focus);
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus);
     outline-offset:calc(-1 * var(--ppbui-border-width));
   }
   .ppbui-hunts-inspector__header {
@@ -516,7 +516,7 @@ export const huntsStyles = `
     margin-top:var(--ppbui-space-5);
     padding:0 var(--ppbui-control-padding-x);
     border:var(--ppbui-border-width) solid var(--ppbui-accent) !important;
-    border-radius:var(--ppbui-radius) !important;
+    border-radius:var(--ppbui-window-radius) !important;
     background:var(--ppbui-bg-0) !important;
     color:var(--ppbui-accent-hi) !important;
     font:700 var(--ppbui-font-size-body)/var(--ppbui-line-height-tight) var(--ppbui-font-body) !important;
@@ -533,7 +533,7 @@ export const huntsStyles = `
     box-shadow:none !important;
   }
   .ppbui-hunts-inspector__hunt:focus-visible {
-    outline:var(--ppbui-border-width) solid var(--ppbui-focus);
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus);
     outline-offset:var(--ppbui-pixel-unit);
   }
   .ppbui-hunts-inspector__hunt:disabled {
@@ -601,7 +601,7 @@ export const huntsStyles = `
     background:var(--ppbui-bg-0) !important;
   }
   .ppbui-hunts-enhanced .hunt-map-marker:focus-visible .hunt-map-marker__name {
-    outline:var(--ppbui-border-width) solid var(--ppbui-focus);
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus);
     outline-offset:var(--ppbui-pixel-unit);
   }
   .ppbui-hunts-enhanced .hunt-map-marker__name.ppbui-hunts-dimmed { opacity:.10; }
@@ -874,7 +874,7 @@ export const huntsStyles = `
   .ppbui-hunts-enhanced .hunt-world-elements button:focus-visible,
   .ppbui-hunts-results select:focus-visible,
   .ppbui-hunts-inspector__mode .hunt-presentation-toggle button:focus-visible {
-    outline:var(--ppbui-border-width) solid var(--ppbui-focus);
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus);
     outline-offset:var(--ppbui-pixel-unit);
   }
 

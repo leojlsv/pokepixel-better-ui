@@ -101,7 +101,7 @@
 .ppbui-select:focus-visible,
 .ppbui-dialog:focus-visible,
 .ppbui-focusable:focus-visible {
-  outline: var(--ppbui-border-width) solid var(--ppbui-focus);
+  outline: var(--ppbui-focus-width) solid var(--ppbui-focus);
   outline-offset: var(--ppbui-pixel-unit);
 }
 
@@ -174,7 +174,7 @@
 }
 
 .ppbui-pokemon-card:focus-visible {
-  outline: var(--ppbui-border-width) solid var(--ppbui-focus) !important;
+  outline: var(--ppbui-focus-width) solid var(--ppbui-focus) !important;
   outline-offset: var(--ppbui-pixel-unit);
 }
 

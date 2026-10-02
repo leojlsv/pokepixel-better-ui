@@ -30,7 +30,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-manager] { grid-column:1/-1; align-self:stretch; box-sizing:border-box; width:100%!important; max-width:none!important; margin:var(--ppbui-space-2) 0 0!important; padding:0!important; overflow:hidden; border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text); font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body); box-shadow:none!important; }
     [data-ppbui-team-preset-manager][data-empty="true"] { padding:0; }
     [data-ppbui-team-preset-manager] > summary { min-height:var(--ppbui-control-height); padding:var(--ppbui-space-2) var(--ppbui-space-3); cursor:pointer; color:var(--ppbui-text); font-weight:700; }
-    [data-ppbui-team-preset-manager] > summary:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus); outline-offset:var(--ppbui-pixel-unit); }
+    [data-ppbui-team-preset-manager] > summary:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:var(--ppbui-pixel-unit); }
     [data-ppbui-team-preset-manager-grid] { display:grid; box-sizing:border-box; width:100%; grid-template-columns:minmax(0,1fr); gap:0; margin-top:0; }
     [data-ppbui-team-preset-manager][data-empty="true"] [data-ppbui-team-preset-manager-grid] { margin-top:0; }
     [data-ppbui-team-preset-empty] { grid-column:1/-1; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-3); border-top:var(--ppbui-separator-width) solid var(--ppbui-border); color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-meta); line-height:var(--ppbui-line-height-meta); }
@@ -50,7 +50,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     .pokeidle-team-panel [data-ppbui-team-preset-manager] input.game-window__search.ppbui-input:focus,
     .pokeidle-team-panel [data-ppbui-team-preset-manager] select.game-window__select.ppbui-select:focus { border-color:var(--ppbui-border-strong)!important; outline:none!important; }
     .pokeidle-team-panel [data-ppbui-team-preset-manager] input.game-window__search.ppbui-input:focus-visible,
-    .pokeidle-team-panel [data-ppbui-team-preset-manager] select.game-window__select.ppbui-select:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+    .pokeidle-team-panel [data-ppbui-team-preset-manager] select.game-window__select.ppbui-select:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
     .pokeidle-team-panel [data-ppbui-team-preset-manager] [data-ppbui-team-preset-name-field] > input.game-window__search.ppbui-input,
     .pokeidle-team-panel [data-ppbui-team-preset-manager] [data-ppbui-team-preset-composer-name] > input.game-window__search.ppbui-input { border-color:var(--ppbui-accent)!important; }
     [data-ppbui-team-preset-card-actions] { flex:0 0 auto; flex-wrap:nowrap; gap:var(--ppbui-space-2); }

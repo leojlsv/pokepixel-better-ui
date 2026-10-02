@@ -46,7 +46,7 @@ export function mountStorage({root,scene}) {
   };
   const style=doc.createElement("style");style.dataset.ppbuiStyle="storage";
   style.textContent=`
-    .storage-window.ppbui-window { container-type:inline-size; min-width:min(980px,calc(100vw - 16px)) !important; max-width:calc(100vw - 16px); border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-radius) !important; background:var(--ppbui-bg-1) !important; color:var(--ppbui-text) !important; box-shadow:var(--ppbui-shadow-raised) !important; font-family:var(--ppbui-font-body) !important; }
+    .storage-window.ppbui-window { container-type:inline-size; min-width:min(980px,calc(100vw - 16px)) !important; max-width:calc(100vw - 16px); border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-window-radius) !important; background:var(--ppbui-bg-1) !important; color:var(--ppbui-text) !important; box-shadow:var(--ppbui-shadow-raised) !important; font-family:var(--ppbui-font-body) !important; }
     .storage-window.ppbui-window > .pokeidle-panel__titlebar { border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border) !important; border-radius:var(--ppbui-radius) !important; background:var(--ppbui-bg-1) !important; background-image:none !important; }
     .storage-window.ppbui-window > .pokeidle-panel__titlebar .pokeidle-panel__title { color:var(--ppbui-text) !important; font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display) !important; letter-spacing:normal; }
     .storage-window.ppbui-window > .pokeidle-panel__body { display:flex; min-height:0; flex-direction:column; background:var(--ppbui-bg-1) !important; background-image:none !important; color:var(--ppbui-text) !important; font-family:var(--ppbui-font-body) !important; }
@@ -66,7 +66,7 @@ export function mountStorage({root,scene}) {
     .storage-window.ppbui-window .pokecentro-transfer-slot:hover:not(:disabled) { border-color:var(--ppbui-accent) !important; border-bottom-color:var(--ppbui-storage-quality) !important; background:var(--ppbui-bg-3) !important; filter:none !important; transform:none !important; }
     .storage-window.ppbui-window .pokecentro-transfer-slot:active:not(:disabled) { background:var(--ppbui-bg-0) !important; box-shadow:none !important; }
     .storage-window.ppbui-window .pokecentro-transfer-slot.is-selected,.storage-window.ppbui-window .pokecentro-transfer-slot.is-selected:hover { z-index:2; border-color:var(--ppbui-selected) !important; border-bottom-color:var(--ppbui-storage-quality) !important; background:var(--ppbui-bg-3) !important; box-shadow:none!important; }
-    .storage-window.ppbui-window .pokecentro-transfer-slot:focus-visible { z-index:3; outline:var(--ppbui-border-width) solid var(--ppbui-focus) !important; outline-offset:var(--ppbui-pixel-unit); }
+    .storage-window.ppbui-window .pokecentro-transfer-slot:focus-visible { z-index:3; outline:var(--ppbui-focus-width) solid var(--ppbui-focus) !important; outline-offset:var(--ppbui-pixel-unit); }
     .storage-window.ppbui-window .pokecentro-transfer-slot.is-fainted { filter:grayscale(1) brightness(.62) !important; }
     .storage-window.ppbui-window .pokecentro-transfer-slot.is-fainted:hover { filter:grayscale(1) brightness(.72) !important; }
     .storage-window.ppbui-window .pokecentro-slot-empty { box-sizing:border-box; width:56px; height:56px; border:var(--ppbui-separator-width) solid var(--ppbui-border) !important; border-radius:var(--ppbui-radius) !important; background:var(--ppbui-bg-0) !important; color:var(--ppbui-text-subtle)!important; box-shadow:none !important; opacity:1; }
@@ -82,13 +82,13 @@ export function mountStorage({root,scene}) {
     .storage-window.ppbui-window input.ppbui-storage-search.ppbui-input:focus,
     .storage-window.ppbui-window .ppbui-storage-filter-row > select.ppbui-select:focus { border-color:var(--ppbui-border-strong)!important; outline:none!important; }
     .storage-window.ppbui-window input.ppbui-storage-search.ppbui-input:focus-visible,
-    .storage-window.ppbui-window .ppbui-storage-filter-row > select.ppbui-select:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+    .storage-window.ppbui-window .ppbui-storage-filter-row > select.ppbui-select:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
     .storage-window.ppbui-window .ppbui-pokemon-tools input.game-window__search.ppbui-input,
     .storage-window.ppbui-window .ppbui-pokemon-tools select.game-window__select.ppbui-select { box-sizing:border-box!important; height:var(--ppbui-control-height)!important; min-height:var(--ppbui-control-height)!important; margin:0!important; padding:0 var(--ppbui-control-padding-x)!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-0)!important; background-image:none!important; clip-path:none!important; color:var(--ppbui-text)!important; box-shadow:none!important; filter:none!important; font:400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; text-shadow:none!important; transition:none!important; transform:none!important; }
     .storage-window.ppbui-window .ppbui-pokemon-tools input.game-window__search.ppbui-input:focus,
     .storage-window.ppbui-window .ppbui-pokemon-tools select.game-window__select.ppbui-select:focus { border-color:var(--ppbui-border-strong)!important; outline:none!important; }
     .storage-window.ppbui-window .ppbui-pokemon-tools input.game-window__search.ppbui-input:focus-visible,
-    .storage-window.ppbui-window .ppbui-pokemon-tools select.game-window__select.ppbui-select:focus-visible { outline:var(--ppbui-border-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
+    .storage-window.ppbui-window .ppbui-pokemon-tools select.game-window__select.ppbui-select:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
     .storage-window.ppbui-window .ppbui-storage-search-row { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:var(--ppbui-space-4); }
     .storage-window.ppbui-window .ppbui-storage-results { min-width:64px; flex-shrink:0; color:var(--ppbui-text-muted); font:700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-data); text-align:right; }
     .storage-window.ppbui-window .ppbui-storage-filter-row { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)) auto; gap:var(--ppbui-space-2); }

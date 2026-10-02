@@ -4,6 +4,12 @@ Status: **exact `0.2.17` live-rejected for bounded visual density/composition; e
 Direction: **compact automation operations console**
 Recorded: **2026-09-17**
 
+**Current visual authority — 2026-10-01:** the Product Owner now requires Better UI to
+blend into the current PokéPixel as part of the game. Historical square/Miyazaki/2px
+visual prescriptions below document the previously validated candidate and no longer
+override MASTER. Preserve Auto Helper settings/gameplay behavior and information
+hierarchy; current MASTER/native visual grammar owns chrome.
+
 This page specializes `../MASTER.md` for Auto Helper without changing its validated
 gameplay/settings contract. MASTER remains authoritative; this candidate page exists
 to make the module migration concrete and reviewable.
@@ -51,7 +57,7 @@ remain domain semantics in the destination matrix.
 | Destination matrix | MATCH behavior / REDESIGN chrome | Full readable quality × Keep/Sell/Extract matrix with outer/header structure, subtle row banding instead of a full cell grid, canonical rarity labels and native radios |
 | Help disclosure | REFINE | Quiet progressive disclosure; no competing card frame |
 | Loading/error/empty feedback | REFINE | Stable local status feedback without exposing the native picker/grid flash |
-| Scrollbars | REFINE | Shared 10px square Miyazaki scrollbar within owned Auto Helper subtree |
+| Scrollbars | REFINE | Shared 10px scrollbar within owned Auto Helper subtree, following current MASTER geometry |
 | Bespoke raster | ASSET NEEDED: NO | Existing item/domain artwork is sufficient |
 
 ## Art direction and hierarchy
@@ -62,16 +68,16 @@ remain domain semantics in the destination matrix.
 4. The destination matrix is the dominant data structure in its group.
 5. Status/locked/paused information is explicit text/state, never opacity alone.
 
-Use square 0px corners, 2px major hard edges and 1px internal separators. Do not use
-the host olive fills, rounded 4–6px cards, Arial typography, gradients or blurred
-shadows. Avoid broad stone/taupe fills; stone is structural/transient only.
+Use current MASTER geometry: 8px window shell, 5px controls/cards and 4px badges,
+with 1px structural lines. Do not reintroduce the retired 0px/square treatment.
+Avoid host olive fills, Arial typography, gradients or decorative blurred shadows.
 
 ## Component + state treatment
 
 - **Buttons:** shared PPBUI secondary by default; Retry may use action emphasis while
   an error is present. Refresh remains utility/secondary.
-- **Inputs/selects:** 28px square dark wells with weathered hard edge and independent
-  cyan `:focus-visible`. Host radius/background/height must not leak through.
+- **Inputs/selects:** 28px dark wells using the fixed 5px control radius and independent
+  cyan `:focus-visible`. Host background/height must not leak through.
 - **Checkbox/radio:** retain native form semantics and checked/disabled state. Accent
   may use project semantic tokens, but labels remain necessary.
 - **Group summary:** charcoal header, hard lower edge, readable enabled count. Hover is

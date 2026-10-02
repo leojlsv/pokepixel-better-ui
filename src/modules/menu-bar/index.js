@@ -7,6 +7,7 @@ export function createMenuBarModule() {
   let mounted = null;
   return {
     id: menuBarConfig.id,
+    runsInCardMode: true,
     shouldMount() {
       const next = findMenuTarget();
       if (!sameTarget(next, target) || (mounted && !mounted.isIntact())) target = next;

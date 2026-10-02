@@ -141,10 +141,10 @@ UI baseline for every owned module:
 
 Text and semantic gameplay colors remain opaque. Body/controls follow the current
 game stack `Inter, "Segoe UI", Arial, sans-serif`; display/window titles use
-`Cinzel, Georgia, serif`. Better UI exposes one global persisted corner preference:
-`Squared` (`0px`) or `Rounded` (8px windows, 5px controls/cards, 4px badges). Exactly
-one mode is active at a time. The preference changes geometry only; it never changes
-palette, alpha, typography or semantics.
+`Cinzel, Georgia, serif`. Better UI uses one fixed corner geometry matching the current
+PokéPixel reference: 8px windows, 5px controls/cards and 4px badges. There is no corner
+mode selector or persisted appearance choice; legacy `ppbui:appearance:v1` data is
+retired and removed during startup.
 
 ## Pokémon Profile Color Lab
 

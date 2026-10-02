@@ -135,8 +135,8 @@ test("native Poké Hub drag and minimize controls share the navigation rail with
   assert.match(css,/\.pokeidle-top-toolbar\[data-ppbui-menu-bar\] > \.pokeidle-top-toolbar__group \{[^}]*position:relative !important/s,'Better UI-owned toolbar groups provide the positioning context for their dropdowns');
   assert.match(css,/\.pokeidle-top-toolbar\[data-ppbui-menu-bar\] > \.pokeidle-top-toolbar__group > \.ppbui-menu-popup \{[^}]*position:absolute !important;[^}]*left:50% !important;[^}]*right:auto !important;[^}]*top:auto !important;[^}]*bottom:100% !important;[^}]*display:grid !important;[^}]*width:min\(282px,calc\(100vw - 16px\)\) !important;[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\) !important;[^}]*max-height:calc\(100dvh - 96px\) !important;[^}]*overflow-y:auto !important;[^}]*translateX\(-50%\) !important;/s,'every Better UI grouped popup owns a compact trigger-local upward shell');
   assert.match(css,/> \.ppbui-menu-popup::after \{[^}]*content:none !important;/s,'Better UI popup neutralizes the host downward-only pseudo shell');
-  assert.match(css,/border-radius:var\(--ppbui-window-radius\) !important/,'opted-in toolbar/menu shells follow the global corner mode');
-  assert.match(css,/border-radius:var\(--ppbui-control-radius\) !important/,'opted-in toolbar actions follow the global corner mode');
+  assert.match(css,/border-radius:var\(--ppbui-window-radius\) !important/,'opted-in toolbar/menu shells use the native-aligned window radius role');
+  assert.match(css,/border-radius:var\(--ppbui-control-radius\) !important/,'opted-in toolbar actions use the fixed native-aligned control radius');
   assert.doesNotMatch(css,/@media \(max-width:760px\)[\s\S]*\.pokeidle-top-toolbar__label[^}]*display:none/s,'Better UI preserves visible top-rail labels because the native island already owns its narrow six-column reflow');
   handle.dispatchEvent(new doc.defaultView.Event("pointerdown", { bubbles:true }));
   toggle.click();

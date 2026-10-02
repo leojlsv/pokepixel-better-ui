@@ -96,7 +96,7 @@
 }
 
 .ppbui-root :where(button:not(.ppbui-button), input:not(.ppbui-input), select:not(.ppbui-select), textarea:not(.ppbui-textarea)):focus-visible {
-  outline: var(--ppbui-border-width) solid var(--ppbui-focus) !important;
+  outline: var(--ppbui-focus-width) solid var(--ppbui-focus) !important;
   outline-offset: var(--ppbui-pixel-unit);
 }
 

@@ -8,6 +8,12 @@ Validation status: **historical Hunt Atlas behavior user-validated; current Miya
 Product Owner live validation: **2026-09-12 — All green**
 Validated implementation: **`3faa712`**
 
+**Current visual authority — 2026-10-01:** the Product Owner now requires Better UI to
+blend into the current PokéPixel as part of the game. Historical Miyazaki 16, mandatory
+square/0px geometry, 2px structural-edge and hard-shadow instructions below are retained
+as candidate history only. Hunt Atlas behavior, hierarchy and lifecycle constraints remain
+valid; current MASTER/native visual grammar owns chrome.
+
 Master-style migration note (2026-09-16): the Product Owner explicitly rejected the
 intermediate white/warm master, later rejected the Sweetie 16 color distribution in live
 inspection, and selected official Miyazaki 16 as the project-wide palette. The older
@@ -303,7 +309,7 @@ containers consume the shared `.ppbui-scroll` pixel primitive; no descendant-wid
 or host-wide scrollbar styling.
 
 - thickness: shared 10px token on both axes;
-- square shared track/thumb/corner treatment from MASTER;
+- shared track/thumb/corner treatment from current MASTER geometry;
 - only actual scroll containers opt into `.ppbui-scroll`; map descendants that do
   not scroll are not styled merely because they are inside Hunts;
 - inspector/map/list scrolling must retain normal wheel, drag and keyboard
@@ -366,10 +372,10 @@ gameplay behavior.
    `Entrar na Hunt` uses the MASTER 28px desktop action height / 40px coarse-pointer
    minimum, full width and the primary blue/cyan action edge/text treatment. No other action in
    the inspector may receive equal primary semantics.
-6. **Second live geometry correction.** Search and Level min/max must render with
-   visibly square 0px corners; the world-tab rail and zoom rail must align to the
-   same inner row edges; every world tab, including the selected Johto tab, must
-   fill its complete segment with no inset gap or uncovered strip.
+6. **Second live geometry correction — historical geometry superseded.** Search and
+   Level min/max retain the validated row alignment and complete segment fill, but
+   their old 0px/square corner requirement is retired. Current MASTER's fixed native
+   5px control radius applies.
 
 ## DOM/CSS vs asset plan
 
