@@ -462,6 +462,19 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   let nativeCardOwner = null, nativeCardOriginalRender = null, nativeCardRenderWrapper = null, nativeCardToken = 0;
 
   const copy = () => pokemonProfileText(doc);
+  const setText = (node, value) => {
+    if (!node) return;
+    const next = String(value ?? "");
+    if (node.textContent !== next) node.textContent = next;
+  };
+  const setAttr = (node, name, value) => {
+    if (!node) return;
+    const next = String(value ?? "");
+    if (node.getAttribute(name) !== next) node.setAttribute(name, next);
+  };
+  const setProp = (node, name, value) => {
+    if (node && node[name] !== value) node[name] = value;
+  };
   function menuIcon() {
     const image = doc.createElement("img");
     image.className = "pokeidle-top-toolbar__icon";
@@ -485,15 +498,15 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     menu.addEventListener("click",()=>open()); toolbar.append(menu); return menu;
   }
   function syncCopy() {
-    const text = copy(); title.textContent = text.title; close.title = text.close; close.setAttribute("aria-label", text.close); ensureMenu(); if (menuLabel) menuLabel.textContent = text.name; menu?.setAttribute("aria-label", text.name);
-    search.placeholder = text.search; search.setAttribute("aria-label", text.search); refresh.textContent = text.refresh;
-    for (const [key, button] of sourceButtons) button.textContent = text[key];
-    for(const key of ["rarity","element","minLevel","maxLevel","tags"])filterLabels.get(key).textContent=text[key];clearFilters.textContent=text.clearFilters;
+    const text = copy(); setText(title, text.title); setProp(close, "title", text.close); setAttr(close, "aria-label", text.close); ensureMenu(); setText(menuLabel, text.name); setAttr(menu, "aria-label", text.name);
+    setProp(search, "placeholder", text.search); setAttr(search, "aria-label", text.search); setText(refresh, text.refresh);
+    for (const [key, button] of sourceButtons) setText(button, text[key]);
+    for(const key of ["rarity","element","minLevel","maxLevel","tags"])setText(filterLabels.get(key),text[key]);setText(clearFilters,text.clearFilters);
     const rarityOptions=pokemonRarities.map(value=>[value,win?.PokeIdle?.t?.(`common.quality_m.${value}`)||value]),elementOptions=pokemonElements.map(value=>[value,win?.PokeIdle?.t?.(`common.element.${value}`)||value]),tagOptions=[["untagged",text.untagged],...fixedTags.map(tag=>[tag.id,`${tag.icon} ${tag.name}`])];
     const signature=JSON.stringify([text.all,text.untagged,rarityOptions,elementOptions,tagOptions]);
     if(signature!==filterCopySignature){const fill=(select,values,current)=>{select.replaceChildren();for(const [value,label] of [["",text.all],...values]){const option=doc.createElement("option");option.value=value;option.textContent=label;select.append(option);}select.value=current;};fill(rarityFilter,rarityOptions,filters.rarity);fill(elementFilter,elementOptions,filters.element);fill(tagFilter,tagOptions,filters.tags[0]||"");filterCopySignature=signature;}
     const canConfigureMoves=typeof win?.PokeIdle?.MovesetConfig?.open==="function";
-    root.querySelectorAll("[data-ppbui-profile-configure-moves]").forEach(button=>{button.disabled=!canConfigureMoves;});
+    root.querySelectorAll("[data-ppbui-profile-configure-moves]").forEach(button=>setProp(button,"disabled",!canConfigureMoves));
   }
 
   async function enrichCreature(creature) {

@@ -1,21 +1,28 @@
 # Team HUD — leitura rápida da equipe
 
-Status: **Miyazaki 16, collapse/Wallet e a estrutura atual do Team HUD estão cobertos pela
-declaração do Product Owner “Estrutura validada.” A correção atual preserva essa composição,
-mantém os Element icons quadrados e restaura a invisibilidade nativa do placeholder de Shared
-Stone quando não existe carrier/recipient.**
+Status: **Miyazaki 16 e a estrutura atual do Team HUD estão cobertos pela declaração do
+Product Owner “Estrutura validada.” A Wallet deixa de fazer parte da superfície visível do
+HUD Better UI; ela continua nativa e autoritativa, mas aparece apenas dentro da Backpack.
+A correção atual mantém os Element icons quadrados e restaura a invisibilidade nativa do
+placeholder de Shared Stone quando não existe carrier/recipient.**
 
 Direção visual: `design-system/pokepixel-better-ui/pages/team.md`.
 
 ## Escopo
 
 - Preserva treinador, mapa, stamina, Pokémon ativo, posição e recolhimento nativos. Cada Pokémon ocupado mostra permanentemente sua posição oficial `1..6`; a resolução usa `team.member_ids[]` quando disponível. Embora o runtime nativo mantenha `_creatures` em ordem active-first, Better UI move os **mesmos cards nativos** para a ordem visual/teclado canônica `1→6`, sem cloná-los nem alterar `team.member_ids[]`; cleanup restaura a ordem nativa corrente.
-- A linguagem PPBUI agora cobre shell, drag/collapse, trainer header, EXP/STA, Pokémon
-  ativo/portrait, barras, Battle Line, Saved Formations e wallet. A Wallet preserva sua
-  largura/posição nativa e recebe somente box model/chrome PPBUI, evitando que um `100%`
-  relativo ao container externo atravesse a tela. Os nós e handlers permanecem nativos;
-  a revisão altera apenas composição/chrome.
-- O collapse nativo alterna `is-collapsed`, ARIA, botão `+/-`, Wallet, persistência e refit de viewport. O bug live vinha das regras PPBUI `display:grid!important` sobre header/active/list, que venciam o `display:none` nativo. O FIX usa somente seletores exatos desses blocos (e do host Better UI de presets) com `display:none!important`; nenhum segundo click handler ou toggle de estado foi adicionado.
+- A linguagem PPBUI cobre shell, drag/collapse, trainer header, EXP/STA, Pokémon
+  ativo/portrait, barras, Battle Line e Saved Formations. A Wallet nativa deixa de ocupar
+  espaço visual ao lado do Team HUD por uma regra global, exata e reversível do design
+  system: `.pokeidle-team-hud + .pokeidle-team-hud__wallet { display:none!important; }`.
+  Essa supressão não depende do toggle do módulo Team HUD. O nó, saldo, handlers e
+  `_walletEl` continuam pertencendo ao jogo; quando a Backpack abre, Inventory reparenta
+  exatamente esse mesmo nó para sua linha de Sort e a regra de adjacência deixa de aplicar.
+- O collapse nativo continua alternando `is-collapsed`, ARIA, botão `+/-`, estado da Wallet,
+  persistência e refit de viewport. Better UI não adiciona um segundo handler nem altera
+  esse estado; apenas mantém a Wallet visualmente ausente do HUD mesmo quando o host a
+  marcaria como expandida. As regras de precedência de header/active/list continuam
+  restritas aos blocos exatos do contrato nativo.
 - Os cards compactos da Battle Line usam micro-slots de 52px: posição, sprite centralizado, `Lv.N` e rail fino de HP. O percentual de HP deixa de competir como texto repetido; HP exato continua no estado/acessibilidade e no bloco ativo. Active/Fainted/focus/hover/pressed continuam compartilhando a mesma semântica estrutural; `Ativo`/`Derrotado` ficam no texto acessível em vez de banners internos.
 - A barra de EXP do Pokémon ativo continua mostrando progresso absoluto do nível + porcentagem. O card ativo continua com HP/EXP completos; apenas os seis previews compactos foram simplificados.
 - O treinador usa `ppbui-meter-row`: `EXP` e `STA` ficam à esquerda das respectivas barras. Como as barras nativas carregam `grid-column:1/-1`, a integração Better UI redefine explicitamente esse placement para `auto` dentro do meter-row; isso impede o retorno do empilhamento `label` acima da barra. O aviso textual nativo de stamina fica oculto apenas enquanto o Team HUD está enhanced.
@@ -46,6 +53,8 @@ Testes sintéticos cobrem preservação da identidade/cliques dos cards, Battle 
 independente do líder, ordem visual/teclado `1→6`, restauração da ordem native active-first,
 bloqueio de derrotados, teclado, valores persistentes, reconciliação estável, substituição
 de cards e cleanup. A regressão de collapse usa o botão nativo original e prova classe,
-ARIA, Wallet e continuidade do listener após cleanup, além dos seletores de precedência
-CSS que ocultam exatamente header/active/list. O candidato Miyazaki 16 requer a nova
+ARIA, estado nativo da Wallet e continuidade do listener após cleanup, além dos seletores
+de precedência CSS que ocultam exatamente header/active/list. A ausência permanente da
+Wallet no HUD é coberta separadamente pelo override global de adjacência, inclusive com o
+módulo Team HUD desativado. O candidato Miyazaki 16 requer a nova
 suite/build/review desta migração; a comprovação visual final permanece no gate in-game do Product Owner.

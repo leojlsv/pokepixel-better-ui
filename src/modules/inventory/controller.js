@@ -3,6 +3,7 @@ import { categoryValue, findParts, inventoryText, locale, readCreatures, readIte
 import { mountSortControl } from "./toolbar.js";
 import { createInventoryViews, viewText } from "./views.js";
 import { createInventoryScroll } from "./scroll.js";
+import { createInventoryWallet } from "./wallet.js";
 
 export function mountInventory(root, preference) {
   const doc=root.ownerDocument, hadWindowClass=root.classList.contains("ppbui-window");
@@ -16,78 +17,37 @@ export function mountInventory(root, preference) {
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] { box-sizing:border-box; width:100%; margin:0!important; padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; box-shadow:none!important; }
     .inventory-window--slots.ppbui-window .inventory-category-tabs[data-ppbui-inventory-native-categories][hidden] { display:none!important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] { box-sizing:border-box; width:100%; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); border:0; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-2); }
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { display:grid; grid-template-columns:minmax(160px,235px) auto max-content; align-items:center; justify-content:start; gap:var(--ppbui-space-2); margin:0!important; padding:0!important; border:0!important; background:transparent!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { display:grid; grid-template-columns:minmax(160px,235px) auto minmax(0,1fr) max-content; align-items:center; justify-content:start; gap:var(--ppbui-space-2); margin:0!important; padding:0!important; border:0!important; background:transparent!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { justify-self:end; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category-proxy] { min-width:140px; width:clamp(140px,24%,190px); max-width:190px; flex:0 1 190px; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-more-filters] { flex:0 0 auto; white-space:nowrap; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-pokemon-filters] > summary { display:none!important; }
     .inventory-window--slots.ppbui-window > select[data-ppbui-order] { width:235px!important; min-width:160px!important; max-width:235px!important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] > input.game-window__search.ppbui-input { -webkit-appearance:none!important; appearance:none!important; box-sizing:border-box; min-height:var(--ppbui-control-height)!important; padding:0 var(--ppbui-control-padding-x)!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-0)!important; background-image:none!important; color:var(--ppbui-text)!important; box-shadow:none!important; font:400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; }
-    .inventory-window--slots.ppbui-window,
-    .inventory-window--slots.ppbui-window * { scrollbar-width:auto!important; scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track)!important; }
-    .inventory-window--slots.ppbui-window::-webkit-scrollbar,
-    .inventory-window--slots.ppbui-window *::-webkit-scrollbar { width:var(--ppbui-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
-    .inventory-window--slots.ppbui-window::-webkit-scrollbar-track,
-    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-track { border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; box-shadow:none!important; }
-    .inventory-window--slots.ppbui-window::-webkit-scrollbar-thumb,
-    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-thumb { border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-thumb)!important; background-clip:border-box!important; box-shadow:none!important; }
-    .inventory-window--slots.ppbui-window::-webkit-scrollbar-thumb:hover,
-    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-thumb:hover { background:var(--ppbui-scrollbar-thumb-hover)!important; }
-    .inventory-window--slots.ppbui-window::-webkit-scrollbar-corner,
-    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-corner { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; }
-    .inventory-window--slots.ppbui-window::-webkit-scrollbar-button,
-    .inventory-window--slots.ppbui-window *::-webkit-scrollbar-button { display:none!important; width:0!important; height:0!important; }
-    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll],
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll] { scrollbar-width:auto!important; scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track)!important; scrollbar-gutter:stable!important; }
-    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar,
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar { width:var(--ppbui-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
-    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-track,
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-track { border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; box-shadow:none!important; }
-    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb,
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb { border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-thumb)!important; background-clip:border-box!important; box-shadow:none!important; }
-    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb:hover,
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-thumb:hover { background:var(--ppbui-scrollbar-thumb-hover)!important; }
-    .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll]::-webkit-scrollbar-corner,
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll]::-webkit-scrollbar-corner { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; }
-    @supports selector(::-webkit-scrollbar) {
-      .inventory-window--slots.ppbui-window,
-      .inventory-window--slots.ppbui-window *,
-      .inventory-window--slots.ppbui-window[data-ppbui-inventory-scroll],
-      .inventory-window--slots.ppbui-window [data-ppbui-inventory-scroll] { scrollbar-color:auto!important; }
-    }
     .inventory-window--slots.ppbui-window .ppbui-pokemon-tools { box-sizing:border-box; width:calc(100% - (var(--ppbui-space-4) + var(--ppbui-space-4)))!important; margin:0 var(--ppbui-space-4)!important; padding:var(--ppbui-space-3) 0!important; }
     .inventory-window--slots.ppbui-window .inventory-slot-grid { box-sizing:border-box; width:100%; min-height:220px; margin:0!important; padding:var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-0)!important; box-shadow:none!important; }
     .inventory-window--slots.ppbui-window .inventory-slot { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; box-shadow:none!important; }
     .inventory-window--slots.ppbui-window .inventory-slot:not(.is-empty):hover { background:var(--ppbui-bg-3)!important; }
+    .inventory-window--slots.ppbui-window .inventory-slot:focus-visible { position:relative; z-index:1; outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
     .inventory-window--slots.ppbui-window .inventory-slot.is-empty { background:var(--ppbui-bg-0)!important; color:var(--ppbui-text-subtle)!important; opacity:1; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-row] { box-sizing:border-box; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-3); border:0; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius); background:transparent; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] { box-sizing:border-box; margin:0; padding:0; border:0; border-top:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius); background:transparent; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] > h3 { margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); background:var(--ppbui-bg-1); color:var(--ppbui-text); }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] > .inventory-slot-grid { padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; }
-    @container (max-width:519px) {
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar > .pokeidle-team-hud__wallet[data-ppbui-inventory-wallet] { position:static!important; inset:auto!important; z-index:auto!important; display:flex!important; flex-wrap:nowrap!important; align-items:center!important; justify-content:center!important; justify-self:center; gap:var(--ppbui-space-2)!important; box-sizing:border-box; width:auto!important; min-width:0!important; max-width:100%!important; height:auto!important; min-height:var(--ppbui-control-height); margin:0!important; padding:0!important; border:0!important; border-radius:var(--ppbui-radius)!important; background:transparent!important; box-shadow:none!important; transform:none!important; font-family:var(--ppbui-font-body)!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar > .pokeidle-team-hud__wallet[data-ppbui-inventory-wallet] > * { min-width:0; min-height:24px; box-sizing:border-box; padding:2px 6px!important; border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background-color:transparent!important; box-shadow:none!important; }
+    @container (max-width:680px) {
       .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { grid-template-columns:minmax(0,1fr) auto max-content; }
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { grid-column:1/-1; width:100%; }
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar > .pokeidle-team-hud__wallet[data-ppbui-inventory-wallet] { grid-column:3; grid-row:1; }
+    }
+    @container (max-width:519px) {
       .inventory-window--slots.ppbui-window > select[data-ppbui-order] { min-width:0!important; }
     }
     @container (max-width:440px) {
-      .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { grid-template-columns:minmax(0,1fr) auto; }
-      .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { grid-column:1/-1; width:100%; }
+      .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { grid-template-columns:minmax(0,1fr) auto max-content; }
     }
   `;doc.head.append(shellStyle);
-  const scrollOwnership=new Map();
-  const marker="data-ppbui-inventory-scroll";
-  const ownScrollSurface=node=>{
-    if(!node||scrollOwnership.has(node))return;
-    scrollOwnership.set(node,{hadClass:node.classList.contains("ppbui-scroll"),marker:node.getAttribute(marker)});
-    node.classList.add("ppbui-scroll");node.setAttribute(marker,"");
-  };
-  const releaseScrollSurface=node=>{
-    const original=scrollOwnership.get(node);if(!original)return;
-    if(!original.hadClass)node.classList.remove("ppbui-scroll");
-    if(original.marker===null)node.removeAttribute(marker);else node.setAttribute(marker,original.marker);
-    scrollOwnership.delete(node);
-  };
-  const syncScrollSurfaces=(body,grid)=>{
-    const desired=new Set([root,body,grid].filter(Boolean));
-    for(const node of [...scrollOwnership.keys()])if(!desired.has(node))releaseScrollSurface(node);
-    desired.forEach(ownScrollSurface);
-  };
   const hadStyle=root.hasAttribute("style");
   const minimum=root.style.getPropertyValue("min-width"), priority=root.style.getPropertyPriority("min-width");
   root.style.setProperty("min-width","min(520px, calc(100vw - 16px))","important");
@@ -96,6 +56,7 @@ export function mountInventory(root, preference) {
   let scope = null;
   let ranks = new Map();
   const scroll = createInventoryScroll(root);
+  const wallet = createInventoryWallet(root);
   let viewMode = "grid";
   const views = createInventoryViews(root);
   const disclosure = document.createElement("div");
@@ -129,7 +90,14 @@ export function mountInventory(root, preference) {
   clear.dataset.ppbuiInventoryClear = "";
   bar.append(apply, viewBar);
   disclosure.append(bar, status);
-  const control = mountSortControl(root, order, bar, clear, () => [apply, ...viewButtons].find(node => !node.disabled));
+  const firstWalletControl = () => {
+    const host = bar.querySelector("[data-ppbui-inventory-wallet]");
+    if (!host) return null;
+    const selector = 'button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])';
+    return host.matches?.(selector) ? host : host.querySelector(selector);
+  };
+  const nextAfterOrder = () => !apply.disabled ? apply : (firstWalletControl() || viewButtons.find(node => !node.disabled));
+  const control = mountSortControl(root, order, bar, clear, nextAfterOrder);
   const sort = () => {
     const { grid } = parts;
     if (!grid) return 0;
@@ -158,7 +126,6 @@ export function mountInventory(root, preference) {
   };
   const sync = () => {
     const next = findParts(root);
-    syncScrollSurfaces(next.body,next.grid);
     if (!next.toolbar || !next.search || !next.category || !next.grid) { disclosure.remove(); control.sync({}); return; }
     const activeCategory = categoryValue(next.category);
     if (!activeCategory) { disclosure.remove(); control.sync({}); return; }
@@ -181,6 +148,7 @@ export function mountInventory(root, preference) {
     }
     parts = next;
     if (disclosure.previousElementSibling !== next.toolbar) next.toolbar.after(disclosure);
+    wallet.sync(bar, viewBar);
     const text = inventoryText();
     const content = (node, value) => { if (node.textContent !== value) node.textContent = value; };
     if (order.getAttribute("aria-label") !== text.order) order.setAttribute("aria-label", text.order);
@@ -208,7 +176,7 @@ export function mountInventory(root, preference) {
     const message = [!count && filtered ? text.empty : "", unavailable ? `${unavailable} ${warning}` : "", !preference.saved() ? text.unsaved : ""].filter(Boolean).join(" ");
     content(status, message);
     if (status.hidden !== !message) status.hidden = !message;
-    control.sync(next, text.scope);
+    control.sync(next, text.scope, text.query);
     scroll.restore();
     control.position();
   };
@@ -241,13 +209,14 @@ export function mountInventory(root, preference) {
       if(minimum)root.style.setProperty("min-width",minimum,priority);else root.style.removeProperty("min-width");
       if(!hadStyle && !root.getAttribute("style"))root.removeAttribute("style");
       scroll.cleanup();
+      wallet.cleanup();
       order.removeEventListener("change", changeOrder);
       apply.removeEventListener("click", reapply);
       clear.removeEventListener("click", reset);
       viewBar.removeEventListener("click", changeView);
       control.cleanup();
       views.cleanup(parts.grid, baseline.filter(node => parts.grid?.contains(node)));
-      disclosure.remove();for(const node of [...scrollOwnership.keys()])releaseScrollSurface(node);shellStyle.remove();if(!hadWindowClass)root.classList.remove("ppbui-window");
+      disclosure.remove();shellStyle.remove();if(!hadWindowClass)root.classList.remove("ppbui-window");
     },
   };
 }

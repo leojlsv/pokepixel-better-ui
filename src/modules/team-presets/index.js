@@ -5,10 +5,11 @@ export function createTeamPresetsModule({ store } = {}) {
   let root, mounted;
   return {
     id: "team-presets",
+    observerScopes: ["team-hud"],
     shouldMount() { root = findTeamHud(); return Boolean(root); },
     getMountKey: () => root,
     mount() { mounted = mountTeamPresets(root, { store }); return () => { mounted.cleanup(); mounted = null; }; },
-    reconcile: () => mounted?.sync(),
+    reconcile: trigger => mounted?.sync({ hudScoped: trigger === "observer:team-hud" }),
   };
 }
 

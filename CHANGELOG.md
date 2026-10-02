@@ -4,6 +4,89 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Evolution Center — mode filter as buttons, candidato 0.2.140 (2026-10-02):**
+  o filtro nativo `All Evolutions`, antes um dropdown com `All`/`Normal`/`Mega`, passa
+  a ser apresentado como três botões segmentados `All`, `Normal` e `Mega`, sem substituir a lógica do jogo. O
+  `<select>` nativo permanece conectado e autoritativo; os botões apenas atualizam seu
+  valor e disparam o mesmo evento `change`. Uma nova abertura inicia em `Normal`,
+  enquanto rerenders posteriores — inclusive `Clear Filters` — preservam o estado nativo
+  e ainda podem retornar a `All Evolutions`. Nenhuma ação de evolução, requisito ou API
+  de gameplay foi alterada.
+
+- **Nature/Geneticista — Platform Hunt ownership boundary, candidato 0.2.138
+  (2026-10-02):** o Product Owner confirmou que o 0.2.137 também não resolveu a queda
+  extrema de FPS. A investigação eliminou blur/content-visibility como explicação
+  dominante em trace Chromium e encontrou um wake global ainda não coberto no renderer
+  atual do Platform Hunt. `huntsim.companion_vitals` chama `renderTeamSwitcher()` e
+  `renderArena()`; o primeiro reescreve `aria-disabled`/`disabled`, nome/status e reanexa
+  os seis botões da equipe em cada atualização. Como essas mutações internas estavam
+  fora dos quatro seletores Platform filtrados pelo 0.2.136/137, o observer central ainda
+  executava discovery global sobre todo o DOM do NPC. O arquivo público atual de
+  `PlatformHunt.js` foi reconfirmado em 2026-10-02 e mantém exatamente esse fluxo.
+  O 0.2.138 transforma a raiz `.platform-hunt` em boundary de ownership do renderer:
+  mutações cujo **target já está dentro** dela não acordam Better UI, pois nenhum módulo
+  Better UI consome seus descendentes; attach/detach da própria raiz continuam globais
+  porque esses MutationRecords têm `body` como target. Em fixture Nature, 30 full
+  discoveries equivalentes custaram ~29,7 ms/wake com 500 cards, ~92,7 ms com 1.000 e
+  ~232 ms com 2.000; o novo boundary produziu zero reconciles globais nesses wakes e
+  ~1–3 ms totais de custo do observer para 30 batches. Um segundo trace Chromium
+  encontrou ainda a animação nativa `pokeidle-glass-border` no `::after` do card de
+  roster quando ele recebe hover/foco. O Better UI já tornava esse anel transparente,
+  mas a custom property continuava recalculando estilo: com 800 cards, o sample de
+  1,4 s subiu de ~0,40 s de `TaskDuration` sem essa animação para ~0,82 s com ela e
+  cerca de 200 style recalcs. O 0.2.138 também desliga essa animação invisível somente
+  nos cards `.npc-nature__pokemon`/`.npc-iv__pokemon`; tabs, ações e Evolution seguem
+  nativos. A causa JS mais severa encontrada no re-profile foi um feedback loop do
+  módulo sempre-montado **Pokémon Profile**: cada reconcile chamava `syncCopy()`, que
+  regravava textos/atributos idênticos; essas escritas geravam novos MutationRecords e
+  outro reconcile indefinidamente. O 0.2.138 torna essas escritas idempotentes. O probe
+  end-to-end que antes mantinha um novo RAF pendente após cada um de seis ciclos agora
+  encerra após o primeiro (`pendingAfter=0`), e dois `sync()` estáveis produzem zero
+  mutations. O HUD público atual também confirmou que Wallet e botão mobile são
+  reconstruídos a cada `companion_vitals`; mutations internas desses dois siblings não
+  acordam mais discovery global, enquanto attach/detach das raízes continua observável.
+  O boundary Platform preserva explicitamente `.pokeidle-buff-strip`, superfície nativa
+  compartilhada que o Better UI realmente consome. As correções 0.2.135–0.2.137
+  permanecem. Nenhuma ação de Hunt/gameplay foi alterada; FPS real continua sendo gate
+  exclusivo do Product Owner. O Product Owner aprovou o `0.2.138` em validação real em
+  2026-10-02: Nature e Geneticista deixaram de reproduzir o colapso observado nas versões
+  0.2.135–0.2.137, com Evolution Center mantido como controle. Foi registrada apenas uma
+  degradação relativa no Chrome, tratado como ambiente não otimizado para o jogo, sem
+  caracterizar recorrência do defeito corrigido.
+
+- **Nature/Geneticista — cascade layer + reconcile local do Team HUD, candidato 0.2.137
+  (2026-10-02):** o Product Owner confirmou que o 0.2.136 também falhou no jogo, com
+  FPS despencando quase a zero em Nature/Geneticista enquanto Evolution Center permaneceu
+  estável. A investigação encontrou uma falha exata no corretivo anterior: o host declara
+  o anel `::after` dentro de `@layer pokeidle-glass` com `animation: ... !important`;
+  esse important layered vence o `animation:none!important` não-layered do 0.2.136.
+  Porém `will-change:auto!important` do Better UI vencia o `will-change:transform`
+  nativo, deixando Nature/IV com a animação cara ainda ativa, mas sem o hint/layer de
+  composição. O próprio CSS nativo documenta que esse custom property é restyled/repainted
+  a cada frame e levou uma Central Genética com centenas de botões a ~11 FPS. O 0.2.137
+  coloca o override no mesmo `@layer pokeidle-glass`; Chromium contra o CSS público atual
+  confirma `animationName:none` em Nature/IV e mantém Evolution em
+  `pokeidle-glass-border` + `will-change:transform`.
+  Como proteção adicional, mutações internas de um Team HUD já melhorado são roteadas
+  para reconcile local de Team HUD/Presets em vez de refazer `shouldMount()` de todos os
+  módulos sobre o DOM gigante do NPC. Troca da lista raiz, mutações globais e batches
+  mistos ainda promovem para o lifecycle completo. Em fixture de 500 cards, 30 full
+  discoveries equivalentes somaram ~1,07 s; o roteamento local ficou em ~5,5 ms total
+  antes do sync. O sync recolhido de Presets também deixa de procurar a janela Team no
+  documento em cada wake. O sentinel-first de Mark’s Shop e os filtros de churn da Hunt
+  são mantidos. `content-visibility`/virtualização não entraram no candidato porque um
+  probe Chromium separado não mostrou ganho material. Nenhuma lógica de gameplay foi
+  alterada; FPS real do 0.2.137 permanece para validação in-game.
+
+- **Menu bar — F5 + City shortcuts (2026-10-02):** o Poké Hub passa a materializar
+  sua geometria inicial com `left/top`, margem nativa de 8px, `bottom:auto` e
+  `transform:none` assim que o Better UI monta, eliminando a dependência de um drag
+  para os dropdowns com posicionamento de viewport funcionarem após F5. Movimentos
+  posteriores pelo handle nativo continuam autoritativos. O menu **City** recebe os
+  atalhos `Geneticista`, `Nature` e `Evolution Center`; são controles Better UI sem
+  `data-menu-id` que delegam ao `PokeIdle.NPC.open()` nativo com os kinds `iv`,
+  `nature` e `evolution`, preservando os 33 destinos/handlers existentes.
+
 - **Hunts — MAP/LIST UI unificada (2026-10-02):** após reprovação visual do candidato
   anterior, o adapter foi reconciliado com o `HuntSelectionScene` nativo atual: MAP e
   LIST agora compartilham o mesmo shell Better UI de regiões, `GYMS`, view, modo de
@@ -54,6 +137,36 @@ All notable project changes are recorded in this file.
   manual de extração/preview. O histórico do experimento permanece documentado
   apenas como referência; o contrato ativo de Hunts volta aos fluxos nativos de
   lista/mapa, inspeção, localização e entrada explícita na Hunt.
+
+- **Backpack — alinhamento visual e acessibilidade (2026-10-02):** o módulo deixa de
+  assumir ownership visual dos scrollbars nativos da janela, preservando somente o
+  contexto/posição de scroll durante reconstruções do jogo. Slots nativos recebem foco
+  visível compartilhado sem troca de nós ou handlers. Search ganha nome acessível
+  localizado apenas quando o host não fornece um, com restauração exata no cleanup e
+  reconciliação idempotente. **More Filters** passa para a direita de Search na primeira
+  utility rail e seleciona Pokémon pelo dropdown/proxy nativo antes de abrir. O adapter de
+  Pokémon deixa de herdar o lote visual de **Load More Pokémons**: completa apenas criaturas
+  já carregadas da própria cena e, se necessário, usa o `createSlot()` nativo para preencher
+  um segundo cap de renderização, sem buscar Storage ou chamar rede. Sort, Re-Sort e
+  Grade/Lista/Categorias mantêm o contrato funcional existente. Inventory `30/30 PASS`,
+  Pokémon Tools `21/21 PASS`. O slice de filtros foi validado in-game pelo Product Owner
+  em 2026-10-02. Na extensão seguinte, a Wallet nativa sai por completo da superfície
+  visível do Team HUD e passa a ocupar a região central da **mesma linha de Sort** na
+  Backpack. Better UI reparenta o **mesmo** `.pokeidle-team-hud__wallet` para a utility
+  rail estável de organização, sem clonar saldo, recriar listeners ou apagar o estado
+  nativo de collapse. Fechar a Backpack restaura `Team HUD → Wallet`, mas um override
+  global exato do Better UI mantém esse sibling em `display:none!important` mesmo se o
+  módulo Team HUD estiver desativado; ao reabrir, Inventory move o nó autoritativo para a
+  linha de Sort e o torna visível novamente. Substituição de janela
+  e troca autoritativa de `_walletEl` continuam cobertas sem duplicação/stale node.
+  A Wallet agora ocupa o track flexível central entre **Re-Sort** e
+  **Grid/List/Categories**. Os wrappers de saldo mantêm fundo transparente, ganham borda
+  discreta, altura mínima de 24px e `2px 6px` de padding para afastar números/ícones dos
+  limites da box sem apagar background-images ou conteúdo nativo.
+  Inventory `37/37 PASS`, Team HUD `18/18 PASS`, full suite `650/650 PASS`, build e
+  `git diff --check` PASS. O Product Owner validou in-game a apresentação final da Wallet
+  em 2026-10-02 e declarou o módulo **Backpack concluído**.
+
 - **Toggle Cards/Game fixo + editor nativo de moves — candidato `0.2.131` (2026-10-01):**
   o HUD móvel `Cards / Game` foi removido. O standalone agora usa um único ícone de
   interruptor dentro da própria menu bar, com posição DOM estável em Cards e Game,

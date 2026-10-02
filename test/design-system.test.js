@@ -102,15 +102,14 @@ test("shared CSS is opt-in and cannot broadly restyle host game controls", () =>
   assert.doesNotMatch(css, /\.pokeidle-(?!btn\.ppbui-button)/i, "host bridge must require both native and PPBUI opt-in classes");
 });
 
-test("global native override removes only the host animated button border effect", () => {
+test("global native override removes the host button glint and freezes only proven expensive NPC window rings", () => {
   const normalized = nativeOverridesCss.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
-  const glintOnly = nativeOverridesCss.split("Product-wide square geometry.")[0]
-    .replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
   assert.match(normalized, /\.pokeidle-panel,[^}]+\.pokeidle-mini-view \.mini[^}]+button:where\([^}]+:not\(\[class\*="slot"\]\):not\(\[class\*="sprite"\]\):not\(\[class\*="close"\]\)[^}]+--ui-border-start: transparent !important;[^}]+--ui-border-end: transparent !important;/);
   assert.match(normalized, /:where\(\.pokeidle-btn, \.rubinot-btn, \.pokeidle-ui-button\) \{[^}]+--ui-border-start: transparent !important;[^}]+--ui-border-end: transparent !important;/);
-  assert.doesNotMatch(glintOnly, /::(?:before|after)/, "glint removal itself must not destroy semantic pseudo-elements");
-  assert.doesNotMatch(glintOnly, /\b(?:background|border|box-shadow|color|filter|opacity|transform)\s*:/, "glint removal must not redesign native button states");
-  assert.doesNotMatch(glintOnly, /(?:^|})\s*button\s*\{/m, "glint removal has no unscoped button reset");
+  assert.match(normalized, /@layer pokeidle-glass \{ \.npc-nature-window::after, \.npc-iv-window::after \{ animation: none !important; will-change: auto !important; \}/, "the override must live in the host's important cascade layer; unlayered !important loses to layered !important");
+  assert.match(normalized, /\.npc-nature-window \.npc-nature__pokemon::after, \.npc-iv-window \.npc-iv__pokemon::after \{ animation: none !important; \}/, "large Nature\/IV roster cards must not run an invisible host ring animation on hover or focus");
+  assert.doesNotMatch(normalized, /\.npc-evolution-window::after[^}]*animation:\s*none/i, "Evolution remains the native control case");
+  assert.doesNotMatch(normalized, /(?:^|})\s*button\s*\{/m, "native overrides have no unscoped button reset");
 });
 
 test("global native override no longer rewrites host geometry", () => {
@@ -118,6 +117,12 @@ test("global native override no longer rewrites host geometry", () => {
   assert.doesNotMatch(normalized, /ppbui-square-cascade-root/);
   assert.doesNotMatch(normalized, /border-radius\s*:/, "host corner geometry stays native");
   assert.doesNotMatch(normalized, /::-webkit-|::-moz-|::file-selector-button/, "browser-owned controls stay native");
+});
+
+test("global native override removes Wallet from the Team HUD independently of module toggles", () => {
+  const normalized = nativeOverridesCss.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
+  assert.match(normalized, /\.pokeidle-team-hud \+ \.pokeidle-team-hud__wallet \{ display: none !important; \}/);
+  assert.doesNotMatch(normalized, /(?:^|})\s*\.pokeidle-team-hud__wallet\s*\{/i, "only the exact Team HUD sibling is globally suppressed; a reparented Backpack Wallet remains eligible to display");
 });
 
 test("shared status surfaces use the Values role", () => {

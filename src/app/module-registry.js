@@ -20,6 +20,7 @@ import { createCoupledWorkspaceModule } from "../modules/coupled-workspace/index
 import { createStandaloneCardModeModule } from "../modules/coupled-workspace/standalone.js";
 import { createMarksShopModule } from "../modules/marks-shop/index.js";
 import { shopText } from "../modules/marks-shop/dom.js";
+import { createEvolutionCenterModule } from "../modules/evolution-center/index.js";
 
 // A toggle descriptor is the sole authority for a module's persisted default
 // and preferences-panel entry. Module IDs always come from the module itself.
@@ -59,6 +60,7 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
     toggle(createTeamModule(), teamText),
     toggle(createTeamHudModule(), teamHudText),
     toggle(createTeamPresetsModule({ store: teamPresetStore }), teamPresetsText),
+    { module: createEvolutionCenterModule() },
     toggle(createMarksShopModule(), shopText),
     toggle(createAutoHelperModule(), autoHelperText),
   ];

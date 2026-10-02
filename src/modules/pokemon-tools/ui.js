@@ -1,6 +1,6 @@
 import {freshFilters,matchesPokemon,fixedTags,tagService,pokemonRarities,pokemonElements} from "./model.js";
 const labels={
- en:{filters:"Pokémon filters",tags:"Tags",more:"More filters",clear:"Clear Pokémon filters",all:"All",untagged:"Untagged",any:"Match any selected tag",rarity:"Rarity",element:"Element",minLevel:"Min level",maxLevel:"Max level",iv:"Min total IV",quality:"Min Quality",shiny:"Shiny",locked:"Locked",team:"In team",nature:"Nature",gender:"Gender",yes:"Yes",no:"No",edit:"Edit tags",choose:"Choose Pokémon",newTag:"New tag",name:"Tag name",icon:"Symbol",save:"Save tag",remove:"Delete tag",confirm:"Delete this tag and its assignments?",local:"Personal tags · saved in this browser · do not protect against sale or trade",unavailable:"Tags unavailable until the character is identified.",unsaved:"Could not save tags. Changes apply only to this session.",limit:"Enter a name; up to 40 tags are supported.",none:"No Pokémon match these filters."},
+ en:{filters:"Pokémon filters",tags:"Tags",more:"More Filters",clear:"Clear Pokémon filters",all:"All",untagged:"Untagged",any:"Match any selected tag",rarity:"Rarity",element:"Element",minLevel:"Min level",maxLevel:"Max level",iv:"Min total IV",quality:"Min Quality",shiny:"Shiny",locked:"Locked",team:"In team",nature:"Nature",gender:"Gender",yes:"Yes",no:"No",edit:"Edit tags",choose:"Choose Pokémon",newTag:"New tag",name:"Tag name",icon:"Symbol",save:"Save tag",remove:"Delete tag",confirm:"Delete this tag and its assignments?",local:"Personal tags · saved in this browser · do not protect against sale or trade",unavailable:"Tags unavailable until the character is identified.",unsaved:"Could not save tags. Changes apply only to this session.",limit:"Enter a name; up to 40 tags are supported.",none:"No Pokémon match these filters."},
  pt:{filters:"Filtros de Pokémon",tags:"Tags",more:"Mais filtros",clear:"Limpar filtros de Pokémon",all:"Todos",untagged:"Sem tag",any:"Qualquer uma das tags selecionadas",rarity:"Raridade",element:"Elemento",minLevel:"Nível mínimo",maxLevel:"Nível máximo",iv:"IV total mínimo",quality:"Qualidade mínima",shiny:"Shiny",locked:"Bloqueado",team:"Na equipe",nature:"Natureza",gender:"Gênero",yes:"Sim",no:"Não",edit:"Editar tags",choose:"Escolher Pokémon",newTag:"Nova tag",name:"Nome da tag",icon:"Símbolo",save:"Salvar tag",remove:"Excluir tag",confirm:"Excluir esta tag e suas associações?",local:"Tags pessoais · salvas neste navegador · não impedem venda ou troca",unavailable:"Tags indisponíveis até identificar o personagem.",unsaved:"Não foi possível salvar. Alterações válidas apenas nesta sessão.",limit:"Informe um nome; são permitidas até 40 tags.",none:"Nenhum Pokémon corresponde aos filtros."}
 };
 export function pokemonToolsText(doc=document){const lang=doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang;return labels[lang?.split(/[-_]/)[0]] || labels.en;}
@@ -82,13 +82,15 @@ export function createPokemonTools(root,{getCreatures,refresh:refreshScene,basic
     titles.set(slot,slot.getAttribute("title"));slot.title=[slot.title,tag?`${text.tags}: ${tag.name}`:"",copy.hint].filter(Boolean).join(" · ");
     if(tag){slot.dataset.ppbuiPokemonTags=`${tag.icon} ${tag.name}`;const mark=node("span","ppbui-pokemon-marker",tag.icon);mark.style.color=tag.color;mark.setAttribute("aria-label",tag.name);slot.append(mark);badges.add(mark);}
   }
-  function render() {
+  const activeCount=()=>Object.values(filter).filter(v=>Array.isArray(v)?v.length:v!=="").length;
+  const label=()=>{const active=activeCount();return active?`${text.more} · ${active}`:text.more;};
+  function render({summary=true}={}) {
     if(currentPanel)open=currentPanel.open;
     for(const panel of panels)if(!panel.isConnected)panels.delete(panel);
     for(const badge of badges)if(!badge.isConnected)badges.delete(badge);
     for(const slot of titles.keys())if(!slot.isConnected)titles.delete(slot);
     const panel=node("details","ppbui-pokemon-tools ppbui-root");panel.open=open;panels.add(panel);currentPanel=panel;
-    const active=Object.values(filter).filter(v=>Array.isArray(v)?v.length:v!=="").length;panel.append(node("summary","",`${text.more} · ${active}`));
+    const summaryNode=node("summary","",label());summaryNode.hidden=!summary;panel.append(summaryNode);
     const fields=node("div","ppbui-pokemon-fields");panel.append(fields);
     const field=(label,control,key)=>{const wrap=node("label","ppbui-pokemon-field");control.dataset.ppbuiPokemonFilter=key;wrap.append(node("span","",label),control);fields.append(wrap);return control;};
     const select=(key,label,values,value)=>{const input=ownedField(node("select","game-window__select ppbui-select"));for(const [id,name]of [["",text.all],...values]){const option=node("option","",name);option.value=id;input.append(option);}input.value=value;field(label,input,key);input.onchange=()=>{if(key==="tags")filter.tags=input.value?[input.value]:[];else filter[key]=input.value;refresh();};return input;};
@@ -101,5 +103,5 @@ export function createPokemonTools(root,{getCreatures,refresh:refreshScene,basic
     const store=service.get();if(store && !store.persistent()){const warning=node("small","",text.unsaved);warning.setAttribute("role","status");panel.append(warning);}
     return panel;
   }
-  return {render,matches,decorate,active:()=>Object.values(filter).some(value=>Array.isArray(value)?value.length:value!==""),reset(){filter=freshFilters();},cleanup(){alive=false;closeDialog();unsubscribe();events.forEach(type=>root.removeEventListener(type,intercept,true));style.remove();titles.forEach((title,slot)=>{delete slot.dataset.ppbuiPokemonTags;if(title===null)slot.removeAttribute("title");else slot.title=title;});panels.forEach(p=>p.remove());badges.forEach(b=>b.remove());}};
+  return {render,matches,decorate,label,isOpen:()=>open,setOpen(value){open=Boolean(value);if(currentPanel)currentPanel.open=open;},active:()=>Object.values(filter).some(value=>Array.isArray(value)?value.length:value!==""),reset(){filter=freshFilters();},cleanup(){alive=false;closeDialog();unsubscribe();events.forEach(type=>root.removeEventListener(type,intercept,true));style.remove();titles.forEach((title,slot)=>{delete slot.dataset.ppbuiPokemonTags;if(title===null)slot.removeAttribute("title");else slot.title=title;});panels.forEach(p=>p.remove());badges.forEach(b=>b.remove());}};
 }

@@ -18,6 +18,7 @@ export const menuBarConfig = Object.freeze({
     badge: ".pokeidle-top-toolbar__badge",
     handle: ".pokeidle-pokehub__handle",
     toggle: ".pokeidle-pokehub__toggle",
+    cityAction: "button[data-ppbui-city-action]",
     owned: '[data-ppbui-module="menu-bar"]',
   },
   classes: {
@@ -36,6 +37,20 @@ export const menuBarConfig = Object.freeze({
     { id: "social", items: ["friends", "guild", "ranking", "shiny-captures", "streamer-referral"] },
     { id: "automation", items: ["hunt-analyzer", "capture-records", "auto-helper", "offline-farm", "mini-view", "game-admin"] },
     { id: "shop", items: ["premium", "beta-goals", "gacha"] },
+  ],
+  cityActions: [
+    {
+      id: "geneticist", label: "Geneticista", kind: "iv",
+      iconPaths: ["M7 3c6 4 4 14 10 18", "M17 3C11 7 13 17 7 21", "M9 7h6", "M9 17h6", "M10 12h4"],
+    },
+    {
+      id: "nature", label: "Nature", kind: "nature",
+      iconPaths: ["M19 4C11 4 5 8 5 15c0 3 2 5 5 5 7 0 9-9 9-16Z", "M6 19c3-5 7-8 12-11"],
+    },
+    {
+      id: "evolution-center", label: "Evolution Center", kind: "evolution",
+      iconPaths: ["M20 7a8 8 0 0 0-14-3L4 6", "M4 2v4h4", "M4 17a8 8 0 0 0 14 3l2-2", "M16 18h4v4"],
+    },
   ],
   order: ["inventory", "hunts", "player", "city", "activities", "events", "social", "private-message", "automation", "shop", "settings"],
   labels: {

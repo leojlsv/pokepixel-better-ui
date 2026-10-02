@@ -132,7 +132,30 @@ do not require teardown, such as native visibility or label changes.
 The central observer watches child-list changes and the filtered attributes
 `hidden`, `disabled`, `aria-hidden`, `aria-disabled`, and `lang`. The same
 observer watches the document language; it does not observe every class/style
-change or create feature-specific observers.
+change or create feature-specific observers. Native Hunt subtrees that no Better UI
+module consumes are filtered before scheduling reconciliation when their mutations
+only affect Hunt-local rendering or native capture controls. This includes nameplates,
+hit/move effects and the current classic/Platform capture surfaces. Mutations outside
+those explicitly scoped subtrees continue through the normal lifecycle path.
+
+The active Platform Hunt renderer is game-owned except for explicitly shared native
+surfaces. Once `.platform-hunt` is attached, child/attribute mutations whose target is
+inside that root are ignored by the central observer unless they touch
+`.pokeidle-buff-strip`, which Better UI deliberately enhances/reparents. The root
+lifecycle remains observable because insertion/removal records target `body`, so
+entering/leaving Platform Hunt still runs full reconciliation.
+
+The native Team HUD Wallet and mobile-party button are siblings rather than descendants
+of the Team HUD root. Their internal vitals-driven rerenders are observer-irrelevant to
+Better UI and are ignored, while adding/removing/replacing either root remains visible
+through the parent MutationRecord. Inventory Wallet ownership depends on the wallet root
+identity/placement, not on observing its native value-text mutations.
+
+An already enhanced persistent Team HUD is a narrower invalidation domain. Ordinary
+child/attribute churn inside that root is routed only to mounted modules that declare
+the `team-hud` observer scope instead of re-running document-wide discovery. Replacing
+the native `.pokeidle-team-hud__list` mount sentinel, or coalescing any unrelated
+global mutation in the same frame, promotes the batch back to full reconciliation.
 
 Repeated DOM mutations must not:
 

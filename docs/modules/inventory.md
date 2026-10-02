@@ -5,6 +5,28 @@ Product Owner. Em 2026-09-24, a navegação de categorias voltou ao formato drop
 esquerda do Search, preservando os handlers nativos e o restante das duas utility rails.
 Freeze local: **Better UI 0.2.72 / candidate71**.
 
+Refinamento atual, 2026-10-02: ownership visual de scrollbar foi devolvido ao host,
+Search recebeu fallback acessível localizado e os slots ganharam foco visível escopado.
+O slice de filtros/Load More foi validado in-game pelo Product Owner em 2026-10-02.
+Na extensão seguinte, a **Wallet nativa** passa a ser apresentada no topo da Backpack,
+na mesma utility rail de **Sort / Re-Sort / Views**. O mesmo nó
+`.pokeidle-team-hud__wallet` é movido para o espaço central dessa linha, entre Re-Sort e
+Views; não há clone de
+saldo, novo handler ou estado paralelo. Quando a Backpack fecha, o nó retorna ao contexto
+nativo do Team HUD, mas o override global e estreito do Better UI mantém a Wallet
+permanentemente oculta nesse sibling, independentemente do toggle do módulo Team HUD.
+A classe nativa de collapse continua intacta e o mesmo `_walletEl` segue recebendo
+updates do jogo. Foco é preservado ao mover um controle ativo para dentro da Backpack;
+cleanup não força foco de volta para a Wallet oculta do HUD.
+Na rail da Backpack, a Wallet fica centralizada no espaço flexível entre **Re-Sort** e
+**Grid/List/Categories**. O preenchimento escuro dos wrappers nativos de saldo é
+neutralizado somente nesse contexto; cada valor recebe uma borda discreta, altura mínima
+de 24px e `2px 6px` de padding para evitar que números e ícones encostem nos limites da
+box. Background-images, ícones, texto e updates do mesmo nó nativo são preservados.
+Inventory `37/37 PASS`; Pokémon Tools `21/21 PASS`; Team HUD `18/18 PASS`; full suite
+`650/650 PASS`; build e `git diff --check` PASS. O Product Owner validou in-game a
+apresentação final da Wallet em 2026-10-02 e declarou o módulo **Backpack concluído**.
+
 ## Uso
 
 - A busca continua sendo o controle original do jogo. Quando o jogo expõe categorias como
@@ -12,8 +34,13 @@ Freeze local: **Better UI 0.2.72 / candidate71**.
   opções/seleção e delega cada mudança ao tab nativo correspondente. Os handlers e a
   autoridade do jogo permanecem intactos; cleanup restaura a faixa original.
 - O placeholder da busca é **Search**; ao desativar o módulo, o original é restaurado.
-- Primeira utility rail: **Categoria · Search · Clear Filters/Limpar**. O dropdown de
-  categoria ocupa 140–190px à esquerda; Search usa o espaço restante.
+  Quando o host não fornece um nome acessível próprio, Better UI adiciona o rótulo
+  localizado da busca e o remove no cleanup; um `aria-label` nativo existente prevalece.
+- Primeira utility rail: **Categoria · Search · More Filters · Clear Filters/Limpar**.
+  O dropdown de categoria ocupa 140–190px à esquerda; Search usa o espaço restante e
+  **More Filters** fica imediatamente à sua direita. Ao clicar em More Filters fora da
+  categoria Pokémon, Better UI seleciona **Pokémon** pelo mesmo dropdown/proxy que delega
+  ao controle nativo e abre os filtros avançados.
 - Segunda utility rail: **Sort/Ordenar · Re-Sort/Aplicar · Grade · Lista · Categorias**.
   Sort ocupa um track limitado de 160–235px em vez de absorver todo o espaço livre;
   o proxy absoluto reaplica essa largura com a mesma prioridade do primitive de select e
@@ -36,6 +63,16 @@ Freeze local: **Better UI 0.2.72 / candidate71**.
   slots nativos. A grade original é o padrão ao abrir ou reativar o módulo.
 - **Inventory** aparece no painel Better UI e pode ser desativado separadamente
   do menu-bar. Desativar remove os controles e restaura a ordem DOM nativa.
+- Enquanto a Backpack está montada, a Wallet nativa ocupa o lado direito da segunda
+  utility rail, na mesma linha de Sort. O módulo move o elemento original para o host
+  estável `[data-ppbui-inventory-tools] > .inventory-slots-toolbar`, preservando conteúdo
+  dinâmico, listeners e identidade DOM mesmo quando o body nativo é reconstruído.
+  Em largura muito estreita, Views descem para a linha seguinte e Wallet permanece na
+  primeira linha com Sort. Fechar/substituir a janela ou desativar Inventory restaura
+  `Team HUD → Wallet`; o override global do Better UI então mantém essa Wallet oculta,
+  mesmo se o módulo visual Team HUD estiver desativado.
+  Se a janela inteira for substituída pelo host, o lifecycle central reutiliza o mesmo nó
+  na nova Backpack em vez de criar uma segunda Wallet.
 
 Validação 0.2.72: Inventory `28/28 PASS`; full suite `415/415 PASS`; build PASS.
 Userscript: `985705` bytes, SHA-256
@@ -47,18 +84,27 @@ Smokes normal / close-during-init / close-during-switch: PASS, exit `0`, stderr 
 Os slots e ícones nativos não são alterados. Enquanto o módulo está montado, a janela
 usa mínimo visual de 520px para manter as duas rails legíveis; cleanup restaura a
 geometria nativa. Os fragmentos Better UI e a toolbar nativa explicitamente optada
-usam tipografia, campos, botões, estados e geometria quadrada do MASTER; slots nativos
+usam tipografia, campos, botões, estados e geometria atual do MASTER; slots nativos
 permanecem fora desse boundary. O corpo não recebe um card externo: rail de filtros,
 rail de organização e content bay formam uma única composição contínua.
 Search recebe um bridge local de especificidade para neutralizar `appearance`, box model,
 border/radius, background, background-image, color, shadow e font nativos mesmo quando o
-host usa regras `!important`. Root, body e grid ativo do Backpack continuam com ownership
-reversível de `ppbui-scroll`, mas a apresentação do scrollbar agora é escopada à janela
-Inventory inteira e a qualquer descendente que realmente role. Em Blink/WebKit,
-`scrollbar-color:auto` é reaplicado depois das regras mais específicas para não bloquear os
-pseudos quadrados de 10px; os botões/setas nativos do scrollbar também são removidos. O
-disclosure **More filters** usa margem física horizontal de 8px dentro do Inventory, sem
-alterar sua apresentação em Trade ou outros contextos.
+host usa regras `!important`. Os slots nativos recebem apenas o foco visível compartilhado
+quando navegados por teclado; seus handlers e ações continuam intactos. Root, body e grid
+mantêm o comportamento e a preservação de posição de scroll, mas permanecem superfícies
+nativas: Better UI não repinta mais scrollbar, thumb, track, gutter ou botões WebKit.
+O painel avançado de Pokémon continua com margem física horizontal de 8px; seu summary
+interno fica oculto somente no Backpack porque o botão da primeira rail passa a controlar
+esse disclosure. Trade e Storage preservam suas próprias apresentações.
+
+Na categoria Pokémon, Better UI não depende mais do lote visual do botão nativo
+**Load More Pokémons**. O adapter parte do resultado nativo, completa somente IDs já
+presentes em `scene._creatures` e pertencentes a `inventory`/`backpack`/`team`, respeita
+Search e os filtros Better UI e deduplica por ID. Se o host aplicar um segundo limite na
+renderização, os slots restantes são criados com o próprio `scene.createSlot()` e inseridos
+antes das células vazias. O controle Load More só é removido depois que a quantidade de
+slots renderizados alcança o conjunto filtrado já carregado. Pokémon de Storage não são
+incluídos e nenhuma API/requisição de carregamento adicional é feita.
 
 ## Visualizações
 
@@ -119,7 +165,9 @@ Ambos os novos critérios seguem a política de ordem estável até Re-Sort.
 Os dados são lidos por ID de `data-creature-id`, na cena cujo `_panel.body`
 corresponde à mochila. O getter nativo `PokeIdle.ReactiveWindows.cached()`
 permite localizar janelas sobrepostas; `SceneManager._scene` atende o fluxo
-de cena convencional. Nenhum método de carregamento, API ou ação é chamado.
+de cena convencional. Nenhuma API ou método de carregamento é chamado; para eliminar o
+lote visual de Pokémon, Better UI pode reutilizar o renderer nativo `createSlot()` somente
+para criaturas que já existem em `_creatures` da própria cena.
 Esses contratos internos podem mudar em uma atualização do jogo; sem uma
 correspondência segura, os critérios avançados deixam os slots no lugar.
 

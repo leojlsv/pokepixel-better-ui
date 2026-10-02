@@ -20,7 +20,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
     "disable-pokemon-hover", "pokemon-profile", "menu-bar",
     "standalone-card-mode", "coupled-workspace", "buff-strip", "inventory",
     "storage", "trade", "chat", "hunts", "team", "team-hud",
-    "team-presets", "marks-shop", "auto-helper",
+    "team-presets", "evolution-center", "marks-shop", "auto-helper",
   ]);
   assert.equal(new Set(mountIds).size, mountIds.length, "runtime IDs must be unique");
   assert.equal(new Set(controlIds).size, controlIds.length, "preference IDs must be unique");
@@ -30,6 +30,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.ok(controlIds.every(id => mountIds.includes(id)), "every setting mounts a real module");
   assert.ok(!controlIds.includes("standalone-card-mode"));
   assert.ok(!controlIds.includes("coupled-workspace"));
+  assert.ok(!controlIds.includes("evolution-center"), "Evolution Center enhancement is an always-on native integration, not a new setting");
   assert.ok(!controlIds.includes(moduleControlsConfig.id));
   assert.ok(moduleControlsConfig.groups.flatMap(group => group.modules).every(id => controlIds.includes(id)));
   assert.ok(!menuBarConfig.groups.flatMap(group => group.items).includes("custom-pokeball"));

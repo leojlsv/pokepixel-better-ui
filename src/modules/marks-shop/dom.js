@@ -16,7 +16,12 @@ export function shopRuntime(root) {
   return npc?.panel?.body && root.contains(npc.panel.body) ? npc : null;
 }
 export function findShop() {
-  return [...document.querySelectorAll(config.selectors.root)].find(root => shopRuntime(root) && parts(root).tabs.length === 4 && root.querySelector(config.selectors.shell)) || null;
+  const shells = document.querySelectorAll(`${config.selectors.root} ${config.selectors.shell}`);
+  for (const shell of shells) {
+    const root = shell.closest(config.selectors.root);
+    if (root && shopRuntime(root) && root.querySelectorAll(config.selectors.tabs).length === 4) return root;
+  }
+  return null;
 }
 export function parts(root) {
   const q = config.selectors;

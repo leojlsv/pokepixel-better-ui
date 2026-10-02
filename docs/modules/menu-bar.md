@@ -6,10 +6,14 @@ Inventory | Hunts | Trainer | City | Goals | Events | Social | Mailbox |
 Tools | Shop | Settings.
 
 The complete mapping of 33 client-defined destinations is in `menu-bar-plan.md`.
-Shop contains Premium Shop, Pack and Gacha. Missing destinations are never
-created; City is absent in the older 27-destination capture. Each existing
-action appears once, with its original node, children, label, shortcut and
-listeners. Existing group wrappers, triggers, icons and badges are reused.
+Shop contains Premium Shop, Pack and Gacha. Missing **native destinations** are
+never recreated. City additionally owns three explicit Better UI shortcuts
+approved on 2026-10-02: `Geneticista`, `Nature` and `Evolution Center`. They are
+separate Better UI nodes without `data-menu-id` and delegate to the game's exposed
+`PokeIdle.NPC.open()` controller using the native NPC kinds `iv`, `nature` and
+`evolution`; they do not replace or impersonate host toolbar actions. Each existing
+native action still appears once, with its original node, children, label, shortcut
+and listeners. Existing group wrappers, triggers, icons and badges are reused.
 Unknown native actions remain available in their native containers.
 
 Group labels follow the read-only `PokeIdle.Localization.get()` language,
@@ -41,6 +45,14 @@ applies: closing explicit open state does not disable native hover behavior.
 Click handlers are attached to original nodes, including actions whose native
 handlers stop event propagation. No game action is automated.
 
+For the draggable native Poké Hub, Better UI materializes the first valid rendered
+rectangle into the same explicit `left`/`top`, `bottom:auto` and `transform:none`
+geometry that the host's `moveHub()` establishes after a drag/resize, clamped to
+the host's 8px viewport margin. This removes the transformed/edge-anchored startup
+state before fixed-position dropdowns are used. If the host/user subsequently
+moves the hub by its native handle, that later geometry remains authoritative and
+is not rolled back during Better UI cleanup.
+
 Cleanup restores original positions/classes without resurrecting removed
 actions. Replacements and updated native labels are retained. Native badge
 references remain intact so the game can continue updating their counts.
@@ -50,15 +62,20 @@ references remain intact so the game can continue updating their counts.
 - `G:/pokepixel-custom-ui/research/captures/2026-08-13/dom/main-screen.html`:
   native toolbar with 27 destinations; its subtree is `test/fixtures/menu-bar.html`.
 - `G:/pokepixel-custom-ui/src/bridge/navigation.ts`: destination identifiers.
-- Public `/play/js/plugins/PersistentHUD.js`, inspected 2026-08-31:
-  33 destination definitions, alternative native groupings and event contracts.
+- Public `/play/js/plugins/PersistentHUD.js`, re-inspected 2026-10-02:
+  33 destination definitions, alternative native groupings/event contracts and the
+  Poké Hub `moveHub()` geometry normalization used after drag/resize.
+- Public `/play/js/plugins/NpcInteraction.js`, inspected 2026-10-02:
+  exposed `PokeIdle.NPC.open()` dispatch for `iv`, `nature` and `evolution`.
 - Public `/play/css/persistent/top-toolbar.css`: native styles and dropdowns.
 - Public `/play/js/plugins/Localization.js`: supported game languages/getter.
 
-`npm test`: 21 passing tests covering foundation lifecycle, node/listener
-preservation, all 33 mapped destinations, native badges, original shortcut
-attributes, locale changes, hidden controls/empty groups, alternate composition,
-cleanup/restart, full/partial replacements, item reordering and mutation stability.
+`node --test test/menu-bar.test.js`: 33 passing tests covering foundation lifecycle,
+node/listener preservation, all 33 native destinations, native badges, original
+shortcut attributes, locale changes, hidden controls/empty groups, alternate
+composition, cleanup/restart, full/partial replacements, item reordering, mutation
+stability, F5 geometry normalization/late layout, host-owned geometry cleanup and
+the three City controller shortcuts.
 The six newer destinations in tests are synthetic contract fixtures, not an
 updated authenticated capture. Destination clicks in tests use mock handlers.
 
@@ -67,8 +84,8 @@ Local browser checks used the 27-destination capture and native CSS at
 simulated destination dispatch and arrow-key navigation. No new visual
 overlap was observed at that viewport; this does not certify all viewports.
 
-The user explicitly validated the complete implementation and confirmed that
-menu-bar is functional and adjusted. This closes the module's current validation
-stage; further QoL changes are deferred. This acceptance is user-reported, not
-a claim of authenticated testing by the agent. The local evidence above retains
-its original scope.
+The user previously validated the pre-2026-10-02 menu-bar organization and native
+drag/collapse behavior. The 2026-10-02 F5 geometry fix and City shortcuts are a new
+candidate scope and remain pending Product Owner in-game validation. The prior
+acceptance does not certify the new post-F5 pointer behavior or final rendered City
+composition.
