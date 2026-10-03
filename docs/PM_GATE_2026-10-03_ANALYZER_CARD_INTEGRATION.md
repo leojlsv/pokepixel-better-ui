@@ -75,9 +75,22 @@ checkout where the six host binaries and SDK are present: launcher safety preser
 six host hashes, and isolated build/rollback/offline-SDK recovery pass. Integration code
 does not modify WebView2 host tooling.
 
-## Release boundary
+## Release state
 
-No commit, push, merge, tag or publication is authorized by this gate. The exact
-Better UI `0.2.155` + Hunt Analyzer `1.15.2` pair is Product Owner approved and remains
-frozen pending any separately authorized Git/release action. A later code change
-requires new hashes and invalidates the exact candidate identity recorded here.
+After Product Owner live approval, commit/push/merge/tag/publication actions were
+explicitly authorized on 2026-10-03.
+
+- Better UI PR `#3` merged to `main` as `fb2586b38bda457b0720bf991612adf22b6539ee`
+  after both CI jobs passed. Better UI has no project-defined tag/release publication
+  pipeline, so no ad-hoc Better UI tag or GitHub Release was invented.
+- Hunt Analyzer PR `#27` merged to `main` as
+  `90c5fc002d12aafd82e4cb089bdbb9ec826d7e32`; `main` CI passed.
+- The guarded `publish/v1.15.2` workflow completed successfully, created tag and
+  published GitHub Release `v1.15.2`, then removed the temporary publish branch.
+- Published Analyzer assets match the frozen candidate exactly: userscript SHA-256
+  `2012959F611202409DBD3B58664B83C59C54E380A16219599300F57D10DC9A86` and metadata
+  SHA-256 `C5D31B1851E4FA515BB048F501150E6CE1ACF6F809BE27B19E8A4B5C3C689179`.
+
+The approved Better UI userscript remains SHA-256
+`A3C070124156318EF237A9C37048B8A540529DA7B7B60C56F613D5CA201E6145`. A later code
+change requires new candidate hashes and new live validation as applicable.
