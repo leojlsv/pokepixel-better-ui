@@ -10,6 +10,7 @@
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
     "playground": "node tools/pokemon-profile-playground/pokemon-profile-playground-server.mjs",
+    "playground:card-mode": "node tools/card-mode-layout-playground/server.mjs",
     "clean:generated": "node scripts/prune-generated.mjs",
     "test": "node --test",
     "test:python": "python -m unittest discover -s tools/nayakoko-sprite-extractor -p test_cache.py",
