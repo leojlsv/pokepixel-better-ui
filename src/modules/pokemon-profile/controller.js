@@ -34,34 +34,40 @@ function styleText() {
   return `
     [data-ppbui-pokemon-profile-menu] { cursor:pointer; }
     [data-ppbui-pokemon-profile-window] { --ppbui-bg-0:#0b100f; --ppbui-bg-1:#111715; --ppbui-bg-2:#171d1a; --ppbui-border:#37413c; --ppbui-border-strong:#4a554d; --ppbui-text:#e5e3d6; --ppbui-text-muted:#96998e; --ppbui-text-subtle:#70756d; --ppbui-selected:#d2b45d; --ppbui-warning:#d2b45d; --ppbui-success:#69a66f; }
-    [data-ppbui-pokemon-profile-window] { position:fixed; z-index:10030; inset:50% auto auto 50%; container-type:inline-size; box-sizing:border-box; width:min(620px,calc(100vw - 16px)); min-width:min(340px,calc(100vw - 16px)); max-height:calc(100vh - 16px); transform:translate(-50%,-50%); border:var(--ppbui-border-width) solid #4a554d; background:linear-gradient(180deg,#101614 0%,#0a0f0e 100%); color:var(--ppbui-text); box-shadow:0 12px 28px rgba(0,0,0,.46); font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body); -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+    [data-ppbui-pokemon-profile-window] { position:fixed; z-index:10030; inset:50% auto auto 50%; display:grid; grid-template-rows:auto minmax(0,1fr); container-type:inline-size; box-sizing:border-box; width:min(620px,calc(100vw - 16px)); min-width:min(340px,calc(100vw - 16px)); max-height:calc(100vh - 16px); overflow:hidden; transform:translate(-50%,-50%); border:var(--ppbui-border-width) solid #4a554d; border-radius:var(--ppbui-window-radius); background:linear-gradient(180deg,#101614 0%,#0a0f0e 100%); color:var(--ppbui-text); box-shadow:0 12px 28px rgba(0,0,0,.46); font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body); -webkit-text-size-adjust:100%; text-size-adjust:100%; }
     [data-ppbui-pokemon-profile-window][hidden] { display:none!important; }
-    [data-ppbui-profile-titlebar] { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; min-height:34px; border-bottom:1px solid #4d5548; background:linear-gradient(180deg,#1b211d,#141a18); box-shadow:none!important; }
-    [data-ppbui-profile-title] { margin:0; padding:0 var(--ppbui-space-4); color:#e0c46d; font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); text-transform:uppercase; letter-spacing:normal; }
-    [data-ppbui-profile-close] { min-width:var(--ppbui-icon-button-size); min-height:var(--ppbui-icon-button-size); border:0; border-left:var(--ppbui-separator-width) solid #4a4e42; background:#141a18; color:var(--ppbui-text); }
-    [data-ppbui-profile-body] { display:grid; align-content:start; gap:0; box-sizing:border-box; max-height:calc(100vh - 58px); overflow-y:auto; background:var(--ppbui-bg-0); }
-    [data-ppbui-profile-picker] { display:grid; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3) var(--ppbui-space-4); border-bottom:var(--ppbui-border-width) solid #3d4842; background:#141b18; box-shadow:none; }
+    [data-ppbui-profile-titlebar] { display:flex; min-height:48px; align-items:center; gap:var(--ppbui-space-3); padding:0 var(--ppbui-space-3) 0 var(--ppbui-space-4); border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-2); color:var(--ppbui-text); box-shadow:none!important; cursor:move; touch-action:none; user-select:none; }
+    [data-ppbui-profile-title-identity] { display:flex; min-width:0; align-items:center; gap:10px; }
+    [data-ppbui-profile-title-icon] { display:block; width:20px; height:20px; flex:0 0 20px; object-fit:contain; image-rendering:pixelated; }
+    [data-ppbui-profile-title] { min-width:0; margin:0; padding:0; overflow:hidden; color:var(--ppbui-text); font:700 15px/1 var(--ppbui-font-body); letter-spacing:.04em; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; }
+    [data-ppbui-profile-close] { width:40px; min-width:40px; height:40px; min-height:40px; margin-left:auto; border:0!important; border-radius:var(--ppbui-radius)!important; background:transparent!important; color:var(--ppbui-text-muted)!important; box-shadow:none!important; cursor:pointer; }
+    [data-ppbui-profile-close]:hover { background:var(--ppbui-bg-3)!important; color:var(--ppbui-text)!important; }
+    [data-ppbui-pokemon-profile-window][data-ppbui-profile-dragging] [data-ppbui-profile-titlebar] { cursor:grabbing; }
+    [data-ppbui-profile-body] { display:grid; align-content:start; gap:0; box-sizing:border-box; max-height:calc(100vh - 66px); overflow-y:auto; background:var(--ppbui-bg-0); }
+    [data-ppbui-profile-picker] { display:grid; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3) 0 var(--ppbui-space-3) var(--ppbui-space-4); border-bottom:var(--ppbui-border-width) solid #3d4842; background:#141b18; box-shadow:none; }
     [data-ppbui-profile-picker-tools] { display:grid; grid-template-columns:auto minmax(150px,1fr) auto; gap:var(--ppbui-space-2); align-items:center; }
     [data-ppbui-profile-filters] { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 78px 78px minmax(112px,1.2fr) auto; gap:var(--ppbui-space-2); align-items:end; }
     [data-ppbui-profile-filter-field] { display:grid; gap:2px; min-width:0; color:var(--ppbui-text-muted); font:600 var(--ppbui-font-size-meta)/1 var(--ppbui-font-body); text-transform:uppercase; }
     [data-ppbui-profile-filter-field] select, [data-ppbui-profile-filter-field] input { box-sizing:border-box; width:100%; min-width:0; }
+    [data-ppbui-profile-filter-error] { color:var(--ppbui-danger-text); font:600 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-body); text-transform:none; }
+    [data-ppbui-profile-filter-error][hidden] { display:none!important; }
     [data-ppbui-profile-filter-clear] { white-space:nowrap; }
     [data-ppbui-profile-sources] { display:flex; gap:0; }
     [data-ppbui-profile-sources] button + button { border-left:0!important; }
     [data-ppbui-profile-sources] button[aria-pressed="true"] { border-color:var(--ppbui-selected)!important; color:var(--ppbui-selected)!important; background:var(--ppbui-bg-2)!important; }
     [data-ppbui-profile-list] { display:grid; grid-auto-flow:column; grid-auto-columns:108px; gap:var(--ppbui-space-2); overflow-x:auto; overflow-y:hidden; padding-bottom:var(--ppbui-space-1); }
-    [data-ppbui-profile-choice] { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-template-rows:repeat(5,minmax(20px,auto)); gap:3px; min-width:0; padding:var(--ppbui-space-2); border:var(--ppbui-separator-width) solid #344039!important; border-radius:var(--ppbui-radius)!important; background:#101613!important; box-shadow:none!important; text-align:left; }
+    [data-ppbui-profile-choice] { display:grid; grid-template-columns:minmax(0,1fr); grid-template-rows:repeat(5,minmax(20px,auto)); justify-items:center; gap:3px; min-width:0; padding:var(--ppbui-space-2); border:var(--ppbui-separator-width) solid #344039!important; border-radius:var(--ppbui-radius)!important; background:#101613!important; box-shadow:none!important; text-align:center; }
     [data-ppbui-profile-choice][aria-pressed="true"] { border-color:var(--ppbui-selected)!important; background:#181d18!important; box-shadow:none!important; }
     [data-ppbui-profile-choice-visual] { display:grid; width:48px; height:48px; place-items:center; justify-self:center; overflow:hidden; border:var(--ppbui-separator-width) solid var(--ppbui-profile-element-color,var(--ppbui-border-strong)); border-radius:var(--ppbui-radius); background:var(--ppbui-bg-0); }
     [data-ppbui-profile-choice-visual] img { display:block; width:46px; height:46px; object-fit:contain; image-rendering:pixelated; }
-    [data-ppbui-profile-choice-name] { grid-column:1; grid-row:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+    [data-ppbui-profile-choice-name] { grid-column:1; grid-row:1; width:100%; overflow:hidden; text-align:center; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
     [data-ppbui-profile-choice-visual] { grid-column:1; grid-row:2; }
-    [data-ppbui-profile-choice-elements] { grid-column:1; grid-row:3; display:flex; gap:3px; align-items:center; min-width:0; }
+    [data-ppbui-profile-choice-elements] { grid-column:1; grid-row:3; display:flex; justify-content:center; gap:3px; align-items:center; min-width:0; }
     [data-ppbui-profile-choice-element] { display:grid; width:20px; height:20px; box-sizing:border-box; place-items:center; border:var(--ppbui-separator-width) solid var(--ppbui-element-color,var(--ppbui-border)); border-radius:var(--ppbui-radius-badge); background:var(--ppbui-bg-2); }
     [data-ppbui-profile-choice-element] .ppbui-element-icon { width:14px!important; height:14px!important; }
-    [data-ppbui-profile-choice-rarity] { grid-column:1; grid-row:4; display:flex; align-items:center; min-width:0; }
+    [data-ppbui-profile-choice-rarity] { grid-column:1; grid-row:4; display:flex; justify-content:center; align-items:center; min-width:0; }
     [data-ppbui-profile-choice-rarity] .ppbui-quality-badge { min-width:0!important; min-height:20px!important; padding:1px 3px!important; overflow:hidden; font-size:9px!important; text-overflow:ellipsis; }
-    [data-ppbui-profile-choice-stats] { grid-column:1; grid-row:5; overflow:hidden; color:var(--ppbui-text-muted); font:600 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data); text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-profile-choice-stats] { grid-column:1; grid-row:5; width:100%; overflow:hidden; color:var(--ppbui-text-muted); font:600 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data); text-align:center; text-overflow:ellipsis; white-space:nowrap; }
     [data-ppbui-profile-picker-state] { margin:0; color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-secondary); }
     [data-ppbui-profile-main] { display:grid; gap:var(--ppbui-space-4); padding:var(--ppbui-space-4); background:linear-gradient(180deg,rgba(18,24,22,.92),rgba(10,15,14,.96)); }
     [data-ppbui-profile-hero] { display:grid; grid-template-columns:112px minmax(0,1fr); gap:var(--ppbui-space-4); align-items:start; padding:10px; border:1px solid #3b4640; background:#121815; }
@@ -99,15 +105,19 @@ function styleText() {
     [data-ppbui-profile-move] { display:grid; grid-template-columns:28px minmax(0,1fr); grid-template-rows:28px 22px; align-items:center; gap:var(--ppbui-space-1); min-width:0; min-height:58px; padding:var(--ppbui-space-1); border:var(--ppbui-separator-width) solid #344039; background:#101613; }
     [data-ppbui-profile-move-position] { display:grid; width:26px; height:26px; place-items:center; border:var(--ppbui-separator-width) solid #3a453f; background:#141b18; color:var(--ppbui-text); font:700 var(--ppbui-font-size-body)/1 var(--ppbui-font-data); }
     [data-ppbui-profile-move-name] { min-width:0; height:26px; box-sizing:border-box; padding:4px var(--ppbui-space-2); overflow:hidden; border:var(--ppbui-separator-width) solid transparent; background:transparent; font-family:var(--ppbui-font-body); font-size:var(--ppbui-font-size-body); font-weight:700; line-height:16px; text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-profile-move-meta] { grid-column:1/-1; display:grid; grid-template-columns:22px minmax(30px,1fr) minmax(22px,auto) 44px; gap:4px; align-items:center; min-width:0; }
+    [data-ppbui-profile-move-meta] { grid-column:1/-1; display:flex; align-items:center; gap:4px; min-width:0; overflow:hidden; white-space:nowrap; }
     [data-ppbui-profile-move-element] { display:grid; width:22px; height:22px; box-sizing:border-box; place-items:center; border:var(--ppbui-separator-width) solid var(--ppbui-element-color,var(--ppbui-border)); border-radius:var(--ppbui-radius-badge); background:var(--ppbui-bg-2); }
     [data-ppbui-profile-move-element] .ppbui-element-icon { width:14px!important; height:14px!important; }
-    [data-ppbui-profile-move-category], [data-ppbui-profile-move-cooldown] { overflow:hidden; color:var(--ppbui-text-muted); font:700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data); text-overflow:ellipsis; white-space:nowrap; }
-    [data-ppbui-profile-move-power] { display:grid; width:44px; min-width:44px; max-width:44px; min-height:20px; box-sizing:border-box; place-items:center; padding:1px 2px; border:var(--ppbui-separator-width) solid transparent; background:transparent; color:#ddc36f; font:700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    [data-ppbui-profile-move-category], [data-ppbui-profile-move-cooldown], [data-ppbui-profile-move-separator], [data-ppbui-profile-move-power], [data-ppbui-profile-move-threshold] { flex:0 0 auto; overflow:hidden; font:700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data); text-overflow:ellipsis; white-space:nowrap; }
+    [data-ppbui-profile-move-category], [data-ppbui-profile-move-cooldown], [data-ppbui-profile-move-separator] { color:var(--ppbui-text-muted); }
+    [data-ppbui-profile-move-separator] { color:var(--ppbui-text-subtle); }
+    [data-ppbui-profile-move-power] { border:0; background:transparent; color:#ddc36f; font-variant-numeric:tabular-nums; }
+    [data-ppbui-profile-move-threshold] { color:#8fd29a; font-variant-numeric:tabular-nums; }
     [data-ppbui-profile-move][data-empty="true"] { color:var(--ppbui-text-subtle); }
     [data-ppbui-profile-status] { margin:0; color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-secondary); }
     [data-ppbui-profile-status][data-error="true"] { color:var(--ppbui-danger-text); font-weight:700; }
     [data-ppbui-profile-save] { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--ppbui-space-2); }
+    [data-ppbui-profile-save] > input { width:100%; min-width:0; }
     [data-ppbui-profile-saved-list], [data-ppbui-profile-team-list] { display:grid; gap:0; }
     [data-ppbui-profile-saved] { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:var(--ppbui-space-2) var(--ppbui-space-3); align-items:start; padding:var(--ppbui-space-3) 0; border-top:var(--ppbui-separator-width) solid #354039; }
     [data-ppbui-profile-saved] > [data-ppbui-profile-move-list] { grid-column:1/-1; width:100%; }
@@ -125,10 +135,11 @@ function styleText() {
     [data-ppbui-profile-team-member] img { width:30px; height:30px; object-fit:contain; image-rendering:pixelated; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-power] { margin-left:auto; white-space:nowrap; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-hidden] { display:none!important; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status] { display:inline-grid!important; width:22px; min-width:22px; height:22px; box-sizing:border-box; place-items:center; padding:0!important; overflow:hidden; font-size:0!important; line-height:1!important; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status]::before { font-size:12px; line-height:1; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="active"]::before { content:"⚔"; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::before { content:"🔒"; font-size:11px; }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status] { position:relative; display:inline-grid!important; width:22px; min-width:22px; height:22px; box-sizing:border-box; place-items:center; padding:0!important; overflow:hidden; font-size:0!important; line-height:1!important; }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status]::before { content:""; display:block; box-sizing:border-box; }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="active"]::before { width:8px; height:8px; border-top:2px solid currentColor; border-right:2px solid currentColor; transform:rotate(45deg); }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::before { width:9px; height:7px; margin-top:4px; border:1px solid currentColor; border-radius:1px; }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::after { content:""; position:absolute; top:4px; left:50%; width:6px; height:6px; box-sizing:border-box; border:1px solid currentColor; border-bottom:0; border-radius:4px 4px 0 0; transform:translateX(-50%); }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] { margin-top:4px; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-iv] { margin-left:6px; opacity:.72; white-space:nowrap; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-sr] { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
@@ -159,16 +170,20 @@ function styleText() {
       --ppbui-danger:#e17a72;
       --ppbui-border-width:1px;
       --ppbui-separator-width:1px;
+      --ppbui-scrollbar-size:8px;
       border:1px solid #6b6543!important;
       border-radius:var(--ppbui-window-radius)!important;
+      overflow:hidden!important;
       background:rgba(22,29,32,.92)!important;
       color:#eef1df!important;
       box-shadow:none!important;
     }
     [data-ppbui-pokemon-profile-window] :focus-visible { outline-width:var(--ppbui-focus-width)!important; }
     [data-ppbui-profile-titlebar] { border-bottom:1px solid #6b6543!important; background:rgba(35,44,46,.96)!important; box-shadow:none!important; }
-    [data-ppbui-profile-title], [data-ppbui-profile-section] h3 { color:#e0c46d!important; }
-    [data-ppbui-profile-close] { border-left:1px solid #6b6543!important; background:rgba(35,44,46,.96)!important; color:#eef1df!important; }
+    [data-ppbui-profile-title] { color:#eef1df!important; }
+    [data-ppbui-profile-section] h3 { color:#e0c46d!important; }
+    [data-ppbui-profile-close] { border:0!important; background:transparent!important; color:#a6aa9f!important; }
+    [data-ppbui-profile-close]:hover { background:rgba(22,29,32,.85)!important; color:#eef1df!important; }
     [data-ppbui-profile-body] { background:rgba(22,29,32,.85)!important; }
     [data-ppbui-profile-picker] { border-bottom:1px solid #6b6543!important; background:rgba(35,44,46,.96)!important; }
     [data-ppbui-profile-main] { background:rgba(22,29,32,.92)!important; }
@@ -238,7 +253,7 @@ function styleText() {
       [data-ppbui-profile-saved-actions] { justify-content:flex-start; }
     }
     /* Expedition-inspired readability pass: one clear outer card per section, quieter internals. */
-    [data-ppbui-profile-main] { gap:10px!important; padding:10px!important; }
+    [data-ppbui-profile-main] { gap:10px!important; padding:10px 2px 10px 10px!important; }
     [data-ppbui-profile-choice] { border:0!important; background:rgba(35,44,46,.96)!important; }
     [data-ppbui-profile-choice][aria-pressed="true"] { border:0!important; outline:1px solid #d2b45d; outline-offset:-1px; }
     [data-ppbui-profile-hero] { gap:12px!important; padding:12px!important; }
@@ -275,8 +290,9 @@ function styleText() {
     [data-ppbui-profile-move-list] { grid-template-columns:repeat(4,minmax(136px,1fr))!important; gap:6px!important; padding-bottom:0!important; }
     [data-ppbui-profile-move] { padding:5px!important; border:0!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; }
     [data-ppbui-profile-move-position] { border-color:#6b6543!important; background:rgba(35,44,46,.96)!important; }
+    [data-ppbui-profile-move-position][data-ppbui-profile-move-priority="true"] { border-color:#d2b45d!important; background:#d2b45d!important; color:#171d1a!important; }
     [data-ppbui-profile-move-name] { height:26px; padding:4px 6px!important; font-size:12px; }
-    [data-ppbui-profile-move-meta] { gap:5px!important; }
+    [data-ppbui-profile-move-meta] { gap:3px!important; }
     [data-ppbui-profile-move-category], [data-ppbui-profile-move-cooldown] { font-weight:600!important; }
 
     [data-ppbui-profile-saved-list], [data-ppbui-profile-team-list] { gap:6px!important; }
@@ -318,13 +334,13 @@ function styleText() {
       padding:2px!important;
     }
     @container (max-width:519px) {
-      [data-ppbui-profile-main] { gap:8px!important; padding:8px!important; }
+      [data-ppbui-profile-main] { gap:8px!important; padding:8px 0 8px 8px!important; }
       [data-ppbui-profile-hero] { gap:8px!important; padding:8px!important; }
       [data-ppbui-profile-fact]:nth-child(3), [data-ppbui-profile-fact]:nth-child(4) { border:0!important; }
       [data-ppbui-profile-section] > header { min-height:34px; padding:0 8px; }
       [data-ppbui-profile-section-body], [data-ppbui-profile-current] > [data-ppbui-profile-move-list] { padding:6px!important; }
     }
-    @media (pointer:coarse) { [data-ppbui-pokemon-profile-window] button, [data-ppbui-pokemon-profile-window] input { min-height:40px; } }
+    @media (pointer:coarse) { [data-ppbui-pokemon-profile-window] button, [data-ppbui-pokemon-profile-window] input, [data-ppbui-pokemon-profile-window] select { min-height:40px; } }
   `;
 }
 
@@ -428,9 +444,11 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
 
   const root = doc.createElement("section"); root.className = "ppbui-root ppbui-window"; root.dataset.ppbuiPokemonProfileWindow = ""; root.hidden = true; root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "false");
   const titlebar = doc.createElement("header"); titlebar.dataset.ppbuiProfileTitlebar = "";
-  const title = doc.createElement("h2"); title.dataset.ppbuiProfileTitle = "";
+  const titleIdentity = doc.createElement("div"); titleIdentity.dataset.ppbuiProfileTitleIdentity = "";
+  const titleIcon = profileIcon(); titleIcon.dataset.ppbuiProfileTitleIcon = "";
+  const title = doc.createElement("h2"); title.dataset.ppbuiProfileTitle = ""; title.id = "ppbui-pokemon-profile-title"; root.setAttribute("aria-labelledby", title.id);
   const close = doc.createElement("button"); close.type = "button"; close.className = "ppbui-button ppbui-icon-button"; close.dataset.ppbuiProfileClose = ""; close.textContent = "×";
-  titlebar.append(title, close);
+  titleIdentity.append(titleIcon, title); titlebar.append(titleIdentity, close);
   const body = doc.createElement("div"); body.dataset.ppbuiProfileBody = ""; body.className = "ppbui-scroll";
   const picker = doc.createElement("section"); picker.dataset.ppbuiProfilePicker = "";
   const pickerTools = doc.createElement("div"); pickerTools.dataset.ppbuiProfilePickerTools = "";
@@ -439,13 +457,14 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   const search = doc.createElement("input"); search.type = "search"; search.className = "ppbui-input"; search.dataset.ppbuiProfileSearch = "";
   const refresh = doc.createElement("button"); refresh.type = "button"; refresh.className = "ppbui-button"; refresh.dataset.ppbuiProfileRefresh = "";
   pickerTools.append(sources, search, refresh);
-  const filterRail = doc.createElement("div"); filterRail.dataset.ppbuiProfileFilters = "";
-  const filterControls = new Map(), filterLabels = new Map();
-  const filterField = (key, control) => { const label=doc.createElement("label");label.dataset.ppbuiProfileFilterField="";const caption=doc.createElement("span");filterLabels.set(key,caption);control.dataset.ppbuiProfileFilter=key;label.append(caption,control);filterControls.set(key,control);filterRail.append(label);return control; };
+  const filterRail = doc.createElement("div"); filterRail.dataset.ppbuiProfileFilters = ""; filterRail.setAttribute("role","group");
+  const filterControls = new Map(), filterLabels = new Map(), filterFields = new Map(), filterErrors = new Map();
+  const filterField = (key, control) => { const label=doc.createElement("label");label.dataset.ppbuiProfileFilterField="";const caption=doc.createElement("span");filterLabels.set(key,caption);filterFields.set(key,label);control.dataset.ppbuiProfileFilter=key;label.append(caption,control);filterControls.set(key,control);filterRail.append(label);return control; };
   const filterSelect = key => { const select=doc.createElement("select");select.className="ppbui-select";return filterField(key,select); };
   const rarityFilter=filterSelect("rarity"),elementFilter=filterSelect("element"),minLevelFilter=doc.createElement("input"),maxLevelFilter=doc.createElement("input");
   for(const input of [minLevelFilter,maxLevelFilter]){input.type="number";input.min="1";input.step="1";input.className="ppbui-input";}
   filterField("minLevel",minLevelFilter);filterField("maxLevel",maxLevelFilter);
+  for(const [key,input] of [["minLevel",minLevelFilter],["maxLevel",maxLevelFilter]]){const error=doc.createElement("span");error.id=`ppbui-profile-${key}-error`;error.dataset.ppbuiProfileFilterError=key;error.hidden=true;filterFields.get(key).append(error);filterErrors.set(key,error);input.setAttribute("aria-describedby",error.id);}
   const tagFilter=filterSelect("tags");
   const clearFilters=doc.createElement("button");clearFilters.type="button";clearFilters.className="ppbui-button";clearFilters.dataset.ppbuiProfileFilterClear="";filterRail.append(clearFilters);
   const list = doc.createElement("div"); list.dataset.ppbuiProfileList = ""; list.className = "ppbui-scroll"; list.setAttribute("role", "group");
@@ -454,10 +473,10 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   const main = doc.createElement("div"); main.dataset.ppbuiProfileMain = "";
   body.append(picker, main); root.append(titlebar, body); doc.body.append(root);
 
-  let alive = true, opened = false, owned = [], selectedId = "", source = "all", filters = freshFilters(), filterCopySignature = "", loadEpoch = 0, selectionEpoch = 0, busy = false, profileOrigin = null, teamStoreSignature = "";
-  const speciesCache = new Map(), movesCache = new Map(), detailCache = new Map(), collapseState = new Map();
+  let alive = true, opened = false, owned = [], selectedId = "", source = "all", filters = freshFilters(), filterCopySignature = "", loadEpoch = 0, selectionEpoch = 0, openEpoch = 0, busy = false, profileOrigin = null, teamStoreSignature = "", configureMovesAvailable = null, dragState = null, dragPositioned = false;
+  const speciesCache = new Map(), movesCache = new Map(), detailCache = new Map(), collapseState = new Map(), choiceNodes = new Map();
   const tags = tagService(win);
-  const nativeCardCreatures = new WeakMap();
+  const nativeCardCreatures = new WeakMap(), nativeCardHydrationEpoch = new WeakMap();
   const nativeCardSelector = ".pokemon-card--hover,.pokemon-card--pinned,.pokemon-card--sheet";
   let nativeCardOwner = null, nativeCardOriginalRender = null, nativeCardRenderWrapper = null, nativeCardToken = 0;
 
@@ -475,15 +494,19 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   const setProp = (node, name, value) => {
     if (node && node[name] !== value) node[name] = value;
   };
-  function menuIcon() {
+  function profileIcon() {
     const image = doc.createElement("img");
-    image.className = "pokeidle-top-toolbar__icon";
     image.src = typeof __PPBUI_POKE_PROFILE_ICON__ === "string"
       ? __PPBUI_POKE_PROFILE_ICON__
       : "/assets/menu-poke-profile-icon.png";
     image.alt = "";
     image.draggable = false;
     image.setAttribute("aria-hidden", "true");
+    return image;
+  }
+  function menuIcon() {
+    const image = profileIcon();
+    image.className = "pokeidle-top-toolbar__icon";
     return image;
   }
   function ensureMenu() {
@@ -499,22 +522,24 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   }
   function syncCopy() {
     const text = copy(); setText(title, text.title); setProp(close, "title", text.close); setAttr(close, "aria-label", text.close); ensureMenu(); setText(menuLabel, text.name); setAttr(menu, "aria-label", text.name);
-    setProp(search, "placeholder", text.search); setAttr(search, "aria-label", text.search); setText(refresh, text.refresh);
+    setProp(search, "placeholder", text.search); setAttr(search, "aria-label", text.search); setText(refresh, text.refresh); setAttr(sources,"aria-label",text.source); setAttr(filterRail,"aria-label",text.filters); setAttr(list,"aria-label",text.pokemonList);
     for (const [key, button] of sourceButtons) setText(button, text[key]);
-    for(const key of ["rarity","element","minLevel","maxLevel","tags"])setText(filterLabels.get(key),text[key]);setText(clearFilters,text.clearFilters);
+    for(const key of ["rarity","element","minLevel","maxLevel","tags"])setText(filterLabels.get(key),text[key]);for(const error of filterErrors.values())setText(error,text.levelInvalid);setText(clearFilters,text.clearFilters);
     const rarityOptions=pokemonRarities.map(value=>[value,win?.PokeIdle?.t?.(`common.quality_m.${value}`)||value]),elementOptions=pokemonElements.map(value=>[value,win?.PokeIdle?.t?.(`common.element.${value}`)||value]),tagOptions=[["untagged",text.untagged],...fixedTags.map(tag=>[tag.id,`${tag.icon} ${tag.name}`])];
     const signature=JSON.stringify([text.all,text.untagged,rarityOptions,elementOptions,tagOptions]);
-    if(signature!==filterCopySignature){const fill=(select,values,current)=>{select.replaceChildren();for(const [value,label] of [["",text.all],...values]){const option=doc.createElement("option");option.value=value;option.textContent=label;select.append(option);}select.value=current;};fill(rarityFilter,rarityOptions,filters.rarity);fill(elementFilter,elementOptions,filters.element);fill(tagFilter,tagOptions,filters.tags[0]||"");filterCopySignature=signature;}
+    if(signature!==filterCopySignature){const fill=(select,values,current)=>{select.replaceChildren();for(const [value,label] of [["",text.all],...values]){const option=doc.createElement("option");option.value=value;option.textContent=label;select.append(option);}select.value=current;};fill(rarityFilter,rarityOptions,filters.rarity);fill(elementFilter,elementOptions,filters.element);fill(tagFilter,tagOptions,filters.tags[0]||"");filterCopySignature=signature;for(const creature of owned){const node=choiceNodes.get(String(creature.id));if(node)syncChoiceNode(node,creature);}}
     const canConfigureMoves=typeof win?.PokeIdle?.MovesetConfig?.open==="function";
-    root.querySelectorAll("[data-ppbui-profile-configure-moves]").forEach(button=>setProp(button,"disabled",!canConfigureMoves));
+    if(canConfigureMoves!==configureMovesAvailable){root.querySelectorAll("[data-ppbui-profile-configure-moves]").forEach(button=>setProp(button,"disabled",!canConfigureMoves));configureMovesAvailable=canConfigureMoves;}
   }
 
   async function enrichCreature(creature) {
     const speciesId = String(creature?.species_id ?? creature?.species?.id ?? creature?.species?.species_id ?? "").trim();
     const api = win?.PokeIdle?.Api;
     if (!speciesId || typeof api?.getSpecies !== "function") return creature;
-    if (!speciesCache.has(speciesId)) speciesCache.set(speciesId, Promise.resolve(api.getSpecies(speciesId)).catch(() => null));
-    const response = await speciesCache.get(speciesId), species = response?.data || response;
+    if (!speciesCache.has(speciesId)) speciesCache.set(speciesId, Promise.resolve().then(() => api.getSpecies(speciesId)));
+    const promise=speciesCache.get(speciesId);let response;
+    try{response=await promise;}catch{if(speciesCache.get(speciesId)===promise)speciesCache.delete(speciesId);return creature;}
+    const species = response?.data || response;
     return species && typeof species === "object" ? { ...creature, species:{ ...(creature?.species || {}), ...species } } : creature;
   }
 
@@ -541,6 +566,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const power = finite(raw?.power ?? entry?.power); if (power !== null) next.power = power;
     const category = String(raw?.category || raw?.source_category || entry?.category || entry?.source_category || "").trim(); if (category) next.category = category;
     const cooldownMs = finite(raw?.cooldown_ms ?? entry?.cooldown_ms); if (cooldownMs !== null) next.cooldown_ms = cooldownMs;
+    const effectKind = String(raw?.effect_kind || entry?.effect_kind || "").trim(); if (effectKind) next.effect_kind = effectKind;
     map.set(id, next);
   }
 
@@ -568,6 +594,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
       power:meta.power ?? move?.power,
       category:meta.category || move?.category || move?.source_category || "",
       cooldown_ms:meta.cooldown_ms ?? move?.cooldown_ms,
+      effect_kind:meta.effect_kind || move?.effect_kind || "",
     };
   });
 
@@ -579,35 +606,67 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
       && matchesPokemon(creature,filters,assigned[String(creature.id)]||[]));
   }
 
-  function choice(creature) {
-    const text = copy(), id = String(creature.id), button = doc.createElement("button"); button.type="button"; button.className="ppbui-button"; button.dataset.ppbuiProfileChoice=""; button.dataset.creatureId=id; button.setAttribute("aria-pressed",String(id===selectedId));
-    const color=primaryElementColor(doc,creature);if(color)button.style.setProperty("--ppbui-profile-element-color",color);
+  function syncChoiceNode(button,creature) {
+    const text = copy(), id = String(creature.id);button.dataset.creatureId=id;setAttr(button,"aria-pressed",String(id===selectedId));
+    const color=primaryElementColor(doc,creature);if(color)button.style.setProperty("--ppbui-profile-element-color",color);else button.style.removeProperty("--ppbui-profile-element-color");
     const visual=doc.createElement("span"); visual.dataset.ppbuiProfileChoiceVisual=""; const sprite=spriteOf(doc,creature);
     if(sprite){const image=doc.createElement("img");image.src=sprite;image.alt="";visual.append(image);} else visual.textContent=pokemonName(doc,creature).slice(0,3).toUpperCase();
-    const name=doc.createElement("span");name.dataset.ppbuiProfileChoiceName="";name.textContent=pokemonName(doc,creature);
+    const name=doc.createElement("span");name.dataset.ppbuiProfileChoiceName="";name.textContent=pokemonName(doc,creature);name.title=name.textContent;
     const elements=doc.createElement("span");elements.dataset.ppbuiProfileChoiceElements="";for(const element of elementNames(creature).slice(0,2))elements.append(elementIconBox(doc,element,"ppbuiProfileChoiceElement"));const quality=String(creature.quality||"").trim(),rarityWrap=doc.createElement("span"),rarity=doc.createElement("span");rarityWrap.dataset.ppbuiProfileChoiceRarity="";rarity.className=`ppbui-quality-badge${quality?` quality-${qualityKey(quality)}`:""}`;rarity.textContent=quality?qualityLabel(doc,quality):"—";rarityWrap.append(rarity);
     const stats=doc.createElement("span");stats.dataset.ppbuiProfileChoiceStats="";const level=finite(creature.level);stats.textContent=level!==null?`${text.level}${level}`:"—";
-    button.append(visual,name,elements,rarityWrap,stats); button.addEventListener("click",()=>select(id,true)); return button;
+    button.replaceChildren(visual,name,elements,rarityWrap,stats);return button;
   }
 
-  function renderPicker() {
-    const text=copy(); sourceButtons.forEach((button,key)=>button.setAttribute("aria-pressed",String(key===source)));clearFilters.disabled=!filters.rarity&&!filters.element&&!minLevelFilter.value&&!maxLevelFilter.value&&!filters.tags.length; list.replaceChildren(); const filtered=filteredOwned();
-    filtered.forEach(creature=>list.append(choice(creature))); pickerState.textContent=filtered.length ? "" : (owned.length ? text.none : pickerState.textContent);
+  function ensureChoiceNode(creature) {
+    const id=String(creature.id);let node=choiceNodes.get(id);
+    if(!node){node=doc.createElement("button");node.type="button";node.className="ppbui-button";node.dataset.ppbuiProfileChoice="";choiceNodes.set(id,node);}
+    return syncChoiceNode(node,creature);
   }
 
-  function moveItem(move, index, { hover = false } = {}) {
+  function reconcileChoiceNodes() {
+    const ids=new Set(owned.map(creature=>String(creature.id)));
+    for(const [id,node] of choiceNodes){if(ids.has(id))continue;node.remove();choiceNodes.delete(id);}
+    for(const creature of owned)ensureChoiceNode(creature);
+  }
+
+  function syncPickerSelection(){for(const [id,node] of choiceNodes)setAttr(node,"aria-pressed",String(id===selectedId));}
+
+  function renderPicker({ preserveFocus=false }={}) {
+    const text=copy(),focused=preserveFocus&&doc.activeElement?.matches?.("[data-ppbui-profile-choice]")?doc.activeElement:null; sourceButtons.forEach((button,key)=>setAttr(button,"aria-pressed",String(key===source)));setProp(clearFilters,"disabled",!filters.rarity&&!filters.element&&!minLevelFilter.value&&!maxLevelFilter.value&&!filters.tags.length);const filtered=filteredOwned(),fragment=doc.createDocumentFragment();
+    for(const creature of filtered)fragment.append(ensureChoiceNode(creature));list.replaceChildren(fragment);if(focused?.isConnected)focused.focus({preventScroll:true});setText(pickerState,filtered.length ? "" : (owned.length ? text.none : pickerState.textContent));
+  }
+
+  function moveItem(move, index, { hover = false, slotSetting = null } = {}) {
     const text=copy();
-    const item=doc.createElement("li");item.dataset.ppbuiProfileMove="";if(hover)item.dataset.ppbuiProfileHoverMove="";item.dataset.empty=String(!move);const position=doc.createElement("span");position.dataset.ppbuiProfileMovePosition="";position.textContent=String(index+1);const name=doc.createElement("span");name.dataset.ppbuiProfileMoveName="";name.textContent=move?.name||move?.id||"—";item.append(position,name);if(move){const meta=doc.createElement("span");meta.dataset.ppbuiProfileMoveMeta="";const element=elementIconBox(doc,String(move.element||""),"ppbuiProfileMoveElement");const category=doc.createElement("span");category.dataset.ppbuiProfileMoveCategory="";category.textContent=moveCategory(text,move);const power=doc.createElement("span");power.dataset.ppbuiProfileMovePower="";const powerValue=finite(move.power),powerText=powerValue!==null?powerValue.toLocaleString():"—",powerLabel=`${text.power} ${powerText}`;power.textContent=`${text.movePower} ${powerText}`;power.title=powerLabel;power.setAttribute("aria-label",powerLabel);const cooldown=doc.createElement("span");cooldown.dataset.ppbuiProfileMoveCooldown="";const cooldownValue=moveCooldownValue(doc,move),cooldownLabel=`${text.moveCooldown} ${cooldownValue.accessible}`;cooldown.textContent=cooldownValue.visual;cooldown.title=cooldownLabel;cooldown.setAttribute("aria-label",cooldownLabel);meta.append(element,category,cooldown,power);item.append(meta);}return item;
+    const item=doc.createElement("li");item.dataset.ppbuiProfileMove="";if(hover)item.dataset.ppbuiProfileHoverMove="";item.dataset.empty=String(!move);
+    const position=doc.createElement("span");position.dataset.ppbuiProfileMovePosition="";position.textContent=String(index+1);const priority=Boolean(slotSetting?.use_as_priority);position.dataset.ppbuiProfileMovePriority=String(priority);if(priority){const key="moveset.priority",translated=String(win?.PokeIdle?.t?.(key)||"").trim(),label=translated&&translated!==key?translated:"Use as priority";position.title=label;position.setAttribute("aria-label",`${index+1}. ${label}`);}
+    const name=doc.createElement("span");name.dataset.ppbuiProfileMoveName="";name.textContent=move?.name||move?.id||"—";item.append(position,name);
+    if(move){
+      const meta=doc.createElement("span");meta.dataset.ppbuiProfileMoveMeta="";
+      const element=elementIconBox(doc,String(move.element||""),"ppbuiProfileMoveElement");
+      const category=doc.createElement("span");category.dataset.ppbuiProfileMoveCategory="";category.textContent=moveCategory(text,move);
+      const separator=()=>{const node=doc.createElement("span");node.dataset.ppbuiProfileMoveSeparator="";node.textContent="·";node.setAttribute("aria-hidden","true");return node;};
+      const cooldown=doc.createElement("span"),cooldownValue=moveCooldownValue(doc,move),cooldownLabel=`${text.moveCooldown} ${cooldownValue.accessible}`;cooldown.dataset.ppbuiProfileMoveCooldown="";cooldown.textContent=cooldownValue.accessible;cooldown.title=cooldownLabel;cooldown.setAttribute("aria-label",cooldownLabel);
+      const power=doc.createElement("span"),powerValue=finite(move.power),powerText=powerValue!==null?powerValue.toLocaleString():"—",powerLabel=`${text.power} ${powerText}`;power.dataset.ppbuiProfileMovePower="";power.textContent=powerText;power.title=powerLabel;power.setAttribute("aria-label",powerLabel);
+      meta.append(element,category,separator(),cooldown,separator(),power);
+      const thresholdValue=finite(slotSetting?.heal_threshold_pct),isHeal=String(move.effect_kind||"").trim().toLowerCase()==="heal";
+      if(isHeal&&thresholdValue!==null&&thresholdValue>=1&&thresholdValue<=100){const threshold=doc.createElement("span"),pct=Math.round(thresholdValue),key="moveset.heal_threshold",translated=String(win?.PokeIdle?.t?.(key)||"").trim(),label=translated&&translated!==key?translated:"Use when remaining HP ≤";threshold.dataset.ppbuiProfileMoveThreshold="";threshold.textContent=`${pct}%`;threshold.title=`${label} ${pct}%`;threshold.setAttribute("aria-label",`${label} ${pct}%`);meta.append(separator(),threshold);}
+      item.append(meta);
+    }
+    return item;
   }
 
-  function moveList(moves, { compact = false, label = "", hover = false } = {}) {
+  function moveList(moves, { compact = false, label = "", hover = false, slotSettings = null } = {}) {
     const listNode=doc.createElement("ol"); listNode.dataset.ppbuiProfileMoveList="";listNode.className="ppbui-scroll ppbui-focusable";listNode.tabIndex=0;if(label)listNode.setAttribute("aria-label",label);
-    for(let index=0;index<4;index+=1)listNode.append(moveItem(moves[index]||null,index,{hover}));
+    for(let index=0;index<4;index+=1)listNode.append(moveItem(moves[index]||null,index,{hover,slotSetting:Array.isArray(slotSettings)?slotSettings[index]:null}));
     return listNode;
   }
 
   function button(label, classes="") { const node=doc.createElement("button");node.type="button";node.className=`ppbui-button ${classes}`.trim();node.textContent=label;return node; }
   function statusNode(message="",error=false){const node=doc.createElement("p");node.dataset.ppbuiProfileStatus="";node.dataset.error=String(error);node.setAttribute("role","status");node.setAttribute("aria-live","polite");node.textContent=message;return node;}
+  function parkFocused(node){if(doc.activeElement!==node)return false;main.tabIndex=-1;main.focus({preventScroll:true});return true;}
+  function savedRowById(presetId){return [...main.querySelectorAll("[data-ppbui-profile-saved]")].find(row=>row.dataset.presetId===String(presetId))||null;}
+  function restoreSavedActionFocus(presetId,action,fallbackPresetId=""){const rows=[presetId,fallbackPresetId].filter(Boolean).map(savedRowById).filter(Boolean);let target=null;for(const row of rows){target=row.querySelector(`[data-ppbui-profile-saved-action="${action}"]:not(:disabled)`)||row.querySelector("[data-ppbui-profile-saved-action]:not(:disabled)");if(target)break;}target=target||main.querySelector("[data-ppbui-profile-save-current], [data-ppbui-profile-preset-name], [data-ppbui-profile-collapse='savedMoves']");target?.focus?.({preventScroll:true});}
 
   function collapsed(id,key){return Boolean(collapseState.get(id)?.[key]);}
   function bindCollapse(toggle,bodyNode,id,key,collapseLabel,expandLabel){
@@ -617,24 +676,24 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
 
   function errorText(result){const text=copy();return text.errors[result?.reason]||result?.reason||text.movesError;}
 
-  async function saveCurrent(id,input,status) {
+  async function saveCurrent(id,input,status,trigger) {
     if(!alive||busy)return; const text=copy(),name=input.value.trim(); if(!name){status.textContent=text.errors["name-required"];status.dataset.error="true";return;}
     busy=true;status.textContent=text.saving;status.dataset.error="false";const result=await captureTeamMoveset(win,id);busy=false;if(!alive||selectedId!==id)return;
     if(!result?.ok){status.textContent=errorText(result);status.dataset.error="true";return;}
     const saved=movesStore.upsert(id,name,result.snapshot); if(!saved){status.textContent=text.errors["preset-invalid"];status.dataset.error="true";} else if(saved.duplicateLoadout){status.textContent=text.duplicate(saved.preset.name);status.dataset.error="true";} else {input.value="";status.textContent=saved.created?text.saved:text.updated;status.dataset.error="false";movesCache.set(id,Promise.resolve(result.current));}
-    await renderSelected(id,true);
+    const restore=parkFocused(trigger),restoreInput=trigger===input;await renderSelected(id,true);if(restore)(restoreInput?main.querySelector("[data-ppbui-profile-preset-name]"):main.querySelector("[data-ppbui-profile-save-current]"))?.focus?.({preventScroll:true});
   }
 
   function renderSavedMoves(container,id,current,metadata=new Map()) {
     const text=copy(),presets=movesStore.list(id),currentSig=movesetSignature(current);
     if(!presets.length){container.append(statusNode(text.noSavedMoves));return;}
-    for(const preset of presets){const active=Boolean(currentSig&&movesetSignature(preset)===currentSig),row=doc.createElement("article");row.dataset.ppbuiProfileSaved="";row.dataset.active=String(active);
+    for(const preset of presets){const active=Boolean(currentSig&&movesetSignature(preset)===currentSig),row=doc.createElement("article");row.dataset.ppbuiProfileSaved="";row.dataset.presetId=String(preset.id);row.dataset.active=String(active);
       const head=doc.createElement("div");head.dataset.ppbuiProfileSavedHead="";const token=doc.createElement("span");token.textContent=movesetBadgeLabel(preset.marker);const name=doc.createElement("strong");name.textContent=preset.name;head.append(token,name);if(active){const mark=doc.createElement("span");mark.textContent=text.active;mark.style.color="var(--ppbui-success-text)";head.append(mark);}
       const ordered=moveList(enrichedMoves(preset.moves,metadata),{compact:true,label:`${text.savedMoves}: ${preset.name}`}); const actions=doc.createElement("div");actions.dataset.ppbuiProfileSavedActions="";
-      const apply=button(text.apply,"ppbui-button--primary"),update=button(text.update),remove=button(text.remove,"ppbui-button--danger");apply.disabled=busy||active;update.disabled=busy;remove.disabled=busy;
-      apply.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;busy=true;const result=await applyTeamMoveset(win,id,preset);busy=false;if(!alive||selectedId!==id)return;if(result?.ok)movesCache.set(id,Promise.resolve(result.current));await renderSelected(id,true,result?.ok?text.applied:errorText(result),!result?.ok);});
-      update.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;busy=true;const result=await captureTeamMoveset(win,id);busy=false;if(!alive||selectedId!==id)return;if(result?.ok){movesStore.replaceSnapshot(preset.id,id,result.snapshot);movesCache.set(id,Promise.resolve(result.current));}await renderSelected(id,true,result?.ok?text.updated:errorText(result),!result?.ok);});
-      remove.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;if(typeof win?.confirm!=="function"||!win.confirm(`${text.remove}: ${preset.name}?`))return;movesStore.remove(preset.id,id);await renderSelected(id,true,text.removed,false);});
+      const apply=button(text.apply,"ppbui-button--primary"),update=button(text.update),remove=button(text.remove,"ppbui-button--danger");apply.dataset.ppbuiProfileSavedAction="apply";update.dataset.ppbuiProfileSavedAction="update";remove.dataset.ppbuiProfileSavedAction="remove";apply.disabled=busy||active;update.disabled=busy;remove.disabled=busy;
+      apply.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;busy=true;const result=await applyTeamMoveset(win,id,preset);busy=false;if(!alive||selectedId!==id)return;if(result?.ok)movesCache.set(id,Promise.resolve(result.current));const restore=parkFocused(apply);await renderSelected(id,true,result?.ok?text.applied:errorText(result),!result?.ok);if(restore)restoreSavedActionFocus(preset.id,"apply");});
+      update.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;busy=true;const result=await captureTeamMoveset(win,id);busy=false;if(!alive||selectedId!==id)return;if(result?.ok){movesStore.replaceSnapshot(preset.id,id,result.snapshot);movesCache.set(id,Promise.resolve(result.current));}const restore=parkFocused(update);await renderSelected(id,true,result?.ok?text.updated:errorText(result),!result?.ok);if(restore)restoreSavedActionFocus(preset.id,"update");});
+      remove.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;if(typeof win?.confirm!=="function"||!win.confirm(`${text.remove}: ${preset.name}?`))return;const fallback=row.nextElementSibling?.dataset?.presetId||row.previousElementSibling?.dataset?.presetId||"";const restore=parkFocused(remove);movesStore.remove(preset.id,id);await renderSelected(id,true,text.removed,false);if(restore)restoreSavedActionFocus(preset.id,"remove",fallback);});
       actions.append(apply,update,remove);row.append(head,ordered,actions);container.append(row);
     }
   }
@@ -644,7 +703,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     if(!presets.length){container.append(statusNode(text.noSavedTeams));return;}
     for(const preset of presets){const selectedIndex=preset.members.findIndex(member=>String(member.id)===id),row=doc.createElement("article");row.dataset.ppbuiProfileTeamRow="";
       const meta=doc.createElement("div");meta.dataset.ppbuiProfileTeamMeta="";const name=doc.createElement("strong");name.textContent=preset.name;const pos=doc.createElement("span");pos.textContent=`#${selectedIndex+1}/${preset.members.length}`;meta.append(name,pos);if(String(preset.activeId)===id){const active=doc.createElement("span");active.textContent=text.active;active.style.color="var(--ppbui-success-text)";meta.append(active);}
-      const members=doc.createElement("div");members.dataset.ppbuiProfileTeamMembers="";for(let index=0;index<6;index++){const member=preset.members[index],cell=doc.createElement("span");cell.dataset.ppbuiProfileTeamMember="";if(member){cell.dataset.selected=String(String(member.id)===id);if(member.elementColor)cell.style.setProperty("--ppbui-member-element-color",member.elementColor);const sprite=member.sprite;if(sprite){const image=doc.createElement("img");image.src=sprite;image.alt="";cell.append(image);}else cell.textContent=member.name.slice(0,3).toUpperCase();}members.append(cell);}row.append(meta,members);container.append(row);}
+      const members=doc.createElement("div");members.dataset.ppbuiProfileTeamMembers="";members.setAttribute("role","list");members.setAttribute("aria-label",preset.name);for(let index=0;index<6;index++){const member=preset.members[index],cell=doc.createElement("span");cell.dataset.ppbuiProfileTeamMember="";if(member){const memberName=String(member.name||"Pokémon"),selected=String(member.id)===id,active=String(member.id)===String(preset.activeId);cell.dataset.selected=String(selected);cell.setAttribute("role","listitem");cell.setAttribute("aria-label",active?`${memberName}, ${text.active}`:memberName);cell.title=memberName;if(selected)cell.setAttribute("aria-current","true");if(member.elementColor)cell.style.setProperty("--ppbui-member-element-color",member.elementColor);const sprite=member.sprite;if(sprite){const image=doc.createElement("img");image.src=sprite;image.alt="";cell.append(image);}else cell.textContent=memberName.slice(0,3).toUpperCase();}else cell.setAttribute("aria-hidden","true");members.append(cell);}row.append(meta,members);container.append(row);}
   }
 
   async function renderSelected(id, forceMoves=false, message="", messageError=false) {
@@ -653,27 +712,27 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     let creature=base,current=null,moveError=false; try{[creature,current]=await Promise.all([enrichCreature(base),readMoves(id,forceMoves)]);}catch{moveError=true;creature=await enrichCreature(base);} if(!alive||selectedId!==id||epoch!==selectionEpoch)return;
     const detail=await readCardDetail(creature);if(!alive||selectedId!==id||epoch!==selectionEpoch)return;
     if(detail?.creature&&typeof detail.creature==="object"){const fresh=detail.creature;creature={...creature,...fresh,species:{...(creature?.species||{}),...(fresh?.species||{})},__ppbuiSource:base.__ppbuiSource};}
-    const ownedIndex=owned.findIndex(entry=>String(entry.id)===id);if(ownedIndex>=0&&creature!==base){owned[ownedIndex]={...creature,__ppbuiSource:base.__ppbuiSource};creature=owned[ownedIndex];renderPicker();}
+    const ownedIndex=owned.findIndex(entry=>String(entry.id)===id);if(ownedIndex>=0&&creature!==base){const visibleBefore=[...list.children].map(node=>node.dataset.creatureId).join("\u0000");owned[ownedIndex]={...creature,__ppbuiSource:base.__ppbuiSource};creature=owned[ownedIndex];ensureChoiceNode(creature);const visibleAfter=filteredOwned().map(entry=>String(entry.id)).join("\u0000");if(visibleAfter!==visibleBefore)renderPicker({preserveFocus:true});else syncPickerSelection();}
     const metadata=!moveError&&current?await moveMetadata(creature,current,detail):new Map();if(!alive||selectedId!==id||epoch!==selectionEpoch)return;
     const hero=doc.createElement("section");hero.dataset.ppbuiProfileHero="";const elementColor=primaryElementColor(doc,creature);if(elementColor)hero.style.setProperty("--ppbui-profile-element-color",elementColor);const portrait=doc.createElement("div");portrait.dataset.ppbuiProfilePortrait="";const sprite=spriteOf(doc,creature);if(sprite){const image=doc.createElement("img");image.src=sprite;image.alt="";portrait.append(image);}else portrait.textContent=pokemonName(doc,creature).slice(0,3).toUpperCase();
     const identity=doc.createElement("div");identity.dataset.ppbuiProfileIdentity="";const identityHead=doc.createElement("div");identityHead.dataset.ppbuiProfileIdentityHead="";const name=doc.createElement("h3");name.dataset.ppbuiProfileName="";name.textContent=pokemonName(doc,creature);const power=doc.createElement("span");power.dataset.ppbuiProfilePower="";const powerValue=finite(creature.power);power.textContent=powerValue!==null?`${text.power} ${powerValue.toLocaleString()}`:`${text.power} —`;identityHead.append(name,power);
     const meta=doc.createElement("div");meta.dataset.ppbuiProfileMeta="";const level=doc.createElement("span");const levelValue=finite(creature.level);level.textContent=levelValue!==null?`${text.level}${levelValue}`:"—";meta.append(level);for(const element of elementNames(creature))meta.append(elementBadge(doc,element));const origin=doc.createElement("span");origin.textContent=`${text.source}: ${sourceLabel(text,creature)}`;meta.append(origin);
-    const hp=doc.createElement("div");hp.dataset.ppbuiProfileHp="";const hpLabel=doc.createElement("span");hpLabel.textContent=text.hp;const track=doc.createElement("span");track.dataset.ppbuiProfileHpTrack="";const fill=doc.createElement("i");fill.dataset.ppbuiProfileHpFill="";const hpValue=finite(creature.hp),maxHp=finite(creature.max_hp),percent=hpValue!==null&&maxHp>0?Math.max(0,Math.min(100,Math.round(hpValue/maxHp*100))):0;fill.style.width=`${percent}%`;track.append(fill);const hpText=doc.createElement("span");hpText.textContent=hpValue!==null&&maxHp!==null?`${hpValue.toLocaleString()} / ${maxHp.toLocaleString()}`:"—";hp.append(hpLabel,track,hpText);identity.append(identityHead,meta,hp);hero.append(portrait,identity);
+    const hp=doc.createElement("div");hp.dataset.ppbuiProfileHp="";const hpLabel=doc.createElement("span");hpLabel.textContent=text.hp;const track=doc.createElement("span");track.dataset.ppbuiProfileHpTrack="";track.setAttribute("role","progressbar");track.setAttribute("aria-label",text.hp);const fill=doc.createElement("i");fill.dataset.ppbuiProfileHpFill="";const hpValue=finite(creature.hp),maxHp=finite(creature.max_hp),percent=hpValue!==null&&maxHp>0?Math.max(0,Math.min(100,Math.round(hpValue/maxHp*100))):0;fill.style.width=`${percent}%`;track.append(fill);const hpText=doc.createElement("span"),hpValueText=hpValue!==null&&maxHp!==null?`${hpValue.toLocaleString()} / ${maxHp.toLocaleString()}`:"—";hpText.textContent=hpValueText;track.setAttribute("aria-valuetext",hpValueText);if(hpValue!==null&&maxHp>0){track.setAttribute("aria-valuemin","0");track.setAttribute("aria-valuemax",String(maxHp));track.setAttribute("aria-valuenow",String(Math.max(0,Math.min(maxHp,hpValue))));}hp.append(hpLabel,track,hpText);identity.append(identityHead,meta,hp);hero.append(portrait,identity);
     const facts=doc.createElement("div");facts.dataset.ppbuiProfileFacts="";const fact=(label,value,key,decorate)=>{const node=doc.createElement("div");node.dataset.ppbuiProfileFact=key;const caption=doc.createElement("small");caption.textContent=label;const strong=doc.createElement("strong");strong.textContent=value||"—";decorate?.(strong);node.append(caption,strong);facts.append(node);};const quality=String(creature.quality||"").trim(),iv=ivTotal(creature);fact(text.rarityFact,quality?qualityLabel(doc,quality):"—","rarity",strong=>{if(quality)strong.className=`ppbui-quality-badge quality-${qualityKey(quality)}`;});fact(text.gender,nativeCreatureLabel(doc,"gender",creature.gender),"gender",strong=>{strong.dataset.genderTone=genderTone(creature.gender);});fact(text.nature,nativeCreatureLabel(doc,"nature",creature.nature),"nature");fact(text.iv,iv!==null?`${iv}/${IV_MAX_TOTAL}`:`—/${IV_MAX_TOTAL}`,"iv");identity.append(facts);
     const currentSection=doc.createElement("section");currentSection.dataset.ppbuiProfileSection="";currentSection.dataset.ppbuiProfileCurrent="";const currentHeader=doc.createElement("header");const currentTitle=doc.createElement("h3");currentTitle.textContent=text.currentMoves;const currentActions=doc.createElement("div");currentActions.dataset.ppbuiProfileSectionActions="";const configure=button(text.configureMoves,"ppbui-button--primary");configure.dataset.ppbuiProfileConfigureMoves="";configure.disabled=typeof win?.PokeIdle?.MovesetConfig?.open!=="function";currentActions.append(configure);currentHeader.append(currentTitle,currentActions);currentSection.append(currentHeader);
     currentSection.tabIndex=-1; currentSection.setAttribute("aria-label",text.currentMoves);
-    if(moveError){const state=statusNode(text.movesError,true),retry=button(text.retry);retry.addEventListener("click",async()=>{const keepFocus=doc.activeElement===retry;main.tabIndex=-1;if(keepFocus)main.focus({preventScroll:true});await renderSelected(id,true);if(keepFocus){const next=main.querySelector("[data-ppbui-profile-current]");next?.focus({preventScroll:true});}});currentSection.append(state,retry);}else if(!current?.moves?.length)currentSection.append(statusNode(text.noMoves));else currentSection.append(moveList(enrichedMoves(current.moves,metadata),{label:text.currentMoves}));
+    if(moveError){const state=statusNode(text.movesError,true),retry=button(text.retry);retry.addEventListener("click",async()=>{const keepFocus=doc.activeElement===retry;main.tabIndex=-1;if(keepFocus)main.focus({preventScroll:true});await renderSelected(id,true);if(keepFocus){const next=main.querySelector("[data-ppbui-profile-current]");next?.focus({preventScroll:true});}});currentSection.append(state,retry);}else if(!current?.moves?.length)currentSection.append(statusNode(text.noMoves));else currentSection.append(moveList(enrichedMoves(current.moves,metadata),{label:text.currentMoves,slotSettings:current.raw?.slot_settings}));
     configure.addEventListener("click",()=>{if(!alive||selectedId!==id)return;const nativeMoveset=win?.PokeIdle?.MovesetConfig;if(typeof nativeMoveset?.open!=="function"){configure.disabled=true;return;}nativeMoveset.open.call(nativeMoveset,id);});
-    const savedSection=doc.createElement("section");savedSection.dataset.ppbuiProfileSection="";const savedHeader=doc.createElement("header");const savedTitle=doc.createElement("h3");savedTitle.textContent=text.savedMoves;const savedHeadActions=doc.createElement("div");savedHeadActions.dataset.ppbuiProfileSectionActions="";const savedToggle=button("−","ppbui-icon-button");savedToggle.dataset.ppbuiProfileCollapse="savedMoves";savedHeadActions.append(savedToggle);savedHeader.append(savedTitle,savedHeadActions);const savedBody=doc.createElement("div");savedBody.dataset.ppbuiProfileSectionBody="savedMoves";const input=doc.createElement("input");input.type="text";input.maxLength=40;input.className="ppbui-input";input.placeholder=text.presetName;input.setAttribute("aria-label",text.presetName);const save=button(text.saveCurrent);const saveRow=doc.createElement("div");saveRow.dataset.ppbuiProfileSave="";const opStatus=statusNode(message,messageError);save.addEventListener("click",()=>saveCurrent(id,input,opStatus));input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveCurrent(id,input,opStatus);}});saveRow.append(input,save);const savedList=doc.createElement("div");savedList.dataset.ppbuiProfileSavedList="";renderSavedMoves(savedList,id,current,metadata);savedBody.append(saveRow,opStatus,savedList);savedSection.append(savedHeader,savedBody);bindCollapse(savedToggle,savedBody,id,"savedMoves",text.collapseSavedMoves,text.expandSavedMoves);
+    const savedSection=doc.createElement("section");savedSection.dataset.ppbuiProfileSection="";const savedHeader=doc.createElement("header");const savedTitle=doc.createElement("h3");savedTitle.textContent=text.savedMoves;const savedHeadActions=doc.createElement("div");savedHeadActions.dataset.ppbuiProfileSectionActions="";const savedToggle=button("−","ppbui-icon-button");savedToggle.dataset.ppbuiProfileCollapse="savedMoves";savedHeadActions.append(savedToggle);savedHeader.append(savedTitle,savedHeadActions);const savedBody=doc.createElement("div");savedBody.dataset.ppbuiProfileSectionBody="savedMoves";const input=doc.createElement("input");input.type="text";input.maxLength=40;input.className="ppbui-input";input.dataset.ppbuiProfilePresetName="";input.placeholder=text.presetName;input.setAttribute("aria-label",text.presetName);const save=button(text.saveCurrent);save.dataset.ppbuiProfileSaveCurrent="";const saveRow=doc.createElement("div");saveRow.dataset.ppbuiProfileSave="";const opStatus=statusNode(message,messageError);save.addEventListener("click",()=>saveCurrent(id,input,opStatus,save));input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveCurrent(id,input,opStatus,input);}});saveRow.append(input,save);const savedList=doc.createElement("div");savedList.dataset.ppbuiProfileSavedList="";renderSavedMoves(savedList,id,current,metadata);savedBody.append(saveRow,opStatus,savedList);savedSection.append(savedHeader,savedBody);bindCollapse(savedToggle,savedBody,id,"savedMoves",text.collapseSavedMoves,text.expandSavedMoves);
     const teamSection=doc.createElement("section");teamSection.dataset.ppbuiProfileSection="";const teamHeader=doc.createElement("header");const teamTitle=doc.createElement("h3");teamTitle.textContent=text.savedTeams;const teamHeadActions=doc.createElement("div");teamHeadActions.dataset.ppbuiProfileSectionActions="";const teamToggle=button("−","ppbui-icon-button");teamToggle.dataset.ppbuiProfileCollapse="savedTeams";teamHeadActions.append(teamToggle);teamHeader.append(teamTitle,teamHeadActions);const teamBody=doc.createElement("div");teamBody.dataset.ppbuiProfileSectionBody="savedTeams";const teamList=doc.createElement("div");teamList.dataset.ppbuiProfileTeamList="";renderTeams(teamList,id);teamBody.append(teamList);teamSection.append(teamHeader,teamBody);bindCollapse(teamToggle,teamBody,id,"savedTeams",text.collapseSavedTeams,text.expandSavedTeams);teamStoreSignature=JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)]));
     main.replaceChildren(hero,currentSection,savedSection,teamSection);
   }
 
-  async function select(id, focusMain=false) { const clean=String(id||"").trim(); if(!clean||!owned.some(creature=>String(creature.id)===clean))return;selectedId=clean;renderPicker();await renderSelected(clean);if(focusMain)main.querySelector("[data-ppbui-profile-name]")?.scrollIntoView?.({block:"nearest"}); }
+  async function select(id, focusMain=false) { const clean=String(id||"").trim(); if(!clean||!owned.some(creature=>String(creature.id)===clean))return;selectedId=clean;syncPickerSelection();await renderSelected(clean);if(focusMain)main.querySelector("[data-ppbui-profile-name]")?.scrollIntoView?.({block:"nearest"}); }
 
   async function refreshOwned(preferredId=selectedId, strictPreferred=false) {
     const epoch=++loadEpoch,text=copy();selectionEpoch++;detailCache.clear();movesCache.clear();pickerState.textContent=text.loading;pickerState.dataset.error="false";refresh.disabled=true;
-    try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch)return false;owned=next;pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker();main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker();if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
+    try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch)return false;owned=next;reconcileChoiceNodes();pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker();main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker();if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
     catch{if(!alive||epoch!==loadEpoch)return;pickerState.textContent=text.loadError;pickerState.dataset.error="true";renderPicker();}
     finally{if(alive&&epoch===loadEpoch)refresh.disabled=false;}
   }
@@ -710,6 +769,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     container.removeAttribute("data-ppbui-profile-native-creature-id");
     container.removeAttribute("data-ppbui-profile-native-token");
     nativeCardCreatures.delete(container);
+    nativeCardHydrationEpoch.delete(container);
   }
 
   function nativeMoveTile(move) {
@@ -758,18 +818,20 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   async function hydrateNativeCardMoves(container, creature, token) {
     const id = String(creature?.id || "").trim();
     if (!id) return;
+    const hydrationEpoch=(nativeCardHydrationEpoch.get(container)||0)+1;nativeCardHydrationEpoch.set(container,hydrationEpoch);
+    const isCurrent=()=>alive&&container.isConnected&&container.dataset.ppbuiProfileNativeToken===String(token)&&nativeCardHydrationEpoch.get(container)===hydrationEpoch;
     try {
       const current = await readMoves(id);
-      if (!alive || !container.isConnected || container.dataset.ppbuiProfileNativeToken !== String(token)) return;
+      if (!isCurrent()) return;
       const metadata = await moveMetadata(creature, current);
-      if (!alive || !container.isConnected || container.dataset.ppbuiProfileNativeToken !== String(token)) return;
+      if (!isCurrent()) return;
       const grid = container.querySelector("[data-ppbui-profile-native-move-grid]");
       if (!grid) return;
       const moves = enrichedMoves(current?.moves || [], metadata);
       grid.replaceChildren();
       for (let index = 0; index < 4; index += 1) grid.append(nativeMoveTile(moves[index] || null));
     } catch {
-      if (!alive || !container.isConnected || container.dataset.ppbuiProfileNativeToken !== String(token)) return;
+      if (!isCurrent()) return;
       container.querySelector("[data-ppbui-profile-native-moves]")?.remove();
     }
   }
@@ -951,19 +1013,52 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     nativeCardRenderWrapper = null;
   }
 
-  async function open(id="", origin=null) { const requested=String(id||"").trim();const activeElement=doc.activeElement;if(origin?.isConnected)profileOrigin=origin;else if(activeElement&&activeElement!==doc.body&&!root.contains(activeElement))profileOrigin=activeElement;syncCopy();root.hidden=false;opened=true;await refreshOwned(requested||selectedId,Boolean(requested));const subject=main.querySelector("[data-ppbui-profile-name]");if(subject){subject.tabIndex=-1;subject.focus({preventScroll:true});}else refresh.focus({preventScroll:true}); }
-  function hide({ restoreFocus=true }={}){root.hidden=true;opened=false;if(!restoreFocus)return;const target=profileOrigin?.isConnected?profileOrigin:ensureMenu();profileOrigin=null;target?.focus?.({preventScroll:true});}
-  close.addEventListener("click",()=>hide());refresh.addEventListener("click",()=>refreshOwned());search.addEventListener("input",renderPicker);sourceButtons.forEach((button,key)=>button.addEventListener("click",()=>{source=key;renderPicker();}));
+  function clampWindowPosition(left,top,width,height){
+    const gap=8,viewportWidth=win.innerWidth||doc.documentElement.clientWidth||width,viewportHeight=win.innerHeight||doc.documentElement.clientHeight||height;
+    const maxLeft=Math.max(gap,viewportWidth-width-gap),maxTop=Math.max(gap,viewportHeight-height-gap);
+    return {left:Math.min(Math.max(left,gap),maxLeft),top:Math.min(Math.max(top,gap),maxTop)};
+  }
+  function setDraggedWindowPosition(left,top,width,height){
+    const next=clampWindowPosition(left,top,width,height);dragPositioned=true;root.style.transform="none";root.style.left=`${next.left}px`;root.style.top=`${next.top}px`;
+  }
+  function clampMovedWindow(){if(!dragPositioned||root.hidden)return;const rect=root.getBoundingClientRect();if(!rect.width||!rect.height)return;setDraggedWindowPosition(rect.left,rect.top,rect.width,rect.height);}
+  function releaseWindowDragCapture(pointerId){
+    if(pointerId==null||typeof titlebar.releasePointerCapture!=="function")return;
+    try{if(typeof titlebar.hasPointerCapture!=="function"||titlebar.hasPointerCapture(pointerId))titlebar.releasePointerCapture(pointerId);}catch{}
+  }
+  function stopWindowDrag(event){
+    if(!dragState)return;if(event?.pointerId!=null&&dragState.pointerId!=null&&event.pointerId!==dragState.pointerId)return;
+    const pointerId=dragState.pointerId;dragState=null;delete root.dataset.ppbuiProfileDragging;
+    if(event?.type!=="lostpointercapture")releaseWindowDragCapture(pointerId);
+  }
+  function onTitlebarPointerDown(event){
+    if(event.button!==0||event.target?.closest?.("button,input,select,textarea,a"))return;
+    const rect=root.getBoundingClientRect();if(!rect.width||!rect.height)return;
+    setDraggedWindowPosition(rect.left,rect.top,rect.width,rect.height);
+    dragState={pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,left:parseFloat(root.style.left)||0,top:parseFloat(root.style.top)||0,width:rect.width,height:rect.height};
+    if(event.pointerId!=null&&typeof titlebar.setPointerCapture==="function")try{titlebar.setPointerCapture(event.pointerId);}catch{}
+    root.dataset.ppbuiProfileDragging="";event.preventDefault();
+  }
+  function onWindowDrag(event){
+    if(!dragState||(event.pointerId!=null&&dragState.pointerId!=null&&event.pointerId!==dragState.pointerId))return;
+    if(event.buttons!=null&&(event.buttons&1)===0){stopWindowDrag(event);return;}
+    setDraggedWindowPosition(dragState.left+(event.clientX-dragState.startX),dragState.top+(event.clientY-dragState.startY),dragState.width,dragState.height);event.preventDefault();
+  }
+
+  async function open(id="", origin=null) { const epoch=++openEpoch,requested=String(id||"").trim(),activeElement=doc.activeElement;if(origin?.isConnected)profileOrigin=origin;else if(activeElement&&activeElement!==doc.body&&!root.contains(activeElement))profileOrigin=activeElement;syncCopy();root.hidden=false;opened=true;if(dragPositioned)clampMovedWindow();const loaded=await refreshOwned(requested||selectedId,Boolean(requested));if(!alive||!opened||epoch!==openEpoch)return false;const subject=main.querySelector("[data-ppbui-profile-name]");if(subject){subject.tabIndex=-1;subject.focus({preventScroll:true});}else refresh.focus({preventScroll:true});return loaded; }
+  function hide({ restoreFocus=true }={}){openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();root.hidden=true;opened=false;setProp(refresh,"disabled",false);if(!restoreFocus)return;const target=profileOrigin?.isConnected?profileOrigin:ensureMenu();profileOrigin=null;target?.focus?.({preventScroll:true});}
+  titlebar.addEventListener("pointerdown",onTitlebarPointerDown);titlebar.addEventListener("lostpointercapture",stopWindowDrag);doc.addEventListener("pointermove",onWindowDrag,true);doc.addEventListener("pointerup",stopWindowDrag,true);doc.addEventListener("pointercancel",stopWindowDrag,true);win.addEventListener("blur",stopWindowDrag);win.addEventListener("resize",clampMovedWindow);
+  close.addEventListener("click",()=>hide());refresh.addEventListener("click",()=>refreshOwned());search.addEventListener("input",renderPicker);sourceButtons.forEach((button,key)=>button.addEventListener("click",()=>{source=key;renderPicker();}));list.addEventListener("click",event=>{const choice=event.target?.closest?.("[data-ppbui-profile-choice]");if(choice?.parentElement===list)select(choice.dataset.creatureId,true);});
   rarityFilter.addEventListener("change",()=>{filters.rarity=rarityFilter.value;renderPicker();});elementFilter.addEventListener("change",()=>{filters.element=elementFilter.value;renderPicker();});tagFilter.addEventListener("change",()=>{filters.tags=tagFilter.value?[tagFilter.value]:[];renderPicker();});
-  for(const [key,input] of [["minLevel",minLevelFilter],["maxLevel",maxLevelFilter]])input.addEventListener("input",()=>{const valid=input.value===""||input.checkValidity();input.setAttribute("aria-invalid",String(!valid));filters[key]=valid?input.value:"";renderPicker();});
-  clearFilters.addEventListener("click",()=>{filters=freshFilters();rarityFilter.value="";elementFilter.value="";minLevelFilter.value="";maxLevelFilter.value="";minLevelFilter.setAttribute("aria-invalid","false");maxLevelFilter.setAttribute("aria-invalid","false");tagFilter.value="";renderPicker();});
+  for(const [key,input] of [["minLevel",minLevelFilter],["maxLevel",maxLevelFilter]])input.addEventListener("input",()=>{const valid=input.value===""||input.checkValidity();input.setAttribute("aria-invalid",String(!valid));setProp(filterErrors.get(key),"hidden",valid);filters[key]=valid?input.value:"";renderPicker();});
+  clearFilters.addEventListener("click",()=>{filters=freshFilters();rarityFilter.value="";elementFilter.value="";minLevelFilter.value="";maxLevelFilter.value="";minLevelFilter.setAttribute("aria-invalid","false");maxLevelFilter.setAttribute("aria-invalid","false");for(const error of filterErrors.values())setProp(error,"hidden",true);tagFilter.value="";renderPicker();});
   const unsubscribeTags=tags.subscribe(()=>{if(opened)renderPicker();});
   function onKey(event){if(event.key==="Escape"&&!root.hidden){event.preventDefault();hide();}}doc.addEventListener("keydown",onKey,true);
   const nativeBus = createNativeBusBindings(() => win?.PokeIdle?.Bus);
   const bind = (name, handler) => nativeBus.bind(name, handler);
-  bind("moveset.saved",data=>{const id=String(data?.creature_id||"");if(id){movesCache.delete(id);for(const card of doc.querySelectorAll(nativeCardSelector)){if(card.dataset.ppbuiProfileNativeCreatureId===id){const creature=nativeCardCreatures.get(card);if(creature)hydrateNativeCardMoves(card,creature,card.dataset.ppbuiProfileNativeToken);}}}if(opened&&id===selectedId)renderSelected(id,true);});
+  bind("moveset.saved",data=>{const id=String(data?.creature_id||"");if(id){movesCache.delete(id);for(const card of doc.querySelectorAll(nativeCardSelector)){if(card.dataset.ppbuiProfileNativeCreatureId===id){const creature=nativeCardCreatures.get(card);if(creature)hydrateNativeCardMoves(card,creature,card.dataset.ppbuiProfileNativeToken);}}}if(opened&&id===selectedId)renderSelected(id);});
   bind("team.updated",()=>{if(opened)refreshOwned(selectedId);});bind("state.resynced",()=>{if(opened)refreshOwned(selectedId);});
   const previousBridge=win.__PPBUI_POKEMON_PROFILE__;const bridge={open,refresh:()=>refreshOwned(selectedId),close:()=>hide()};win.__PPBUI_POKEMON_PROFILE__=bridge;
   nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();
-  return { sync(){nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;loadEpoch++;selectionEpoch++;unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };
+  return { sync(){nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);titlebar.removeEventListener("lostpointercapture",stopWindowDrag);doc.removeEventListener("pointermove",onWindowDrag,true);doc.removeEventListener("pointerup",stopWindowDrag,true);doc.removeEventListener("pointercancel",stopWindowDrag,true);win.removeEventListener("blur",stopWindowDrag);win.removeEventListener("resize",clampMovedWindow);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };
 }

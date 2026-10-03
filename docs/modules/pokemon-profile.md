@@ -4,9 +4,10 @@
 > decisão do Product Owner. As referências abaixo a seu PNG e aos testes conjuntos
 > são histórico do freeze `0.2.77`; apenas o ícone do Pokémon Profile permanece.
 
-Status: **Better UI 0.2.77 / candidate76 congelado localmente com o PNG solicitado para o ícone de
-menu do Pokémon Profile, sobre o baseline visual/funcional 0.2.76 já aprovado. Team segue restaurado
-e Profile dedicado; o contrato de layout e comportamento do dossier permanece inalterado.**
+Status: **Better UI 0.2.149 — candidato local de refinamento de performance, lifecycle, responsividade
+e acessibilidade. O Profile continua dedicado, preserva Team + Backpack por `creatureId` exato,
+Current/Saved Moves, Saved Teams e o editor nativo de moves. Validação in-game permanece pendente do
+Product Owner.**
 
 ## Profile UI Playground
 
@@ -47,10 +48,10 @@ O código-fonte do playground está em `tools/pokemon-profile-playground/`; o bu
   Hover width;
 - permite rearranjar objetos internos por drag-and-drop ou ↑/↓ em seis áreas: Search card,
   Move topo, Move detalhes, Selecionado topo, Selecionado facts e Hover topo;
-- no Search card, Element e Rarity são desacoplados somente no preview do Playground e aparecem
-  como dois objetos independentes de reorder/grid. No estado padrão eles continuam lado a lado na
-  mesma linha para preservar a geometria visual de produção; ao rearranjar, cada um pode ocupar
-  linha/coluna/span próprios;
+- no Search card, Element e Rarity são objetos independentes de reorder/grid. O estado padrão de
+  produção usa uma única coluna útil com cinco linhas (`Nome → Sprite → Element → Rarity → Level`),
+  evitando desperdiçar metade dos 108 px do card; ao rearranjar no playground, cada objeto pode
+  ocupar linha/coluna/span próprios;
 - ao rearranjar grids, o playground recalcula os tracks por semântica (ex.: o track de PW acompanha
   o próprio PW), evitando um preview enganoso baseado apenas em CSS order;
 - oferece Grid / Quadrantes opt-in por cada uma dessas seis áreas. Cada grid possui `cols × rows`
@@ -68,6 +69,70 @@ O código-fonte do playground está em `tools/pokemon-profile-playground/`; o bu
   `grid.selectedFacts=on:4x4;rarity@1,3,4,1;...`;
 - Copiar CSS exporta somente os overrides temporários;
 - nenhum ajuste do playground altera source de produção até ser explicitamente aplicado.
+
+## 0.2.149 — Priority e heal threshold nos Current Moves
+
+- o Profile lê o `slot_settings` autoritativo do `getMoveset()` por posição 1→4;
+- `use_as_priority=true` pinta a caixa do número do slot em dourado e adiciona nome acessível usando a
+  própria tradução nativa `moveset.priority`;
+- Power deixa de mostrar o prefixo visual `PW`; o `aria-label` continua `Power XXX`;
+- para Move com `effect_kind="heal"`, `heal_threshold_pct` válido (1→100) é mostrado após o Power em
+  verde claro, com nome acessível baseado em `moveset.heal_threshold`;
+- o formato visual torna-se `[Element Icon] Type · Ns · XXX · XX%` quando o Move é cura com threshold;
+- Saved Movesets continuam sem Priority/threshold porque o snapshot persistido existente armazena
+  apenas os quatro Moves; o Profile não projeta configuração que não foi salva.
+
+## 0.2.148 — alinhamento de Power na metadata de Move
+
+- `PW XXX` compartilha a mesma métrica tipográfica e line-box de `Type`, cooldown e separadores;
+- a geometria vertical exclusiva de Power (`min-height` e `padding`) foi removida, eliminando o
+  deslocamento óptico observado in-game sem alterar cor, conteúdo, `aria-label` ou largura dos rails.
+
+## 0.2.147 — cooldown compacto, lateral direita e rounded
+
+- Current/Saved Moves passam a exibir `[Element Icon] Type · Ns · PW XXX`; o prefixo visual `CD`
+  foi removido, mas o nome acessível continua `Cooldown Ns`;
+- o Profile reduz o scrollbar próprio para 8 px e compensa o padding direito de picker/main, evitando
+  a soma visual `padding + scrollbar` que deixava a lateral direita mais larga que a esquerda;
+- o shell mantém `--ppbui-window-radius: 8px` e agora usa clipping no próprio root, fazendo title bar
+  e body respeitarem os quatro cantos rounded sem alterar drag, clamp ou scroll interno.
+
+## 0.2.146 — title bar, Search centralizado, detalhes de Move e drag
+
+- o title bar segue a hierarquia das janelas do jogo: 48 px, superfície Interactive, ícone do
+  Pokémon Profile à esquerda, título branco em tipografia de UI e close discreto;
+- o próprio title bar é a área de drag; a janela materializa sua posição no primeiro arraste,
+  permanece inteira dentro do viewport com margem de 8 px, reclampa em resize e mantém a posição
+  durante a sessão; controles do title bar não iniciam drag; quando suportado, o title bar captura
+  o ponteiro e o drag também termina em `lostpointercapture`, blur da janela ou `pointermove` sem
+  o botão primário, cobrindo release fora do documento/browser;
+- todos os objetos do Search card ficam centralizados: nome, sprite, Element, Rarity e Level;
+- Current/Saved Moves usam metadata concatenada
+  `[Element Icon] Type · CD Ns · PW XXX`, com separadores decorativos fora da árvore acessível;
+- o playground serve o PNG real do Profile para que a evidência local reproduza o title bar final;
+  o capture QA navega pelo servidor localhost, aguarda o mount real e registra viewport/root/body,
+  enquanto o fixture dimensiona o ícone da toolbar como o host nativo para não fabricar overflow.
+
+## 0.2.145 — performance, lifecycle, responsividade e acessibilidade
+
+- o picker mantém um nó por `creatureId` e atualiza o estado selecionado sem reconstruir/reordenar
+  a lista quando a composição filtrada não mudou; busca/filtros reaproveitam esses mesmos nós;
+- o card compacto de busca mantém largura de 108 px, mas usa toda a largura em um único track de
+  conteúdo, preservando a ordem `Nome → Sprite → Element → Rarity → Level`;
+- seleção pelo picker e Save/Apply/Update/Delete de movesets preservam um destino lógico de foco
+  depois de rerenders; o Retry de Current Moves mantém seu contrato anterior;
+- fechar o Profile invalida qualquer abertura/carregamento pendente antes que resultados assíncronos
+  possam renderizar ou recuperar foco; hidratações do PokémonCard usam geração por card para impedir
+  que respostas antigas sobrescrevam dados mais novos;
+- falhas transitórias de Species deixam de envenenar o cache da sessão e podem ser recuperadas por
+  Refresh; `moveset.saved` invalida uma vez e compartilha a mesma releitura autoritativa entre
+  dossier e PokémonCard;
+- dialog, grupos de descoberta, HP e membros de Saved Teams expõem nomes/estado programáticos;
+  níveis inválidos exibem mensagem localizada associada ao campo;
+- ACTIVE/PROTECTED compactos mantêm os mesmos labels acessíveis e geometria, usando desenho CSS em
+  vez de emoji;
+- em render sintético Chromium de 760/420/340 px, root/body permanecem sem overflow horizontal
+  global; picker e rails 1→4 preservam seus scrolls horizontais locais quando necessários.
 
 ## 0.2.77 — ícone de menu do Pokémon Profile
 

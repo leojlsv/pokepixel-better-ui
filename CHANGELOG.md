@@ -4,6 +4,53 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Pokémon Profile — Priority e heal threshold autoritativos nos Current Moves, candidato 0.2.149 (2026-10-03):**
+  o Profile passa a consumir diretamente `slot_settings` do `getMoveset()`: `use_as_priority` deixa a
+  caixa do número do slot dourada e `heal_threshold_pct` aparece somente quando o Move estruturado tem
+  `effect_kind="heal"`. Power remove o prefixo visual `PW`, resultando em
+  `[Element Icon] Type · Ns · XXX · XX%` para cura com threshold. Labels acessíveis continuam expondo
+  Priority, Power e o threshold completo. Saved Movesets não inventam esses cues porque seu snapshot
+  persistido atual não contém `slot_settings`.
+
+- **Pokémon Profile — alinhamento óptico do Power em Move metadata, candidato 0.2.148 (2026-10-03):**
+  após o último feedback in-game do 0.2.147, `PW XXX` passa a compartilhar exatamente a mesma
+  line-box de `Type`, separadores e cooldown. Foi removida a geometria vertical exclusiva de Power
+  (`min-height`/`padding`), preservando cor, peso semântico, conteúdo e acessibilidade.
+
+- **Pokémon Profile — cooldown compacto, lateral direita equilibrada e shell rounded, candidato 0.2.147 (2026-10-03):**
+  após validação in-game do 0.2.146, a metadata de Move remove o prefixo redundante `CD` e passa a
+  exibir `[Element Icon] Type · Ns · PW XXX`, mantendo `Cooldown Ns` como nome acessível. O body usa
+  scrollbar de 8 px e os paddings direitos do picker/main compensam esse gutter para que a margem
+  visual à direita não fique maior que a esquerda. A janela mantém o raio nativo de 8 px e agora
+  recorta title bar/body dentro do shell, tornando os quatro cantos arredondados efetivamente visíveis.
+
+- **Pokémon Profile — title bar nativo, Search centralizado, detalhes de Move e janela móvel, candidato 0.2.146 (2026-10-03):**
+  após validação visual in-game do 0.2.145, o Profile aproxima o cabeçalho do padrão das janelas
+  do jogo: barra Interactive de 48 px, ícone do Profile à esquerda, título branco em tipografia
+  de UI e close discreto à direita. O title bar também passa a ser a área de arraste da janela,
+  com posição limitada a 8 px do viewport, preservada entre reaberturas na mesma sessão e
+  reclampada em resize; o lifecycle do drag encerra em `pointerup`/`pointercancel`, perda de
+  pointer capture, blur da janela e reentrada sem o botão primário, evitando estado de arraste
+  preso fora do documento. Os cards do Search centralizam nome, sprite, elementos, raridade e nível.
+  Current/Saved Moves consolidam os detalhes em uma única linha
+  `[Element Icon] Type · CD Ns · PW XXX`, mantendo labels acessíveis e o scroll horizontal local.
+  O playground passa a servir o PNG real do Profile e o capture QA usa o servidor localhost,
+  aguarda o Profile montado e mede o viewport real para evitar evidência estreita contaminada.
+
+- **Pokémon Profile — performance, lifecycle, responsividade e acessibilidade, candidato 0.2.145 (2026-10-03):**
+  o picker agora reutiliza cards por `creatureId` e atualiza seleção sem reconstruir a lista,
+  preservando foco e reduzindo churn de DOM; o layout interno também passa a usar toda a
+  largura útil de 108 px, evitando truncamento prematuro de nomes como Gyarados e Dragonite.
+  Save/Apply/Update/Delete restauram um destino lógico de foco após rerender. O Profile agora
+  invalida aberturas assíncronas ao fechar, impede hidratações antigas do PokémonCard de
+  sobrescrever dados novos, repete Species após falha transitória e compartilha uma única
+  releitura autoritativa de moves após `moveset.saved`. Dialog, HP, filtros e Saved Teams
+  receberam nomes/estados acessíveis; níveis inválidos exibem mensagem associada; os estados
+  compactos Active/Protected deixaram de usar emoji. Em Chromium sintético, a janela/body
+  permanece sem overflow horizontal global em 760/420/340 px e mantém scroll local somente
+  no picker e nos rails de moves. Nenhuma regra de gameplay, persistência ou tráfego de rede
+  foi alterada.
+
 - **Card Mode — Rarity de Shiny mantém sua própria cor, candidato 0.2.144 (2026-10-03):**
   após o ajuste 0.2.143 no nome do Pokémon, o Product Owner mostrou que a célula `Rarity`
   de uma linha Shiny ainda ficava com o dourado fixo. A causa era uma regra histórica de
