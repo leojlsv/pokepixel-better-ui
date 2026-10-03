@@ -4,6 +4,31 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Chat — silenciamento completo de canais fixos, candidato 0.2.152 (2026-10-03):**
+  a revisão do cliente nativo confirmou dois caminhos além do badge por aba: o
+  contador agregado do Chat recolhido soma o estado interno de unread e toda
+  `chat.message` tenta produzir speech bubble. O Better UI agora instala um gate
+  reversível somente no `PokeIdle.PersistentHud._chat` que pertence ao mesmo DOM:
+  canais fixos fechados têm unread nativo zerado antes da pintura do badge por aba
+  e do agregado, e suas mensagens não produzem speech bubble. Conversas privadas
+  permanecem integralmente nativas e continuam contribuindo para unread/speech.
+  Rehidratação do controlador nativo é readquirida e cleanup restaura exatamente
+  os métodos encontrados. A auditoria estática também confirmou que mensagens
+  comuns do Chat não disparam toast nem áudio; alertas administrativos globais
+  continuam no fluxo global independente do canal.
+  **Validado e aprovado in-game pelo usuário em 2026-10-03**, incluindo o
+  fechamento/silenciamento dos canais fixos e a preservação do fluxo nativo das
+  conversas privadas. Não há pendência de validação para este candidato.
+
+- **Chat — fechamento silencia unread e reconciliação local, candidato 0.2.151 (2026-10-03):**
+  o `×` dos seis canais fixos passa a fechar e silenciar o canal: badges/unread
+  recebidos enquanto ele estiver fechado são descartados para `0` e permanecem
+  ocultos até a restauração pelo `+`. Conversas privadas continuam usando o close
+  nativo. O observer central também ganha escopo `chat`, de modo que churn de
+  mensagens e unread não força descoberta global de todos os módulos; substituição
+  da barra de abas e frames com múltiplos escopos locais continuam promovendo para
+  reconciliação global.
+
 - **Menu Bar — Gyms em City e ícones dedicados, candidato 0.2.150 (2026-10-03):**
   City ganha o atalho `Gyms`, que abre a `Scene_Gym` nativa somente quando o
   `SceneManager` está disponível e sem transição pendente. Os atalhos `Geneticista`,

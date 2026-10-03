@@ -246,6 +246,51 @@ test("enhanced Team HUD churn stays local while structural or mixed mutations pr
   observer.stop();
 });
 
+test("persistent Chat message churn stays local while tab-bar lifecycle remains global", (t) => {
+  const browser = mockBrowser(t);
+  const scopes = [];
+  const observer = createDomObserver(scope => scopes.push(scope));
+  observer.start(document.body);
+
+  const body = fakeElement();
+  const chat = fakeElement("pokeidle-persistent-chat", body);
+  const tabs = fakeElement("pokeidle-persistent-chat__tabs", chat);
+  const tab = fakeElement("pokeidle-persistent-chat__tab", tabs);
+  const log = fakeElement("pokeidle-persistent-chat__log", chat);
+  const message = fakeElement("pokeidle-chat-message", log);
+
+  browser.mutate([{ type: "childList", target: log, addedNodes: [message], removedNodes: [] }]);
+  browser.flush();
+  browser.mutate([{ type: "attributes", target: tab, attributeName: "hidden" }]);
+  browser.flush();
+  assert.deepEqual(scopes, ["chat", "chat"], "message/unread churn should reconcile only Chat-aware modules");
+
+  browser.mutate([{ type: "childList", target: chat, addedNodes: [], removedNodes: [tabs] }]);
+  browser.flush();
+  assert.deepEqual(scopes, ["chat", "chat", "global"], "replacing the Chat tab bar must re-run the full mount-key lifecycle");
+  observer.stop();
+});
+
+test("different local observer scopes in one frame promote to global", (t) => {
+  const browser = mockBrowser(t);
+  const scopes = [];
+  const observer = createDomObserver(scope => scopes.push(scope));
+  observer.start(document.body);
+
+  const body = fakeElement();
+  const chat = fakeElement("pokeidle-persistent-chat", body);
+  const log = fakeElement("pokeidle-persistent-chat__log", chat);
+  const hud = fakeElement("pokeidle-team-hud", body, ["data-ppbui-team-hud-enhanced"]);
+  const list = fakeElement("pokeidle-team-hud__list", hud);
+
+  browser.mutate([{ type: "childList", target: log, addedNodes: [fakeElement("pokeidle-chat-message", log)], removedNodes: [] }]);
+  browser.mutate([{ type: "childList", target: list, addedNodes: [fakeElement("pokeidle-team-card", list)], removedNodes: [] }]);
+  browser.flush();
+
+  assert.deepEqual(scopes, ["global"], "mixed Chat/Team HUD work cannot be represented by one local scope");
+  observer.stop();
+});
+
 test("Team HUD observer scope reconciles only opted-in mounted modules", (t) => {
   const browser = mockBrowser(t);
   const calls = { globalMountCheck: 0, globalSync: 0, hudMountCheck: 0, hudSync: 0, presetMountCheck: 0, presetSync: 0 };

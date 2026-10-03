@@ -16,6 +16,8 @@ const OBSERVER_IGNORED_HUNT_SELECTOR = [
 const TEAM_HUD_ENHANCED_SELECTOR = ".pokeidle-team-hud[data-ppbui-team-hud-enhanced]";
 const TEAM_HUD_MOUNT_SENTINEL = ".pokeidle-team-hud__list";
 const TEAM_HUD_AUXILIARY_SELECTOR = ".pokeidle-team-hud__wallet,.pokeidle-mobile-party-button";
+const CHAT_ROOT_SELECTOR = ".pokeidle-persistent-chat";
+const CHAT_MOUNT_SENTINEL = ".pokeidle-persistent-chat__tabs";
 const PLATFORM_HUNT_ROOT_SELECTOR = ".platform-hunt";
 const PLATFORM_SHARED_SELECTOR = ".pokeidle-buff-strip";
 
@@ -59,14 +61,31 @@ function changesTeamHudMountSentinel(record) {
   });
 }
 
+function changesChatMountSentinel(record) {
+  if (record?.type !== "childList") return false;
+  const changed = [...(record.addedNodes || []), ...(record.removedNodes || [])];
+  return changed.some(node => {
+    const element = elementFor(node);
+    return Boolean(element?.matches?.(CHAT_MOUNT_SENTINEL) || element?.querySelector?.(CHAT_MOUNT_SENTINEL));
+  });
+}
+
 function localMutationScope(record) {
   const target = elementFor(record?.target);
-  if (!target?.closest?.(TEAM_HUD_ENHANCED_SELECTOR)) return null;
-  // Replacing/removing the native list changes the module's mount contract and
-  // must still pass through the full lifecycle. Mutations inside an already
-  // enhanced HUD can be reconciled by the HUD-local modules only.
-  if (changesTeamHudMountSentinel(record)) return null;
-  return "team-hud";
+  if (target?.closest?.(TEAM_HUD_ENHANCED_SELECTOR)) {
+    // Replacing/removing the native list changes the module's mount contract and
+    // must still pass through the full lifecycle. Mutations inside an already
+    // enhanced HUD can be reconciled by the HUD-local modules only.
+    if (changesTeamHudMountSentinel(record)) return null;
+    return "team-hud";
+  }
+  if (target?.closest?.(CHAT_ROOT_SELECTOR)) {
+    // Chat messages and unread counters are frequent. Keep their reconciliation
+    // local, while replacing the tab bar still re-runs the mount-key lifecycle.
+    if (changesChatMountSentinel(record)) return null;
+    return "chat";
+  }
+  return null;
 }
 
 function mutationScope(record) {
@@ -103,10 +122,11 @@ export function createDomObserver(onChange) {
     if (records?.length) {
       const scopes = Array.from(records, mutationScope).filter(Boolean);
       if (!scopes.length) return;
-      nextScope = scopes.every(scope => scope === "team-hud") ? "team-hud" : "global";
+      const local = scopes[0];
+      nextScope = local && scopes.every(scope => scope === local && scope !== "global") ? local : "global";
     }
     if (frameId !== null) {
-      if (nextScope === "global") pendingScope = "global";
+      if (nextScope === "global" || (pendingScope && pendingScope !== nextScope)) pendingScope = "global";
       return;
     }
 

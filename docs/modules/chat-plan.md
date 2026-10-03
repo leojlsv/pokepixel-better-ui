@@ -31,7 +31,7 @@ automática daquele projeto para este.
 | Horário, nome/nível, premium e mensagem própria | Manter o log original, sem reconstruir mensagens. |
 | Composer, envio, placeholder e limite de caracteres | Manter input, formulário e handlers originais; nenhuma nova rotina de envio. |
 | Recolher/expandir | Reutilizar o controle nativo. |
-| Ocultar canais fixos com × e restaurar pelo + | Portar as regras puras de visibilidade de `chat-model.ts`. |
+| Fechar canais fixos com × e restaurar pelo + | Manter a lista de canais fechados e descartar unread enquanto permanecerem fechados. |
 | Pelo menos um canal fixo visível | Manter a proteção, inclusive ao carregar preferências antigas. |
 | Esconder canal ativo | Selecionar outro canal disponível pelo controle nativo, como parte desse gesto do usuário. |
 | Preferência de canais ocultos | Salvar somente chaves dos canais fixos em chave própria do Better UI. |
@@ -59,8 +59,9 @@ jogo e deve continuar funcionando sem uma segunda implementação.
 - Não persistir IDs de conversas privadas. Preferências aceitam somente as
   chaves conhecidas dos canais fixos; canais dinâmicos não são ocultados por
   uma preferência antiga.
-- Ao restaurar um canal, mostrar seu badge nativo atualizado. Ocultar uma aba
-  não significa silenciar o canal, marcar mensagens como lidas ou descartá-las.
+- Canais fixos fechados permanecem fora da barra e não acumulam badge/unread
+  visível. Cada atualização nativa de unread nesses canais é normalizada para
+  zero enquanto o canal continuar fechado; restaurar reabre o canal limpo.
 - O menu + deve manter todas as opções acessíveis dentro da geometria original.
   Não copiar o crescimento de iframe usado para contornar clipping no projeto
   anterior.
@@ -80,7 +81,8 @@ Critérios para a implementação:
 
 1. Módulo independente com montagem, reconciliação e cleanup reversíveis.
 2. Controle separado no painel Better UI, sem dependência do menu-bar.
-3. Ocultar/restaurar canais sem duplicar abas ou listeners; preservar um canal.
+3. Fechar/restaurar canais sem duplicar abas ou listeners; preservar um canal e
+   silenciar unread dos canais fixos fechados.
 4. Conversas privadas continuam abrindo e fechando pelo fluxo nativo.
 5. Mensagens, rascunho, rich links, badges e recolhimento permanecem intactos.
 6. Preferências inválidas ou storage indisponível não quebram o chat.
@@ -105,6 +107,28 @@ Critérios para a implementação:
   scrollbars sobrepostas. A área superior continua disponível para arrastar.
 - Preferências em `ppbui:chat-hidden:v1` aceitam apenas seis chaves fixas.
   Storage indisponível mantém a escolha na sessão e informa isso no título do +.
+- O × dos canais fixos agora representa fechamento/silenciamento: unread nativo
+  recebido após o fechamento é descartado no próximo reconcile e o canal volta
+  com contador limpo quando restaurado. Conversas privadas continuam usando
+  exclusivamente o close nativo.
+- Revisão estática do cliente nativo de 2026-10-03 confirmou os efeitos executados
+  por `chat.message`: histórico/render, unread por canal + agregado recolhido,
+  speech bubble e, somente para `system_kind="admin_alert"`, o alerta global
+  administrativo. Não existe listener de `chat.message` no GameAudio nem toast
+  para mensagens comuns. Erros/warnings de ações do próprio usuário continuam no
+  Toast global, e `admin.global_alert` continua sendo um evento global dedicado,
+  independente de uma aba do Chat.
+- O candidato 0.2.152 liga um gate reversível ao controlador nativo exato
+  `PokeIdle.PersistentHud._chat` somente quando `chat.el === root`. Para canais
+  fixos fechados ele zera `_unread[channel]` dentro de
+  `updateUnreadBadge()` antes da pintura, filtra o agregado dentro de
+  `updateCollapsedUnreadBadge()` e ignora `showSpeech()` para a mensagem daquele
+  canal. O gate não toca canais `private:*`, não intercepta WebSocket e restaura
+  os métodos originais no cleanup ou ao detectar substituição do controlador.
+- Churn interno do Chat (mensagens, badges e atributos de disponibilidade) usa
+  escopo `chat` no observer central, evitando descoberta/reconcile global dos
+  demais módulos. Substituir a barra de abas continua promovendo para lifecycle
+  global; mutações locais de escopos diferentes no mesmo frame também promovem.
 - Se o jogo selecionar um canal oculto, ele aparece temporariamente sem apagar
   a preferência. Reconciliação não troca canais; somente ocultar uma aba ativa
   por ação do usuário aciona o fallback nativo. Se a troca falhar, não oculta.
@@ -112,14 +136,17 @@ Critérios para a implementação:
   Estruturas futuras incompatíveis (por exemplo, aba como button) não recebem ×.
 - CSS de referência: `css/persistent/persistent-chat.css` do cliente público.
   Apenas seletores estruturais e estilos foram consultados, sem mensagens.
-- 65 testes passaram, incluindo 15 testes do Chat: preservação de nós,
-  fallback, storage, teclado, cleanup, estabilidade e remontagem pelo core.
+- O conjunto atual inclui regressões específicas de Chat para unread por aba,
+  agregado recolhido, speech bubble, privadas, restauração exata dos hooks,
+  rehidratação, fallback, storage, teclado, cleanup e remontagem pelo core.
 - Preview sintético no navegador, com CSS nativo: cinco opções de restauração
   acessíveis dentro da janela de 382 × 240 px (incluindo bordas), sem crescimento.
   Após o ajuste do cabeçalho, + e recolher permanecem dentro da largura original
   com seis canais; o estado recolhido preserva 58 × 58 px e exibe apenas o controle nativo.
 - Nenhuma mensagem real enviada; nenhum conteúdo privado coletado.
 
-O usuário confirmou a validação e aprovação do módulo Chat. Não há pendências
-de validação para o escopo implementado. Novos QoLs ficam para outra etapa.
+O usuário confirmou em 2026-10-03 a validação e aprovação in-game do candidato
+0.2.152, incluindo o silenciamento dos canais fixos fechados e a preservação das
+conversas privadas nativas. Não há pendências de validação para o escopo
+implementado. Novos QoLs ficam para outra etapa.
 Inventory permanece aprovado, sem nova pendência.

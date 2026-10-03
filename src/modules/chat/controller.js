@@ -1,5 +1,7 @@
+import { chatConfig as config } from "./config.js";
 import { fixedTabs, available, active, label, chatText, selectedTab } from "./dom.js";
 import { createChatLayout } from "./layout.js";
+import { createNativeChatNotificationGate } from "./native.js";
 
 const hiddenAttribute = "data-ppbui-chat-hidden";
 export function mountChat(root, bar, preference) {
@@ -32,13 +34,21 @@ export function mountChat(root, bar, preference) {
   menu.hidden = true;
   root.append(style, menu);
   const layout = createChatLayout(root, bar, add);
+  const notificationGate = createNativeChatNotificationGate(root, preference);
 
   function close(focus = false) {
     if (!menu.hidden) { menu.hidden = true; add.setAttribute("aria-expanded", "false"); }
     if (focus) add.focus();
   }
+  function clearClosedUnread(tab) {
+    const unread = tab.querySelector(config.unread);
+    if (!unread) return;
+    if (unread.textContent !== "0") unread.textContent = "0";
+    if (!unread.hidden) unread.hidden = true;
+  }
   function sync() {
     layout.sync();
+    notificationGate.sync();
     const text = chatText(doc);
     const tabs = fixedTabs(bar), usable = tabs.filter(available);
     const hidden = new Set(preference.get());
@@ -82,6 +92,7 @@ export function mountChat(root, bar, preference) {
       if (record.close.parentNode !== tab) tab.append(record.close);
       const hide = available(tab) && !visible.includes(tab);
       if (tab.hasAttribute(hiddenAttribute) !== hide) tab.toggleAttribute(hiddenAttribute, hide);
+      if (hide) clearClosedUnread(tab);
       const disabled = visible.length <= 1;
       if (record.close.disabled !== disabled) record.close.disabled = disabled;
       const title = disabled ? text.last : `${text.hide}: ${label(tab)}`;
@@ -143,6 +154,7 @@ export function mountChat(root, bar, preference) {
       root.removeEventListener("keydown", sync);
       for (const [tab, record] of records) { tab.removeAttribute(hiddenAttribute); record.close.remove(); }
       records.clear(); add.remove(); menu.remove(); style.remove();
+      notificationGate.cleanup();
       layout.cleanup();
     },
   };

@@ -1,9 +1,9 @@
 import { chatConfig as config } from "./config.js";
 const locales = {
-  pt: ["Chat", "Ocultar e restaurar abas do chat", "Ocultar", "Restaurar canais", "Manter um canal visível", "Preferência válida apenas nesta sessão"],
-  en: ["Chat", "Hide and restore chat tabs", "Hide", "Restore channels", "Keep one channel visible", "Preference applies only to this session"],
-  es: ["Chat", "Ocultar y restaurar pestañas del chat", "Ocultar", "Restaurar canales", "Mantener un canal visible", "Preferencia válida solo en esta sesión"],
-  zh: ["聊天", "隐藏和恢复聊天标签", "隐藏", "恢复频道", "保留一个可见频道", "偏好仅在本次会话有效"],
+  pt: ["Chat", "Fechar e restaurar abas do chat", "Fechar e silenciar", "Restaurar canais", "Manter um canal visível", "Preferência válida apenas nesta sessão"],
+  en: ["Chat", "Close and restore chat tabs", "Close and mute", "Restore channels", "Keep one channel visible", "Preference applies only to this session"],
+  es: ["Chat", "Cerrar y restaurar pestañas del chat", "Cerrar y silenciar", "Restaurar canales", "Mantener un canal visible", "Preferencia válida solo en esta sesión"],
+  zh: ["聊天", "关闭和恢复聊天标签", "关闭并静音", "恢复频道", "保留一个可见频道", "偏好仅在本次会话有效"],
 };
 export function chatText(doc = document) {
   const [name, description, hide, restore, last, session] = locales[doc.documentElement.lang.split("-")[0]] || locales.pt;

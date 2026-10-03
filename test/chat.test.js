@@ -5,7 +5,7 @@ import { mountChat } from '../src/modules/chat/controller.js';
 import { createChatPreferences } from '../src/modules/chat/preferences.js';
 const keys = ['local','world','trade','questions','system','guild'];
 function setup(t) {
-  const dom = new JSDOM(`<div class="pokeidle-persistent-chat"><div class="pokeidle-persistent-chat__tabs">${keys.map((key,i)=>`<div role="tab" tabindex="0" class="pokeidle-persistent-chat__tab ${i ? '' : 'is-active'}" data-channel="${key}"><span class="pokeidle-persistent-chat__tab-label">${key}</span><span class="pokeidle-persistent-chat__unread" hidden>0</span></div>`).join('')}<div class="pokeidle-persistent-chat__tab is-private" data-channel="private:synthetic"><button>×</button></div><button class="pokeidle-persistent-chat__collapse">collapse</button></div><div class="pokeidle-persistent-chat__log">Synthetic message</div><form><input value="Synthetic draft"><button>Send</button></form></div>`, {url:'https://test.local'});
+  const dom = new JSDOM(`<div class="pokeidle-persistent-chat"><div class="pokeidle-persistent-chat__tabs">${keys.map((key,i)=>`<div role="tab" tabindex="0" class="pokeidle-persistent-chat__tab ${i ? '' : 'is-active'}" data-channel="${key}"><span class="pokeidle-persistent-chat__tab-label">${key}</span><span class="pokeidle-persistent-chat__unread" hidden>0</span></div>`).join('')}<div class="pokeidle-persistent-chat__tab is-private" data-channel="private:synthetic"><button>×</button></div><button class="pokeidle-persistent-chat__collapse">collapse<span class="pokeidle-persistent-chat__collapse-unread" hidden></span></button></div><div class="pokeidle-persistent-chat__log">Synthetic message</div><form><input value="Synthetic draft"><button>Send</button></form></div>`, {url:'https://test.local'});
   const doc=dom.window.document, root=doc.body.firstChild, bar=root.firstChild;
   const tabs=[...bar.children].slice(0,6);
   tabs.forEach(tab=>tab.addEventListener('click',()=>{tabs.forEach(n=>n.classList.remove('is-active'));tab.classList.add('is-active');}));
@@ -17,6 +17,28 @@ function setup(t) {
   const hide=i=>tabs[i].querySelector('[data-ppbui-module]').click();
   return {doc,root,bar,tabs,preference,controller,hide,before,window:dom.window,submits:()=>submits};
 }
+function attachNativeChat(s) {
+  let speeches=0;
+  const native={
+    el:s.root,
+    _unread:{local:0,world:0,trade:0,questions:0,system:0,guild:0,'private:synthetic':0},
+    updateCollapsedUnreadBadge() {
+      const count=Object.values(this._unread).reduce((total,value)=>total+Math.max(0,Number(value)||0),0);
+      const badge=s.root.querySelector('.pokeidle-persistent-chat__collapse-unread');
+      badge.hidden=count===0;badge.textContent=count>99?'99+':String(count);
+      s.root.querySelector('.pokeidle-persistent-chat__collapse').classList.toggle('has-unread',count>0);
+    },
+    updateUnreadBadge(key) {
+      const badge=s.root.querySelector(`.pokeidle-persistent-chat__tab[data-channel="${key}"] .pokeidle-persistent-chat__unread`);
+      const count=Math.max(0,Number(this._unread[key])||0);
+      if(badge){badge.hidden=count===0;badge.textContent=count>99?'99+':String(count);}
+      this.updateCollapsedUnreadBadge();
+    },
+    showSpeech() {speeches++;},
+  };
+  s.window.PokeIdle={PersistentHud:{_chat:native}};
+  return {native,speeches:()=>speeches};
+}
 test('hide/restore preserves original log, composer, badges and private close',t=>{
   const s=setup(t), {root,tabs,hide,doc}=s;
   const log=root.querySelector('.pokeidle-persistent-chat__log'), input=root.querySelector('input'), privateClose=root.querySelector('.is-private button');
@@ -26,7 +48,73 @@ test('hide/restore preserves original log, composer, badges and private close',t
   root.querySelector('.ppbui-chat-add').click();
   doc.querySelector('[role=menuitem]').click();
   assert.equal(tabs[1].hasAttribute('data-ppbui-chat-hidden'),false);
-  assert.equal(badge.textContent,'3');assert.equal(root.querySelector('input'),input);assert.equal(input.value,'Synthetic draft');assert.equal(root.querySelector('.pokeidle-persistent-chat__log'),log);assert.equal(root.querySelector('.is-private button'),privateClose);assert.equal(s.submits(),0);
+  assert.equal(badge.textContent,'0');assert.equal(badge.hidden,true);assert.equal(root.querySelector('input'),input);assert.equal(input.value,'Synthetic draft');assert.equal(root.querySelector('.pokeidle-persistent-chat__log'),log);assert.equal(root.querySelector('.is-private button'),privateClose);assert.equal(s.submits(),0);
+});
+test('closed fixed channels discard native unread notifications until restored',t=>{
+  const s=setup(t), badge=s.tabs[1].querySelector('.pokeidle-persistent-chat__unread');
+  s.hide(1);
+  for(const count of ['1','4','27']) {
+    badge.textContent=count;badge.hidden=false;s.controller.sync();
+    assert.equal(badge.textContent,'0');assert.equal(badge.hidden,true);
+  }
+  s.root.querySelector('.ppbui-chat-add').click();s.doc.querySelector('[role=menuitem]').click();
+  assert.equal(s.tabs[1].hasAttribute('data-ppbui-chat-hidden'),false);
+  assert.equal(badge.textContent,'0');assert.equal(badge.hidden,true);
+});
+test('central observer automatically drains unread from a closed fixed channel',async t=>{
+  const {createBetterUI}=await import('../src/core/bootstrap.js');
+  const {createChatModule}=await import('../src/modules/chat/index.js');
+  const s=setup(t);s.controller.cleanup();
+  const previous=new Map();
+  for(const key of ['document','MutationObserver','requestAnimationFrame','cancelAnimationFrame']) {
+    previous.set(key,Object.getOwnPropertyDescriptor(globalThis,key));
+    const value=key==='requestAnimationFrame' ? fn=>s.window.setTimeout(fn,0) : key==='cancelAnimationFrame' ? id=>s.window.clearTimeout(id) : s.window[key];
+    Object.defineProperty(globalThis,key,{configurable:true,value});
+  }
+  const app=createBetterUI({modules:[createChatModule(s.preference)]});
+  t.after(()=>{app.stop();for(const [key,value] of previous)if(value)Object.defineProperty(globalThis,key,value);else delete globalThis[key];});
+  app.start();
+  s.tabs[1].querySelector('[data-ppbui-module]').click();
+  const badge=s.tabs[1].querySelector('.pokeidle-persistent-chat__unread');
+  badge.textContent='9';badge.hidden=false;
+  await new Promise(resolve=>s.window.setTimeout(resolve,40));
+  assert.equal(badge.textContent,'0');assert.equal(badge.hidden,true);
+});
+test('native notification gate synchronously removes closed unread from per-tab and collapsed badges',t=>{
+  const s=setup(t);s.controller.cleanup();
+  const runtime=attachNativeChat(s), native=runtime.native;
+  const originalUnread=native.updateUnreadBadge,originalCollapsed=native.updateCollapsedUnreadBadge;
+  const controller=mountChat(s.root,s.bar,s.preference);t.after(()=>controller.cleanup());
+  s.tabs[1].querySelector('[data-ppbui-module]').click();
+  native._unread.local=2;native._unread['private:synthetic']=3;native._unread.world=9;
+  native.updateUnreadBadge('world');
+  assert.equal(native._unread.world,0);
+  assert.equal(s.tabs[1].querySelector('.pokeidle-persistent-chat__unread').hidden,true);
+  const collapsed=s.root.querySelector('.pokeidle-persistent-chat__collapse-unread');
+  assert.equal(collapsed.textContent,'5');assert.equal(collapsed.hidden,false);
+  controller.cleanup();
+  assert.equal(native.updateUnreadBadge,originalUnread);assert.equal(native.updateCollapsedUnreadBadge,originalCollapsed);
+});
+test('native notification gate suppresses speech only for closed fixed channels and preserves private chat',t=>{
+  const s=setup(t);s.controller.cleanup();
+  const runtime=attachNativeChat(s), native=runtime.native, original=native.showSpeech;
+  const controller=mountChat(s.root,s.bar,s.preference);t.after(()=>controller.cleanup());
+  s.tabs[1].querySelector('[data-ppbui-module]').click();
+  native.showSpeech({channel:'world',trainer_id:'other',text:'hidden'});
+  native.showSpeech({channel:'local',trainer_id:'other',text:'visible'});
+  native.showSpeech({channel:'private',trainer_id:'other',recipient_id:'self',text:'private'});
+  assert.equal(runtime.speeches(),2);
+  controller.cleanup();assert.equal(native.showSpeech,original);
+});
+test('native notification gate rebinds a replacement native chat and restores both owners exactly',t=>{
+  const s=setup(t);s.controller.cleanup();
+  const first=attachNativeChat(s).native,firstSpeech=first.showSpeech;
+  const controller=mountChat(s.root,s.bar,s.preference);t.after(()=>controller.cleanup());
+  assert.notEqual(first.showSpeech,firstSpeech);
+  const second=attachNativeChat(s).native,secondSpeech=second.showSpeech;
+  controller.sync();
+  assert.equal(first.showSpeech,firstSpeech);assert.notEqual(second.showSpeech,secondSpeech);
+  controller.cleanup();assert.equal(second.showSpeech,secondSpeech);
 });
 test('hiding active tab selects native fallback and protects final fixed tab',t=>{
   const s=setup(t);s.hide(0);assert.ok(s.tabs[1].classList.contains('is-active'));
