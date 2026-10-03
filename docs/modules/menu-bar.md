@@ -7,14 +7,23 @@ Tools | Shop | Settings.
 
 The complete mapping of 33 client-defined destinations is in `menu-bar-plan.md`.
 Shop contains Premium Shop, Pack and Gacha. Missing **native destinations** are
-never recreated. City additionally owns three explicit Better UI shortcuts
-approved on 2026-10-02: `Geneticista`, `Nature` and `Evolution Center`. They are
-separate Better UI nodes without `data-menu-id` and delegate to the game's exposed
+never recreated. City additionally owns four explicit Better UI shortcuts:
+`Geneticista`, `Nature`, `Evolution Center` and `Gyms`. They are separate Better UI
+nodes without `data-menu-id`. The three NPC services delegate to the game's exposed
 `PokeIdle.NPC.open()` controller using the native NPC kinds `iv`, `nature` and
-`evolution`; they do not replace or impersonate host toolbar actions. Each existing
+`evolution`. `Gyms` delegates to the native `SceneManager.push(Scene_Gym)` navigation
+contract and leaves the scene's default region untouched; it does not start a Gym
+battle. None of these shortcuts replaces or impersonates host toolbar actions. Each existing
 native action still appears once, with its original node, children, label, shortcut
 and listeners. Existing group wrappers, triggers, icons and badges are reused.
 Unknown native actions remain available in their native containers.
+
+The Product Owner-provided menu artwork is stored in `assets/`: `betterui.png`,
+`genetics.png`, `nature.png`, `trainer.png`, `evolution.png` and `gym.png`. Runtime
+96×96 derivatives in `assets/runtime-icons/` are embedded as data URLs so the
+self-contained userscript does not carry the original multi-megabyte PNG payload.
+Better UI owns the Trainer group icon while mounted and restores the native icon on
+cleanup. The Better UI preferences trigger likewise uses the provided Better UI art.
 
 Group labels follow the read-only `PokeIdle.Localization.get()` language,
 with document language as fallback. Portuguese, English, Spanish and Chinese
@@ -25,9 +34,9 @@ Opening a group never forwards a click to a game action.
 
 Toolbar and dropdown classes are adapted to the destination's new position.
 Managed triggers use the native standalone button class: the group-trigger
-class wraps longer labels into adjacent flex columns. Dimensions, icons,
-fonts, palette and native responsive rules are unchanged. There is no added
-stylesheet. Temporary inline `display:none` masks preserve native hidden
+class wraps longer labels into adjacent flex columns. Dimensions, fonts, palette
+and native responsive rules are unchanged; the explicitly requested Better UI,
+Trainer and City-service icons are the icon-level exception. Temporary inline `display:none` masks preserve native hidden
 states after moving nodes and suppress empty groups; cleanup restores the
 previous inline display value. No new badge aggregation is introduced.
 
@@ -70,12 +79,12 @@ references remain intact so the game can continue updating their counts.
 - Public `/play/css/persistent/top-toolbar.css`: native styles and dropdowns.
 - Public `/play/js/plugins/Localization.js`: supported game languages/getter.
 
-`node --test test/menu-bar.test.js`: 33 passing tests covering foundation lifecycle,
+`node --test test/menu-bar.test.js`: focused tests cover foundation lifecycle,
 node/listener preservation, all 33 native destinations, native badges, original
 shortcut attributes, locale changes, hidden controls/empty groups, alternate
 composition, cleanup/restart, full/partial replacements, item reordering, mutation
 stability, F5 geometry normalization/late layout, host-owned geometry cleanup and
-the three City controller shortcuts.
+the four City shortcuts including native Gym-scene delegation and requested icon ownership.
 The six newer destinations in tests are synthetic contract fixtures, not an
 updated authenticated capture. Destination clicks in tests use mock handlers.
 

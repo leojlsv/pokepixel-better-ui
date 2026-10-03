@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { createBetterUI } from "../src/core/bootstrap.js";
 import { createMenuBarModule } from "../src/modules/menu-bar/index.js";
+import menuBarStyles from "../src/modules/menu-bar/styles.js";
 import { buffStripConfig } from "../src/modules/buff-strip/config.js";
 
 const fixture = readFileSync(new URL("./fixtures/menu-bar.html", import.meta.url), "utf8");
@@ -63,7 +64,7 @@ test("groups the original nodes, preserves all 33 destinations and calls listene
   assert.equal(premium.getAttribute("aria-keyshortcuts"), "L");
 });
 
-test("vector menu icons are never mistaken for labels and created group icons follow late native hydration", t => {
+test("Trainer owns its requested icon while other created groups follow late native hydration", t => {
   const { app, toolbar } = setup(t);
   const premium = toolbar.querySelector('[data-menu-id="premium"]');
   const nativeIcon = premium.querySelector('.pokeidle-top-toolbar__icon');
@@ -85,7 +86,8 @@ test("vector menu icons are never mistaken for labels and created group icons fo
   const shopTrigger = shop.querySelector(':scope > button');
   assert.equal(shopTrigger.querySelector('.pokeidle-menu-vector-icon').textContent, 'diamond', 'created group preserves the vector glyph instead of renaming it as the label');
   assert.equal(shopTrigger.querySelector('.pokeidle-top-toolbar__label').textContent, 'Loja');
-  assert.equal(playerTrigger.querySelector('.pokeidle-menu-vector-icon').textContent, 'badge', 'native group vector glyph is never treated as copy');
+  assert.equal(playerTrigger.querySelector('.pokeidle-menu-vector-icon'), null);
+  assert.equal(playerTrigger.querySelector('img[data-ppbui-menu-icon="trainer"]')?.getAttribute('aria-hidden'), 'true');
   assert.equal(playerTrigger.querySelector('.pokeidle-top-toolbar__label').textContent, 'Treinador');
 
   vector.textContent = 'storefront';
@@ -271,13 +273,20 @@ test("silent host geometry writes preserve the whole normalized geometry set on 
   assert.equal(toolbar.style.getPropertyValue("transform"), "none", "cleanup keeps the host-compatible normalized transform as part of the same geometry set");
 });
 
-test("City adds native-controller shortcuts for Geneticista, Nature and Evolution Center", t => {
+test("City adds Geneticista, Nature, Evolution Center and Gyms shortcuts with requested icons", t => {
   const { app, window, toolbar } = setup(t);
   const opened = [];
+  function SceneGym() { this._region = "kanto"; }
+  const manager = {
+    _scene: { constructor:function SceneMain() {} }, _nextScene:null, _stack:[],
+    push(Scene) { this._stack.push(this._scene.constructor); this._nextScene = new Scene(); },
+  };
   window.PokeIdle = {
     Localization: { get: () => "pt-BR" },
     NPC: { open: meta => opened.push(meta) },
   };
+  window.Scene_Gym = SceneGym;
+  window.SceneManager = manager;
 
   app.start();
   for (let i = 0; i < 5; i++) app.reconcile();
@@ -285,17 +294,18 @@ test("City adds native-controller shortcuts for Geneticista, Nature and Evolutio
   const city = toolbar.querySelector('[data-ppbui-group="city"]');
   const trigger = city.querySelector(":scope > button");
   const shortcuts = [...city.querySelectorAll("[data-ppbui-city-action]")];
-  assert.deepEqual(shortcuts.map(button => button.lastElementChild.textContent), ["Geneticista", "Nature", "Evolution Center"]);
-  assert.deepEqual(shortcuts.map(button => button.getAttribute("aria-label")), ["Geneticista", "Nature", "Evolution Center"]);
+  assert.deepEqual(shortcuts.map(button => button.lastElementChild.textContent), ["Geneticista", "Nature", "Evolution Center", "Gyms"]);
+  assert.deepEqual(shortcuts.map(button => button.getAttribute("aria-label")), ["Geneticista", "Nature", "Evolution Center", "Gyms"]);
+  assert.deepEqual(shortcuts.map(button => button.querySelector("img.ppbui-menu-city-icon")?.dataset.ppbuiMenuIcon), ["genetics", "nature", "evolution", "gym"]);
   for (const button of shortcuts) {
-    const icon = button.querySelector("svg.pokeidle-menu-vector-icon.ppbui-menu-city-icon");
-    assert.ok(icon, "City shortcuts use bundled vector artwork instead of emoji interface icons");
-    assert.equal(icon.getAttribute("viewBox"), "0 0 24 24");
+    const icon = button.querySelector("img.ppbui-menu-city-icon");
+    assert.ok(icon, "City shortcuts use Better UI-owned PNG artwork");
     assert.equal(icon.getAttribute("aria-hidden"), "true");
+    assert.equal(icon.draggable, false);
     assert.equal(button.querySelector(".pokeidle-top-toolbar__emoji"), null);
   }
   assert.equal(toolbar.querySelectorAll('button[data-menu-id]:not([aria-haspopup])').length, 33, "Better UI shortcuts never impersonate native destination IDs");
-  assert.equal(shortcuts.length, 3, "stable reconciliation does not duplicate City shortcuts");
+  assert.equal(shortcuts.length, 4, "stable reconciliation does not duplicate City shortcuts");
 
   for (const button of shortcuts) button.click();
   assert.deepEqual(opened, [
@@ -303,16 +313,23 @@ test("City adds native-controller shortcuts for Geneticista, Nature and Evolutio
     { kind:"nature", name:"Nature" },
     { kind:"evolution", name:"Evolution Center" },
   ]);
+  assert.equal(manager._nextScene?.constructor, SceneGym, "Gyms delegates to the native Gym scene");
+  assert.equal(manager._nextScene?._region, "kanto", "City leaves the native Gym default region intact");
 
+  manager._nextScene = null;
   trigger.focus();
   trigger.dispatchEvent(new window.KeyboardEvent("keydown", { key:"End", bubbles:true }));
-  assert.equal(window.document.activeElement, shortcuts[2], "existing menu keyboard navigation includes the new City actions");
-  shortcuts[2].dispatchEvent(new window.KeyboardEvent("keydown", { key:"Escape", bubbles:true }));
+  assert.equal(window.document.activeElement, shortcuts[3], "existing menu keyboard navigation includes all City actions");
+  shortcuts[3].dispatchEvent(new window.KeyboardEvent("keydown", { key:"Escape", bubbles:true }));
   assert.equal(window.document.activeElement, trigger, "Escape returns focus from a Better UI City action to the City trigger");
 
   app.stop();
   assert.equal(toolbar.querySelectorAll("[data-ppbui-city-action]").length, 0);
   assert.equal(toolbar.querySelectorAll('button[data-menu-id]:not([aria-haspopup])').length, 33);
+});
+
+test("Genetic Vault native emoji is normalized to the menu icon footprint", () => {
+  assert.match(menuBarStyles, /\[data-menu-id="genetic-vault"\][^\{]*> \.pokeidle-top-toolbar__emoji\s*\{[^}]*display:grid !important;[^}]*place-items:center !important;[^}]*font-size:26px !important;[^}]*line-height:31px !important;/s);
 });
 
 test("City shortcuts recover when the native NPC controller becomes available after mount", t => {
@@ -322,13 +339,16 @@ test("City shortcuts recover when the native NPC controller becomes available af
 
   const city = toolbar.querySelector('[data-ppbui-group="city"]');
   const shortcuts = [...city.querySelectorAll("[data-ppbui-city-action]")];
-  assert.equal(shortcuts.every(button => button.disabled), true);
+  assert.equal(shortcuts.slice(0, 3).every(button => button.disabled), true);
+  assert.equal(shortcuts[3].disabled, true, "Gyms also fails closed until its native scene contract exists");
   const css = window.document.querySelector('[data-ppbui-style="menu-bar"]').textContent;
   assert.match(css, /pokeidle-top-toolbar__dropdown-btn:hover:not\(:disabled\)/, "disabled popup actions are excluded from hover styling");
   assert.match(css, /pokeidle-top-toolbar__dropdown-btn:disabled \{[^}]*border-color:var\(--ppbui-border\)[^}]*background:var\(--ppbui-bg-1\)[^}]*color:var\(--ppbui-text-subtle\)[^}]*cursor:default/s, "disabled popup actions have an explicit design-system state");
 
   const opened = [];
   window.PokeIdle.NPC = { open: meta => opened.push(meta) };
+  window.Scene_Gym = function SceneGym() {};
+  window.SceneManager = { _nextScene:null, push(Scene) { this._nextScene = new Scene(); } };
   city.dispatchEvent(new window.Event("pointerenter"));
   assert.equal(shortcuts.every(button => !button.disabled), true, "opening City refreshes native capability without waiting for a DOM mutation/reconcile");
   shortcuts[0].click();
@@ -347,10 +367,12 @@ test("focused City trigger includes late native NPC shortcuts on the first keybo
   assert.equal(shortcuts.every(button => button.disabled), true);
 
   window.PokeIdle.NPC = { open() {} };
+  window.Scene_Gym = function SceneGym() {};
+  window.SceneManager = { _nextScene:null, push(Scene) { this._nextScene = new Scene(); } };
   trigger.dispatchEvent(new window.KeyboardEvent("keydown", { key:"End", bubbles:true }));
 
   assert.equal(shortcuts.every(button => !button.disabled), true);
-  assert.equal(window.document.activeElement, shortcuts[2], "the first End after late NPC hydration reaches Evolution Center");
+  assert.equal(window.document.activeElement, shortcuts[3], "the first End after late native hydration reaches Gyms");
 });
 
 test("every grouped dropdown keeps viewport-owned positioning under hostile live rules", t => {

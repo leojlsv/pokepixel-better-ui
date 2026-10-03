@@ -153,6 +153,16 @@ export default `
     transform:none !important;
   }
 
+  /* Genetic Vault is still a native emoji icon. Its 31px icon box inherits the
+   * dropdown's 8px text size, so the DNA glyph renders much smaller than the
+   * surrounding bitmap/vector icons unless the glyph itself is sized. */
+  .pokeidle-top-toolbar[data-ppbui-menu-bar] > .pokeidle-top-toolbar__group > .ppbui-menu-popup > .pokeidle-top-toolbar__dropdown-btn[data-menu-id="genetic-vault"] > .pokeidle-top-toolbar__emoji {
+    display:grid !important;
+    place-items:center !important;
+    font-size:26px !important;
+    line-height:31px !important;
+  }
+
   .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar] > :is(.pokeidle-pokehub__handle,.pokeidle-pokehub__toggle) {
     position:absolute !important;
     top:3px !important;

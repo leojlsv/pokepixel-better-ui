@@ -40,16 +40,16 @@ export const menuBarConfig = Object.freeze({
   ],
   cityActions: [
     {
-      id: "geneticist", label: "Geneticista", kind: "iv",
-      iconPaths: ["M7 3c6 4 4 14 10 18", "M17 3C11 7 13 17 7 21", "M9 7h6", "M9 17h6", "M10 12h4"],
+      id: "geneticist", label: "Geneticista", kind: "iv", icon: "genetics",
     },
     {
-      id: "nature", label: "Nature", kind: "nature",
-      iconPaths: ["M19 4C11 4 5 8 5 15c0 3 2 5 5 5 7 0 9-9 9-16Z", "M6 19c3-5 7-8 12-11"],
+      id: "nature", label: "Nature", kind: "nature", icon: "nature",
     },
     {
-      id: "evolution-center", label: "Evolution Center", kind: "evolution",
-      iconPaths: ["M20 7a8 8 0 0 0-14-3L4 6", "M4 2v4h4", "M4 17a8 8 0 0 0 14 3l2-2", "M16 18h4v4"],
+      id: "evolution-center", label: "Evolution Center", kind: "evolution", icon: "evolution",
+    },
+    {
+      id: "gyms", label: "Gyms", scene: "gym", icon: "gym",
     },
   ],
   order: ["inventory", "hunts", "player", "city", "activities", "events", "social", "private-message", "automation", "shop", "settings"],

@@ -4,6 +4,17 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Menu Bar — Gyms em City e ícones dedicados, candidato 0.2.150 (2026-10-03):**
+  City ganha o atalho `Gyms`, que abre a `Scene_Gym` nativa somente quando o
+  `SceneManager` está disponível e sem transição pendente. Os atalhos `Geneticista`,
+  `Nature`, `Evolution Center` e `Gyms`, o gatilho `Trainer` e o botão `Better UI`
+  passam a usar os PNGs fornecidos em `assets/`. Cópias 96×96 são embutidas no
+  userscript para preservar a arte sem acrescentar vários megabytes ao bundle; os
+  originais 1254×1254 permanecem como fontes. Cleanup continua restaurando o ícone
+  nativo de Trainer e os atalhos City continuam sem `data-menu-id`. O ícone nativo
+  em emoji de `Trainer > Genetic Vault` também é normalizado opticamente dentro da
+  mesma área 31×31 dos demais atalhos, sem substituir a ação ou o conteúdo nativo.
+
 - **Pokémon Profile — Priority e heal threshold autoritativos nos Current Moves, candidato 0.2.149 (2026-10-03):**
   o Profile passa a consumir diretamente `slot_settings` do `getMoveset()`: `use_as_priority` deixa a
   caixa do número do slot dourada e `heal_threshold_pct` aparece somente quando o Move estruturado tem

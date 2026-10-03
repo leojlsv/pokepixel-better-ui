@@ -11,8 +11,15 @@ const metadataUrl = new URL("../userscript/metadata.txt", import.meta.url);
 const packageUrl = new URL("../package.json", import.meta.url);
 const outputDirUrl = new URL("../dist/", import.meta.url);
 const entryUrl = new URL("../src/index.js", import.meta.url);
-const logoUrl = new URL("../assets/better-ui-logo.png", import.meta.url);
+const logoUrl = new URL("../assets/runtime-icons/betterui.png", import.meta.url);
 const pokemonProfileIconUrl = new URL("../assets/menu-poke-profile-icon.png", import.meta.url);
+const menuIconUrls = Object.freeze({
+  genetics: new URL("../assets/runtime-icons/genetics.png", import.meta.url),
+  nature: new URL("../assets/runtime-icons/nature.png", import.meta.url),
+  trainer: new URL("../assets/runtime-icons/trainer.png", import.meta.url),
+  evolution: new URL("../assets/runtime-icons/evolution.png", import.meta.url),
+  gym: new URL("../assets/runtime-icons/gym.png", import.meta.url),
+});
 const outputUrl = new URL(
   "../dist/pokepixel-better-ui.user.js",
   import.meta.url,
@@ -21,11 +28,13 @@ const packageSource = await readFile(packageUrl);
 const metadataSource = await readFile(metadataUrl);
 const logoSource = await readFile(logoUrl);
 const profileIconSource = await readFile(pokemonProfileIconUrl);
+const menuIconSources = Object.fromEntries(await Promise.all(Object.entries(menuIconUrls).map(async ([name, url]) => [name, await readFile(url)])));
 const packageJson = JSON.parse(packageSource.toString("utf8"));
 const metadataTemplate = metadataSource.toString("utf8");
 const metadata = withUserscriptVersion(metadataTemplate, packageJson.version);
 const logo = `data:image/png;base64,${logoSource.toString("base64")}`;
 const pokemonProfileIcon = `data:image/png;base64,${profileIconSource.toString("base64")}`;
+const menuIcons = Object.fromEntries(Object.entries(menuIconSources).map(([name, source]) => [name, `data:image/png;base64,${source.toString("base64")}`]));
 await mkdir(outputDirUrl, { recursive: true });
 const options = {
   entryPoints: [fileURLToPath(entryUrl)],
@@ -41,6 +50,7 @@ const options = {
   define: {
     __PPBUI_LOGO__: JSON.stringify(logo),
     __PPBUI_POKE_PROFILE_ICON__: JSON.stringify(pokemonProfileIcon),
+    __PPBUI_MENU_ICONS__: JSON.stringify(menuIcons),
   },
   sourcemap: false,
   minify: false,
@@ -58,6 +68,7 @@ if (watch) {
     [fileURLToPath(metadataUrl), metadataSource],
     [fileURLToPath(logoUrl), logoSource],
     [fileURLToPath(pokemonProfileIconUrl), profileIconSource],
+    ...Object.entries(menuIconUrls).map(([name, url]) => [fileURLToPath(url), menuIconSources[name]]),
   ]);
   const byFolder = new Map();
   for (const path of initialInputs.keys()) {

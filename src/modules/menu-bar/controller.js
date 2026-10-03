@@ -3,6 +3,8 @@ import { groupLabel, isAvailable, isVisible } from "./dom.js";
 import styles from "./styles.js";
 import { buffStripConfig } from "../buff-strip/config.js";
 
+const menuIcons = Object.freeze(typeof __PPBUI_MENU_ICONS__ === "object" && __PPBUI_MENU_ICONS__ ? __PPBUI_MENU_ICONS__ : {});
+
 export function mountMenuBar({ toolbar, actions, structure }) {
   const { classes, selectors } = config;
   const doc = toolbar.ownerDocument;
@@ -242,26 +244,41 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       (masked ? masked[0] !== "none" : display !== "none");
   };
   const menuItems = dropdown => [...dropdown.querySelectorAll(`${selectors.action}, ${selectors.cityAction}`)];
-  const createCityActionIcon = shortcut => {
-    const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 24 24");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("stroke", "currentColor");
-    svg.setAttribute("stroke-width", "1.7");
-    svg.setAttribute("stroke-linecap", "round");
-    svg.setAttribute("stroke-linejoin", "round");
-    svg.setAttribute("aria-hidden", "true");
-    svg.classList.add("pokeidle-top-toolbar__icon", "pokeidle-menu-vector-icon", "ppbui-menu-city-icon");
-    for (const d of shortcut.iconPaths) {
-      const path = doc.createElementNS("http://www.w3.org/2000/svg", "path");
-      path.setAttribute("d", d);
-      svg.append(path);
+  const createMenuIcon = (name, className = "") => {
+    const image = doc.createElement("img");
+    image.className = `pokeidle-top-toolbar__icon ppbui-menu-owned-icon${className ? ` ${className}` : ""}`;
+    image.dataset.ppbuiMenuIcon = name;
+    image.alt = "";
+    image.draggable = false;
+    image.setAttribute("aria-hidden", "true");
+    if (typeof menuIcons[name] === "string" && menuIcons[name]) image.src = menuIcons[name];
+    return image;
+  };
+  const canOpenGym = () => typeof win?.Scene_Gym === "function" &&
+    typeof win?.SceneManager?.push === "function" && win.SceneManager._nextScene == null;
+  const openGym = () => {
+    if (!canOpenGym()) return false;
+    const manager = win.SceneManager;
+    const Gym = win.Scene_Gym;
+    const current = manager._scene;
+    const previousNext = manager._nextScene;
+    const stack = Array.isArray(manager._stack) ? manager._stack : null;
+    const stackLength = stack?.length;
+    try {
+      manager.push(Gym);
+      return manager._nextScene?.constructor === Gym;
+    } catch {
+      if (manager._nextScene === previousNext && stack && stack.length === stackLength + 1 && stack[stackLength] === current?.constructor) {
+        stack.length = stackLength;
+      }
+      return false;
     }
-    return svg;
   };
   const syncOwnedCityActions = () => {
-    const disabled = typeof win?.PokeIdle?.NPC?.open !== "function";
-    for (const { button } of ownedCityActions) if (button.disabled !== disabled) button.disabled = disabled;
+    for (const { button, shortcut } of ownedCityActions) {
+      const available = shortcut.scene === "gym" ? canOpenGym() : typeof win?.PokeIdle?.NPC?.open === "function";
+      if (button.disabled === available) button.disabled = !available;
+    }
   };
   const stylePopupItem = button => {
     styleProperty(button, "position", "relative");
@@ -366,6 +383,17 @@ export function mountMenuBar({ toolbar, actions, structure }) {
         else trigger.setAttribute("aria-label", originalAria);
       }
     });
+    if (definition.id === "player") {
+      const originalIcon = trigger.querySelector(selectors.icon);
+      const trainerIcon = createMenuIcon("trainer", "ppbui-menu-trigger-icon");
+      if (originalIcon) originalIcon.replaceWith(trainerIcon);
+      else trigger.insertBefore(trainerIcon, label || trigger.firstChild);
+      undo.push(() => {
+        if (!trainerIcon.isConnected) return;
+        if (originalIcon) trainerIcon.replaceWith(originalIcon);
+        else trainerIcon.remove();
+      });
+    }
     for (const button of items) {
       token(button, classes.button, false);
       token(button, classes.item, true);
@@ -384,9 +412,13 @@ export function mountMenuBar({ toolbar, actions, structure }) {
         button.setAttribute("aria-label", shortcut.label);
         const label = doc.createElement("span");
         label.textContent = shortcut.label;
-        button.append(createCityActionIcon(shortcut), label);
+        button.append(createMenuIcon(shortcut.icon, "ppbui-menu-city-icon"), label);
         stylePopupItem(button);
         listen(button, "click", () => {
+          if (shortcut.scene === "gym") {
+            openGym();
+            return;
+          }
           const npc = win?.PokeIdle?.NPC;
           if (typeof npc?.open === "function") npc.open({ kind: shortcut.kind, name: shortcut.label });
         });
@@ -595,7 +627,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     syncOwnedCityActions();
     for (const [button, parents] of sources) mask(button, !nativeVisible(button) || parents.some(parent => !nativeVisible(parent)));
     for (const entry of groups) {
-      if (entry.ownedTrigger) {
+      if (entry.ownedTrigger && entry.id !== "player") {
         const sourceIcon = entry.source?.querySelector(selectors.icon) || null;
         const nextSignature = iconSignature(sourceIcon);
         if (nextSignature !== entry.sourceIconSignature) {
