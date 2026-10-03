@@ -94,12 +94,114 @@ test("standalone userscript starts in Game and renders Analyzer data after enter
   assert.equal(doc.documentElement.hasAttribute("data-ppbui-coupled-workspace"), false);
   assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "cards");
   assert.equal(cards.getAttribute("data-ppbui-text-only"), "true");
+  assert.equal(cards.getAttribute("data-ppbui-combat-art"), "true");
   assert.equal(doc.defaultView.getComputedStyle(cards).position, "relative", "standalone Cards is a document surface, not a fixed overlay");
+  assert.equal(doc.defaultView.getComputedStyle(doc.documentElement).overflow, "hidden", "Cards locks viewport scrolling at the document root");
+  assert.equal(doc.defaultView.getComputedStyle(doc.body).overflow, "hidden", "Cards keeps page height pinned to the viewport and owns its own scroll");
   assert.equal(doc.defaultView.getComputedStyle(doc.querySelector("#native-game-surface")).display, "none", "native moving surface leaves layout/paint in Cards mode");
   assert.notEqual(doc.defaultView.getComputedStyle(toolbar).display, "none", "menu bar remains visible in Cards so the toggle never has to move");
   assert.equal(cards.querySelectorAll(".ppbui-element-icon").length, 0, "text-only Cards does not create type icons");
+  assert.notEqual(doc.defaultView.getComputedStyle(cards.querySelector(".ppbui-cards-combat-art")).display, "none",
+    "standalone Cards keeps only the static Active/Target art surface enabled");
+  assert.equal(cards.querySelector('[data-card-sprite-fallback="target"]').hidden, false,
+    "waiting Target keeps an explicit visual placeholder instead of a large empty card");
+  const cardsCss = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
+  assert.match(cardsCss, /\.ppbui-coupled-cards\[data-ppbui-text-only="true"\]\{[^}]*height:calc\(100vh - var\(--ppbui-card-mode-bottom-inset,0px\)\);height:calc\(100dvh - var\(--ppbui-card-mode-bottom-inset,0px\)\);min-height:0;[^}]*overflow:auto/,
+    "standalone Card Mode height is bounded by the dynamic viewport and scroll stays inside Cards");
   assert.equal(doc.querySelector("[data-ppbui-card-mode-dock]"), null);
   assert.equal(doc.querySelector("[data-ppbui-card-mode-switch]"), null);
+});
+
+test("standalone Card Mode reserves the viewport strip occupied by a bottom native toolbar", t => {
+  const { app, doc, window } = setup(t, {
+    analyzerSummary: { protocol: 1, available: true, capturedAtMs: Date.now(), status: "running" },
+  });
+  const toolbar = doc.querySelector(".pokeidle-top-toolbar");
+  Object.defineProperty(doc.documentElement, "clientHeight", { configurable: true, value: 720 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 720 });
+  toolbar.getBoundingClientRect = () => ({
+    left: 120, right: 640, top: 640, bottom: 700, width: 520, height: 60, x: 120, y: 640, toJSON() {},
+  });
+
+  app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  assert.equal(cards.style.getPropertyValue("--ppbui-card-mode-bottom-inset"), "88px",
+    "Cards ends above a horizontal toolbar docked near the viewport bottom, including the 8px separation gap");
+  const cardsCss = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
+  assert.match(cardsCss, /height:calc\(100dvh - var\(--ppbui-card-mode-bottom-inset,0px\)\)/,
+    "standalone Cards subtracts the measured bottom chrome from the dynamic viewport");
+
+  toolbar.getBoundingClientRect = () => ({
+    left: 120, right: 640, top: 600, bottom: 660, width: 520, height: 60, x: 120, y: 600, toJSON() {},
+  });
+  window.dispatchEvent(new window.Event("resize"));
+  assert.equal(cards.style.getPropertyValue("--ppbui-card-mode-bottom-inset"), "128px",
+    "toolbar geometry changes recompute the live reservation without remounting Card Mode");
+
+  toolbar.getBoundingClientRect = () => ({
+    left: 120, right: 640, top: 400, bottom: 460, width: 520, height: 60, x: 120, y: 400, toJSON() {},
+  });
+  window.dispatchEvent(new window.Event("resize"));
+  assert.equal(cards.style.getPropertyValue("--ppbui-card-mode-bottom-inset"), "0px",
+    "a horizontally dragged toolbar away from the bottom edge does not collapse the usable Cards height");
+
+  toolbar.setAttribute("data-ppbui-menu-orientation", "vertical");
+  window.dispatchEvent(new window.Event("resize"));
+  assert.equal(cards.style.getPropertyValue("--ppbui-card-mode-bottom-inset"), "0px",
+    "a vertical toolbar does not reserve a full-width bottom strip");
+});
+
+test("standalone Card Mode renders authoritative Active and Target art without enabling secondary type sprites", async t => {
+  const { app, doc, window } = setup(t, {
+    analyzerSummary: {
+      protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+      currentTarget: {
+        speciesId: "dragonite", zoneId: "zone-dragon", species: "Dragonite",
+        level: 78, rarity: "legendary", shiny: true, elements: ["dragon", "flying"],
+      },
+      attemptHistory: [],
+    },
+  });
+  const hud = doc.createElement("div");
+  hud.className = "pokeidle-team-hud";
+  doc.body.append(hud);
+  window.PokeIdle = {
+    PersistentHud: {
+      _teamHud: {
+        el: hud,
+        _creatures: [{
+          id: "lead", species_id: "gyarados", name: "Gyarados", level: 218,
+          hp: 3200, max_hp: 3500, elements: ["water", "flying"], is_leader: true,
+        }],
+      },
+    },
+    Api: {
+      async getSpecies(id) {
+        return {
+          id,
+          name: id,
+          normal_sprite_url: `/native-species/${id}.png`,
+          shiny_sprite_url: `/native-species/${id}-shiny.png`,
+        };
+      },
+    },
+    Bus: { on() {}, off() {} },
+  };
+  app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  await new Promise(resolve => window.setTimeout(resolve, 0));
+  app.reconcile();
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const active = cards.querySelector('[data-card-sprite="player"]');
+  const target = cards.querySelector('[data-card-sprite="target"]');
+  assert.equal(active.hidden, false);
+  assert.equal(target.hidden, false);
+  assert.match(active.src, /\/native-species\/gyarados\.png$/);
+  assert.match(target.src, /\/native-species\/dragonite-shiny\.png$/);
+  assert.equal(cards.querySelectorAll(".ppbui-element-icon").length, 0,
+    "enabling the two combat portraits does not re-enable secondary graphical type icons");
 });
 
 test("textual Card Mode keeps the only native type labels visible at narrow widths", t => {
@@ -180,11 +282,13 @@ test("Cards and Game preserve keyboard focus on the fixed menu-bar toggle", t =>
   assert.match(css, /\[data-ppbui-card-mode-toggle\]:focus-visible\{outline:2px solid var\(--ppbui-focus,#37b4d1\)!important;outline-offset:1px!important\}/);
 });
 
-test("toolbar reconstruction rehomes the same Cards/Game toggle without changing mode", t => {
+test("toolbar reconstruction rehomes the same Cards/Game toggle, preserves owned focus and never steals external focus", t => {
   const { app, doc } = setup(t);
   app.start();
   const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
   const oldToolbar = doc.querySelector(".pokeidle-top-toolbar");
+  toggle.focus();
+  assert.equal(doc.activeElement, toggle);
   const replacement = doc.createElement("nav"); replacement.className = "pokeidle-top-toolbar";
   replacement.innerHTML = '<button data-menu-id="inventory">Inventory</button>';
   oldToolbar.replaceWith(replacement);
@@ -194,9 +298,33 @@ test("toolbar reconstruction rehomes the same Cards/Game toggle without changing
   assert.equal(toggle.parentElement,replacement);
   assert.equal(toggle.dataset.ppbuiCardModeState,"game");
   assert.equal(toggle.getAttribute("aria-pressed"),"false");
+  assert.equal(doc.activeElement,toggle,"Game-mode toolbar reconstruction restores focus only to the toggle that owned it");
   assert.equal(oldToolbar.hasAttribute("data-ppbui-card-mode-toolbar"),false);
   assert.equal(replacement.hasAttribute("data-ppbui-card-mode-toolbar"),true);
   assert.equal(doc.querySelectorAll("[data-ppbui-card-mode-toggle]").length,1);
+
+  toggle.click();
+  assert.equal(toggle.dataset.ppbuiCardModeState,"cards");
+  const cardsReplacement = doc.createElement("nav"); cardsReplacement.className = "pokeidle-top-toolbar";
+  cardsReplacement.innerHTML = '<button data-menu-id="inventory">Inventory</button>';
+  replacement.replaceWith(cardsReplacement);
+  assert.equal(toggle.isConnected,false);
+  app.reconcile();
+  assert.equal(toggle.parentElement,cardsReplacement);
+  assert.equal(toggle.dataset.ppbuiCardModeState,"cards");
+  assert.equal(toggle.getAttribute("aria-pressed"),"true");
+  assert.equal(doc.activeElement,toggle,"Cards-mode toolbar reconstruction restores the owned keyboard focus");
+
+  const external = doc.createElement("button"); external.textContent = "External"; doc.body.append(external);
+  external.focus();
+  assert.equal(doc.activeElement,external);
+  const externalFocusReplacement = doc.createElement("nav"); externalFocusReplacement.className = "pokeidle-top-toolbar";
+  externalFocusReplacement.innerHTML = '<button data-menu-id="inventory">Inventory</button>';
+  cardsReplacement.replaceWith(externalFocusReplacement);
+  app.reconcile();
+  assert.equal(toggle.parentElement,externalFocusReplacement);
+  assert.equal(toggle.dataset.ppbuiCardModeState,"cards");
+  assert.equal(doc.activeElement,external,"toolbar reconstruction never steals deliberate focus from another connected control");
 });
 
 test("Cards keeps only the toolbar path and Cards surface visible even when the toolbar is nested", t => {
