@@ -70,6 +70,27 @@ An optional setting must correspond to a registered module ID; infrastructure
 modules such as standalone Card Mode and Coupled Workspace have no user toggle.
 The contract is checked in `test/app-module-registry.test.js`.
 
+### External Hunt Analyzer boundary
+
+Card Mode may consume only explicit versioned page-global contracts owned by the
+standalone `pokepixel-hunt-analyzer` project. The Analyzer remains the authority for
+analytics, persistence and session actions; Better UI must not read its IndexedDB,
+Shadow DOM, raw WebSocket state or reproduce its formulas.
+
+- `__POKEPIXEL_HUNT_ANALYZER_PUBLIC__` protocol 1 supplies the bounded Current
+  presentation summary and Analyzer-owned freshness timestamp.
+- `__POKEPIXEL_HUNT_ANALYZER_CONTROL__` protocol 1 supplies only the existing
+  Pause/Resume/Reset session actions.
+- `__POKEPIXEL_HUNT_ANALYZER_UI__` protocol 1 is optional and standalone-only. Card
+  Mode capability-detects it and may navigate to semantic detail destinations; it
+  never uses Analyzer DOM selectors or the Coupled Workspace's native
+  `hunt-analyzer` game-menu route for this purpose.
+
+Every integration must fail closed when the Analyzer is absent, late, stale or on an
+unsupported protocol. Additive Analyzer changes may be consumed opportunistically;
+Better UI must remain usable against the previous Analyzer contract until a deliberate
+breaking-protocol migration is completed.
+
 Game-owned `PokeIdle.Bus` may change identity during rehydration. Feature
 consumers must detach listeners from the **exact** object they subscribed to,
 not whatever Bus happens to be current at cleanup. Shared

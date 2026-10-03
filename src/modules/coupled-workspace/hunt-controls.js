@@ -21,6 +21,11 @@ function teamRuntime(win) {
   return { runtime, creatures };
 }
 
+export function analyzerSessionControlAvailable(win) {
+  const api = win?.[config.analyzerControlGlobal];
+  return Boolean(api?.protocol === config.analyzerProtocol && typeof api.act === "function");
+}
+
 export function explicitNativeLeaderId(win) {
   const leaders = teamRuntime(win).creatures.filter(creature => creature?.is_leader === true);
   return leaders.length === 1 ? creatureId(leaders[0]) : "";
@@ -48,9 +53,9 @@ export function teamControlSnapshot(win) {
 }
 
 export async function runAnalyzerSessionAction(win, action) {
-  const api = win?.__POKEPIXEL_HUNT_ANALYZER_CONTROL__;
+  const api = win?.[config.analyzerControlGlobal];
   const normalized = String(action || "").trim().toLowerCase();
-  if (!api || api.protocol !== 1 || typeof api.act !== "function" || !["pause", "resume", "reset"].includes(normalized)) {
+  if (!api || api.protocol !== config.analyzerProtocol || typeof api.act !== "function" || !["pause", "resume", "reset"].includes(normalized)) {
     return { ok: false, reason: "analyzer-control-unavailable" };
   }
   try {
@@ -109,3 +114,4 @@ export async function setActiveTeamMember(win, id, { expectedLeaderId = "", isCu
     return { ok: false, reason: "leader-action-unavailable", detail: error?.message };
   }
 }
+import { coupledWorkspaceConfig as config } from "./config.js";

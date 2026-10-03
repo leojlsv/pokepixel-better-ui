@@ -4,6 +4,27 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Card Mode — integração opcional com detalhes do Hunt Analyzer, candidato 0.2.155 (2026-10-03):**
+  o Card Mode passa a detectar a nova capability pública e versionada
+  `__POKEPIXEL_HUNT_ANALYZER_UI__` sem acessar Shadow DOM ou IndexedDB do Analyzer.
+  Capture, Captured/Seen e Story oferecem `Analyzer ↗` somente quando essa UI externa
+  compatível está disponível; o Story direciona semanticamente para Attempts ou Loot.
+  Analyzer ausente, carregado depois ou com protocolo incompatível continua sendo um
+  caso suportado sem botão morto ou quebra do dashboard. A terminologia também passa a
+  respeitar `activityKind`: Expedition usa resumo/Story próprios, e feedback de
+  Pause/Resume/Reset é neutro por sessão. Os contratos públicos de analytics e controle
+  existentes permanecem em protocolo 1 e o Coupled Workspace não recebe telemetria/UI
+  adicional.
+
+- **Better UI — painel de módulos respeita o viewport, candidato 0.2.154 (2026-10-03):**
+  o painel aberto pelo botão `Better UI` deixou de usar a âncora absoluta fixa
+  `right:0/bottom:100%`. Em barra horizontal ele escolhe acima/abaixo conforme o
+  espaço disponível; em barra vertical escolhe direita/esquerda. O retângulo final
+  é limitado aos quatro lados do viewport e a altura passa a encolher com scroll
+  interno quando necessário. Resize e troca de orientação reposicionam o painel
+  sem alterar foco, Escape, fechamento externo ou preferências. **Validado e
+  aprovado in-game pelo usuário em 2026-10-03** no candidato exato `0.2.154`.
+
 - **Chat — silenciamento completo de canais fixos, candidato 0.2.152 (2026-10-03):**
   a revisão do cliente nativo confirmou dois caminhos além do badge por aba: o
   contador agregado do Chat recolhido soma o estado interno de unread e toda
