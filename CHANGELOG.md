@@ -4,6 +4,43 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Card Mode — Rarity de Shiny mantém sua própria cor, candidato 0.2.144 (2026-10-03):**
+  após o ajuste 0.2.143 no nome do Pokémon, o Product Owner mostrou que a célula `Rarity`
+  de uma linha Shiny ainda ficava com o dourado fixo. A causa era uma regra histórica de
+  maior especificidade em `[data-shiny=true] > [data-attempt-column="2"]`, criada antes da
+  ordem atual das colunas, que ainda forçava `--ppbui-selected`. A regra agora também usa
+  `--rarity-color`; assim `Makuhita ✦ SHINY` e `Legendary` resolvem pelo mesmo token de
+  raridade. Layout, filtros, texto Shiny e semântica permanecem inalterados.
+
+- **Card Mode — Shiny herda a cor da raridade, candidato 0.2.143 (2026-10-03):**
+  após a validação do layout 0.2.142, o Product Owner apontou que o nome de Pokémon
+  Shiny no Hunt Story ainda usava o destaque dourado fixo de seleção. O nome completo
+  (`Pokémon ✦ SHINY`) agora usa `--rarity-color`; assim um Shiny Legendary recebe a cor
+  Legendary, um Shiny Rare recebe a cor Rare etc. O marcador textual `✦ SHINY`, a
+  semântica acessível e o layout permanecem inalterados.
+
+- **Card Mode — dashboard inteiro na viewport desktop, candidato 0.2.142 (2026-10-03):**
+  o Product Owner rejeitou o 0.2.141 porque, embora Cards já terminasse antes do Poké
+  Hub, ainda era necessário scroll vertical do Card Mode para alcançar `Economy / XP`.
+  A causa medida em Chromium era o grid 4×6 com linhas `auto`: Story, que ocupa as linhas
+  2–4, inflava o grid para ~1.382 px dentro de uma área útil de 887 px. O desktop 1180+
+  agora recebe um orçamento vertical explícito dentro de 100% da área útil; Summary,
+  Capture, Captured/Seen e Economy/XP usam densidade interna compacta apenas nesse
+  breakpoint, enquanto Story mantém seu próprio scroll local. Em 1915×975, 1728×874 e
+  1680×877, `scrollHeight === clientHeight` no root de Cards e Economy/XP permanece
+  completamente visível sem scroll vertical da página. Em alturas desktop muito baixas,
+  o scroll do root continua disponível como fallback em vez de ocultar conteúdo.
+
+- **Card Mode — usable viewport above bottom Poké Hub, candidato 0.2.141 (2026-10-03):**
+  o follow-up in-game do Product Owner mostrou que limitar Cards a `100dvh` ainda
+  permitia que o conteúdo passasse por baixo da toolbar/HUD fixos no rodapé. O
+  standalone agora mede a toolbar horizontal quando ela está realmente próxima do
+  rodapé, reserva até sua borda superior com 8 px de separação e recalcula essa
+  reserva em resize/reconcile. Cards continua dono do scroll vertical, `html/body`
+  continuam presos à viewport e a composição 4×6 não muda. Toolbar vertical ou
+  recolhida — ou uma toolbar horizontal arrastada para longe do rodapé — não cria
+  uma faixa vazia de largura total.
+
 - **Evolution Center — mode filter as buttons, candidato 0.2.140 (2026-10-02):**
   o filtro nativo `All Evolutions`, antes um dropdown com `All`/`Normal`/`Mega`, passa
   a ser apresentado como três botões segmentados `All`, `Normal` e `Mega`, sem substituir a lógica do jogo. O

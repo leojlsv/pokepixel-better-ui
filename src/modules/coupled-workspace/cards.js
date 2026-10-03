@@ -6,10 +6,10 @@ import { pokemonTypes } from "../hunts/type-chart.js";
 import { createElementIcon } from "../../core/element-icons.js";
 import { explicitNativeLeaderId, runAnalyzerSessionAction, setActiveTeamMember, teamControlSnapshot } from "./hunt-controls.js";
 
-const SPECIAL_RARITIES = Object.freeze(["epic", "legendary", "mythical"]);
-const SPECIAL_RARITY_SET = new Set(SPECIAL_RARITIES);
 const ITEM_RARITIES = Object.freeze(["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"]);
 const ITEM_RARITY_SET = new Set(ITEM_RARITIES);
+const STORY_RARITIES = ITEM_RARITIES;
+const STORY_RARITY_SET = ITEM_RARITY_SET;
 const NATIVE_SPECIES_MAX_ATTEMPTS = 4;
 const PLAYER_MOVESET_MAX_ATTEMPTS = 4;
 const LOOT_CATALOG_RETRY_MS = 5_000;
@@ -17,34 +17,34 @@ const LOOT_CATALOG_RETRY_MS = 5_000;
 const COPY = Object.freeze({
   en: Object.freeze({
     locale: "en-US", unavailable: "Unavailable", waitingTarget: "Waiting for target", noAttempts: "No attempts recorded in this Hunt.", noFilteredAttempts: "No attempts match these filters.", analyzerUnavailable: "Hunt Analyzer data unavailable.",
-    huntConsole: "Hunt console", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", expeditionInProgress: "Expedition in progress", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
+    huntConsole: "Hunt console", huntDashboard: "Hunt dashboard", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", expeditionInProgress: "Expedition in progress", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
     huntSummary: "Hunt summary", status: "Status", time: "Time", seen: "Seen", captured: "Captured", failed: "Failed", seenHour: "Seen/h", capturedSeen: "Captured / Seen", rarityCaption: "C/S · ✦ Shiny C/S",
     capture: "Capture", huntRate: "Hunt rate", lastAttemptChance: "Last attempt chance", epicFailed: "Epic+ failed", shinySeen: "Shiny seen", shinyCaptured: "Shiny captured",
     economyXp: "Economy / XP", revenue: "Revenue", totalRevenue: "Total revenue", directGold: "Direct gold", lootValue: "Loot value", autoSell: "Auto-sell", result: "Result", totalProfit: "Total profit", profitHour: "Profit/h", expenses: "Expenses", expensesHour: "Expenses/h", experience: "Experience", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Trainer/h", trainerTotal: "Trainer total",
     history: "Story", historyCaption: "Session events", huntStory: "Hunt Story", lootStory: "Loot Story", rarity: "Rarity", all: "All", none: "None", outcome: "Result", shiny: "Shiny", yes: "Yes", no: "No",
-    noLoot: "No loot recorded in this Hunt.", noFilteredLoot: "No loot matches this item rarity.", lootTotal: "Total", genetics: "Genetics", showGenetics: "Show captured genetics", hideGenetics: "Hide captured genetics", items: "Items", itemRarity: "Item rarity", noItemRarity: "No rarity", noItems: "No item drops",
+    noLoot: "No loot recorded in this Hunt.", noFilteredLoot: "No loot matches this item rarity.", lootTotal: "Total", items: "Items", itemRarity: "Item rarity", noItemRarity: "No rarity", noItems: "No item drops",
     hour: "Time", pokemon: "Pokémon", ball: "Ball", chance: "Chance", ivTotal: "IV Total", elements: "Types", quality: "Quality",
     running: "Hunting", paused: "Paused", waiting: "Waiting", noCanonicalTarget: "No single canonical target", exactValue: "Exact value", capturedOfSeen: "captured of", seenWord: "seen", shinyCv: "Shiny C/S",
     pause: "Pause", resume: "Resume", reset: "Reset", resetting: "Resetting…", resuming: "Resuming…", pausing: "Pausing…", huntReset: "Hunt reset and paused", huntResumed: "Hunt resumed", huntPaused: "Hunt paused", analyzerControlUnavailable: "Analyzer control unavailable",
     switching: "Switching…", activeUpdated: "Active Pokémon updated", switchUnavailable: "Switch unavailable",
     leaderAwaitHud: "POST accepted; waiting for Team HUD", leaderSyncUnavailable: "POST accepted; Team update was not delivered. Check Game or reload.", leaderSuperseded: "Another leader change occurred while the POST was pending", leaderHudUnexpected: "HUD changed to another leader",
-    raritySummaryAll: "Rarity · All", raritySummaryNone: "Rarity · None", raritySummarySome: count => `Rarity · ${count}/3`, gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown", shinyFilterHelp: "Shiny exceptions use the Shiny filter.",
+    gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown",
     sectionNavigation: "Jump to section", navTop: "Top", navSummary: "Summary", navEconomy: "Economy", navStory: "Story", copySummary: "Copy", copySummaryPending: "Copying…", copySummarySuccess: "Summary copied", copySummaryError: "Could not copy summary", copySummaryUnavailable: "Clipboard unavailable",
   }),
   pt: Object.freeze({
     locale: "pt-BR", unavailable: "Indisponível", waitingTarget: "Aguardando alvo", noAttempts: "Nenhuma tentativa registrada nesta hunt.", noFilteredAttempts: "Nenhuma tentativa corresponde aos filtros.", analyzerUnavailable: "Dados do Hunt Analyzer indisponíveis.",
-    huntConsole: "Console de hunt", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", expeditionInProgress: "Expedição em andamento", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
+    huntConsole: "Console de hunt", huntDashboard: "Painel da hunt", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", expeditionInProgress: "Expedição em andamento", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
     huntSummary: "Resumo da hunt", status: "Status", time: "Tempo", seen: "Vistos", captured: "Capturados", failed: "Falharam", seenHour: "Vistos/h", capturedSeen: "Capturados / Vistos", rarityCaption: "C/V · ✦ Shiny C/V",
     capture: "Captura", huntRate: "Taxa da hunt", lastAttemptChance: "Chance última tentativa", epicFailed: "Epic+ falharam", shinySeen: "Shiny vistos", shinyCaptured: "Shiny capturados",
     economyXp: "Economia / XP", revenue: "Receita", totalRevenue: "Receita total", directGold: "Gold direto", lootValue: "Loot (valor)", autoSell: "Auto-sell", result: "Resultado", totalProfit: "Lucro total", profitHour: "Lucro/h", expenses: "Gastos", expensesHour: "Gastos/h", experience: "Experiência", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Treinador/h", trainerTotal: "Treinador total",
     history: "Story", historyCaption: "Eventos da sessão", huntStory: "Hunt Story", lootStory: "Loot Story", rarity: "Raridade", all: "Todos", none: "Nenhuma", outcome: "Resultado", shiny: "Shiny", yes: "Sim", no: "Não",
-    noLoot: "Nenhum loot registrado nesta hunt.", noFilteredLoot: "Nenhum loot corresponde à raridade de item selecionada.", lootTotal: "Total", genetics: "Genética", showGenetics: "Exibir genética capturada", hideGenetics: "Ocultar genética capturada", items: "Itens", itemRarity: "Raridade do item", noItemRarity: "Sem raridade", noItems: "Sem drop de item",
+    noLoot: "Nenhum loot registrado nesta hunt.", noFilteredLoot: "Nenhum loot corresponde à raridade de item selecionada.", lootTotal: "Total", items: "Itens", itemRarity: "Raridade do item", noItemRarity: "Sem raridade", noItems: "Sem drop de item",
     hour: "Hora", pokemon: "Pokémon", ball: "Ball", chance: "Chance", ivTotal: "IV Total", elements: "Elementos", quality: "Quality",
     running: "Caçando", paused: "Pausado", waiting: "Aguardando", noCanonicalTarget: "Sem alvo canônico único", exactValue: "Valor exato", capturedOfSeen: "capturados de", seenWord: "vistos", shinyCv: "Shiny C/V",
     pause: "Pausar", resume: "Retomar", reset: "Resetar", resetting: "Resetando…", resuming: "Retomando…", pausing: "Pausando…", huntReset: "Hunt resetada e pausada", huntResumed: "Hunt retomada", huntPaused: "Hunt pausada", analyzerControlUnavailable: "Controle do Analyzer indisponível",
     switching: "Trocando…", activeUpdated: "Ativo atualizado", switchUnavailable: "Troca indisponível",
     leaderAwaitHud: "POST aceito; aguardando Team HUD", leaderSyncUnavailable: "POST aceito; atualização não chegou ao Team. Confira Game ou recarregue.", leaderSuperseded: "Outro líder foi ativado durante a troca", leaderHudUnexpected: "HUD mudou para outro líder",
-    raritySummaryAll: "Raridade · Todas", raritySummaryNone: "Raridade · Nenhuma", raritySummarySome: count => `Raridade · ${count}/3`, gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown", shinyFilterHelp: "Exceções Shiny usam o filtro Shiny.",
+    gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown",
     sectionNavigation: "Ir para seção", navTop: "Topo", navSummary: "Resumo", navEconomy: "Economia", navStory: "Histórico", copySummary: "Copiar", copySummaryPending: "Copiando…", copySummarySuccess: "Resumo copiado", copySummaryError: "Não foi possível copiar o resumo", copySummaryUnavailable: "Área de transferência indisponível",
   }),
 });
@@ -434,16 +434,16 @@ function playerSnapshot(win, state) {
     state.playerSpeciesRequest = null;
     state.playerSpeciesAttempts = 0;
   }
-  if (!state.textOnly && visualRoot && !state.playerVisualReader && state.playerSpriteAttempts < 4) {
+  if (state.combatArt && visualRoot && !state.playerVisualReader && state.playerSpriteAttempts < 4) {
     state.playerVisualReader = teamPresetVisualReader(visualRoot, { resolveSprites: true, retryMissing: true });
   }
-  const visual = state.textOnly ? {} : (state.playerVisualReader?.(active) || {});
-  const portraitSprite = state.textOnly || visual.sprite || !visualRoot ? "" : activePortraitSprite(visualRoot, win);
-  const sprite = state.textOnly ? "" : (visual.sprite || portraitSprite || requestPlayerSpeciesSprite(win, state, active));
-  if (!state.textOnly && !sprite && state.playerSpriteAttempts < 4) {
+  const visual = state.combatArt ? (state.playerVisualReader?.(active) || {}) : {};
+  const portraitSprite = !state.combatArt || visual.sprite || !visualRoot ? "" : activePortraitSprite(visualRoot, win);
+  const sprite = state.combatArt ? (visual.sprite || portraitSprite || requestPlayerSpeciesSprite(win, state, active)) : "";
+  if (state.combatArt && !sprite && state.playerSpriteAttempts < 4) {
     state.playerSpriteAttempts += 1;
     state.playerVisualReader = null;
-  } else if (!state.textOnly && sprite) {
+  } else if (state.combatArt && sprite) {
     state.playerSpriteAttempts = 4;
   }
   const hp = Number.isFinite(active.hp) ? active.hp : null;
@@ -571,11 +571,36 @@ function genderLabel(value, copy) {
   return "—";
 }
 
-function captureDetailText(details, copy) {
+function genderKey(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (["male", "m", "masculino", "♂"].includes(key)) return "male";
+  if (["female", "f", "feminino", "♀"].includes(key)) return "female";
+  return "";
+}
+
+function appendCaptureDetails(root, row, details, copy) {
   const source = details && typeof details === "object" ? details : {};
   const ivs = source.ivs && typeof source.ivs === "object" ? source.ivs : {};
-  const stat = (label, key) => `${label} ${Number.isFinite(ivs[key]) ? ivs[key] : "—"}`;
-  return `${copy.gender} ${genderLabel(source.gender, copy)} · ${copy.nature} ${text(source.nature)} · ${copy.iv} ${Number.isFinite(source.ivTotal) ? source.ivTotal : "—"} · ${stat("HP", "hp")} · ${stat("ATK", "atk")} · ${stat("SpA", "spa")} · ${stat("DEF", "def")} · ${stat("SpD", "spd")} · ${stat("SPE", "spe")}`;
+  const detailsNode = root.ownerDocument.createElement("div");
+  detailsNode.className = "ppbui-cards-attempt-details";
+  const add = (label, value, className = "", data = {}) => {
+    const item = root.ownerDocument.createElement("span");
+    item.className = `ppbui-cards-attempt-detail${className ? ` ${className}` : ""}`;
+    for (const [key, dataValue] of Object.entries(data)) item.dataset[key] = dataValue;
+    const labelNode = root.ownerDocument.createElement("b");
+    labelNode.textContent = label;
+    const valueNode = root.ownerDocument.createElement("i");
+    valueNode.textContent = value;
+    item.append(labelNode, valueNode);
+    detailsNode.append(item);
+  };
+  const gender = genderKey(source.gender);
+  add(copy.gender, genderLabel(source.gender, copy), "ppbui-cards-attempt-gender", { gender });
+  add(copy.nature, text(source.nature));
+  for (const [label, key] of [["HP", "hp"], ["ATK", "atk"], ["DEF", "def"], ["SpA", "spa"], ["SpD", "spd"], ["SPE", "spe"]]) {
+    add(label, Number.isFinite(ivs[key]) ? String(ivs[key]) : "—");
+  }
+  row.append(detailsNode);
 }
 
 function setSprite(root, state, key, src, fallbackText = "SEM IMG") {
@@ -672,13 +697,13 @@ function createAttemptEntry(root, attempt, filters, columns, now) {
   row.dataset.shiny = attempt.shiny === true ? "true" : "false";
   const values = [
     relativeTime(attempt.atMs, locale, now),
-    knownRarity(attempt.rarity) ? (rarityLabels[attempt.rarity] || text(attempt.rarity)) : "—",
     text(attempt.species),
+    knownRarity(attempt.rarity) ? (rarityLabels[attempt.rarity] || text(attempt.rarity)) : "—",
     Number.isFinite(attempt.qualityMultiplier) ? `×${number(attempt.qualityMultiplier, 3, locale)}` : "—",
+    Number.isFinite(attempt.ivTotal) ? number(attempt.ivTotal, 0, locale) : "—",
     attempt.result === "captured" ? copy.captured : copy.failed,
     text(attempt.ball),
-    percent(attempt.chance, 3, locale),
-    Number.isFinite(attempt.ivTotal) ? number(attempt.ivTotal, 0, locale) : "—"
+    percent(attempt.chance, 3, locale)
   ];
   let timeNode = null;
   let image = null;
@@ -687,11 +712,11 @@ function createAttemptEntry(root, attempt, filters, columns, now) {
     cell.dataset.attemptColumn = String(columnIndex);
     cell.dataset.label = columns[columnIndex];
     cell.setAttribute("role", "group");
-    const accessibleValue = columnIndex === 2 && attempt.shiny === true ? `${value} · SHINY` : value;
+    const accessibleValue = columnIndex === 1 && attempt.shiny === true ? `${value} · SHINY` : value;
     cell.setAttribute("aria-label", `${columns[columnIndex]}: ${accessibleValue}`);
     cell.title = `${columns[columnIndex]}: ${accessibleValue}`;
     if (columnIndex === 0) timeNode = cell;
-    if (columnIndex === 2) {
+    if (columnIndex === 1) {
       cell.className = "ppbui-cards-attempt-pokemon";
       if (!filters.textOnly) {
         image = root.ownerDocument.createElement("img");
@@ -706,13 +731,7 @@ function createAttemptEntry(root, attempt, filters, columns, now) {
     } else cell.textContent = value;
     row.append(cell);
   });
-  if (attempt.result === "captured") {
-    const details = root.ownerDocument.createElement("div");
-    details.className = "ppbui-cards-attempt-details";
-    details.dataset.label = copy.genetics;
-    details.textContent = captureDetailText(attempt.captureDetails, copy);
-    row.append(details);
-  }
+  if (attempt.result === "captured") appendCaptureDetails(root, row, attempt.captureDetails, copy);
   return {
     key: JSON.stringify(attempt),
     row,
@@ -733,7 +752,7 @@ function renderAttempts(root, attempts, available, filters) {
     && (attempt.result === "captured" || attempt.result === "fled")
   )) : [];
   const filtered = rows.filter(attempt => (
-    (SPECIAL_RARITY_SET.has(attempt.rarity) ? filters.attemptRarities.has(attempt.rarity) : attempt.shiny === true)
+    STORY_RARITY_SET.has(attempt.rarity) && filters.attemptRarities.has(attempt.rarity)
     && (filters.attemptShiny === "" || (filters.attemptShiny === "yes") === (attempt.shiny === true))
     && (filters.attemptResult === "" || filters.attemptResult === attempt.result)
   ));
@@ -771,7 +790,7 @@ function renderAttempts(root, attempts, available, filters) {
   let suffix = 0;
   while (suffix < previous.length - prefix && suffix < nextKeys.length - prefix
     && previous[previous.length - suffix - 1].key === nextKeys[nextKeys.length - suffix - 1]) suffix++;
-  const columns = [copy.hour, copy.rarity, copy.pokemon, copy.quality, copy.outcome, copy.ball, copy.chance, copy.ivTotal];
+  const columns = [copy.hour, copy.pokemon, copy.rarity, copy.quality, copy.ivTotal, copy.outcome, copy.ball, copy.chance];
   const fragment = root.ownerDocument.createDocumentFragment();
   const inserted = [];
   for (let index = prefix; index < nextKeys.length - suffix; index++) {
@@ -798,6 +817,20 @@ function renderAttempts(root, attempts, available, filters) {
   view.spriteRevision = filters.speciesSpriteRevision;
   body.dataset.signature = signature;
   refreshRelativeTimes(view.entries, locale, now);
+}
+
+function storyAttempts(summary) {
+  const attempts = Array.isArray(summary?.attemptHistory) ? summary.attemptHistory : [];
+  const specials = Array.isArray(summary?.specialHistory) ? summary.specialHistory : [];
+  if (!attempts.length) return specials;
+  if (!specials.length) return attempts;
+  const seen = new Set(attempts.map(attempt => JSON.stringify(attempt)));
+  return [...attempts, ...specials.filter(attempt => {
+    const key = JSON.stringify(attempt);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  })];
 }
 
 function renderLootHistory(root, lootHistory, available, state) {
@@ -908,7 +941,7 @@ function markup(context) {
     .filter(([key]) => key !== "unknown")
     .map(([key, label]) => `<div data-rarity-key="${key}" data-rarity="${key}"><span data-card-rarity-label="${key}">${label}</span><strong>—/—</strong><small data-rarity-shiny hidden>✦ —/—</small></div>`)
     .join("");
-  const historyRarities = SPECIAL_RARITIES.map(key => `<label><input type="checkbox" data-card-attempt-rarity value="${key}" checked><span data-card-rarity-label="${key}">${rarityLabels[key]}</span></label>`).join("");
+  const historyRarities = STORY_RARITIES.map(key => `<label data-rarity="${key}"><input type="checkbox" data-card-attempt-rarity value="${key}" checked><span data-card-rarity-label="${key}">${rarityLabels[key]}</span></label>`).join("");
   const lootRarities = ITEM_RARITIES.map(key => `<option value="${key}" data-card-rarity-label="${key}">${rarityLabels[key]}</option>`).join("");
   return `
     <nav class="ppbui-cards-shortcuts" data-card-shortcuts hidden aria-label="${copy.sectionNavigation}">
@@ -919,8 +952,9 @@ function markup(context) {
         <button type="button" data-card-jump="story" data-card-copy="navStory">${copy.navStory}</button>
       </div>
     </nav>
-    <section class="ppbui-cards-battle" data-card-aria="battle">
-      <div class="ppbui-cards-battle-pair">
+    <section class="ppbui-cards-grid" data-card-aria="dashboard">
+      <section class="ppbui-cards-battle" data-card-aria="battle" data-card-layout="battle">
+        <div class="ppbui-cards-battle-pair">
         <aside class="ppbui-cards-team-switch" data-card-aria="teamRoster">
           <div class="ppbui-cards-team-switch-head"><span data-card-copy="switchPokemon">${copy.switchPokemon}</span><span class="ppbui-cards-team-switch-short" data-card-copy="switchPokemonShort" aria-hidden="true">${copy.switchPokemonShort}</span><small data-card-control-status="team" role="status" aria-live="polite"></small></div>
           <div class="ppbui-cards-team-list" data-card-team-list></div>
@@ -933,10 +967,9 @@ function markup(context) {
           <div class="ppbui-cards-combat-art"><img data-card-sprite="target" alt="" aria-hidden="true"><span data-card-sprite-fallback="target" aria-hidden="true" data-card-copy="noTarget">${copy.noTarget}</span></div>
           <div class="ppbui-cards-combat-copy"><div class="ppbui-cards-combat-kicker"><small data-card-copy="target">${copy.target}</small><b class="ppbui-cards-rarity-badge" data-card-target-rarity hidden>—</b><b class="ppbui-cards-shiny-badge" data-card-shiny-badge hidden>✦ SHINY</b></div><strong data-card-field="target-name">${copy.waitingTarget}</strong><span data-card-field="target-meta">—</span><div class="ppbui-cards-elements" data-card-elements="target" hidden></div></div>
         </article>
-      </div>
-    </section>
-    <section class="ppbui-cards-grid" data-card-aria="huntData">
-      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--summary"><div class="ppbui-cards-summary-head"><h2 data-card-copy="huntSummary">${copy.huntSummary}</h2><div class="ppbui-cards-session-actions"><button type="button" data-card-copy-summary data-card-copy="copySummary">${copy.copySummary}</button><button type="button" data-card-session-pause>${copy.pause}</button><button type="button" data-card-session-reset data-card-copy="reset">${copy.reset}</button></div><small data-card-control-status="analyzer" role="status" aria-live="polite"></small></div><small class="ppbui-cards-copy-status" data-card-control-status="copy-summary" role="status" aria-live="polite"></small><div class="ppbui-cards-stat-grid">
+        </div>
+      </section>
+      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--summary" data-card-layout="hunt-summary"><div class="ppbui-cards-summary-head"><h2 data-card-copy="huntSummary">${copy.huntSummary}</h2><div class="ppbui-cards-session-actions"><button type="button" data-card-copy-summary data-card-copy="copySummary">${copy.copySummary}</button><button type="button" data-card-session-pause>${copy.pause}</button><button type="button" data-card-session-reset data-card-copy="reset">${copy.reset}</button></div><small data-card-control-status="analyzer" role="status" aria-live="polite"></small></div><small class="ppbui-cards-copy-status" data-card-control-status="copy-summary" role="status" aria-live="polite"></small><div class="ppbui-cards-stat-grid">
         <div><span data-card-copy="status">${copy.status}</span><strong data-card-field="status">—</strong></div>
         <div><span data-card-copy="time">${copy.time}</span><strong data-card-field="time">—</strong></div>
         <div><span data-card-copy="seen">${copy.seen}</span><strong data-card-field="seen">—</strong></div>
@@ -944,17 +977,17 @@ function markup(context) {
         <div><span data-card-copy="failed">${copy.failed}</span><strong data-card-field="failed">—</strong></div>
         <div><span data-card-copy="seenHour">${copy.seenHour}</span><strong data-card-field="seen-hour">—</strong></div>
       </div></article>
-      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--capture"><h2 data-card-copy="capture">${copy.capture}</h2><div class="ppbui-cards-stat-grid">
+      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--capture" data-card-layout="capture"><h2 data-card-copy="capture">${copy.capture}</h2><div class="ppbui-cards-stat-grid">
         <div><span data-card-copy="huntRate">${copy.huntRate}</span><strong data-card-field="capture-rate">—</strong></div>
         <div><span data-card-copy="lastAttemptChance">${copy.lastAttemptChance}</span><strong data-card-field="last-chance">—</strong></div>
         <div><span data-card-copy="epicFailed">${copy.epicFailed}</span><strong data-card-field="epic-failed">—</strong></div>
         <div><span data-card-copy="shinySeen">${copy.shinySeen}</span><strong data-card-field="shiny-seen">—</strong></div>
         <div><span data-card-copy="shinyCaptured">${copy.shinyCaptured}</span><strong data-card-field="shiny-captured">—</strong></div>
       </div></article>
-      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--rarity"><h2><span data-card-copy="capturedSeen">${copy.capturedSeen}</span><small data-card-copy="rarityCaption">${copy.rarityCaption}</small></h2><div class="ppbui-cards-rarity" data-card-rarity-grid>
+      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--rarity" data-card-layout="captured-seen"><h2><span data-card-copy="capturedSeen">${copy.capturedSeen}</span><small data-card-copy="rarityCaption">${copy.rarityCaption}</small></h2><div class="ppbui-cards-rarity" data-card-rarity-grid>
         ${rarityTiles}
       </div></article>
-      <article class="ppbui-cards-card ppbui-cards-economy"><h2 data-card-copy="economyXp">${copy.economyXp}</h2>
+      <article class="ppbui-cards-card ppbui-cards-economy" data-card-layout="economy-xp"><h2 data-card-copy="economyXp">${copy.economyXp}</h2>
         <div class="ppbui-cards-economy-groups">
           <section class="ppbui-cards-economy-group ppbui-cards-economy-group--revenue"><h3 data-card-copy="revenue">${copy.revenue}</h3><div class="ppbui-cards-stat-grid">
             <div class="ppbui-cards-kpi-primary"><span data-card-copy="totalRevenue">${copy.totalRevenue}</span><strong data-card-field="revenue">—</strong></div>
@@ -977,7 +1010,7 @@ function markup(context) {
           </div></section>
         </div>
       </article>
-      <article class="ppbui-cards-card ppbui-cards-history">
+      <article class="ppbui-cards-card ppbui-cards-history" data-card-layout="history">
         <div class="ppbui-cards-story-head">
           <h2><span data-card-copy="history">${copy.history}</span><small data-card-copy="historyCaption">${copy.historyCaption}</small></h2>
           <div class="ppbui-cards-story-tabs" role="tablist" aria-label="${copy.history}">
@@ -987,20 +1020,20 @@ function markup(context) {
         </div>
         <section class="ppbui-cards-story-panel" id="ppbui-card-story-panel-hunt" role="tabpanel" aria-labelledby="ppbui-card-story-tab-hunt" data-card-story-panel="hunt">
           <div class="ppbui-cards-history-filters">
-            <details class="ppbui-cards-rarity-filter"><summary data-card-attempt-rarity-summary>${copy.raritySummaryAll}</summary><fieldset>${historyRarities}</fieldset></details>
+            <fieldset class="ppbui-cards-rarity-filter"><label class="ppbui-cards-rarity-filter-all"><input type="checkbox" data-card-attempt-rarity-all checked><span data-card-copy="all">${copy.all}</span></label>${historyRarities}</fieldset>
             <div class="ppbui-cards-result-filter" role="group" aria-label="${copy.outcome}"><span data-card-copy="outcome">${copy.outcome}</span><div class="ppbui-cards-result-options"><button type="button" data-card-attempt-result="" aria-pressed="true" tabindex="0" data-card-copy="all">${copy.all}</button><button type="button" data-card-attempt-result="captured" aria-pressed="false" tabindex="-1" data-card-copy="captured">${copy.captured}</button><button type="button" data-card-attempt-result="fled" aria-pressed="false" tabindex="-1" data-card-copy="failed">${copy.failed}</button></div></div>
             <label><span data-card-copy="shiny">${copy.shiny}</span><select data-card-attempt-shiny><option value="" data-card-copy="all">${copy.all}</option><option value="yes" data-card-copy="yes">${copy.yes}</option><option value="no" data-card-copy="no">${copy.no}</option></select></label>
           </div>
           <div class="ppbui-cards-attempt-scroll" data-card-attempt-scroll>
             <div class="ppbui-cards-attempt-labels" aria-hidden="true">
               <span data-attempt-column="0" data-card-copy="hour">${copy.hour}</span>
-              <span data-attempt-column="1" data-card-copy="rarity">${copy.rarity}</span>
-              <span data-attempt-column="2" data-card-copy="pokemon">${copy.pokemon}</span>
+              <span data-attempt-column="1" data-card-copy="pokemon">${copy.pokemon}</span>
+              <span data-attempt-column="2" data-card-copy="rarity">${copy.rarity}</span>
               <span data-attempt-column="3" data-card-copy="quality">${copy.quality}</span>
-              <span data-attempt-column="4" data-card-copy="outcome">${copy.outcome}</span>
-              <span data-attempt-column="5" data-card-copy="ball">${copy.ball}</span>
-              <span data-attempt-column="6" data-card-copy="chance">${copy.chance}</span>
-              <span data-attempt-column="7" data-card-copy="ivTotal">${copy.ivTotal}</span>
+              <span data-attempt-column="4" data-card-copy="ivTotal">${copy.ivTotal}</span>
+              <span data-attempt-column="5" data-card-copy="outcome">${copy.outcome}</span>
+              <span data-attempt-column="6" data-card-copy="ball">${copy.ball}</span>
+              <span data-attempt-column="7" data-card-copy="chance">${copy.chance}</span>
             </div>
             <div class="ppbui-cards-attempt-table" role="list" data-card-aria="historyTable">
               <div data-card-attempt-body></div>
@@ -1034,18 +1067,18 @@ function applyStaticLocale(root, context) {
     shiny.options[1].textContent = copy.yes;
     shiny.options[2].textContent = copy.no;
   }
-  const specialRarityLabels = SPECIAL_RARITIES.map(key => rarityLabels[key] || key).join(", ");
+  const storyRarityLabels = STORY_RARITIES.map(key => rarityLabels[key] || key).join(", ");
   root.setAttribute("aria-label", copy.huntConsole);
   cardNode(root, "[data-card-shortcuts]")?.setAttribute("aria-label", copy.sectionNavigation);
   cardNode(root, ".ppbui-cards-result-filter")?.setAttribute("aria-label", copy.outcome);
   cardNode(root, '[data-card-aria="battle"]')?.setAttribute("aria-label", `${copy.active} / ${copy.target}`);
   cardNode(root, '[data-card-aria="teamRoster"]')?.setAttribute("aria-label", copy.switchPokemon);
-  cardNode(root, '[data-card-aria="huntData"]')?.setAttribute("aria-label", copy.huntSummary);
-  cardNode(root, '[data-card-aria="historyTable"]')?.setAttribute("aria-label", `${copy.huntStory}: ${specialRarityLabels} + ${copy.shiny}`);
+  cardNode(root, '[data-card-aria="dashboard"]')?.setAttribute("aria-label", copy.huntDashboard);
+  cardNode(root, '[data-card-aria="historyTable"]')?.setAttribute("aria-label", `${copy.huntStory}: ${storyRarityLabels} + ${copy.shiny}`);
   cardNode(root, '[data-card-aria="lootTable"]')?.setAttribute("aria-label", copy.lootStory);
   cardNode(root, ".ppbui-cards-story-tabs")?.setAttribute("aria-label", copy.history);
-  const rarityFieldset = cardNode(root, ".ppbui-cards-rarity-filter fieldset");
-  rarityFieldset?.setAttribute("aria-label", `${copy.rarity}: ${specialRarityLabels}. ${copy.shinyFilterHelp}`);
+  const rarityFieldset = cardNode(root, ".ppbui-cards-rarity-filter");
+  rarityFieldset?.setAttribute("aria-label", `${copy.rarity}: ${storyRarityLabels}`);
   cardNode(root, "[data-card-player-hp-meter]")?.setAttribute("aria-label", `HP · ${copy.active}`);
   cardNode(root, "[data-card-player-exp-meter]")?.setAttribute("aria-label", `EXP · ${copy.active}`);
 }
@@ -1054,22 +1087,21 @@ function styles() {
   return `
     .ppbui-coupled-cards{position:fixed;inset:0;z-index:2147482000;box-sizing:border-box;overflow:auto;padding:8px;background:var(--ppbui-bg-1,rgba(22,29,32,.92));color:var(--ppbui-text,#ebecdc);font:12px/1.35 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}
     .ppbui-coupled-cards[hidden]{display:none!important}.ppbui-coupled-cards *{box-sizing:border-box}.ppbui-coupled-cards h2{margin:0 0 9px;color:var(--section-accent,var(--ppbui-selected,#e3c054));font-size:12px;font-weight:800;letter-spacing:.045em;text-transform:uppercase}.ppbui-coupled-cards h2 small{margin-left:8px;color:var(--ppbui-text-subtle,#c3d5c7);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:0;text-transform:none}.ppbui-coupled-cards h3{margin:0 0 6px;color:var(--group-accent,var(--ppbui-text,#ebecdc));font-size:10px;letter-spacing:.04em;text-transform:uppercase}
-    .ppbui-coupled-cards[data-ppbui-text-only="true"]{position:relative;inset:auto;z-index:auto;min-height:100vh;contain:layout paint style}
-    .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-combat-art{display:none!important}
-    .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-combat-card{grid-template-columns:minmax(0,1fr)}
+    .ppbui-coupled-cards[data-ppbui-text-only="true"]{position:relative;inset:auto;z-index:auto;width:100%;height:calc(100vh - var(--ppbui-card-mode-bottom-inset,0px));height:calc(100dvh - var(--ppbui-card-mode-bottom-inset,0px));min-height:0;max-height:calc(100vh - var(--ppbui-card-mode-bottom-inset,0px));max-height:calc(100dvh - var(--ppbui-card-mode-bottom-inset,0px));overflow:auto;overscroll-behavior:contain;contain:layout paint style}
+    .ppbui-coupled-cards[data-ppbui-text-only="true"]:not([data-ppbui-combat-art="true"]) .ppbui-cards-combat-art{display:none!important}
+    .ppbui-coupled-cards[data-ppbui-text-only="true"]:not([data-ppbui-combat-art="true"]) .ppbui-cards-combat-card{grid-template-columns:minmax(0,1fr)}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-element-icon{display:none!important}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-element i{display:inline}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] .ppbui-cards-meter-row{grid-template-columns:minmax(0,1fr)}
     .ppbui-coupled-cards[data-ppbui-text-only="true"] :is(.ppbui-cards-hp-meter,.ppbui-cards-exp-meter){display:none!important}
     .ppbui-coupled-cards [data-rarity="weak"]{--rarity-color:var(--quality-weak,#878573)}.ppbui-coupled-cards [data-rarity="common"]{--rarity-color:var(--quality-common,#c3d5c7)}.ppbui-coupled-cards [data-rarity="uncommon"]{--rarity-color:var(--quality-uncommon,#55a058)}.ppbui-coupled-cards [data-rarity="rare"]{--rarity-color:var(--quality-rare,#2485a6)}.ppbui-coupled-cards [data-rarity="epic"]{--rarity-color:var(--quality-epic,#e3c054)}.ppbui-coupled-cards [data-rarity="legendary"]{--rarity-color:var(--quality-legendary,#e6928a)}.ppbui-coupled-cards [data-rarity="mythical"]{--rarity-color:var(--quality-mythical,#54bad2)}.ppbui-coupled-cards [data-rarity="unknown"]{--rarity-color:var(--ppbui-border-strong,#6b6543)}
-    .ppbui-cards-battle{height:158px;max-height:164px;margin:0 0 8px}.ppbui-cards-battle-pair{display:grid;grid-template-columns:minmax(126px,.58fr) minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:5px;height:100%;min-height:0}.ppbui-cards-team-switch{display:grid;grid-template-rows:18px minmax(0,1fr);min-width:0;padding:4px;border:1px solid var(--ppbui-accent-hi,#54bad2);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-team-switch-head{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;color:var(--ppbui-accent-hi,#54bad2);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.04em;text-transform:uppercase}.ppbui-cards-team-switch-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-team-switch-head>small{min-width:0;overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:700 7px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:0;text-overflow:ellipsis;text-transform:none;white-space:nowrap}.ppbui-cards-team-switch-head>small[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-team-switch-head>small[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-team-switch-head>small[data-tone="busy"]{color:var(--ppbui-selected,#e3c054)}.ppbui-cards-team-list{display:grid;grid-template-rows:repeat(6,minmax(0,1fr));gap:2px;min-height:0}.ppbui-cards-team-member{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;min-width:0;min-height:0;padding:1px 4px;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-text,#ebecdc);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-align:left}.ppbui-cards-team-member>strong{min-width:0;overflow:hidden;font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-team-member>span{color:var(--ppbui-text-muted,#c3d5c7);font:700 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-team-member[aria-pressed="true"]{border-color:var(--ppbui-accent-hi,#54bad2);background:color-mix(in srgb,var(--ppbui-accent-hi,#54bad2) 12%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-team-member:not(:disabled):hover{border-color:var(--ppbui-accent-hi,#54bad2);background:var(--ppbui-bg-2,rgba(35,44,46,.96));cursor:pointer}.ppbui-cards-team-member:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-team-member:disabled{cursor:default;opacity:.52}.ppbui-cards-team-member--empty{color:var(--ppbui-text-subtle,#c3d5c7);opacity:.42}.ppbui-cards-combat-card{--combat-accent:var(--ppbui-border-strong,#6b6543);display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:8px;min-width:0;padding:7px 8px;border:1px solid var(--combat-accent);border-bottom-width:1px;border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-combat-card--player{--combat-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-combat-card--target{--combat-accent:var(--rarity-color,var(--ppbui-border-strong,#6b6543))}.ppbui-cards-combat-card--target[data-shiny="true"]{border-top-color:var(--ppbui-accent-hi,#54bad2);border-right-color:var(--ppbui-accent-hi,#54bad2);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-combat-art{display:grid;width:70px;height:70px;place-items:center;overflow:hidden;border:1px solid var(--combat-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-combat-art img{max-width:66px;max-height:66px;image-rendering:pixelated}.ppbui-cards-combat-art span{padding:3px;color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1.1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-align:center}.ppbui-cards-combat-copy{min-width:0}.ppbui-cards-combat-card small{display:block;margin-bottom:2px;color:var(--combat-accent);font-size:8px;font-weight:800;letter-spacing:.09em}.ppbui-cards-combat-card strong{display:block;overflow:hidden;color:var(--ppbui-text,#ebecdc);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-combat-card>div:last-child>span{display:block;margin-top:2px;overflow:hidden;color:var(--ppbui-text-muted,#c3d5c7);font:600 10px/1.2 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-combat-kicker{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}.ppbui-cards-combat-kicker>small{margin:0;flex:0 0 auto}.ppbui-cards-rarity-badge,.ppbui-cards-shiny-badge{display:inline-grid!important;place-items:center;min-height:16px;padding:1px 4px;border-radius:var(--ppbui-radius-badge,4px);font:900 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)!important;letter-spacing:.07em;white-space:nowrap}.ppbui-cards-rarity-badge{border:1px solid var(--rarity-color,var(--ppbui-border-strong,#6b6543));background:color-mix(in srgb,var(--rarity-color,var(--ppbui-border-strong,#6b6543)) 14%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7))!important}.ppbui-cards-shiny-badge{border:1px solid var(--ppbui-accent-hi,#54bad2);background:color-mix(in srgb,var(--ppbui-accent-hi,#54bad2) 18%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--ppbui-selected,#e3c054)!important}.ppbui-cards-rarity-badge[hidden],.ppbui-cards-shiny-badge[hidden]{display:none!important}.ppbui-cards-elements{display:flex;align-items:center;gap:4px;min-width:0;margin-top:3px;overflow:hidden}.ppbui-cards-elements[hidden]{display:none!important}.ppbui-cards-element{display:flex;align-items:center;gap:2px;min-width:0}.ppbui-cards-element .ppbui-element-icon{flex:0 0 auto}.ppbui-cards-element i{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);font-style:normal;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-moves{display:flex;align-items:center;gap:3px;min-height:19px;margin-top:3px}.ppbui-cards-moves[hidden]{display:none!important}.ppbui-cards-move{display:grid;width:19px;height:19px;place-items:center;overflow:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-move img{width:17px;height:17px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-meter-stack{display:grid;gap:2px;margin-top:3px}.ppbui-cards-meter-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:4px;min-width:0}.ppbui-cards-meter-row[hidden]{display:none!important}.ppbui-cards-meter-row>span{display:flex!important;justify-content:flex-start;gap:3px;margin:0!important;color:var(--ppbui-text-subtle,#c3d5c7)!important;font:700 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif)!important;white-space:nowrap}.ppbui-cards-meter-row>span b{color:var(--combat-accent);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-meter-row>span i{max-width:105px;overflow:hidden;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-hp-meter,.ppbui-cards-exp-meter{width:100%;height:4px;overflow:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-hp-meter>i,.ppbui-cards-exp-meter>i{display:block;width:0;height:100%}.ppbui-cards-hp-meter>i{background:var(--ppbui-success,#55a058)}.ppbui-cards-hp-meter[data-state="low"]>i{background:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-exp-meter>i{background:var(--ppbui-accent-hi,#54bad2)}
-    .ppbui-cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}.ppbui-cards-card{--section-accent:var(--ppbui-border-strong,#6b6543);min-width:0;height:100%;padding:10px;border:1px solid var(--ppbui-border,#6b6543);border-top:1px solid var(--section-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-card--summary{--section-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-card--rarity{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-card--capture{--section-accent:var(--ppbui-success,#55a058)}.ppbui-cards-history{--section-accent:var(--ppbui-info,#2485a6);grid-column:1/-1}.ppbui-cards-economy{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}.ppbui-cards-stat-grid>div{min-width:0;padding:7px 8px;border-left:1px solid color-mix(in srgb,var(--section-accent,var(--group-accent,#878573)) 68%,transparent);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-stat-grid span{display:block;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:650}.ppbui-cards-stat-grid strong{display:block;margin-top:3px;color:var(--ppbui-text,#ebecdc);font:800 14px/1.15 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums}.ppbui-cards-stat-grid strong[data-tone="positive"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-stat-grid strong[data-tone="negative"]{color:var(--ppbui-danger-hi,#e6928a)}
+    .ppbui-cards-battle{height:158px;max-height:164px;margin:0;grid-column:1/-1}.ppbui-cards-battle-pair{display:grid;grid-template-columns:minmax(126px,.58fr) minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:5px;height:100%;min-height:0}.ppbui-cards-team-switch{display:grid;grid-template-rows:18px minmax(0,1fr);min-width:0;padding:4px;border:1px solid var(--ppbui-accent-hi,#54bad2);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-team-switch-head{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;color:var(--ppbui-accent-hi,#54bad2);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.04em;text-transform:uppercase}.ppbui-cards-team-switch-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-team-switch-head>small{min-width:0;overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:700 7px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:0;text-overflow:ellipsis;text-transform:none;white-space:nowrap}.ppbui-cards-team-switch-head>small[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-team-switch-head>small[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-team-switch-head>small[data-tone="busy"]{color:var(--ppbui-selected,#e3c054)}.ppbui-cards-team-list{display:grid;grid-template-rows:repeat(6,minmax(0,1fr));gap:2px;min-height:0}.ppbui-cards-team-member{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;min-width:0;min-height:0;padding:1px 4px;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-text,#ebecdc);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-align:left}.ppbui-cards-team-member>strong{min-width:0;overflow:hidden;font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-team-member>span{color:var(--ppbui-text-muted,#c3d5c7);font:700 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-team-member[aria-pressed="true"]{border-color:var(--ppbui-accent-hi,#54bad2);background:color-mix(in srgb,var(--ppbui-accent-hi,#54bad2) 12%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-team-member:not(:disabled):hover{border-color:var(--ppbui-accent-hi,#54bad2);background:var(--ppbui-bg-2,rgba(35,44,46,.96));cursor:pointer}.ppbui-cards-team-member:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-team-member:disabled{cursor:default;opacity:.52}.ppbui-cards-team-member--empty{color:var(--ppbui-text-subtle,#c3d5c7);opacity:.42}.ppbui-cards-combat-card{--combat-accent:var(--ppbui-border-strong,#6b6543);display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:8px;min-width:0;padding:7px 8px;border:1px solid var(--combat-accent);border-bottom-width:1px;border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-combat-card--player{--combat-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-combat-card--target{--combat-accent:var(--rarity-color,var(--ppbui-border-strong,#6b6543))}.ppbui-cards-combat-card--target[data-shiny="true"]{border-top-color:var(--ppbui-accent-hi,#54bad2);border-right-color:var(--ppbui-accent-hi,#54bad2);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-combat-art{display:grid;width:70px;height:70px;place-items:center;overflow:hidden;border:1px solid var(--combat-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-combat-art img{max-width:66px;max-height:66px;image-rendering:pixelated}.ppbui-cards-combat-art span{padding:3px;color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1.1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-align:center}.ppbui-cards-combat-copy{min-width:0}.ppbui-cards-combat-card small{display:block;margin-bottom:2px;color:var(--combat-accent);font-size:8px;font-weight:800;letter-spacing:.09em}.ppbui-cards-combat-card strong{display:block;overflow:hidden;color:var(--ppbui-text,#ebecdc);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-combat-card>div:last-child>span{display:block;margin-top:2px;overflow:hidden;color:var(--ppbui-text-muted,#c3d5c7);font:600 10px/1.2 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-combat-kicker{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}.ppbui-cards-combat-kicker>small{margin:0;flex:0 0 auto}.ppbui-cards-rarity-badge,.ppbui-cards-shiny-badge{display:inline-grid!important;place-items:center;min-height:16px;padding:1px 4px;border-radius:var(--ppbui-radius-badge,4px);font:900 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)!important;letter-spacing:.07em;white-space:nowrap}.ppbui-cards-rarity-badge{border:1px solid var(--rarity-color,var(--ppbui-border-strong,#6b6543));background:color-mix(in srgb,var(--rarity-color,var(--ppbui-border-strong,#6b6543)) 14%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7))!important}.ppbui-cards-shiny-badge{border:1px solid var(--ppbui-accent-hi,#54bad2);background:color-mix(in srgb,var(--ppbui-accent-hi,#54bad2) 18%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--ppbui-selected,#e3c054)!important}.ppbui-cards-rarity-badge[hidden],.ppbui-cards-shiny-badge[hidden]{display:none!important}.ppbui-cards-elements{display:flex;align-items:center;gap:4px;min-width:0;margin-top:3px;overflow:hidden}.ppbui-cards-elements[hidden]{display:none!important}.ppbui-cards-element{display:flex;align-items:center;gap:2px;min-width:0}.ppbui-cards-element .ppbui-element-icon{flex:0 0 auto}.ppbui-cards-element i{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);font-style:normal;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-moves{display:flex;align-items:center;gap:3px;min-height:19px;margin-top:3px}.ppbui-cards-moves[hidden]{display:none!important}.ppbui-cards-move{display:grid;width:19px;height:19px;place-items:center;overflow:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-move img{width:17px;height:17px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-meter-stack{display:grid;gap:2px;margin-top:3px}.ppbui-cards-meter-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:4px;min-width:0}.ppbui-cards-meter-row[hidden]{display:none!important}.ppbui-cards-meter-row>span{display:flex!important;justify-content:flex-start;gap:3px;margin:0!important;color:var(--ppbui-text-subtle,#c3d5c7)!important;font:700 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif)!important;white-space:nowrap}.ppbui-cards-meter-row>span b{color:var(--combat-accent);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-meter-row>span i{max-width:105px;overflow:hidden;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-hp-meter,.ppbui-cards-exp-meter{width:100%;height:4px;overflow:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-hp-meter>i,.ppbui-cards-exp-meter>i{display:block;width:0;height:100%}.ppbui-cards-hp-meter>i{background:var(--ppbui-success,#55a058)}.ppbui-cards-hp-meter[data-state="low"]>i{background:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-exp-meter>i{background:var(--ppbui-accent-hi,#54bad2)}
+    .ppbui-cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}.ppbui-cards-card{--section-accent:var(--ppbui-border-strong,#6b6543);min-width:0;height:100%;padding:10px;border:1px solid var(--ppbui-border,#6b6543);border-top:1px solid var(--section-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-card--summary{--section-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-card--rarity{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-card--capture{--section-accent:var(--ppbui-success,#55a058)}.ppbui-cards-history{--section-accent:var(--ppbui-info,#2485a6);display:flex;min-height:0;flex-direction:column;grid-column:1/-1}.ppbui-cards-economy{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}.ppbui-cards-stat-grid>div{min-width:0;padding:7px 8px;border-left:1px solid color-mix(in srgb,var(--section-accent,var(--group-accent,#878573)) 68%,transparent);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-stat-grid span{display:block;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:650}.ppbui-cards-stat-grid strong{display:block;margin-top:3px;color:var(--ppbui-text,#ebecdc);font:800 14px/1.15 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums}.ppbui-cards-stat-grid strong[data-tone="positive"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-stat-grid strong[data-tone="negative"]{color:var(--ppbui-danger-hi,#e6928a)}
     .ppbui-cards-rarity{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ppbui-cards-rarity>div{display:grid;grid-template-columns:minmax(58px,1fr) auto;grid-template-rows:auto auto;align-items:center;min-width:0;min-height:36px;border:1px solid color-mix(in srgb,var(--rarity-color) 65%,var(--ppbui-border,#6b6543));border-left:1px solid var(--rarity-color);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-rarity span{grid-row:1/-1;min-width:0;padding:0 6px;color:var(--rarity-color);font-size:9px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-rarity strong{padding:2px 7px 0;color:var(--ppbui-text,#ebecdc);font:800 13px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;text-align:right}.ppbui-cards-rarity small{padding:1px 7px 2px;color:var(--ppbui-selected,#e3c054);font:800 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.ppbui-cards-rarity small[hidden]{display:none!important}
-    .ppbui-cards-story-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}.ppbui-cards-story-head h2{margin:0}.ppbui-cards-story-tabs{display:inline-flex;min-width:0;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius,5px);overflow:hidden}.ppbui-cards-story-tabs button{height:26px;padding:2px 9px;border:0;border-left:1px solid var(--ppbui-border-strong,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-story-tabs button:first-child{border-left:0}.ppbui-cards-story-tabs button[aria-selected="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-story-tabs button:focus-visible{position:relative;z-index:1;outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:-2px}.ppbui-cards-story-panel[hidden]{display:none!important}.ppbui-cards-history-filters{display:flex;align-items:end;justify-content:flex-end;gap:6px;margin-bottom:6px}.ppbui-cards-history-filters label{display:grid;gap:2px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:700;letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-history-filters select{min-width:106px;height:26px;padding:2px 22px 2px 6px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-history-filters select:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-loot-filters{justify-content:flex-start}.ppbui-cards-attempt-scroll{width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-labels,.ppbui-cards-attempt{display:grid;grid-template-columns:64px 74px minmax(140px,1fr) 72px 72px 92px 68px 64px;align-items:center;min-width:648px}.ppbui-cards-attempt-labels{margin:0 1px;padding:0;border:1px solid var(--ppbui-border,#6b6543);border-bottom:0;background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-attempt-labels>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt-labels>[data-attempt-column="1"]{text-align:center}.ppbui-cards-attempt-labels>[data-attempt-column="3"],.ppbui-cards-attempt-labels>[data-attempt-column="6"],.ppbui-cards-attempt-labels>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt-table,.ppbui-cards-loot-table{width:100%;min-width:0;max-height:190px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-table{min-width:648px}.ppbui-cards-attempt,.ppbui-cards-loot-row{align-items:center;min-width:0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-attempt{min-height:36px;border-left:1px solid var(--rarity-color,var(--ppbui-border,#6b6543))}.ppbui-cards-attempt:first-child,.ppbui-cards-loot-row:first-child{border-top:0}.ppbui-cards-attempt[data-shiny="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));box-shadow:none}.ppbui-cards-attempt>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt>[data-attempt-column="1"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7));font-weight:800;text-align:center}.ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="6"],.ppbui-cards-attempt>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt>[data-attempt-column="5"]{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-attempt[data-shiny="true"]>[data-attempt-column="2"]{color:var(--ppbui-selected,#e3c054)}.ppbui-cards-attempt[data-result="captured"]>[data-attempt-column="4"]{color:var(--ppbui-success-text,#69a66f);font-weight:800}.ppbui-cards-attempt[data-result="fled"]>[data-attempt-column="4"]{color:var(--ppbui-danger-hi,#e6928a);font-weight:800}.ppbui-cards-attempt-pokemon{display:flex;align-items:center;gap:5px}.ppbui-cards-attempt-pokemon img{width:28px;height:28px;flex:0 0 28px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-attempt-pokemon strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.ppbui-cards-attempt>.ppbui-cards-attempt-details{grid-column:1/-1;padding:5px 7px;border-top:1px solid var(--ppbui-border,#6b6543);color:var(--ppbui-text-subtle,#c3d5c7);font:600 9px/1.25 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-align:left;white-space:normal}.ppbui-cards-attempt>.ppbui-cards-attempt-details::before{content:attr(data-label) ': ';color:var(--ppbui-text,#ebecdc);font-weight:800}.ppbui-cards-loot-row{display:grid;gap:5px;padding:7px 8px}.ppbui-cards-loot-head{display:grid;grid-template-columns:72px minmax(100px,1fr) auto;align-items:center;gap:8px}.ppbui-cards-loot-head>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-head>span{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-head>strong:last-child{color:var(--ppbui-selected,#e3c054);text-align:right}.ppbui-cards-loot-items{display:flex;flex-wrap:wrap;gap:4px;padding:5px 0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-loot-items::before{content:attr(data-label) ':';align-self:center;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px;font-weight:800}.ppbui-cards-loot-item{display:inline-grid;grid-template-columns:auto auto;align-items:center;gap:4px;padding:3px 5px;border-left:2px solid var(--quality-common,#c3d5c7);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-item[data-rarity="weak"]{border-color:var(--quality-weak,#878573)}.ppbui-cards-loot-item[data-rarity="uncommon"]{border-color:var(--quality-uncommon,#55a058)}.ppbui-cards-loot-item[data-rarity="rare"]{border-color:var(--quality-rare,#2485a6)}.ppbui-cards-loot-item[data-rarity="epic"]{border-color:var(--quality-epic,#e3c054)}.ppbui-cards-loot-item[data-rarity="legendary"]{border-color:var(--quality-legendary,#e6928a)}.ppbui-cards-loot-item[data-rarity="mythical"]{border-color:var(--quality-mythical,#54bad2)}.ppbui-cards-loot-item[data-rarity="none"]{border-color:var(--ppbui-border-strong,#6b6543)}.ppbui-cards-loot-item strong{font-size:9px}.ppbui-cards-loot-item small{color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px}.ppbui-cards-loot-item--empty{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-finance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}.ppbui-cards-loot-finance>span{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;padding:4px 5px;background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-finance b{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-finance strong{font:800 9px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-empty-row{display:block}.ppbui-cards-empty{display:block;margin:0;padding:14px;color:var(--ppbui-text-subtle,#c3d5c7);text-align:center}
+    .ppbui-cards-story-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}.ppbui-cards-story-head h2{margin:0}.ppbui-cards-story-tabs{display:inline-flex;min-width:0;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius,5px);overflow:hidden}.ppbui-cards-story-tabs button{height:26px;padding:2px 9px;border:0;border-left:1px solid var(--ppbui-border-strong,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-story-tabs button:first-child{border-left:0}.ppbui-cards-story-tabs button[aria-selected="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-story-tabs button:focus-visible{position:relative;z-index:1;outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:-2px}.ppbui-cards-story-panel[hidden]{display:none!important}.ppbui-cards-history-filters{display:flex;align-items:end;justify-content:flex-end;gap:6px;margin-bottom:6px}.ppbui-cards-history-filters label{display:grid;gap:2px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:700;letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-history-filters select{min-width:106px;height:26px;padding:2px 22px 2px 6px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-history-filters select:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-loot-filters{justify-content:flex-start}.ppbui-cards-attempt-scroll{width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-labels,.ppbui-cards-attempt{display:grid;grid-template-columns:64px 74px minmax(140px,1fr) 72px 72px 92px 68px 64px;align-items:center;min-width:648px}.ppbui-cards-attempt-labels{margin:0 1px;padding:0;border:1px solid var(--ppbui-border,#6b6543);border-bottom:0;background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-attempt-labels>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt-labels>[data-attempt-column="1"]{text-align:center}.ppbui-cards-attempt-labels>[data-attempt-column="3"],.ppbui-cards-attempt-labels>[data-attempt-column="6"],.ppbui-cards-attempt-labels>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt-table,.ppbui-cards-loot-table{width:100%;min-width:0;max-height:190px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-table{min-width:648px}.ppbui-cards-attempt,.ppbui-cards-loot-row{align-items:center;min-width:0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-attempt{min-height:36px;border-left:1px solid var(--rarity-color,var(--ppbui-border,#6b6543))}.ppbui-cards-attempt:first-child,.ppbui-cards-loot-row:first-child{border-top:0}.ppbui-cards-attempt[data-shiny="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));box-shadow:none}.ppbui-cards-attempt>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt>[data-attempt-column="1"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7));font-weight:800;text-align:center}.ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="6"],.ppbui-cards-attempt>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt>[data-attempt-column="5"]{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-attempt[data-shiny="true"]>[data-attempt-column="2"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7))}.ppbui-cards-attempt[data-result="captured"]>[data-attempt-column="4"]{color:var(--ppbui-success-text,#69a66f);font-weight:800}.ppbui-cards-attempt[data-result="fled"]>[data-attempt-column="4"]{color:var(--ppbui-danger-hi,#e6928a);font-weight:800}.ppbui-cards-attempt-pokemon{display:flex;align-items:center;gap:5px}.ppbui-cards-attempt-pokemon img{width:28px;height:28px;flex:0 0 28px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-attempt-pokemon strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.ppbui-cards-attempt>.ppbui-cards-attempt-details{grid-column:1/-1;padding:5px 7px;border-top:1px solid var(--ppbui-border,#6b6543);color:var(--ppbui-text-subtle,#c3d5c7);font:600 9px/1.25 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-align:left;white-space:normal}.ppbui-cards-attempt>.ppbui-cards-attempt-details::before{content:attr(data-label) ': ';color:var(--ppbui-text,#ebecdc);font-weight:800}.ppbui-cards-loot-row{display:grid;gap:5px;padding:7px 8px}.ppbui-cards-loot-head{display:grid;grid-template-columns:72px minmax(100px,1fr) auto;align-items:center;gap:8px}.ppbui-cards-loot-head>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-head>span{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-head>strong:last-child{color:var(--ppbui-selected,#e3c054);text-align:right}.ppbui-cards-loot-items{display:flex;flex-wrap:wrap;gap:4px;padding:5px 0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-loot-items::before{content:attr(data-label) ':';align-self:center;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px;font-weight:800}.ppbui-cards-loot-item{display:inline-grid;grid-template-columns:auto auto;align-items:center;gap:4px;padding:3px 5px;border-left:2px solid var(--quality-common,#c3d5c7);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-item[data-rarity="weak"]{border-color:var(--quality-weak,#878573)}.ppbui-cards-loot-item[data-rarity="uncommon"]{border-color:var(--quality-uncommon,#55a058)}.ppbui-cards-loot-item[data-rarity="rare"]{border-color:var(--quality-rare,#2485a6)}.ppbui-cards-loot-item[data-rarity="epic"]{border-color:var(--quality-epic,#e3c054)}.ppbui-cards-loot-item[data-rarity="legendary"]{border-color:var(--quality-legendary,#e6928a)}.ppbui-cards-loot-item[data-rarity="mythical"]{border-color:var(--quality-mythical,#54bad2)}.ppbui-cards-loot-item[data-rarity="none"]{border-color:var(--ppbui-border-strong,#6b6543)}.ppbui-cards-loot-item strong{font-size:9px}.ppbui-cards-loot-item small{color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px}.ppbui-cards-loot-item--empty{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-finance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}.ppbui-cards-loot-finance>span{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;padding:4px 5px;background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-finance b{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-finance strong{font:800 9px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-empty-row{display:block}.ppbui-cards-empty{display:block;margin:0;padding:14px;color:var(--ppbui-text-subtle,#c3d5c7);text-align:center}
     .ppbui-cards-summary-head{position:relative;display:flex;align-items:start;justify-content:space-between;gap:8px;margin-bottom:8px}.ppbui-cards-summary-head h2{margin:0}.ppbui-cards-session-actions{display:flex;gap:4px}.ppbui-cards-session-actions button{height:24px;padding:2px 7px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:700 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-session-actions button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-session-actions button:disabled{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-summary-head>small{position:absolute;right:0;top:27px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px}.ppbui-cards-summary-head>small[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-summary-head>small[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}
-    .ppbui-cards-rarity-filter{position:relative}.ppbui-cards-rarity-filter>summary{min-width:118px;height:26px;padding:5px 22px 2px 6px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);cursor:pointer;list-style:none}.ppbui-cards-rarity-filter>summary::-webkit-details-marker{display:none}.ppbui-cards-rarity-filter>summary:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-rarity-filter fieldset{position:absolute;right:0;z-index:6;display:grid;grid-template-columns:repeat(2,minmax(88px,1fr));gap:4px;width:210px;margin:3px 0 0;padding:6px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-rarity-filter fieldset label{display:flex;align-items:center;gap:5px;text-transform:none}.ppbui-cards-rarity-filter input{accent-color:var(--ppbui-focus,#54bad2)}.ppbui-cards-rarity-filter input:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}
     .ppbui-cards-economy{border-top-width:1px;background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-economy-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.ppbui-cards-economy-group{--group-accent:var(--ppbui-border-strong,#6b6543);min-width:0;padding:8px;border:1px solid color-mix(in srgb,var(--group-accent) 72%,var(--ppbui-border,#6b6543));border-left:1px solid var(--group-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-economy-group h3{display:flex;align-items:center;min-height:22px;padding:0 5px;border-bottom:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-economy-group .ppbui-cards-stat-grid>div{--section-accent:var(--group-accent)}.ppbui-cards-economy-group .ppbui-cards-kpi-primary{grid-column:1/-1;min-height:48px;padding:8px 10px;border-left-width:1px;background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-economy-group .ppbui-cards-kpi-primary span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.035em}.ppbui-cards-economy-group .ppbui-cards-kpi-primary strong{font-size:20px;line-height:1.05}.ppbui-cards-economy-group--revenue{--group-accent:var(--ppbui-selected,#e3c054)}.ppbui-cards-economy-group--profit{--group-accent:var(--ppbui-success,#55a058)}.ppbui-cards-economy-group--xp{--group-accent:var(--ppbui-accent-hi,#54bad2)}
-    @media(max-width:640px){.ppbui-cards-story-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.ppbui-cards-history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}.ppbui-cards-history-filters select,.ppbui-cards-rarity-filter>summary{width:100%;min-width:0}}
+    @media(max-width:640px){.ppbui-cards-story-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.ppbui-cards-history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}.ppbui-cards-history-filters select{width:100%;min-width:0}}
     @media(max-width:519px){.ppbui-coupled-cards{padding:6px}.ppbui-cards-attempt-table{max-height:218px}.ppbui-cards-loot-table{max-height:260px}.ppbui-cards-battle{height:162px}.ppbui-cards-battle-pair{grid-template-columns:minmax(92px,.62fr) minmax(0,1fr) minmax(0,1fr);gap:3px}.ppbui-cards-team-switch{grid-template-rows:16px minmax(0,1fr);padding:3px}.ppbui-cards-team-switch-head{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;justify-content:stretch;gap:1px;font-size:7px}.ppbui-cards-team-switch-head>small{font-size:6px}.ppbui-cards-team-member{gap:2px;padding:1px 2px}.ppbui-cards-team-member>strong{font-size:8px}.ppbui-cards-team-member>span{font-size:7px}.ppbui-cards-combat-card{grid-template-columns:52px minmax(0,1fr);gap:4px;padding:5px}.ppbui-cards-combat-art{width:50px;height:50px}.ppbui-cards-combat-art img{max-width:46px;max-height:46px}.ppbui-cards-combat-art span{font-size:7px}.ppbui-cards-combat-card strong{font-size:11px}.ppbui-cards-combat-card>div:last-child>span{font-size:8px}.ppbui-cards-combat-card--player>div:last-child>span{line-height:1.1;white-space:normal}.ppbui-cards-elements{gap:2px;margin-top:2px}.ppbui-cards-element i{display:none}.ppbui-cards-moves{gap:2px;min-height:16px;margin-top:2px}.ppbui-cards-move{width:16px;height:16px}.ppbui-cards-move img{width:14px;height:14px}.ppbui-cards-combat-kicker{flex-wrap:wrap;overflow:visible;gap:2px}.ppbui-cards-rarity-badge,.ppbui-cards-shiny-badge{flex:0 0 auto;min-height:13px;padding:1px 2px;font-size:7px!important;letter-spacing:0}.ppbui-cards-shiny-badge{width:auto;min-width:0;max-width:none;overflow:visible}.ppbui-cards-meter-stack{gap:1px;margin-top:2px}.ppbui-cards-meter-row{grid-template-columns:max-content minmax(0,1fr);gap:2px}.ppbui-cards-meter-row>span,.ppbui-cards-meter-row>span b{font-size:7px!important}.ppbui-cards-meter-row>span i{max-width:76px}.ppbui-cards-grid{grid-template-columns:1fr;gap:6px}.ppbui-cards-card{padding:8px}.ppbui-cards-card--rarity,.ppbui-cards-history,.ppbui-cards-economy{grid-column:1}.ppbui-cards-economy-groups{grid-template-columns:1fr}.ppbui-cards-story-head{grid-template-columns:1fr}.ppbui-cards-story-tabs{justify-self:start}.ppbui-cards-loot-finance{grid-template-columns:1fr}.ppbui-cards-loot-head{grid-template-columns:64px minmax(0,1fr) auto}}
     .ppbui-cards-shortcuts{position:sticky;top:0;height:0;z-index:10;pointer-events:none}.ppbui-cards-shortcuts[hidden]{display:none!important}.ppbui-cards-shortcuts-inner{position:absolute;right:0;top:0;display:flex;gap:3px;padding:3px;border:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));pointer-events:auto}.ppbui-cards-shortcuts button{min-height:26px;padding:3px 7px;border:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-text,#ebecdc);font:700 10px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);cursor:pointer}.ppbui-cards-shortcuts button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-battle:focus-visible,.ppbui-cards-card:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:-2px}
     .ppbui-cards-team-switch-short{display:none}.ppbui-cards-result-filter{display:grid;gap:2px;min-width:0;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:700;letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-result-options{display:flex;gap:2px}.ppbui-cards-result-options button{min-height:26px;padding:3px 7px;border:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:700 10px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap;cursor:pointer}.ppbui-cards-result-options button[aria-pressed="true"]{border-color:var(--ppbui-selected,#e3c054);color:var(--ppbui-selected,#e3c054)}.ppbui-cards-result-options button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-copy-status{display:block;margin:-4px 0 6px;color:var(--ppbui-text-subtle,#c3d5c7);font:600 10px/1.3 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-copy-status:empty{display:none}.ppbui-cards-copy-status[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-copy-status[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-copy-status[data-tone="busy"]{color:var(--ppbui-selected,#e3c054)}
@@ -1093,14 +1125,6 @@ function styles() {
       .ppbui-cards-attempt>[data-attempt-column="6"]{grid-area:chance;text-align:left!important;align-items:flex-start;border-top:1px solid var(--ppbui-border,#6b6543);font-variant-numeric:tabular-nums}
       .ppbui-cards-attempt>[data-attempt-column="7"]{grid-area:iv;text-align:left!important;align-items:flex-start;border-top:1px solid var(--ppbui-border,#6b6543);font-variant-numeric:tabular-nums}
       .ppbui-cards-attempt>.ppbui-cards-attempt-details{grid-column:1/-1;min-width:0;overflow-wrap:anywhere}
-    }
-    @container (max-width:320px){
-      .ppbui-cards-attempt{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"pokemon rarity" "time result" "ball chance" "quality iv";min-height:0}
-      .ppbui-cards-attempt>[data-attempt-column="0"]{align-items:flex-start}
-      .ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="7"]{border-top:1px solid var(--ppbui-border,#6b6543)}
-      .ppbui-cards-attempt>[data-attempt-column="5"],.ppbui-cards-attempt>[data-attempt-column="6"]{border-top:1px solid var(--ppbui-border,#6b6543)}
-      .ppbui-cards-attempt-pokemon img{width:18px;height:18px;flex-basis:18px}
-      .ppbui-cards-attempt-pokemon strong{font-size:11px}
     }
     /* Narrow WebView2 panes must not spend the available target-label width
        on three parallel cards. Reflow the layout instead of hiding CURRENT. */
@@ -1128,11 +1152,74 @@ function styles() {
       .ppbui-cards-combat-card--target{grid-column:1;grid-row:3}
       .ppbui-cards-combat-card{min-height:96px}
     }
-    @media(min-width:900px){.ppbui-cards-battle{height:158px}.ppbui-cards-battle-pair{grid-template-columns:minmax(126px,.6fr) minmax(0,1.4fr) minmax(0,1fr);gap:8px}.ppbui-cards-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ppbui-cards-card--overview{min-height:168px}.ppbui-cards-card--rarity{grid-column:auto}.ppbui-cards-economy-groups{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(min-width:900px){.ppbui-cards-battle-pair{grid-template-columns:minmax(126px,.6fr) minmax(0,1.4fr) minmax(0,1fr);gap:8px}.ppbui-cards-card--overview{min-height:168px}.ppbui-cards-economy-groups{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(min-width:900px) and (max-width:1179px){.ppbui-cards-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.ppbui-cards-card--rarity{grid-column:auto}}
+    @media(min-width:1180px){.ppbui-cards-grid{height:100%;min-height:0;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:clamp(168px,22dvh,200px) repeat(3,minmax(170px,1fr))}.ppbui-cards-grid>[data-card-layout="battle"]{height:auto;min-height:168px;max-height:200px;grid-column:1/span 2;grid-row:1/span 1}.ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-battle-pair{grid-template-columns:minmax(116px,.52fr) minmax(0,1fr) minmax(0,1fr)}.ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-team-switch-head>[data-card-copy="switchPokemon"]{display:none}.ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-team-switch-head>.ppbui-cards-team-switch-short{display:inline}.ppbui-cards-grid>.ppbui-cards-card--overview{min-height:0;padding:8px}.ppbui-cards-grid>.ppbui-cards-card--overview h2{margin-bottom:6px}.ppbui-cards-grid>.ppbui-cards-card--overview .ppbui-cards-stat-grid>div{padding:4px 6px}.ppbui-cards-grid>.ppbui-cards-card--overview .ppbui-cards-stat-grid strong{margin-top:2px;font-size:13px}.ppbui-cards-grid>.ppbui-cards-card--summary .ppbui-cards-summary-head{margin-bottom:6px}.ppbui-cards-grid>.ppbui-cards-card--rarity .ppbui-cards-rarity{gap:4px}.ppbui-cards-grid>.ppbui-cards-card--rarity .ppbui-cards-rarity>div{min-height:34px}.ppbui-cards-grid>.ppbui-cards-economy{min-height:0;padding:8px}.ppbui-cards-grid>.ppbui-cards-economy h2{margin-bottom:6px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-economy-groups{gap:5px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-economy-group{padding:4px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-economy-group h3{min-height:18px;margin-bottom:3px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-stat-grid>div{padding:3px 5px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-stat-grid strong{margin-top:2px;font-size:13px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-kpi-primary{min-height:34px;padding:4px 6px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-kpi-primary span{font-size:9px}.ppbui-cards-grid>.ppbui-cards-economy .ppbui-cards-kpi-primary strong{font-size:16px}.ppbui-cards-grid>[data-card-layout="hunt-summary"]{grid-column:1/span 2;grid-row:2/span 1}.ppbui-cards-grid>[data-card-layout="capture"]{grid-column:1/span 2;grid-row:3/span 1}.ppbui-cards-grid>[data-card-layout="captured-seen"]{grid-column:3/span 2;grid-row:1/span 1}.ppbui-cards-grid>[data-card-layout="economy-xp"]{grid-column:1/span 2;grid-row:4/span 1}.ppbui-cards-grid>[data-card-layout="history"]{grid-column:3/span 2;grid-row:2/span 3}}
+    .ppbui-cards-story-panel{min-height:0}
+    .ppbui-cards-history-filters{flex-wrap:wrap;justify-content:flex-start}
+    .ppbui-cards-rarity-filter{display:flex;flex:1 0 100%;flex-wrap:wrap;gap:4px;min-width:0;margin:0;padding:0;border:0}
+    .ppbui-cards-rarity-filter label{display:flex;align-items:center;gap:4px;min-height:24px;padding:3px 6px;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--rarity-color,var(--ppbui-text-subtle,#c3d5c7));font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.02em;text-transform:none;cursor:pointer}
+    .ppbui-cards-rarity-filter label:has(input:checked){border-color:var(--rarity-color,var(--ppbui-accent-hi,#54bad2));background:color-mix(in srgb,var(--rarity-color,var(--ppbui-accent-hi,#54bad2)) 12%,var(--ppbui-bg-0,rgba(22,29,32,.85)))}
+    .ppbui-cards-rarity-filter-all{--rarity-color:var(--ppbui-accent-hi,#54bad2)}
+    .ppbui-cards-rarity-filter input{width:12px;height:12px;margin:0;accent-color:var(--rarity-color,var(--ppbui-focus,#54bad2))}
+    .ppbui-cards-rarity-filter input:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:2px}
+    .ppbui-cards-attempt-labels,.ppbui-cards-attempt{grid-template-columns:64px minmax(140px,1fr) 88px 72px 64px 72px 92px 68px;min-width:662px}
+    .ppbui-cards-attempt-labels>[data-attempt-column="1"]{text-align:left}
+    .ppbui-cards-attempt-labels>[data-attempt-column="2"],.ppbui-cards-attempt>[data-attempt-column="2"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7));font-weight:800;text-align:center}
+    .ppbui-cards-attempt-labels>[data-attempt-column="3"],.ppbui-cards-attempt-labels>[data-attempt-column="4"],.ppbui-cards-attempt-labels>[data-attempt-column="7"],.ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="4"],.ppbui-cards-attempt>[data-attempt-column="7"]{text-align:right}
+    .ppbui-cards-attempt>[data-attempt-column="1"]{color:var(--ppbui-text,#ebecdc);font-weight:inherit;text-align:left}
+    .ppbui-cards-attempt>[data-attempt-column="6"]{color:var(--ppbui-text-subtle,#c3d5c7)}
+    .ppbui-cards-attempt[data-shiny="true"]>[data-attempt-column="1"]{color:var(--rarity-color,var(--ppbui-text,#ebecdc))}
+    .ppbui-cards-attempt[data-result="captured"]>[data-attempt-column="4"],.ppbui-cards-attempt[data-result="fled"]>[data-attempt-column="4"]{color:var(--ppbui-text,#ebecdc);font-weight:inherit}
+    .ppbui-cards-attempt[data-result="captured"]>[data-attempt-column="5"]{color:var(--ppbui-success-text,#69a66f);font-weight:800}
+    .ppbui-cards-attempt[data-result="fled"]>[data-attempt-column="5"]{color:var(--ppbui-danger-hi,#e6928a);font-weight:800}
+    .ppbui-cards-attempt>.ppbui-cards-attempt-details{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+    .ppbui-cards-attempt>.ppbui-cards-attempt-details::before{content:none}
+    .ppbui-cards-attempt-detail{display:inline-flex;align-items:baseline;gap:3px;min-width:0}
+    .ppbui-cards-attempt-detail b{color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-transform:uppercase}
+    .ppbui-cards-attempt-detail i{color:var(--ppbui-text,#ebecdc);font-style:normal;font-variant-numeric:tabular-nums}
+    .ppbui-cards-attempt-gender[data-gender="female"] i{color:var(--ppbui-gender-female,#f4a7c0);font-weight:800}
+    .ppbui-cards-attempt-gender[data-gender="male"] i{color:var(--ppbui-gender-male,#9ed8ff);font-weight:800}
+    @media(max-width:640px){
+      .ppbui-cards-history-filters{display:flex}
+      .ppbui-cards-rarity-filter{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%}
+      .ppbui-cards-rarity-filter label{min-width:0;padding:3px 4px;font-size:7px}
+      .ppbui-cards-result-filter{flex:1 1 100%}
+      .ppbui-cards-history-filters>label{flex:1 1 100%}
+      .ppbui-cards-attempt{min-width:0;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-areas:"pokemon pokemon rarity" "time result ball" "quality iv chance"}
+      .ppbui-cards-attempt>[data-attempt-column="1"]{grid-area:pokemon;align-items:flex-start;border-bottom:1px solid var(--ppbui-border,#6b6543)}
+      .ppbui-cards-attempt>[data-attempt-column="2"]{grid-area:rarity;align-items:flex-end;border-bottom:1px solid var(--ppbui-border,#6b6543);text-align:right!important}
+      .ppbui-cards-attempt>[data-attempt-column="3"]{grid-area:quality}
+      .ppbui-cards-attempt>[data-attempt-column="4"]{grid-area:iv;border-top:1px solid var(--ppbui-border,#6b6543)}
+      .ppbui-cards-attempt>[data-attempt-column="5"]{grid-area:result;border-top:0}
+      .ppbui-cards-attempt>[data-attempt-column="6"]{grid-area:ball;border-top:0}
+      .ppbui-cards-attempt>[data-attempt-column="7"]{grid-area:chance;border-top:1px solid var(--ppbui-border,#6b6543)}
+    }
+    @container (max-width:320px){
+      .ppbui-cards-attempt{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"pokemon rarity" "time result" "ball chance" "quality iv";min-height:0}
+      .ppbui-cards-attempt>[data-attempt-column="0"]{align-items:flex-start}
+      .ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="4"],.ppbui-cards-attempt>[data-attempt-column="6"],.ppbui-cards-attempt>[data-attempt-column="7"]{border-top:1px solid var(--ppbui-border,#6b6543)}
+      .ppbui-cards-attempt-pokemon img{width:18px;height:18px;flex-basis:18px}
+      .ppbui-cards-attempt-pokemon strong{font-size:11px}
+    }
+    @media(min-width:1180px){
+      .ppbui-cards-grid>[data-card-layout="history"]>.ppbui-cards-story-panel:not([hidden]){display:flex;flex:1 1 auto;min-height:0;flex-direction:column}
+      .ppbui-cards-grid>[data-card-layout="history"] .ppbui-cards-attempt-scroll{display:flex;flex:1 1 auto;min-height:0;flex-direction:column}
+      .ppbui-cards-grid>[data-card-layout="history"] :is(.ppbui-cards-attempt-table,.ppbui-cards-loot-table){flex:1 1 auto;min-height:0;max-height:none}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-combat-card{grid-template-columns:92px minmax(0,1fr);gap:9px;padding:8px 9px;align-content:center}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-combat-art{width:90px;height:90px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-combat-art img{max-width:86px;max-height:86px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-combat-copy{display:grid;align-content:center;gap:2px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-combat-card strong{font-size:14px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-elements{margin-top:2px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-moves{min-height:23px;margin-top:2px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-move{width:23px;height:23px}
+      .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-move img{width:21px;height:21px}
+    }
   `;
 }
 
-export function createCoupledCards({ win, textOnly = false }) {
+export function createCoupledCards({ win, textOnly = false, combatArt = !textOnly }) {
   const doc = win.document;
   const initialLocale = localeContext(win);
   const style = doc.createElement("style");
@@ -1143,10 +1230,11 @@ export function createCoupledCards({ win, textOnly = false }) {
   root.className = "ppbui-coupled-cards";
   root.dataset.ppbuiCoupledCards = "";
   if (textOnly) root.dataset.ppbuiTextOnly = "true";
+  if (combatArt) root.dataset.ppbuiCombatArt = "true";
   root.setAttribute("aria-label", "Hunt console");
   root.innerHTML = markup(initialLocale);
-  // Standalone mode scrolls the document and already owns a fixed Cards/Game toggle
-  // in the native menu bar; the compact section shortcuts belong to the host pane.
+  // Standalone mode owns scrolling inside the Cards surface and already owns a fixed
+  // Cards/Game toggle in the native menu bar; compact section shortcuts belong to the host pane.
   if (textOnly) cardNode(root, "[data-card-shortcuts]")?.remove();
   (doc.body || doc.documentElement).append(root);
   applyStaticLocale(root, initialLocale);
@@ -1176,7 +1264,7 @@ export function createCoupledCards({ win, textOnly = false }) {
     lootCatalogRevision: 0,
     lootRarity: "",
     mode: "game",
-    attemptRarities: new Set(SPECIAL_RARITIES),
+    attemptRarities: new Set(STORY_RARITIES),
     attemptShiny: "",
     attemptResult: "",
     attemptView: { entries:[], controls:"", spriteRevision:-1 },
@@ -1198,9 +1286,10 @@ export function createCoupledCards({ win, textOnly = false }) {
     disposed: false,
     rerender: null,
     textOnly: Boolean(textOnly),
+    combatArt: Boolean(combatArt),
   };
   const rarityFilters = [...root.querySelectorAll("[data-card-attempt-rarity]")];
-  const rarityFilterSummary = cardNode(root, "[data-card-attempt-rarity-summary]");
+  const rarityFilterAll = cardNode(root, "[data-card-attempt-rarity-all]");
   const shinyFilter = cardNode(root, "[data-card-attempt-shiny]");
   const resultFilters = [...root.querySelectorAll("[data-card-attempt-result]")];
   const lootRarityFilter = cardNode(root, "[data-card-loot-rarity]");
@@ -1275,20 +1364,26 @@ export function createCoupledCards({ win, textOnly = false }) {
     });
   }
   reconcileNativeBus();
-  const rerenderAttempts = () => renderAttempts(root, state.summary?.specialHistory, Boolean(state.summary), state);
-  const syncRarityFilterSummary = () => {
-    if (!rarityFilterSummary) return;
+  const rerenderAttempts = () => renderAttempts(root, storyAttempts(state.summary), Boolean(state.summary), state);
+  const syncRarityFilterAll = () => {
+    if (!rarityFilterAll) return;
     const selected = state.attemptRarities.size;
-    rarityFilterSummary.textContent = selected === SPECIAL_RARITIES.length
-      ? state.copy.raritySummaryAll
-      : selected === 0 ? state.copy.raritySummaryNone : state.copy.raritySummarySome(selected);
+    rarityFilterAll.checked = selected === STORY_RARITIES.length;
+    rarityFilterAll.indeterminate = selected > 0 && selected < STORY_RARITIES.length;
   };
   rarityFilters.forEach(input => input.addEventListener("change", () => {
     if (state.disposed) return;
     state.attemptRarities = new Set(rarityFilters.filter(option => option.checked).map(option => option.value));
-    syncRarityFilterSummary();
+    syncRarityFilterAll();
     rerenderAttempts();
   }));
+  rarityFilterAll?.addEventListener("change", () => {
+    if (state.disposed) return;
+    for (const input of rarityFilters) input.checked = rarityFilterAll.checked;
+    state.attemptRarities = new Set(rarityFilterAll.checked ? STORY_RARITIES : []);
+    syncRarityFilterAll();
+    rerenderAttempts();
+  });
   shinyFilter?.addEventListener("change", () => { if (state.disposed) return; state.attemptShiny = shinyFilter.value; rerenderAttempts(); });
   const selectResult = value => {
     if (state.disposed || !["", "captured", "fled"].includes(value)) return;
@@ -1533,7 +1628,7 @@ export function createCoupledCards({ win, textOnly = false }) {
     setText(root, "player-meta", player
       ? `${Number.isFinite(player.level) ? `Lv. ${player.level}` : "Lv. —"}${player.fainted ? ` · ${state.copy.defeated.toUpperCase()}` : ""}`
       : state.copy.teamUnavailable);
-    if (!state.textOnly) setSprite(root, state, "player", player?.spriteUrl || "", state.copy.noImage);
+    if (state.combatArt) setSprite(root, state, "player", player?.spriteUrl || "", state.copy.noImage);
     renderElements(root, "player", player?.elements, win, state.localeKey, state.copy, { textOnly: state.textOnly });
     renderPlayerMoves(root, state, player ? requestPlayerMoveset(win, state, player.id) : []);
     const playerHpRow = cardNode(root, "[data-card-player-hp-row]");
@@ -1593,7 +1688,7 @@ export function createCoupledCards({ win, textOnly = false }) {
       state.copy = context.copy;
       state.rarityLabels = context.rarity;
       applyStaticLocale(root, context);
-      syncRarityFilterSummary();
+      syncRarityFilterAll();
       setControlStatus(root, "copy-summary", "");
     }
     if (state.summary && !summary) {
@@ -1631,9 +1726,9 @@ export function createCoupledCards({ win, textOnly = false }) {
       writeBoolean(rarityBadge, "hidden", !liveTarget?.rarity);
       writeText(rarityBadge, liveTarget?.rarity ? (state.rarityLabels[liveTarget.rarity] || liveTarget.rarity).toUpperCase() : "—");
     }
-    const nativeTargetSprite = !state.textOnly && target
-      ? requestNativeSpeciesSprite(win, state, String(target.speciesId || ""), false) : "";
-    if (!state.textOnly) setSprite(root, state, "target", nativeTargetSprite || "", target ? state.copy.noImage : state.copy.noTarget);
+    const nativeTargetSprite = state.combatArt && target
+      ? requestNativeSpeciesSprite(win, state, String(target.speciesId || ""), liveTarget?.shiny === true) : "";
+    if (state.combatArt) setSprite(root, state, "target", nativeTargetSprite || "", target ? state.copy.noImage : state.copy.noTarget);
     renderElements(root, "target", liveTarget?.elements, win, state.localeKey, state.copy, { textOnly: state.textOnly });
     renderAnalyzerControl();
 
@@ -1669,7 +1764,7 @@ export function createCoupledCards({ win, textOnly = false }) {
       if (node) node.dataset.tone = Number.isFinite(value) ? (value > 0 ? "positive" : value < 0 ? "negative" : "") : "";
     }
     renderRarity(root, summary, state);
-    renderAttempts(root, summary?.specialHistory, Boolean(summary), state);
+    renderAttempts(root, storyAttempts(summary), Boolean(summary), state);
     renderLootHistory(root, summary?.lootHistory, Boolean(summary), state);
   }
 

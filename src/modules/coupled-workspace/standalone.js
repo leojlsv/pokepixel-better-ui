@@ -7,6 +7,8 @@ const modeAttribute = "data-ppbui-card-mode";
 const surfaceAttribute = "data-ppbui-card-mode-surface";
 const toolbarAttribute = "data-ppbui-card-mode-toolbar";
 const toolbarPathAttribute = "data-ppbui-card-mode-toolbar-path";
+const bottomInsetProperty = "--ppbui-card-mode-bottom-inset";
+const toolbarGap = 8;
 
 export function resolveStandaloneRuntimeWindow(fallback = globalThis.window) {
   const candidate = typeof unsafeWindow !== "undefined" ? unsafeWindow : globalThis?.unsafeWindow;
@@ -16,7 +18,8 @@ export function resolveStandaloneRuntimeWindow(fallback = globalThis.window) {
 
 function switchStyles() {
   return `
-    html[${modeAttribute}="cards"] body{margin:0!important;overflow:auto!important;background:var(--ppbui-bg-1,#161d20)!important}
+    html[${modeAttribute}="cards"]{height:100vh!important;height:100dvh!important;overflow:hidden!important}
+    html[${modeAttribute}="cards"] body{height:100vh!important;height:100dvh!important;margin:0!important;overflow:hidden!important;background:var(--ppbui-bg-1,#161d20)!important}
     html[${modeAttribute}="cards"] body>:not([${surfaceAttribute}]):not([${toolbarPathAttribute}]){display:none!important}
     html[${modeAttribute}="cards"] [${toolbarPathAttribute}]:not([${toolbarAttribute}])>:not([${toolbarPathAttribute}]):not([${toolbarAttribute}]){display:none!important}
     [data-ppbui-card-mode-toggle]{position:relative!important}
@@ -57,7 +60,7 @@ function mountStandaloneCardMode(win = globalThis.window) {
     </span>
     <span class="pokeidle-top-toolbar__label">Cards/Game</span>
   `;
-  const cards = createCoupledCards({ win, textOnly: true });
+  const cards = createCoupledCards({ win, textOnly: true, combatArt: true });
   cards.root.dataset.ppbuiModule = moduleId;
   cards.root.setAttribute(surfaceAttribute, "");
   let mode = "game";
@@ -65,6 +68,7 @@ function mountStandaloneCardMode(win = globalThis.window) {
   let observedToolbar = null;
   let toolbarHadMarker = false;
   let toolbarPath = new Map();
+  let toggleOwnedFocus = false;
 
   const syncAnalyzer = () => cards.render(readAnalyzerSummary(win));
   const clearToolbarOwnership = () => {
@@ -79,11 +83,35 @@ function mountStandaloneCardMode(win = globalThis.window) {
     for (let node = toolbar; node && node !== doc.body; node = node.parentElement) nodes.push(node);
     return nodes;
   };
+  const syncViewportInset = toolbar => {
+    const viewportHeight = Math.max(Number(doc.documentElement?.clientHeight) || 0, Number(win.innerHeight) || 0);
+    const rect = toolbar?.getBoundingClientRect?.();
+    const width = Number(rect?.width) || Math.max(0, Number(rect?.right) - Number(rect?.left)) || 0;
+    const height = Number(rect?.height) || Math.max(0, Number(rect?.bottom) - Number(rect?.top)) || 0;
+    const top = Number(rect?.top);
+    const bottom = Number(rect?.bottom);
+    const bottomGap = viewportHeight - bottom;
+    const orientation = toolbar?.getAttribute?.("data-ppbui-menu-orientation");
+    const horizontal = orientation ? orientation === "horizontal" : width >= Math.max(1, height * 2);
+    const bottomDocked = horizontal && !toolbar?.classList?.contains("is-collapsed")
+      && viewportHeight > 0 && width > 0 && height > 0 && Number.isFinite(top) && Number.isFinite(bottom)
+      && top >= viewportHeight / 2 && top < viewportHeight
+      && bottomGap >= -height && bottomGap <= Math.max(height, toolbarGap * 2);
+    const inset = bottomDocked
+      ? Math.min(viewportHeight - 1, Math.max(0, Math.ceil(viewportHeight - top + toolbarGap)))
+      : 0;
+    const value = `${inset}px`;
+    if (cards.root.style.getPropertyValue(bottomInsetProperty) !== value) {
+      cards.root.style.setProperty(bottomInsetProperty, value);
+    }
+  };
   const syncToolbar = () => {
     const toolbar = doc.querySelector(config.selectors.toolbar);
     const nextPath = toolbarPathNodes(toolbar);
     const currentPath = [...toolbarPath.keys()];
     const pathChanged = nextPath.length !== currentPath.length || nextPath.some((node, index) => currentPath[index] !== node);
+    const restoreToggleFocus = toggleOwnedFocus && !toggle.isConnected
+      && (!doc.activeElement || doc.activeElement === doc.body || doc.activeElement === doc.documentElement);
     if (toolbar !== observedToolbar || pathChanged) {
       clearToolbarOwnership();
       observedToolbar = toolbar || null;
@@ -96,7 +124,11 @@ function mountStandaloneCardMode(win = globalThis.window) {
         }
       }
     }
-    if (observedToolbar && toggle.parentElement !== observedToolbar) observedToolbar.append(toggle);
+    if (observedToolbar && toggle.parentElement !== observedToolbar) {
+      observedToolbar.append(toggle);
+      if (restoreToggleFocus) toggle.focus({ preventScroll: true });
+    }
+    syncViewportInset(observedToolbar);
   };
   const syncToggle = () => {
     const cardsActive = mode === "cards";
@@ -130,9 +162,22 @@ function mountStandaloneCardMode(win = globalThis.window) {
     if (!button || !toolbar) return;
     setMode("game");
   };
+  const onDocumentFocusIn = event => {
+    toggleOwnedFocus = event.target === toggle;
+  };
+  const onDocumentPointerDown = event => {
+    if (!toggle.contains(event.target)) toggleOwnedFocus = false;
+  };
+  const onToggleKeyDown = event => {
+    if (event.key === "Tab") toggleOwnedFocus = false;
+  };
 
   toggle.addEventListener("click", onSwitch);
+  toggle.addEventListener("keydown", onToggleKeyDown);
   doc.addEventListener("click", onNativeAction, true);
+  doc.addEventListener("focusin", onDocumentFocusIn, true);
+  doc.addEventListener("pointerdown", onDocumentPointerDown, true);
+  win.addEventListener("resize", syncToolbar);
   syncToolbar();
   setMode("game");
   analyzerTimer = win.setInterval(() => {
@@ -148,7 +193,11 @@ function mountStandaloneCardMode(win = globalThis.window) {
     cleanup() {
       if (analyzerTimer !== null) win.clearInterval(analyzerTimer);
       toggle.removeEventListener("click", onSwitch);
+      toggle.removeEventListener("keydown", onToggleKeyDown);
       doc.removeEventListener("click", onNativeAction, true);
+      doc.removeEventListener("focusin", onDocumentFocusIn, true);
+      doc.removeEventListener("pointerdown", onDocumentPointerDown, true);
+      win.removeEventListener("resize", syncToolbar);
       cards.cleanup();
       toggle.remove();
       clearToolbarOwnership();

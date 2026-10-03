@@ -180,23 +180,29 @@ test("card dashboard follows game Localization and updates copy plus number form
   const cards = doc.querySelector("[data-ppbui-coupled-cards]");
   const identity = cards;
   assert.equal(cards.querySelector('[data-card-copy="huntSummary"]').textContent, "Hunt summary");
+  assert.equal(cards.querySelector('[data-card-aria="dashboard"]').getAttribute("aria-label"), "Hunt dashboard");
   assert.equal(cards.querySelector('[data-card-field="status"]').textContent, "Hunting");
   assert.equal(cards.querySelector('[data-card-field="seen-hour"]').textContent, "12.5k");
-  assert.equal(cards.querySelector('[data-card-attempt-rarity-summary]').textContent, "Rarity · All");
-  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(2)').textContent, "Epic");
-  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(5)').textContent, "Captured");
+  assert.equal(cards.querySelector('[data-card-attempt-rarity-all]').checked, true);
+  assert.deepEqual(
+    [...cards.querySelectorAll("[data-card-attempt-rarity]")].map(input => input.value),
+    ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"],
+  );
+  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(3)').textContent, "Epic");
+  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(6)').textContent, "Captured");
 
   language = "pt-BR";
   app.reconcile();
   assert.equal(doc.querySelector("[data-ppbui-coupled-cards]"), identity, "locale updates must not remount the Cards surface");
   assert.equal(cards.querySelector('[data-card-copy="huntSummary"]').textContent, "Resumo da hunt");
+  assert.equal(cards.querySelector('[data-card-aria="dashboard"]').getAttribute("aria-label"), "Painel da hunt");
   assert.equal(cards.querySelector('[data-card-field="status"]').textContent, "Caçando");
   assert.equal(cards.querySelector('[data-card-field="seen-hour"]').textContent, "12,5k");
-  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(2)').textContent, "Épica");
-  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(5)').textContent, "Capturados");
+  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(3)').textContent, "Épica");
+  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt > span:nth-child(6)').textContent, "Capturados");
   assert.equal(cards.getAttribute("aria-label"), "Console de hunt");
-  assert.equal(cards.querySelector('[data-card-aria="historyTable"]').getAttribute("aria-label"), "Hunt Story: Épica, Lendária, Mítica + Shiny");
-  assert.equal(cards.querySelector(".ppbui-cards-rarity-filter fieldset").getAttribute("aria-label"), "Raridade: Épica, Lendária, Mítica. Exceções Shiny usam o filtro Shiny.");
+  assert.equal(cards.querySelector('[data-card-aria="historyTable"]').getAttribute("aria-label"), "Hunt Story: Fraca, Comum, Incomum, Rara, Épica, Lendária, Mítica + Shiny");
+  assert.equal(cards.querySelector(".ppbui-cards-rarity-filter").getAttribute("aria-label"), "Raridade: Fraca, Comum, Incomum, Rara, Épica, Lendária, Mítica");
   assert.equal(cards.querySelector("[data-card-shortcuts]").getAttribute("aria-label"), "Ir para seção");
   assert.equal(cards.querySelector('[data-card-jump="economy"]').textContent, "Economia");
   assert.equal(cards.querySelector(".ppbui-cards-result-filter").getAttribute("aria-label"), "Resultado");
@@ -1018,15 +1024,21 @@ test("card dashboard renders canonical live target and current-session Story wit
   const geneticsDetails = cards.querySelector(".ppbui-cards-attempt-details");
   assert.equal(cards.querySelector("[data-card-genetics-toggle]"), null, "captured genetics no longer requires a per-row disclosure click");
   assert.equal(geneticsDetails.hidden, false, "captured genetics is readable inline");
-  assert.match(geneticsDetails.textContent, /Gender ♀ Female · Nature adamant · IV 151 · HP 31 · ATK 31 · SpA 20 · DEF 25 · SpD 22 · SPE 22/);
+  assert.equal(geneticsDetails.textContent.includes("Genetics"), false);
+  assert.equal(geneticsDetails.textContent.includes("IV Total"), false);
+  assert.deepEqual(
+    [...geneticsDetails.querySelectorAll(".ppbui-cards-attempt-detail")].map(node => [node.querySelector("b").textContent, node.querySelector("i").textContent]),
+    [["Gender", "♀ Female"], ["Nature", "adamant"], ["HP", "31"], ["ATK", "31"], ["DEF", "25"], ["SpA", "20"], ["SpD", "22"], ["SPE", "22"]],
+  );
+  assert.equal(geneticsDetails.querySelector(".ppbui-cards-attempt-gender").dataset.gender, "female");
   const capturedRow = [...cards.querySelectorAll(".ppbui-cards-attempt")].find(row => row.dataset.result === "captured");
   assert.equal(capturedRow.querySelector('[data-attempt-column="3"]').textContent, "×1,72", "continuous Pokémon Quality is visible beside discrete Rarity");
-  assert.equal(capturedRow.querySelector('[data-attempt-column="7"]').textContent, "151");
-  const failedIvRow = [...cards.querySelectorAll(".ppbui-cards-attempt")].find(row => row.dataset.result === "fled" && row.querySelector('[data-attempt-column="7"]')?.textContent === "176");
+  assert.equal(capturedRow.querySelector('[data-attempt-column="4"]').textContent, "151");
+  const failedIvRow = [...cards.querySelectorAll(".ppbui-cards-attempt")].find(row => row.dataset.result === "fled" && row.querySelector('[data-attempt-column="4"]')?.textContent === "176");
   assert.ok(failedIvRow, "failed attempts expose the authoritative total IV as a direct-read column");
   assert.equal(cards.querySelector("[data-card-attempt-body]").textContent.includes("must-not-cross"), false);
   assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-shiny="true"]') !== null, true);
-  assert.match(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-shiny="true"] [data-attempt-column="2"]').getAttribute("aria-label"), /SHINY/,
+  assert.match(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-shiny="true"] [data-attempt-column="1"]').getAttribute("aria-label"), /SHINY/,
     "Shiny species identification remains explicit in the accessible encounter name");
   assert.ok([...cards.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt:first-child [data-attempt-column]')].every(cell => cell.getAttribute("role") === "group" && cell.getAttribute("aria-label")?.startsWith(`${cell.dataset.label}: `)),
     "all eight Hunt fields expose named groups independent of CSS-generated labels");
@@ -1050,17 +1062,19 @@ test("card dashboard renders canonical live target and current-session Story wit
   assert.equal(cards.querySelector('[data-card-field="profit"]').closest("div").classList.contains("ppbui-cards-kpi-primary"), true);
 
   const rarityFilters = [...cards.querySelectorAll("[data-card-attempt-rarity]")];
-  assert.deepEqual(rarityFilters.map(input => input.value), ["epic", "legendary", "mythical"]);
+  assert.deepEqual(rarityFilters.map(input => input.value), ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"]);
+  assert.equal(cards.querySelector('[data-card-attempt-rarity][value="unknown"]'), null);
   rarityFilters.forEach(input => { input.checked = input.value === "epic"; });
-  rarityFilters[0].dispatchEvent(new doc.defaultView.Event("change"));
+  rarityFilters.find(input => input.value === "epic").dispatchEvent(new doc.defaultView.Event("change"));
   assert.ok(cards.querySelectorAll('[data-card-attempt-body] [data-rarity="epic"]').length > 0);
-  const rarityExceptions = [...cards.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt:not([data-rarity="epic"])')];
-  assert.ok(rarityExceptions.length > 0, "lower-rarity Shiny exceptions remain available without lower-rarity checkboxes");
-  assert.ok(rarityExceptions.every(row => row.dataset.shiny === "true"));
-  assert.equal(cards.querySelector("[data-card-attempt-rarity-summary]").textContent, "Raridade · 1/3");
+  assert.equal(cards.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt:not([data-rarity="epic"])').length, 0);
+  assert.equal(cards.querySelector("[data-card-attempt-rarity-all]").checked, false);
+  assert.equal(cards.querySelector("[data-card-attempt-rarity-all]").indeterminate, true);
 
   rarityFilters.forEach(input => { input.checked = true; });
   rarityFilters[0].dispatchEvent(new doc.defaultView.Event("change"));
+  assert.equal(cards.querySelector("[data-card-attempt-rarity-all]").checked, true);
+  assert.equal(cards.querySelector("[data-card-attempt-rarity-all]").indeterminate, false);
   const shinyFilter = cards.querySelector("[data-card-attempt-shiny]");
   shinyFilter.value = "yes";
   shinyFilter.dispatchEvent(new doc.defaultView.Event("change"));
@@ -1103,6 +1117,71 @@ test("card dashboard renders canonical live target and current-session Story wit
   assert.equal(lootRows[0].querySelector("[data-card-loot-total]").textContent, "Total $ 2k");
   assert.equal(lootRows[0].querySelector("[data-card-loot-total]").getAttribute("aria-label"), "Total: $ 2.000");
   assert.equal(cards.querySelector("[data-card-loot-body]").textContent.includes("must-not-cross"), false);
+});
+
+test("Hunt Story renders every canonical rarity with exact columns and captured Gender Nature plus six IVs", t => {
+  const now = Date.now();
+  const rarityOrder = ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"];
+  const attempts = rarityOrder.map((rarity, index) => ({
+    atMs: now - index * 1000,
+    species: `Species ${index + 1}`,
+    rarity,
+    shiny: index === 6,
+    qualityMultiplier: 1 + index / 10,
+    ivTotal: 120 + index,
+    result: "captured",
+    ball: "Ultra Ball",
+    chance: 0.01 + index / 100,
+    captureDetails: {
+      gender: index % 2 ? "male" : "female",
+      nature: index % 2 ? "bold" : "adamant",
+      ivs: { hp: 20 + index, atk: 21, def: 22, spa: 23, spd: 24, spe: 25 },
+    },
+  }));
+  const { app, doc, bridge } = setup(t, {
+    locale: "en-US",
+    analyzerSummary: {
+      protocol: 1,
+      available: true,
+      capturedAtMs: now,
+      status: "running",
+      attemptHistory: attempts,
+      specialHistory: [],
+    },
+  });
+  app.start();
+  bridge.send({ type: "ppbui.coupled.capabilities-accepted", protocol: 1, requestId: "caps-1", ok: true });
+  bridge.send({ type: "ppbui.coupled.set-view", protocol: 1, viewMode: "cards" });
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const header = [...cards.querySelectorAll(".ppbui-cards-attempt-labels>[data-attempt-column]")];
+  assert.deepEqual(header.map(node => node.textContent), ["Time", "Pokémon", "Rarity", "Quality", "IV Total", "Result", "Ball", "Chance"]);
+  const rarityFilters = [...cards.querySelectorAll("[data-card-attempt-rarity]")];
+  assert.deepEqual(rarityFilters.map(input => input.value), rarityOrder);
+  assert.equal(cards.querySelector('[data-card-attempt-rarity][value="unknown"]'), null);
+  assert.equal(cards.querySelectorAll("[data-card-attempt-body] .ppbui-cards-attempt").length, 7);
+  assert.deepEqual(
+    [...cards.querySelectorAll("[data-card-attempt-body] .ppbui-cards-attempt")].map(row => row.dataset.rarity),
+    rarityOrder,
+  );
+  const details = [...cards.querySelectorAll(".ppbui-cards-attempt-details")];
+  assert.equal(details.length, 7);
+  assert.deepEqual(
+    [...details[0].querySelectorAll(".ppbui-cards-attempt-detail b")].map(node => node.textContent),
+    ["Gender", "Nature", "HP", "ATK", "DEF", "SpA", "SpD", "SPE"],
+  );
+  assert.equal(details[0].textContent.includes("IV Total"), false);
+  assert.equal(details[0].textContent.includes("Genetics"), false);
+  assert.equal(details[0].querySelector(".ppbui-cards-attempt-gender").dataset.gender, "female");
+  assert.equal(details[1].querySelector(".ppbui-cards-attempt-gender").dataset.gender, "male");
+  assert.equal(cards.querySelector('[data-card-attempt-body] .ppbui-cards-attempt [data-attempt-column="4"]').textContent, "120");
+  const all = cards.querySelector("[data-card-attempt-rarity-all]");
+  assert.equal(all.checked, true);
+  all.checked = false;
+  all.dispatchEvent(new doc.defaultView.Event("change"));
+  assert.equal(cards.querySelectorAll("[data-card-attempt-body] .ppbui-cards-attempt").length, 0);
+  all.checked = true;
+  all.dispatchEvent(new doc.defaultView.Event("change"));
+  assert.equal(cards.querySelectorAll("[data-card-attempt-body] .ppbui-cards-attempt").length, 7);
 });
 
 test("card dashboard never uses remembered Hunt-zone art as live encounter art", t => {
@@ -1502,15 +1581,12 @@ test("card dashboard fails closed for malformed target/history fields and never 
   assert.equal(cards.textContent.includes("must-not-render"), false);
   assert.equal(cards.textContent.includes("secret"), false);
   const attempts = cards.querySelectorAll("[data-card-attempt-body] .ppbui-cards-attempt");
-  assert.equal(attempts.length, 2);
-  assert.match(attempts[0].textContent, /Mewtwo/);
-  assert.equal(attempts[0].dataset.rarity, "unknown");
-  assert.equal(attempts[0].querySelector('[data-attempt-column="7"]').textContent, "—", "out-of-range failed IV total fails closed");
-  assert.match(attempts[0].textContent, /—/);
-  assert.match(attempts[1].textContent, /Ho-Oh/);
-  assert.match(attempts[1].textContent, /IV —/);
-  assert.match(attempts[1].textContent, /ATK —/);
-  assert.equal(attempts[1].textContent.includes("must-not-render"), false);
+  assert.equal(attempts.length, 1, "Unknown rarity is sanitized but not exposed in Hunt Story");
+  assert.match(attempts[0].textContent, /Ho-Oh/);
+  assert.equal(attempts[0].querySelector('[data-attempt-column="4"]').textContent, "—", "out-of-range captured IV total fails closed");
+  assert.equal(attempts[0].querySelector(".ppbui-cards-attempt-gender").dataset.gender, "", "malformed gender fails closed instead of receiving a semantic color");
+  assert.match(attempts[0].textContent, /ATK—/);
+  assert.equal(attempts[0].textContent.includes("must-not-render"), false);
 });
 
 test("card dashboard makes Analyzer unavailable state visible instead of implying empty history", t => {
@@ -1542,11 +1618,18 @@ test("card dashboard makes Analyzer unavailable state visible instead of implyin
 test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and responsive", t => {
   const { app, doc } = setup(t);
   app.start();
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
   const css = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
   assert.match(css, /\.ppbui-cards-attempt-table,\.ppbui-cards-loot-table\{[^}]*max-height:190px;overflow-y:auto;overflow-x:hidden/);
   assert.match(css, /\.ppbui-cards-attempt-scroll\{[^}]*overflow-x:auto;overflow-y:hidden/);
-  assert.match(css, /\.ppbui-cards-attempt-labels,\.ppbui-cards-attempt\{display:grid;grid-template-columns:64px 74px minmax\(140px,1fr\) 72px 72px 92px 68px 64px;align-items:center;min-width:648px/);
+  assert.match(css, /\.ppbui-cards-attempt-labels,\.ppbui-cards-attempt\{grid-template-columns:64px minmax\(140px,1fr\) 88px 72px 64px 72px 92px 68px;min-width:662px\}/);
   assert.match(css, /\.ppbui-cards-attempt-table\{min-width:648px\}/);
+  assert.match(css, /\.ppbui-cards-attempt\[data-shiny="true"\]>\[data-attempt-column="1"\]\{color:var\(--rarity-color,var\(--ppbui-text,#ebecdc\)\)\}/,
+    "Shiny Pokémon names inherit their encounter rarity color instead of a fixed Shiny accent");
+  assert.match(css, /\.ppbui-cards-attempt\[data-shiny="true"\]>\[data-attempt-column="2"\]\{color:var\(--rarity-color,var\(--ppbui-text-muted,#c3d5c7\)\)\}/,
+    "Shiny rarity labels keep the encounter rarity color instead of the fixed selected accent");
+  assert.doesNotMatch(css, /\.ppbui-cards-attempt\[data-shiny="true"\]>\[data-attempt-column="2"\]\{color:var\(--ppbui-selected/,
+    "the retired Shiny accent override cannot recolor the Rarity column");
   assert.match(css, /\.ppbui-cards-loot-row\{display:grid;gap:5px;padding:7px 8px/);
   assert.match(css, /\.ppbui-cards-loot-finance\{display:grid;grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.doesNotMatch(css, /\.ppbui-cards-attempt-head/);
@@ -1563,14 +1646,17 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
   const labels = [...doc.querySelectorAll(".ppbui-cards-attempt-labels>[data-attempt-column]")];
   assert.equal(labels.length, 8, "Hunt Story exposes visible labels for every direct-read field");
   assert.equal(labels[3].textContent, "Quality");
-  assert.equal(labels[6].textContent, "Chance");
-  assert.equal(labels[7].textContent, "IV Total");
+  assert.deepEqual(labels.map(label => label.dataset.cardCopy), ["hour", "pokemon", "rarity", "quality", "ivTotal", "outcome", "ball", "chance"]);
+  assert.deepEqual(labels.map(label => label.textContent), ["Hora", "Pokémon", "Raridade", "Quality", "IV Total", "Resultado", "Ball", "Chance"]);
+  assert.match(css, /\.ppbui-cards-attempt-labels>\[data-attempt-column="1"\]\{text-align:left\}/,
+    "Pokémon header aligns left with the Pokémon values instead of retaining the old centered heading");
   assert.doesNotMatch(css, /grid-template-columns:55px 65px minmax\(80px,1fr\) 64px/,
     "rejected 264px-minimum four-track responsive row must not survive in narrow styles");
-  assert.match(css, /@media\(max-width:640px\)[\s\S]*\.ppbui-cards-attempt\{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\);grid-template-areas:"pokemon pokemon rarity" "time result ball" "quality chance iv"/,
+  assert.match(css, /@media\(max-width:640px\)[\s\S]*\.ppbui-cards-attempt\{min-width:0;grid-template-columns:repeat\(3,minmax\(0,1fr\)\);grid-template-areas:"pokemon pokemon rarity" "time result ball" "quality iv chance"\}/,
     "compact encounter must organize eight visible facts into an identity band plus two labeled metric bands");
   assert.ok(css.includes('@container (max-width:320px){')
-    && css.includes('grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"pokemon rarity" "time result" "ball chance" "quality iv"'),
+    && css.includes('grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"pokemon rarity" "time result" "ball chance" "quality iv"')
+    && css.lastIndexOf('@container (max-width:320px){') > css.lastIndexOf('@media(max-width:640px){'),
     "narrower history container must reflow to two tracks based on available content width");
   assert.match(css, /@media\(max-width:640px\)[\s\S]*\.ppbui-cards-attempt-scroll\{overflow-x:hidden;overflow-y:visible\}/);
   assert.match(css, /@media\(max-width:640px\)[\s\S]*\.ppbui-cards-attempt-labels\{display:none\}/);
@@ -1592,7 +1678,7 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
   assert.match(css, /\.ppbui-cards-story-tabs button:focus-visible\{[^}]*outline:2px solid var\(--ppbui-focus/);
   assert.match(css, /\.ppbui-cards-history-filters select:focus-visible\{[^}]*outline:2px solid var\(--ppbui-focus/);
   assert.match(css, /\.ppbui-cards-session-actions button:focus-visible\{[^}]*outline:2px solid var\(--ppbui-focus/);
-  assert.match(css, /\.ppbui-cards-rarity-filter>summary:focus-visible\{[^}]*outline:2px solid var\(--ppbui-focus/);
+  assert.match(css, /\.ppbui-cards-rarity-filter input:focus-visible\{[^}]*outline:2px solid var\(--ppbui-focus/);
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-battle\{height:162px/);
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-attempt-table\{max-height:218px\}\.ppbui-cards-loot-table\{max-height:260px\}/);
   assert.doesNotMatch(css, /\.ppbui-cards-rarity-badge\{display:none!important\}/,
@@ -1612,7 +1698,7 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-move\{width:16px;height:16px\}/);
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-loot-finance\{grid-template-columns:1fr\}/);
   assert.match(css, /\.ppbui-cards-battle-pair\{[^}]*grid-template-columns:minmax\(126px,\.58fr\) minmax\(0,1fr\) minmax\(0,1fr\)/);
-  assert.match(css, /@media\(min-width:900px\)[\s\S]*\.ppbui-cards-battle-pair\{grid-template-columns:minmax\(126px,\.6fr\) minmax\(0,1\.4fr\) minmax\(0,1fr\);gap:8px\}/, "desktop Target uses the same right-hand grid boundary as Captured / Seen for screenshot cropping");
+  assert.match(css, /@media\(min-width:900px\)[\s\S]*\.ppbui-cards-battle-pair\{grid-template-columns:minmax\(126px,\.6fr\) minmax\(0,1\.4fr\) minmax\(0,1fr\);gap:8px\}/, "desktop Battle preserves the validated Team / Active / Target internal composition");
   assert.match(css, /\.ppbui-cards-team-list\{[^}]*grid-template-rows:repeat\(6,minmax\(0,1fr\)\)/);
   assert.match(css, /\.ppbui-cards-team-member\[aria-pressed="true"\]\{[^}]*border-color:var\(--ppbui-accent-hi/);
   assert.match(css, /@media\(max-width:519px\)[\s\S]*\.ppbui-cards-battle-pair\{grid-template-columns:minmax\(92px,\.62fr\) minmax\(0,1fr\) minmax\(0,1fr\)/);
@@ -1622,16 +1708,59 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
   assert.match(css, /\.ppbui-cards-moves\{[^}]*display:flex[^}]*gap:3px/);
   assert.match(css, /\.ppbui-cards-move\{[^}]*width:19px;height:19px/);
   assert.match(css, /\.ppbui-cards-card--rarity\{[^}]*grid-column:1\/-1/);
-  assert.match(css, /@media\(min-width:900px\)[\s\S]*\.ppbui-cards-card--rarity\{grid-column:auto\}/);
+  assert.match(css, /@media\(min-width:900px\) and \(max-width:1179px\)\{\.ppbui-cards-grid\{grid-template-columns:repeat\(3,minmax\(0,1fr\)\)\}\.ppbui-cards-card--rarity\{grid-column:auto\}\}/,
+    "intermediate desktop keeps the previous three-column overview instead of compressing the 4x6 layout");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\.ppbui-cards-grid\{height:100%;min-height:0;grid-template-columns:repeat\(4,minmax\(0,1fr\)\);grid-template-rows:clamp\(168px,22dvh,200px\) repeat\(3,minmax\(170px,1fr\)\)/,
+    "wide Card Mode budgets all four grid rows inside the usable viewport instead of letting Story inflate the page vertically");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\.ppbui-cards-grid>\.ppbui-cards-economy \.ppbui-cards-kpi-primary\{min-height:34px;padding:4px 6px\}/,
+    "wide Economy / XP compacts only its internal KPI density so the complete dashboard stays visible without root scrolling");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="battle"\] \.ppbui-cards-battle-pair\{grid-template-columns:minmax\(116px,\.52fr\) minmax\(0,1fr\) minmax\(0,1fr\)\}/,
+    "half-width Battle gives Active and Target equal space so rarity and identity stay readable at the 1180px gate");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="battle"\] \.ppbui-cards-team-switch-head>\[data-card-copy="switchPokemon"\]\{display:none\}[\s\S]*\[data-card-layout="battle"\] \.ppbui-cards-team-switch-head>\.ppbui-cards-team-switch-short\{display:inline\}/,
+    "half-width Battle uses the existing short Team heading instead of clipping the long Switch Pokémon copy");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="captured-seen"\]\{grid-column:3\/span 2;grid-row:1\/span 1\}/);
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="history"\]>\.ppbui-cards-story-panel:not\(\[hidden\]\)\{display:flex;flex:1 1 auto;min-height:0;flex-direction:column\}/,
+    "wide Story panel fills the height allocated to History instead of leaving a dead lower card area");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="history"\] :is\(\.ppbui-cards-attempt-table,\.ppbui-cards-loot-table\)\{flex:1 1 auto;min-height:0;max-height:none\}/,
+    "wide Hunt/Loot Story keeps local table ownership while consuming available vertical space");
+  assert.match(css, /\.ppbui-cards-attempt-gender\[data-gender="female"\] i\{color:var\(--ppbui-gender-female,#f4a7c0\);font-weight:800\}/);
+  assert.match(css, /\.ppbui-cards-attempt-gender\[data-gender="male"\] i\{color:var\(--ppbui-gender-male,#9ed8ff\);font-weight:800\}/);
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="battle"\] \.ppbui-cards-combat-card\{grid-template-columns:92px minmax\(0,1fr\);gap:9px;padding:8px 9px;align-content:center\}/,
+    "wide half-Battle dedicates more of each Active/Target card to authoritative content");
+  assert.match(css, /@media\(min-width:1180px\)[\s\S]*\[data-card-layout="battle"\] \.ppbui-cards-combat-art\{width:90px;height:90px\}/,
+    "wide Active/Target native art has a deliberate larger footprint without changing Battle height");
   const overview = [...doc.querySelectorAll(".ppbui-cards-card--overview")];
   assert.deepEqual(overview.map(card => card.classList.contains("ppbui-cards-card--summary") ? "summary" : card.classList.contains("ppbui-cards-card--capture") ? "capture" : "rarity"), ["summary", "capture", "rarity"], "Capture and Captured/Seen use the requested order");
+  const layoutGrid = doc.querySelector(".ppbui-cards-grid");
+  assert.deepEqual(
+    [...layoutGrid.children].map(node => node.getAttribute("data-card-layout")),
+    ["battle", "hunt-summary", "capture", "captured-seen", "economy-xp", "history"],
+    "desktop layout keeps one semantic DOM order while CSS owns the approved 4x6 placement",
+  );
+  assert.equal(cards.querySelector(".ppbui-cards-battle").parentElement, layoutGrid, "Battle is moved into the shared grid without cloning its DOM");
+  for (const [layoutId, column, row] of [
+    ["battle", "1/span 2", "1/span 1"],
+    ["hunt-summary", "1/span 2", "2/span 1"],
+    ["capture", "1/span 2", "3/span 1"],
+    ["captured-seen", "3/span 2", "1/span 1"],
+    ["economy-xp", "1/span 2", "4/span 1"],
+    ["history", "3/span 2", "2/span 3"],
+  ]) {
+    assert.match(
+      css,
+      new RegExp('@media\\(min-width:1180px\\)[\\s\\S]*\\[data-card-layout="' + layoutId + '"\\]\\{[^}]*grid-column:' + column.replace("/", "\\/") + ';grid-row:' + row.replace("/", "\\/")),
+      layoutId + " keeps the Product Owner-approved Card Mode coordinates",
+    );
+  }
   for (const selector of [
     "ppbui-cards-combat-card", "ppbui-cards-combat-art", "ppbui-cards-team-switch",
     "ppbui-cards-card", "ppbui-cards-rarity>div", "ppbui-cards-attempt-table,.ppbui-cards-loot-table",
-    "ppbui-cards-rarity-filter fieldset", "ppbui-cards-economy-group",
+    "ppbui-cards-economy-group",
   ]) assert.match(css, new RegExp(`\\.${selector.replace(/[> ]/g, match => match === ">" ? ">" : " ")}\\{[^}]*border-radius:var\\(--ppbui-radius,5px\\)`));
   assert.match(css, /\.ppbui-cards-team-member\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
-  assert.match(css, /\.ppbui-cards-rarity-filter>summary\{[^}]*border-radius:var\(--ppbui-control-radius,5px\)/);
+  assert.match(css, /\.ppbui-cards-rarity-filter label\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
+  assert.doesNotMatch(css, /\.ppbui-cards-rarity-filter>summary|\.ppbui-cards-rarity-filter fieldset/,
+    "visible rarity chips replace the retired disclosure/fieldset dropdown styling");
   assert.match(css, /\.ppbui-cards-rarity-badge,\.ppbui-cards-shiny-badge\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
   assert.match(css, /\.ppbui-cards-hp-meter,\.ppbui-cards-exp-meter\{[^}]*border-radius:var\(--ppbui-radius-badge,4px\)/);
   assert.doesNotMatch(css, /--ppbui-(?:radius|radius-badge|control-radius),0px/);

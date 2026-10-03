@@ -121,6 +121,7 @@ function historyCase({ historyCount, paneCount, filter, iterations, largeDom }) 
           chance: 0.33, result: "captured", ball: "Synthetic Ball",
         };
         entry.fixture.specialHistory = [entry.appended, ...entry.base];
+        entry.fixture.attemptHistory = entry.fixture.specialHistory.slice(0, 32);
       }, entry => {
         const rows = attemptRows(entry.body);
         assert.equal(rows.length, entry.initialRows.length + 1);
@@ -140,6 +141,7 @@ function historyCase({ historyCount, paneCount, filter, iterations, largeDom }) 
         const index = originalIndex < 0 ? 0 : originalIndex + 1;
         changed[index] = { ...changed[index], ball: `Edited ${cycle}` };
         fixture.specialHistory = changed;
+        fixture.attemptHistory = changed.slice(0, 32);
         entry.beforeEditRows = attemptRows(body);
         entry.visibleEditIndex = originalIndex < 0 ? 0 : filter === "captured"
           ? 1 + Math.floor(originalIndex / 3) : originalIndex + 1;
@@ -162,6 +164,7 @@ function historyCase({ historyCount, paneCount, filter, iterations, largeDom }) 
       emit("reset", entry => {
         entry.beforeResetRows = attemptRows(entry.body);
         entry.fixture.specialHistory = entry.base;
+        entry.fixture.attemptHistory = entry.base.slice(0, 32);
       }, entry => {
         const rows = attemptRows(entry.body);
         assert.equal(rows.length, entry.initialRows.length);
@@ -185,6 +188,7 @@ function historyCase({ historyCount, paneCount, filter, iterations, largeDom }) 
     assert.equal(renderCalls, readerCalls);
     assert.equal(providerCalls, readerCalls);
     assert.equal(entries.reduce((n, e) => n + e.fixture.specialHistory.length, 0), paneCount * historyCount);
+    assert.equal(entries.reduce((n, e) => n + e.fixture.attemptHistory.length, 0), paneCount * Math.min(historyCount, 32));
     return {
       type: "history-mutations-direct-measured", historyCount, paneCount, filter, iterations,
       phases: ops,

@@ -62,11 +62,12 @@ Analyzer authority. The Product Owner's 2026-09-29 screenshot rejected the
 crowded two-line Hunt Story arrangement. At a pane width at or below 640px,
 Hunt Story uses a compact encounter record with Pokémon identity and semantic
 Rarity as its header, then visible labeled Time/Result/Ball and
-Quality/Chance/IV Total groups. When the available history content width is
-at most 320px, it reflows to two columns: Pokémon/Rarity, Time/Result,
-Ball/Chance and Quality/IV Total. All eight values, explicit Shiny state and
-captured-only genetics remain readable, with no hidden horizontal columns or
-scrolling; the local vertical scroller stays bounded. Wide history keeps its
+Quality/IV Total/Chance groups. When the available history content width is
+at most 320px, it reflows to two columns while retaining the same eight direct-read
+facts. Captured detail keeps Gender, Nature and six individual IVs only; IV Total
+belongs to the primary row and is not repeated in the detail. All eight values and
+explicit Shiny state remain readable, with no hidden horizontal columns or
+root scrolling; the local history scroller stays bounded. Wide history keeps its
 single-row table. Small Team and HP/EXP text becomes readable without crossing the
 player/target card boundary. Result filters use a three-choice segmented group
 with a selected text/state and roving keyboard focus. Scroll-triggered shortcuts
@@ -288,6 +289,49 @@ invalid candidate5 architecture.
 
 ### Card Mode hunt-data presentation — 2026-09-26 Product Owner correction
 
+- Product Owner layout selection on 2026-10-02 replaces the earlier three-column wide
+  composition at 1180px and above with one four-column desktop grid. Battle occupies columns 1–2 row 1;
+  Hunt Summary columns 1–2 row 2; Capture columns 1–2 row 3; Economy / XP columns 1–2
+  row 4; Captured / Seen columns 3–4 row 1; History columns 3–4 spanning rows 2–4.
+  From 900–1179px the prior three-column overview remains active; below that, the
+  existing responsive flow remains authoritative. Semantic DOM order stays Battle →
+  Hunt Summary → Capture → Captured / Seen → Economy / XP → History.
+- Product Owner refinement on 2026-10-02 keeps those outer coordinates and makes
+  History consume its full row-2-through-row-4 allocation at 1180px+. Hunt/Loot retain
+  their own scroll ownership; filling the card must not create root-level horizontal
+  overflow. The half-width Active and Target cards use more of their existing area for
+  native art and authoritative identity/level/types. Active keeps its selected moves;
+  Target keeps Rarity/Shiny/types. No new gameplay facts are invented to fill space.
+- Product Owner live follow-up on 2026-10-02 clarifies that the standalone Cards path
+  must receive the same Active/Target density instead of keeping those portraits hidden
+  behind its `textOnly` optimization. Standalone Cards therefore enables only the two
+  static combat portraits while keeping secondary Element icons and Story sprites in
+  text-only mode. When no canonical Target exists, the art slot remains as an explicit
+  waiting/empty placeholder rather than becoming dead space. The Cards surface itself
+  owns vertical scrolling inside `100dvh`; the page/body must not grow past the viewport.
+  In Hunt Story, the `Pokémon` column heading is left-aligned with its row values.
+- Product Owner live follow-up on 2026-10-03 establishes that browser `100dvh` alone is
+  not the usable Card Mode boundary while the persistent Poké Hub remains fixed over the
+  bottom of that viewport. When a horizontal toolbar is docked near the bottom edge,
+  standalone Cards ends 8 px above its measured top edge and keeps its own
+  vertical scrollbar inside that reduced area. The reservation follows live toolbar/
+  viewport geometry and must disappear for a vertical/collapsed toolbar or a horizontal
+  toolbar dragged away from the bottom edge, so those states do not waste a full-width
+  strip. The approved 4×6 coordinates do not change.
+- Product Owner live rejection later on 2026-10-03 adds a stronger desktop-fit rule:
+  respecting the usable viewport is insufficient if the root Card Mode itself still has
+  to scroll to reveal Economy / XP. At the current desktop validation sizes (including
+  the 1728×874-class viewport), all six top-level surfaces must be simultaneously visible
+  above the Poké Hub. The 4×6 grid therefore owns a bounded 100%-height row budget rather
+  than intrinsic `auto` rows; Summary/Capture/Captured-Seen/Economy may use denser desktop
+  padding and KPI spacing, but no facts are removed. Story keeps vertical scrolling
+  inside its attempt/loot table. Root vertical scrolling remains only a short-height
+  fallback, not the normal desktop path.
+- Product Owner visual follow-up on 2026-10-03 clarifies that a Shiny Story row does
+  not get a separate rarity-label accent. Both the Pokémon name (`✦ SHINY` included)
+  and the `Rarity` value resolve from the row's `--rarity-color`; Shiny remains explicit
+  through text/ARIA rather than a fixed gold recolor.
+
 - The overview order is **Hunt summary → Capture → Captured / Seen**. The Captured / Seen
   rarity card does not render an `Unknown` bucket; the product contract treats the seven
   canonical rarity values as the complete user-facing set.
@@ -299,8 +343,7 @@ invalid candidate5 architecture.
 - Product Owner follow-up on 2026-09-27 removes XP from the Target card. Target keeps only useful
   authoritative context already available to Cards: identity, level/range, Rarity, Shiny, Element
   types and native art. Internal zone ids are not presentation data and Cards must not fabricate a
-  prospective capture chance. In the wide crop layout, Target shares the third-column horizontal
-  bounds with Captured / Seen so both surfaces can be screenshot-cropped consistently.
+  prospective capture chance.
 - The Active Pokémon card may show the exact selected native moves as compact move icons. The source
   is the read-only native `getMoveset` contract for the current Team leader; it is not inferred from
   Analyzer data and it does not introduce a gameplay write. `moveset.saved` invalidates that visual
@@ -309,11 +352,20 @@ invalid candidate5 architecture.
   `Team indisponível`, but that availability message is cleared as soon as members arrive and
   must not overwrite explicit switch success/failure feedback. Pokémon identity/level remains
   readable from runtime data even if the compact HUD DOM was reconstructed.
-- Hunt Story is direct-read history. Each row exposes Pokémon identity/available native art,
-  discrete Rarity, continuous **Quality**, result, Ball, Chance and authoritative **IV Total**.
+- Hunt Story is direct-read history. Its wide primary order is exactly **Time → Pokémon →
+  Rarity → Quality → IV Total → Result → Ball → Chance**. The visible rarity controls expose
+  **All, Weak, Common, Uncommon, Rare, Epic, Legendary and Mythical**; Unknown is never a
+  user-facing filter. The complete sanitized attemptHistory supplies all canonical
+  rarities, while non-duplicated older specialHistory entries may extend the retained
+  Epic/Legendary/Mythical/Shiny tail beyond the 32 general-attempt window.
+  Each row exposes Pokémon identity/available native art, discrete Rarity, continuous
+  **Quality**, result, Ball, Chance and authoritative **IV Total**.
   The scalar total is available for failed attempts when Analyzer observed it; missing/invalid totals
-  remain unavailable rather than being inferred. Captured genetics is inline; no per-row disclosure
-  click is required to understand the captured Pokémon. The eight direct-read
+  remain unavailable rather than being inferred. Captured detail is inline and contains only
+  **Gender, Nature, HP, ATK, DEF, SpA, SpD and SPE**. The literal “Genetics” label is removed
+  and IV Total is not repeated there. Female text uses a light-pink semantic accent and Male
+  text uses baby blue, while the textual gender remains present so color is never the only cue.
+  No per-row disclosure click is required to understand the captured Pokémon. The eight direct-read
   fields keep explicit visible column labels and remain a single row in `1:2` / `2:1` panes. A narrow
   Story owns horizontal scrolling instead of reflowing those fields to a second line; the row/table
   remains locally bounded rather than expanding the whole Card Mode surface.
