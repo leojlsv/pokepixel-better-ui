@@ -4,7 +4,8 @@ import { normalizeNativeMoveset } from "../team-movesets/actions.js";
 import { createMoveIcon } from "../team-movesets/dom.js";
 import { pokemonTypes } from "../hunts/type-chart.js";
 import { createElementIcon } from "../../core/element-icons.js";
-import { explicitNativeLeaderId, runAnalyzerSessionAction, setActiveTeamMember, teamControlSnapshot } from "./hunt-controls.js";
+import { analyzerSessionControlAvailable, explicitNativeLeaderId, runAnalyzerSessionAction, setActiveTeamMember, teamControlSnapshot } from "./hunt-controls.js";
+import { canNavigateAnalyzerUi, navigateAnalyzerUi } from "./analyzer-ui.js";
 
 const ITEM_RARITIES = Object.freeze(["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"]);
 const ITEM_RARITY_SET = new Set(ITEM_RARITIES);
@@ -16,32 +17,32 @@ const LOOT_CATALOG_RETRY_MS = 5_000;
 
 const COPY = Object.freeze({
   en: Object.freeze({
-    locale: "en-US", unavailable: "Unavailable", waitingTarget: "Waiting for target", noAttempts: "No attempts recorded in this Hunt.", noFilteredAttempts: "No attempts match these filters.", analyzerUnavailable: "Hunt Analyzer data unavailable.",
-    huntConsole: "Hunt console", huntDashboard: "Hunt dashboard", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", expeditionInProgress: "Expedition in progress", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
-    huntSummary: "Hunt summary", status: "Status", time: "Time", seen: "Seen", captured: "Captured", failed: "Failed", seenHour: "Seen/h", capturedSeen: "Captured / Seen", rarityCaption: "C/S · ✦ Shiny C/S",
-    capture: "Capture", huntRate: "Hunt rate", lastAttemptChance: "Last attempt chance", epicFailed: "Epic+ failed", shinySeen: "Shiny seen", shinyCaptured: "Shiny captured",
+    locale: "en-US", unavailable: "Unavailable", waitingTarget: "Waiting for target", noAttempts: "No attempts recorded in this Hunt.", noAttemptsExpedition: "No attempts recorded in this Expedition.", noFilteredAttempts: "No attempts match these filters.", analyzerUnavailable: "Hunt Analyzer data unavailable.",
+    huntConsole: "Hunt console", expeditionConsole: "Expedition console", huntDashboard: "Hunt dashboard", expeditionDashboard: "Expedition dashboard", active: "ACTIVE", target: "TARGET", lastSessionTarget: "LAST IN HUNT", lastSeenInHunt: "Last seen in this Hunt", lastExpeditionTarget: "LAST IN EXP.", lastSeenInExpedition: "Last seen in this Expedition", expeditionInProgress: "Expedition in progress", moves: "Moves", noImage: "NO IMG", noTarget: "NO TARGET", switchPokemon: "Switch Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team unavailable", defeated: "defeated",
+    huntSummary: "Hunt summary", expeditionSummary: "Expedition summary", status: "Status", time: "Time", seen: "Seen", captured: "Captured", failed: "Failed", seenHour: "Seen/h", capturedSeen: "Captured / Seen", rarityCaption: "C/S · ✦ Shiny C/S",
+    capture: "Capture", huntRate: "Capture rate", lastAttemptChance: "Last attempt chance", epicFailed: "Epic+ failed", shinySeen: "Shiny seen", shinyCaptured: "Shiny captured",
     economyXp: "Economy / XP", revenue: "Revenue", totalRevenue: "Total revenue", directGold: "Direct gold", lootValue: "Loot value", autoSell: "Auto-sell", result: "Result", totalProfit: "Total profit", profitHour: "Profit/h", expenses: "Expenses", expensesHour: "Expenses/h", experience: "Experience", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Trainer/h", trainerTotal: "Trainer total",
-    history: "Story", historyCaption: "Session events", huntStory: "Hunt Story", lootStory: "Loot Story", rarity: "Rarity", all: "All", none: "None", outcome: "Result", shiny: "Shiny", yes: "Yes", no: "No",
-    noLoot: "No loot recorded in this Hunt.", noFilteredLoot: "No loot matches this item rarity.", lootTotal: "Total", items: "Items", itemRarity: "Item rarity", noItemRarity: "No rarity", noItems: "No item drops",
+    history: "Story", historyCaption: "Session events", huntStory: "Hunt Story", expeditionStory: "Expedition Story", lootStory: "Loot Story", rarity: "Rarity", all: "All", none: "None", outcome: "Result", shiny: "Shiny", yes: "Yes", no: "No",
+    noLoot: "No loot recorded in this Hunt.", noLootExpedition: "No loot recorded in this Expedition.", noFilteredLoot: "No loot matches this item rarity.", lootTotal: "Total", items: "Items", itemRarity: "Item rarity", noItemRarity: "No rarity", noItems: "No item drops",
     hour: "Time", pokemon: "Pokémon", ball: "Ball", chance: "Chance", ivTotal: "IV Total", elements: "Types", quality: "Quality",
     running: "Hunting", paused: "Paused", waiting: "Waiting", noCanonicalTarget: "No single canonical target", exactValue: "Exact value", capturedOfSeen: "captured of", seenWord: "seen", shinyCv: "Shiny C/S",
-    pause: "Pause", resume: "Resume", reset: "Reset", resetting: "Resetting…", resuming: "Resuming…", pausing: "Pausing…", huntReset: "Hunt reset and paused", huntResumed: "Hunt resumed", huntPaused: "Hunt paused", analyzerControlUnavailable: "Analyzer control unavailable",
+    pause: "Pause", resume: "Resume", reset: "Reset", resetting: "Resetting…", resuming: "Resuming…", pausing: "Pausing…", sessionReset: "Session reset and paused", sessionResumed: "Session resumed", sessionPaused: "Session paused", analyzerControlUnavailable: "Analyzer control unavailable", analyzerDetails: "Analyzer ↗", analyzerCaptureDetails: "Open Capture details in Analyzer", analyzerRarityDetails: "Open rarity details in Analyzer", analyzerAttemptsDetails: "Open Attempts in Analyzer", analyzerLootDetails: "Open Loot history in Analyzer", analyzerDetailsUnavailable: "Analyzer details unavailable",
     switching: "Switching…", activeUpdated: "Active Pokémon updated", switchUnavailable: "Switch unavailable",
     leaderAwaitHud: "POST accepted; waiting for Team HUD", leaderSyncUnavailable: "POST accepted; Team update was not delivered. Check Game or reload.", leaderSuperseded: "Another leader change occurred while the POST was pending", leaderHudUnexpected: "HUD changed to another leader",
     gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown",
     sectionNavigation: "Jump to section", navTop: "Top", navSummary: "Summary", navEconomy: "Economy", navStory: "Story", copySummary: "Copy", copySummaryPending: "Copying…", copySummarySuccess: "Summary copied", copySummaryError: "Could not copy summary", copySummaryUnavailable: "Clipboard unavailable",
   }),
   pt: Object.freeze({
-    locale: "pt-BR", unavailable: "Indisponível", waitingTarget: "Aguardando alvo", noAttempts: "Nenhuma tentativa registrada nesta hunt.", noFilteredAttempts: "Nenhuma tentativa corresponde aos filtros.", analyzerUnavailable: "Dados do Hunt Analyzer indisponíveis.",
-    huntConsole: "Console de hunt", huntDashboard: "Painel da hunt", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", expeditionInProgress: "Expedição em andamento", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
-    huntSummary: "Resumo da hunt", status: "Status", time: "Tempo", seen: "Vistos", captured: "Capturados", failed: "Falharam", seenHour: "Vistos/h", capturedSeen: "Capturados / Vistos", rarityCaption: "C/V · ✦ Shiny C/V",
-    capture: "Captura", huntRate: "Taxa da hunt", lastAttemptChance: "Chance última tentativa", epicFailed: "Epic+ falharam", shinySeen: "Shiny vistos", shinyCaptured: "Shiny capturados",
+    locale: "pt-BR", unavailable: "Indisponível", waitingTarget: "Aguardando alvo", noAttempts: "Nenhuma tentativa registrada nesta hunt.", noAttemptsExpedition: "Nenhuma tentativa registrada nesta expedição.", noFilteredAttempts: "Nenhuma tentativa corresponde aos filtros.", analyzerUnavailable: "Dados do Hunt Analyzer indisponíveis.",
+    huntConsole: "Console de hunt", expeditionConsole: "Console de expedição", huntDashboard: "Painel da hunt", expeditionDashboard: "Painel da expedição", active: "ATIVO", target: "ALVO", lastSessionTarget: "ÚLTIMO DA HUNT", lastSeenInHunt: "Último visto nesta Hunt", lastExpeditionTarget: "ÚLTIMO DA EXP.", lastSeenInExpedition: "Último visto nesta expedição", expeditionInProgress: "Expedição em andamento", moves: "Golpes", noImage: "SEM IMG", noTarget: "SEM ALVO", switchPokemon: "Trocar Pokémon", switchPokemonShort: "Team", teamUnavailable: "Team indisponível", defeated: "derrotado",
+    huntSummary: "Resumo da hunt", expeditionSummary: "Resumo da expedição", status: "Status", time: "Tempo", seen: "Vistos", captured: "Capturados", failed: "Falharam", seenHour: "Vistos/h", capturedSeen: "Capturados / Vistos", rarityCaption: "C/V · ✦ Shiny C/V",
+    capture: "Captura", huntRate: "Taxa de captura", lastAttemptChance: "Chance última tentativa", epicFailed: "Epic+ falharam", shinySeen: "Shiny vistos", shinyCaptured: "Shiny capturados",
     economyXp: "Economia / XP", revenue: "Receita", totalRevenue: "Receita total", directGold: "Gold direto", lootValue: "Loot (valor)", autoSell: "Auto-sell", result: "Resultado", totalProfit: "Lucro total", profitHour: "Lucro/h", expenses: "Gastos", expensesHour: "Gastos/h", experience: "Experiência", pokemonXpHour: "Pokémon XP/h", pokemonTotal: "Pokémon total", trainerHour: "Treinador/h", trainerTotal: "Treinador total",
-    history: "Story", historyCaption: "Eventos da sessão", huntStory: "Hunt Story", lootStory: "Loot Story", rarity: "Raridade", all: "Todos", none: "Nenhuma", outcome: "Resultado", shiny: "Shiny", yes: "Sim", no: "Não",
-    noLoot: "Nenhum loot registrado nesta hunt.", noFilteredLoot: "Nenhum loot corresponde à raridade de item selecionada.", lootTotal: "Total", items: "Itens", itemRarity: "Raridade do item", noItemRarity: "Sem raridade", noItems: "Sem drop de item",
+    history: "Story", historyCaption: "Eventos da sessão", huntStory: "Hunt Story", expeditionStory: "Expedition Story", lootStory: "Loot Story", rarity: "Raridade", all: "Todos", none: "Nenhuma", outcome: "Resultado", shiny: "Shiny", yes: "Sim", no: "Não",
+    noLoot: "Nenhum loot registrado nesta hunt.", noLootExpedition: "Nenhum loot registrado nesta expedição.", noFilteredLoot: "Nenhum loot corresponde à raridade de item selecionada.", lootTotal: "Total", items: "Itens", itemRarity: "Raridade do item", noItemRarity: "Sem raridade", noItems: "Sem drop de item",
     hour: "Hora", pokemon: "Pokémon", ball: "Ball", chance: "Chance", ivTotal: "IV Total", elements: "Elementos", quality: "Quality",
     running: "Caçando", paused: "Pausado", waiting: "Aguardando", noCanonicalTarget: "Sem alvo canônico único", exactValue: "Valor exato", capturedOfSeen: "capturados de", seenWord: "vistos", shinyCv: "Shiny C/V",
-    pause: "Pausar", resume: "Retomar", reset: "Resetar", resetting: "Resetando…", resuming: "Retomando…", pausing: "Pausando…", huntReset: "Hunt resetada e pausada", huntResumed: "Hunt retomada", huntPaused: "Hunt pausada", analyzerControlUnavailable: "Controle do Analyzer indisponível",
+    pause: "Pausar", resume: "Retomar", reset: "Resetar", resetting: "Resetando…", resuming: "Retomando…", pausing: "Pausando…", sessionReset: "Sessão resetada e pausada", sessionResumed: "Sessão retomada", sessionPaused: "Sessão pausada", analyzerControlUnavailable: "Controle do Analyzer indisponível", analyzerDetails: "Analyzer ↗", analyzerCaptureDetails: "Abrir detalhes de Captura no Analyzer", analyzerRarityDetails: "Abrir detalhes de raridade no Analyzer", analyzerAttemptsDetails: "Abrir Attempts no Analyzer", analyzerLootDetails: "Abrir histórico de Loot no Analyzer", analyzerDetailsUnavailable: "Detalhes do Analyzer indisponíveis",
     switching: "Trocando…", activeUpdated: "Ativo atualizado", switchUnavailable: "Troca indisponível",
     leaderAwaitHud: "POST aceito; aguardando Team HUD", leaderSyncUnavailable: "POST aceito; atualização não chegou ao Team. Confira Game ou recarregue.", leaderSuperseded: "Outro líder foi ativado durante a troca", leaderHudUnexpected: "HUD mudou para outro líder",
     gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown",
@@ -756,7 +757,7 @@ function renderAttempts(root, attempts, available, filters) {
     && (filters.attemptShiny === "" || (filters.attemptShiny === "yes") === (attempt.shiny === true))
     && (filters.attemptResult === "" || filters.attemptResult === attempt.result)
   ));
-  const signature = JSON.stringify([available, filters.localeKey, locale, filters.speciesSpriteRevision,
+  const signature = JSON.stringify([available, filters.localeKey, locale, filters.activityKind, filters.speciesSpriteRevision,
     [...filters.attemptRarities].sort(), filters.attemptShiny, filters.attemptResult, rows]);
   const now = Date.now();
   const view = filters.attemptView;
@@ -764,7 +765,7 @@ function renderAttempts(root, attempts, available, filters) {
     refreshRelativeTimes(view.entries, locale, now);
     return;
   }
-  const controls = JSON.stringify([filters.localeKey, locale, ...[...filters.attemptRarities].sort(),
+  const controls = JSON.stringify([filters.localeKey, locale, filters.activityKind, ...[...filters.attemptRarities].sort(),
     filters.attemptShiny, filters.attemptResult, filters.textOnly]);
   if (filtered.length === 0) {
     const emptyRow = root.ownerDocument.createElement("div");
@@ -774,7 +775,8 @@ function renderAttempts(root, attempts, available, filters) {
     empty.className = "ppbui-cards-empty";
     empty.textContent = !available
       ? copy.analyzerUnavailable
-      : rows.length ? copy.noFilteredAttempts : copy.noAttempts;
+      : rows.length ? copy.noFilteredAttempts
+        : filters.activityKind === "expedition" ? copy.noAttemptsExpedition : copy.noAttempts;
     emptyRow.append(empty);
     body.replaceChildren(emptyRow);
     view.entries = [];
@@ -849,7 +851,7 @@ function renderLootHistory(root, lootHistory, available, state) {
     return state.lootRarity === "none" ? !rarity : rarity === state.lootRarity;
   };
   const filteredRows = state.lootRarity ? rows.filter(row => itemsOf(row).some(itemMatches)) : rows;
-  const signature = JSON.stringify([available, state.localeKey, locale, state.lootRarity, state.lootCatalogRevision, rows]);
+  const signature = JSON.stringify([available, state.localeKey, locale, state.activityKind, state.lootRarity, state.lootCatalogRevision, rows]);
   const now = Date.now();
   if (body.dataset.signature === signature) {
     refreshRelativeTimes(state.lootTimes, locale, now);
@@ -864,7 +866,10 @@ function renderLootHistory(root, lootHistory, available, state) {
     emptyRow.setAttribute("role", "listitem");
     const empty = root.ownerDocument.createElement("span");
     empty.className = "ppbui-cards-empty";
-    empty.textContent = !available ? copy.analyzerUnavailable : rows.length ? copy.noFilteredLoot : copy.noLoot;
+    empty.textContent = !available
+      ? copy.analyzerUnavailable
+      : rows.length ? copy.noFilteredLoot
+        : state.activityKind === "expedition" ? copy.noLootExpedition : copy.noLoot;
     emptyRow.append(empty);
     body.append(emptyRow);
     return;
@@ -914,7 +919,7 @@ function setControlStatus(root, key, message, tone = "", source = "") {
 function copyableSessionSummary(root, state) {
   if (!state.summary) return "";
   const copy = state.copy;
-  const lines = [copy.huntSummary];
+  const lines = [state.summary.activityKind === "expedition" ? copy.expeditionSummary : copy.huntSummary];
   const fields = [
     [copy.status, "status"], [copy.time, "time"],
     [copy.seen, "seen"], [copy.captured, "captured"],
@@ -952,6 +957,7 @@ function markup(context) {
         <button type="button" data-card-jump="story" data-card-copy="navStory">${copy.navStory}</button>
       </div>
     </nav>
+    <span class="ppbui-cards-sr-only" data-card-analyzer-status role="status" aria-live="polite"></span>
     <section class="ppbui-cards-grid" data-card-aria="dashboard">
       <section class="ppbui-cards-battle" data-card-aria="battle" data-card-layout="battle">
         <div class="ppbui-cards-battle-pair">
@@ -977,14 +983,14 @@ function markup(context) {
         <div><span data-card-copy="failed">${copy.failed}</span><strong data-card-field="failed">—</strong></div>
         <div><span data-card-copy="seenHour">${copy.seenHour}</span><strong data-card-field="seen-hour">—</strong></div>
       </div></article>
-      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--capture" data-card-layout="capture"><h2 data-card-copy="capture">${copy.capture}</h2><div class="ppbui-cards-stat-grid">
+      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--capture" data-card-layout="capture"><div class="ppbui-cards-card-head"><h2 data-card-copy="capture">${copy.capture}</h2><button class="ppbui-cards-analyzer-link" type="button" data-card-analyzer-open="current" data-card-copy="analyzerDetails" hidden>${copy.analyzerDetails}</button></div><div class="ppbui-cards-stat-grid">
         <div><span data-card-copy="huntRate">${copy.huntRate}</span><strong data-card-field="capture-rate">—</strong></div>
         <div><span data-card-copy="lastAttemptChance">${copy.lastAttemptChance}</span><strong data-card-field="last-chance">—</strong></div>
         <div><span data-card-copy="epicFailed">${copy.epicFailed}</span><strong data-card-field="epic-failed">—</strong></div>
         <div><span data-card-copy="shinySeen">${copy.shinySeen}</span><strong data-card-field="shiny-seen">—</strong></div>
         <div><span data-card-copy="shinyCaptured">${copy.shinyCaptured}</span><strong data-card-field="shiny-captured">—</strong></div>
       </div></article>
-      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--rarity" data-card-layout="captured-seen"><h2><span data-card-copy="capturedSeen">${copy.capturedSeen}</span><small data-card-copy="rarityCaption">${copy.rarityCaption}</small></h2><div class="ppbui-cards-rarity" data-card-rarity-grid>
+      <article class="ppbui-cards-card ppbui-cards-card--overview ppbui-cards-card--rarity" data-card-layout="captured-seen"><div class="ppbui-cards-card-head"><h2><span data-card-copy="capturedSeen">${copy.capturedSeen}</span><small data-card-copy="rarityCaption">${copy.rarityCaption}</small></h2><button class="ppbui-cards-analyzer-link" type="button" data-card-analyzer-open="current-rarity" data-card-copy="analyzerDetails" hidden>${copy.analyzerDetails}</button></div><div class="ppbui-cards-rarity" data-card-rarity-grid>
         ${rarityTiles}
       </div></article>
       <article class="ppbui-cards-card ppbui-cards-economy" data-card-layout="economy-xp"><h2 data-card-copy="economyXp">${copy.economyXp}</h2>
@@ -1013,9 +1019,12 @@ function markup(context) {
       <article class="ppbui-cards-card ppbui-cards-history" data-card-layout="history">
         <div class="ppbui-cards-story-head">
           <h2><span data-card-copy="history">${copy.history}</span><small data-card-copy="historyCaption">${copy.historyCaption}</small></h2>
-          <div class="ppbui-cards-story-tabs" role="tablist" aria-label="${copy.history}">
-            <button type="button" id="ppbui-card-story-tab-hunt" role="tab" aria-selected="true" aria-controls="ppbui-card-story-panel-hunt" tabindex="0" data-card-story-tab="hunt" data-card-copy="huntStory">${copy.huntStory}</button>
-            <button type="button" id="ppbui-card-story-tab-loot" role="tab" aria-selected="false" aria-controls="ppbui-card-story-panel-loot" tabindex="-1" data-card-story-tab="loot" data-card-copy="lootStory">${copy.lootStory}</button>
+          <div class="ppbui-cards-story-actions">
+            <div class="ppbui-cards-story-tabs" role="tablist" aria-label="${copy.history}">
+              <button type="button" id="ppbui-card-story-tab-hunt" role="tab" aria-selected="true" aria-controls="ppbui-card-story-panel-hunt" tabindex="0" data-card-story-tab="hunt" data-card-copy="huntStory">${copy.huntStory}</button>
+              <button type="button" id="ppbui-card-story-tab-loot" role="tab" aria-selected="false" aria-controls="ppbui-card-story-panel-loot" tabindex="-1" data-card-story-tab="loot" data-card-copy="lootStory">${copy.lootStory}</button>
+            </div>
+            <button class="ppbui-cards-analyzer-link" type="button" data-card-analyzer-story data-card-copy="analyzerDetails" hidden>${copy.analyzerDetails}</button>
           </div>
         </div>
         <section class="ppbui-cards-story-panel" id="ppbui-card-story-panel-hunt" role="tabpanel" aria-labelledby="ppbui-card-story-tab-hunt" data-card-story-panel="hunt">
@@ -1083,10 +1092,28 @@ function applyStaticLocale(root, context) {
   cardNode(root, "[data-card-player-exp-meter]")?.setAttribute("aria-label", `EXP · ${copy.active}`);
 }
 
+function applyActivityCopy(root, state) {
+  const expedition = state.summary?.activityKind === "expedition";
+  const summaryLabel = expedition ? state.copy.expeditionSummary : state.copy.huntSummary;
+  const storyLabel = expedition ? state.copy.expeditionStory : state.copy.huntStory;
+  root.setAttribute("aria-label", expedition ? state.copy.expeditionConsole : state.copy.huntConsole);
+  cardNode(root, '[data-card-aria="dashboard"]')?.setAttribute(
+    "aria-label",
+    expedition ? state.copy.expeditionDashboard : state.copy.huntDashboard,
+  );
+  writeText(cardNode(root, '[data-card-copy="huntSummary"]'), summaryLabel);
+  writeText(cardNode(root, '[data-card-copy="huntStory"]'), storyLabel);
+  cardNode(root, '[data-card-aria="historyTable"]')?.setAttribute(
+    "aria-label",
+    `${storyLabel}: ${STORY_RARITIES.map(key => state.rarityLabels[key] || key).join(", ")} + ${state.copy.shiny}`,
+  );
+}
+
 function styles() {
   return `
     .ppbui-coupled-cards{position:fixed;inset:0;z-index:2147482000;box-sizing:border-box;overflow:auto;padding:8px;background:var(--ppbui-bg-1,rgba(22,29,32,.92));color:var(--ppbui-text,#ebecdc);font:12px/1.35 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}
     .ppbui-coupled-cards[hidden]{display:none!important}.ppbui-coupled-cards *{box-sizing:border-box}.ppbui-coupled-cards h2{margin:0 0 9px;color:var(--section-accent,var(--ppbui-selected,#e3c054));font-size:12px;font-weight:800;letter-spacing:.045em;text-transform:uppercase}.ppbui-coupled-cards h2 small{margin-left:8px;color:var(--ppbui-text-subtle,#c3d5c7);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:0;text-transform:none}.ppbui-coupled-cards h3{margin:0 0 6px;color:var(--group-accent,var(--ppbui-text,#ebecdc));font-size:10px;letter-spacing:.04em;text-transform:uppercase}
+    .ppbui-cards-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
     .ppbui-coupled-cards[data-ppbui-text-only="true"]{position:relative;inset:auto;z-index:auto;width:100%;height:calc(100vh - var(--ppbui-card-mode-bottom-inset,0px));height:calc(100dvh - var(--ppbui-card-mode-bottom-inset,0px));min-height:0;max-height:calc(100vh - var(--ppbui-card-mode-bottom-inset,0px));max-height:calc(100dvh - var(--ppbui-card-mode-bottom-inset,0px));overflow:auto;overscroll-behavior:contain;contain:layout paint style}
     .ppbui-coupled-cards[data-ppbui-text-only="true"]:not([data-ppbui-combat-art="true"]) .ppbui-cards-combat-art{display:none!important}
     .ppbui-coupled-cards[data-ppbui-text-only="true"]:not([data-ppbui-combat-art="true"]) .ppbui-cards-combat-card{grid-template-columns:minmax(0,1fr)}
@@ -1100,8 +1127,10 @@ function styles() {
     .ppbui-cards-rarity{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ppbui-cards-rarity>div{display:grid;grid-template-columns:minmax(58px,1fr) auto;grid-template-rows:auto auto;align-items:center;min-width:0;min-height:36px;border:1px solid color-mix(in srgb,var(--rarity-color) 65%,var(--ppbui-border,#6b6543));border-left:1px solid var(--rarity-color);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-rarity span{grid-row:1/-1;min-width:0;padding:0 6px;color:var(--rarity-color);font-size:9px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-rarity strong{padding:2px 7px 0;color:var(--ppbui-text,#ebecdc);font:800 13px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;text-align:right}.ppbui-cards-rarity small{padding:1px 7px 2px;color:var(--ppbui-selected,#e3c054);font:800 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.ppbui-cards-rarity small[hidden]{display:none!important}
     .ppbui-cards-story-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}.ppbui-cards-story-head h2{margin:0}.ppbui-cards-story-tabs{display:inline-flex;min-width:0;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius,5px);overflow:hidden}.ppbui-cards-story-tabs button{height:26px;padding:2px 9px;border:0;border-left:1px solid var(--ppbui-border-strong,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-story-tabs button:first-child{border-left:0}.ppbui-cards-story-tabs button[aria-selected="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-story-tabs button:focus-visible{position:relative;z-index:1;outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:-2px}.ppbui-cards-story-panel[hidden]{display:none!important}.ppbui-cards-history-filters{display:flex;align-items:end;justify-content:flex-end;gap:6px;margin-bottom:6px}.ppbui-cards-history-filters label{display:grid;gap:2px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:700;letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-history-filters select{min-width:106px;height:26px;padding:2px 22px 2px 6px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-history-filters select:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-loot-filters{justify-content:flex-start}.ppbui-cards-attempt-scroll{width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-labels,.ppbui-cards-attempt{display:grid;grid-template-columns:64px 74px minmax(140px,1fr) 72px 72px 92px 68px 64px;align-items:center;min-width:648px}.ppbui-cards-attempt-labels{margin:0 1px;padding:0;border:1px solid var(--ppbui-border,#6b6543);border-bottom:0;background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-attempt-labels>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt-labels>[data-attempt-column="1"]{text-align:center}.ppbui-cards-attempt-labels>[data-attempt-column="3"],.ppbui-cards-attempt-labels>[data-attempt-column="6"],.ppbui-cards-attempt-labels>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt-table,.ppbui-cards-loot-table{width:100%;min-width:0;max-height:190px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-table{min-width:648px}.ppbui-cards-attempt,.ppbui-cards-loot-row{align-items:center;min-width:0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-attempt{min-height:36px;border-left:1px solid var(--rarity-color,var(--ppbui-border,#6b6543))}.ppbui-cards-attempt:first-child,.ppbui-cards-loot-row:first-child{border-top:0}.ppbui-cards-attempt[data-shiny="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));box-shadow:none}.ppbui-cards-attempt>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt>[data-attempt-column="1"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7));font-weight:800;text-align:center}.ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="6"],.ppbui-cards-attempt>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt>[data-attempt-column="5"]{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-attempt[data-shiny="true"]>[data-attempt-column="2"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7))}.ppbui-cards-attempt[data-result="captured"]>[data-attempt-column="4"]{color:var(--ppbui-success-text,#69a66f);font-weight:800}.ppbui-cards-attempt[data-result="fled"]>[data-attempt-column="4"]{color:var(--ppbui-danger-hi,#e6928a);font-weight:800}.ppbui-cards-attempt-pokemon{display:flex;align-items:center;gap:5px}.ppbui-cards-attempt-pokemon img{width:28px;height:28px;flex:0 0 28px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-attempt-pokemon strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.ppbui-cards-attempt>.ppbui-cards-attempt-details{grid-column:1/-1;padding:5px 7px;border-top:1px solid var(--ppbui-border,#6b6543);color:var(--ppbui-text-subtle,#c3d5c7);font:600 9px/1.25 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-align:left;white-space:normal}.ppbui-cards-attempt>.ppbui-cards-attempt-details::before{content:attr(data-label) ': ';color:var(--ppbui-text,#ebecdc);font-weight:800}.ppbui-cards-loot-row{display:grid;gap:5px;padding:7px 8px}.ppbui-cards-loot-head{display:grid;grid-template-columns:72px minmax(100px,1fr) auto;align-items:center;gap:8px}.ppbui-cards-loot-head>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-head>span{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-head>strong:last-child{color:var(--ppbui-selected,#e3c054);text-align:right}.ppbui-cards-loot-items{display:flex;flex-wrap:wrap;gap:4px;padding:5px 0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-loot-items::before{content:attr(data-label) ':';align-self:center;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px;font-weight:800}.ppbui-cards-loot-item{display:inline-grid;grid-template-columns:auto auto;align-items:center;gap:4px;padding:3px 5px;border-left:2px solid var(--quality-common,#c3d5c7);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-item[data-rarity="weak"]{border-color:var(--quality-weak,#878573)}.ppbui-cards-loot-item[data-rarity="uncommon"]{border-color:var(--quality-uncommon,#55a058)}.ppbui-cards-loot-item[data-rarity="rare"]{border-color:var(--quality-rare,#2485a6)}.ppbui-cards-loot-item[data-rarity="epic"]{border-color:var(--quality-epic,#e3c054)}.ppbui-cards-loot-item[data-rarity="legendary"]{border-color:var(--quality-legendary,#e6928a)}.ppbui-cards-loot-item[data-rarity="mythical"]{border-color:var(--quality-mythical,#54bad2)}.ppbui-cards-loot-item[data-rarity="none"]{border-color:var(--ppbui-border-strong,#6b6543)}.ppbui-cards-loot-item strong{font-size:9px}.ppbui-cards-loot-item small{color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px}.ppbui-cards-loot-item--empty{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-finance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}.ppbui-cards-loot-finance>span{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;padding:4px 5px;background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-finance b{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-finance strong{font:800 9px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-empty-row{display:block}.ppbui-cards-empty{display:block;margin:0;padding:14px;color:var(--ppbui-text-subtle,#c3d5c7);text-align:center}
     .ppbui-cards-summary-head{position:relative;display:flex;align-items:start;justify-content:space-between;gap:8px;margin-bottom:8px}.ppbui-cards-summary-head h2{margin:0}.ppbui-cards-session-actions{display:flex;gap:4px}.ppbui-cards-session-actions button{height:24px;padding:2px 7px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:700 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-session-actions button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-session-actions button:disabled{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-summary-head>small{position:absolute;right:0;top:27px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px}.ppbui-cards-summary-head>small[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-summary-head>small[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}
+    .ppbui-cards-card-head{display:flex;min-width:0;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:9px}.ppbui-cards-card-head h2{min-width:0;margin:0}.ppbui-cards-analyzer-link{flex:0 0 auto;height:24px;padding:2px 7px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-accent-hi,#54bad2);font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-analyzer-link:hover{border-color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-analyzer-link:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-story-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
     .ppbui-cards-economy{border-top-width:1px;background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-economy-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.ppbui-cards-economy-group{--group-accent:var(--ppbui-border-strong,#6b6543);min-width:0;padding:8px;border:1px solid color-mix(in srgb,var(--group-accent) 72%,var(--ppbui-border,#6b6543));border-left:1px solid var(--group-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-economy-group h3{display:flex;align-items:center;min-height:22px;padding:0 5px;border-bottom:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-economy-group .ppbui-cards-stat-grid>div{--section-accent:var(--group-accent)}.ppbui-cards-economy-group .ppbui-cards-kpi-primary{grid-column:1/-1;min-height:48px;padding:8px 10px;border-left-width:1px;background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-economy-group .ppbui-cards-kpi-primary span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.035em}.ppbui-cards-economy-group .ppbui-cards-kpi-primary strong{font-size:20px;line-height:1.05}.ppbui-cards-economy-group--revenue{--group-accent:var(--ppbui-selected,#e3c054)}.ppbui-cards-economy-group--profit{--group-accent:var(--ppbui-success,#55a058)}.ppbui-cards-economy-group--xp{--group-accent:var(--ppbui-accent-hi,#54bad2)}
     @media(max-width:640px){.ppbui-cards-story-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px}.ppbui-cards-history-filters{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}.ppbui-cards-history-filters select{width:100%;min-width:0}}
+    @media(max-width:640px){.ppbui-cards-card-head{flex-wrap:wrap}.ppbui-cards-card-head>.ppbui-cards-analyzer-link{margin-left:auto}.ppbui-cards-story-head{grid-template-columns:minmax(0,1fr)}.ppbui-cards-story-actions{justify-content:flex-start;flex-wrap:wrap}}
     @media(max-width:519px){.ppbui-coupled-cards{padding:6px}.ppbui-cards-attempt-table{max-height:218px}.ppbui-cards-loot-table{max-height:260px}.ppbui-cards-battle{height:162px}.ppbui-cards-battle-pair{grid-template-columns:minmax(92px,.62fr) minmax(0,1fr) minmax(0,1fr);gap:3px}.ppbui-cards-team-switch{grid-template-rows:16px minmax(0,1fr);padding:3px}.ppbui-cards-team-switch-head{display:grid;grid-template-columns:minmax(0,1fr);align-content:center;justify-content:stretch;gap:1px;font-size:7px}.ppbui-cards-team-switch-head>small{font-size:6px}.ppbui-cards-team-member{gap:2px;padding:1px 2px}.ppbui-cards-team-member>strong{font-size:8px}.ppbui-cards-team-member>span{font-size:7px}.ppbui-cards-combat-card{grid-template-columns:52px minmax(0,1fr);gap:4px;padding:5px}.ppbui-cards-combat-art{width:50px;height:50px}.ppbui-cards-combat-art img{max-width:46px;max-height:46px}.ppbui-cards-combat-art span{font-size:7px}.ppbui-cards-combat-card strong{font-size:11px}.ppbui-cards-combat-card>div:last-child>span{font-size:8px}.ppbui-cards-combat-card--player>div:last-child>span{line-height:1.1;white-space:normal}.ppbui-cards-elements{gap:2px;margin-top:2px}.ppbui-cards-element i{display:none}.ppbui-cards-moves{gap:2px;min-height:16px;margin-top:2px}.ppbui-cards-move{width:16px;height:16px}.ppbui-cards-move img{width:14px;height:14px}.ppbui-cards-combat-kicker{flex-wrap:wrap;overflow:visible;gap:2px}.ppbui-cards-rarity-badge,.ppbui-cards-shiny-badge{flex:0 0 auto;min-height:13px;padding:1px 2px;font-size:7px!important;letter-spacing:0}.ppbui-cards-shiny-badge{width:auto;min-width:0;max-width:none;overflow:visible}.ppbui-cards-meter-stack{gap:1px;margin-top:2px}.ppbui-cards-meter-row{grid-template-columns:max-content minmax(0,1fr);gap:2px}.ppbui-cards-meter-row>span,.ppbui-cards-meter-row>span b{font-size:7px!important}.ppbui-cards-meter-row>span i{max-width:76px}.ppbui-cards-grid{grid-template-columns:1fr;gap:6px}.ppbui-cards-card{padding:8px}.ppbui-cards-card--rarity,.ppbui-cards-history,.ppbui-cards-economy{grid-column:1}.ppbui-cards-economy-groups{grid-template-columns:1fr}.ppbui-cards-story-head{grid-template-columns:1fr}.ppbui-cards-story-tabs{justify-self:start}.ppbui-cards-loot-finance{grid-template-columns:1fr}.ppbui-cards-loot-head{grid-template-columns:64px minmax(0,1fr) auto}}
     .ppbui-cards-shortcuts{position:sticky;top:0;height:0;z-index:10;pointer-events:none}.ppbui-cards-shortcuts[hidden]{display:none!important}.ppbui-cards-shortcuts-inner{position:absolute;right:0;top:0;display:flex;gap:3px;padding:3px;border:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));pointer-events:auto}.ppbui-cards-shortcuts button{min-height:26px;padding:3px 7px;border:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-text,#ebecdc);font:700 10px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);cursor:pointer}.ppbui-cards-shortcuts button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-battle:focus-visible,.ppbui-cards-card:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:-2px}
     .ppbui-cards-team-switch-short{display:none}.ppbui-cards-result-filter{display:grid;gap:2px;min-width:0;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:700;letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-result-options{display:flex;gap:2px}.ppbui-cards-result-options button{min-height:26px;padding:3px 7px;border:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:700 10px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap;cursor:pointer}.ppbui-cards-result-options button[aria-pressed="true"]{border-color:var(--ppbui-selected,#e3c054);color:var(--ppbui-selected,#e3c054)}.ppbui-cards-result-options button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-copy-status{display:block;margin:-4px 0 6px;color:var(--ppbui-text-subtle,#c3d5c7);font:600 10px/1.3 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-copy-status:empty{display:none}.ppbui-cards-copy-status[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-copy-status[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-copy-status[data-tone="busy"]{color:var(--ppbui-selected,#e3c054)}
@@ -1271,6 +1300,7 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
     lootTimes: [],
     storyTab: "hunt",
     summary: null,
+    activityKind: "hunt",
     localeKey: initialLocale.key,
     locale: initialLocale.locale,
     copy: initialLocale.copy,
@@ -1300,6 +1330,9 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
   const teamList = cardNode(root, "[data-card-team-list]");
   const pauseButton = cardNode(root, "[data-card-session-pause]");
   const resetButton = cardNode(root, "[data-card-session-reset]");
+  const analyzerLinks = [...root.querySelectorAll("[data-card-analyzer-open]")];
+  const analyzerStoryLink = cardNode(root, "[data-card-analyzer-story]");
+  const analyzerStatus = cardNode(root, "[data-card-analyzer-status]");
   let mountedNativeBus = null;
   const usableNativeBus = bus => typeof bus?.on === "function" && typeof bus?.off === "function";
   const busBindings = [];
@@ -1421,6 +1454,7 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
       button.tabIndex = selected ? 0 : -1;
     });
     storyPanels.forEach(panel => { panel.hidden = panel.dataset.cardStoryPanel !== state.storyTab; });
+    renderAnalyzerNavigation();
   };
   storyTabs.forEach(button => button.addEventListener("click", () => setStoryTab(button.dataset.cardStoryTab)));
   storyTabs.forEach((button, index) => button.addEventListener("keydown", event => {
@@ -1539,8 +1573,7 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
     else if (team.members.length && teamStatus?.dataset.source === "availability") setControlStatus(root, "team", "");
   };
   const renderAnalyzerControl = () => {
-    const control = win?.__POKEPIXEL_HUNT_ANALYZER_CONTROL__;
-    const ready = control?.protocol === 1 && typeof control?.act === "function" && state.summary?.leadershipActive === true;
+    const ready = analyzerSessionControlAvailable(win) && state.summary?.leadershipActive === true;
     const pausable = state.summary?.status === "running" || state.summary?.status === "paused";
     if (pauseButton) {
       writeText(pauseButton, state.summary?.status === "paused" ? state.copy.resume : state.copy.pause);
@@ -1548,6 +1581,38 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
     }
     writeBoolean(resetButton, "disabled", state.analyzerActionBusy || !ready);
   };
+  const renderAnalyzerNavigation = () => {
+    const ready = Boolean(state.summary) && canNavigateAnalyzerUi(win);
+    for (const button of analyzerLinks) {
+      writeBoolean(button, "hidden", !ready);
+      const label = button.dataset.cardAnalyzerOpen === "current-rarity"
+        ? state.copy.analyzerRarityDetails
+        : state.copy.analyzerCaptureDetails;
+      if (button.getAttribute("aria-label") !== label) button.setAttribute("aria-label", label);
+    }
+    if (analyzerStoryLink) {
+      analyzerStoryLink.dataset.cardAnalyzerDestination = state.storyTab === "loot" ? "history-loot" : "history-attempts";
+      const label = state.storyTab === "loot" ? state.copy.analyzerLootDetails : state.copy.analyzerAttemptsDetails;
+      if (analyzerStoryLink.getAttribute("aria-label") !== label) analyzerStoryLink.setAttribute("aria-label", label);
+      writeBoolean(analyzerStoryLink, "hidden", !ready);
+    }
+    if (!ready && analyzerStatus) writeText(analyzerStatus, "");
+  };
+  const openAnalyzerDetails = (button, destination) => {
+    if (state.disposed || !button || !destination) return;
+    writeBoolean(button, "disabled", true);
+    if (analyzerStatus) writeText(analyzerStatus, "");
+    void navigateAnalyzerUi(win, destination).then(result => {
+      if (state.disposed || result.ok) return;
+      if (analyzerStatus) writeText(analyzerStatus, state.copy.analyzerDetailsUnavailable);
+    }).finally(() => {
+      if (state.disposed) return;
+      writeBoolean(button, "disabled", !state.summary || !canNavigateAnalyzerUi(win));
+      renderAnalyzerNavigation();
+    });
+  };
+  analyzerLinks.forEach(button => button.addEventListener("click", () => openAnalyzerDetails(button, button.dataset.cardAnalyzerOpen)));
+  analyzerStoryLink?.addEventListener("click", () => openAnalyzerDetails(analyzerStoryLink, analyzerStoryLink.dataset.cardAnalyzerDestination));
   const runSessionAction = (action) => {
     if (state.disposed || state.analyzerActionBusy) return;
     state.analyzerActionBusy = true;
@@ -1556,7 +1621,7 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
     setControlStatus(root, "analyzer", label, "busy");
     void runAnalyzerSessionAction(win, action).then(result => {
       if (state.disposed) return;
-      const success = action === "reset" ? state.copy.huntReset : action === "resume" ? state.copy.huntResumed : state.copy.huntPaused;
+      const success = action === "reset" ? state.copy.sessionReset : action === "resume" ? state.copy.sessionResumed : state.copy.sessionPaused;
       setControlStatus(root, "analyzer", result.ok ? success : state.copy.analyzerControlUnavailable, result.ok ? "success" : "error");
     }).finally(() => {
       if (state.disposed) return;
@@ -1696,6 +1761,8 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
       setControlStatus(root, "copy-summary", "");
     }
     state.summary = summary;
+    state.activityKind = summary?.activityKind === "expedition" ? "expedition" : "hunt";
+    applyActivityCopy(root, state);
     writeBoolean(copySummaryButton, "disabled", !summary);
     renderActivePlayerCard();
 
@@ -1731,6 +1798,7 @@ export function createCoupledCards({ win, textOnly = false, combatArt = !textOnl
     if (state.combatArt) setSprite(root, state, "target", nativeTargetSprite || "", target ? state.copy.noImage : state.copy.noTarget);
     renderElements(root, "target", liveTarget?.elements, win, state.localeKey, state.copy, { textOnly: state.textOnly });
     renderAnalyzerControl();
+    renderAnalyzerNavigation();
 
     setText(root, "status", !summary ? state.copy.unavailable : summary.status === "running" ? state.copy.running : summary.status === "paused" ? state.copy.paused : state.copy.waiting);
     setText(root, "time", duration(summary?.activeMs));

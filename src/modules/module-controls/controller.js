@@ -33,15 +33,15 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
   panel.setAttribute("role", "region");
   panel.setAttribute("aria-labelledby", "ppbui-module-title");
   // The preferences panel is Better UI-owned UI, not a native game dropdown.
-  // Own the physical anchor inline as well as in CSS so late host styles cannot
-  // turn it back into a downward menu via top/inset/transform !important rules.
+  // Own viewport positioning inline as well as in CSS so late host styles cannot
+  // turn it back into a native anchored menu.
   group.style.setProperty("position", "relative", "important");
-  panel.style.setProperty("position", "absolute", "important");
+  panel.style.setProperty("position", "fixed", "important");
   panel.style.setProperty("inset", "auto", "important");
-  panel.style.setProperty("left", "auto", "important");
-  panel.style.setProperty("right", "0", "important");
-  panel.style.setProperty("top", "auto", "important");
-  panel.style.setProperty("bottom", "calc(100% + 4px)", "important");
+  panel.style.setProperty("left", "8px", "important");
+  panel.style.setProperty("right", "auto", "important");
+  panel.style.setProperty("top", "8px", "important");
+  panel.style.setProperty("bottom", "auto", "important");
   panel.style.setProperty("transform", "none", "important");
   const title = create("div", `${classes.label} ppbui-module-copy`);
   title.id = "ppbui-module-title";
@@ -93,7 +93,7 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
     .pokeidle-top-toolbar:has(> [data-ppbui-module="module-controls"].is-open) { z-index:2147483647 !important; }
     [data-ppbui-module="module-controls"] { position:relative !important; }
     [data-ppbui-module="module-controls"].is-open { z-index:2147483647; }
-    [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:absolute !important; inset:auto 0 calc(100% + 4px) auto !important; display:grid; min-width:220px; grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 96px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
+    [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:fixed !important; inset:auto !important; left:8px !important; right:auto !important; top:8px !important; bottom:auto !important; display:grid; min-width:min(220px,calc(100vw - 16px)); grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 16px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
     .ppbui-module-panel > #ppbui-module-title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; }
     .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
@@ -115,6 +115,68 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
   group.append(trigger, panel, style);
   toolbar.append(group);
   let open = false;
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
+  const setPanelCoordinate = (property, value) => panel.style.setProperty(property, `${Math.round(value)}px`, "important");
+  const positionPanel = () => {
+    if (!open) return;
+    const win = document.defaultView;
+    const viewportWidth = document.documentElement?.clientWidth || win?.innerWidth || 0;
+    const viewportHeight = document.documentElement?.clientHeight || win?.innerHeight || 0;
+    if (!viewportWidth || !viewportHeight) return;
+    const margin = 8;
+    const gap = 4;
+    panel.style.setProperty("max-height", `${Math.max(0, Math.min(480, viewportHeight - margin * 2))}px`, "important");
+    setPanelCoordinate("left", margin);
+    setPanelCoordinate("top", margin);
+    const triggerRect = trigger.getBoundingClientRect();
+    let panelRect = panel.getBoundingClientRect();
+    let panelWidth = panelRect.width || Math.min(360, Math.max(0, viewportWidth - margin * 2));
+    let panelHeight = panelRect.height || Math.min(480, Math.max(0, viewportHeight - margin * 2));
+    let left;
+    let top;
+    const vertical = toolbar.getAttribute("data-ppbui-menu-orientation") === "vertical";
+
+    if (vertical) {
+      const rightSpace = viewportWidth - margin - triggerRect.right - gap;
+      const leftSpace = triggerRect.left - gap - margin;
+      if (rightSpace >= panelWidth || rightSpace >= leftSpace) left = triggerRect.right + gap;
+      else left = triggerRect.left - gap - panelWidth;
+      top = triggerRect.top + (triggerRect.height - panelHeight) / 2;
+    } else {
+      const aboveSpace = triggerRect.top - gap - margin;
+      const belowSpace = viewportHeight - margin - triggerRect.bottom - gap;
+      const openAbove = aboveSpace >= panelHeight || aboveSpace >= belowSpace;
+      const available = Math.max(0, openAbove ? aboveSpace : belowSpace);
+      if (available < panelHeight) {
+        panel.style.setProperty("max-height", `${Math.floor(available)}px`, "important");
+        panelRect = panel.getBoundingClientRect();
+        panelHeight = panelRect.height || available;
+      }
+      left = triggerRect.right - panelWidth;
+      top = openAbove ? triggerRect.top - gap - panelHeight : triggerRect.bottom + gap;
+    }
+
+    left = clamp(left, margin, viewportWidth - panelWidth - margin);
+    top = clamp(top, margin, viewportHeight - panelHeight - margin);
+    setPanelCoordinate("left", left);
+    setPanelCoordinate("top", top);
+
+    // Fixed descendants can still resolve against a transformed/contained toolbar.
+    // Correct the actual rendered rectangle so the viewport edges stay authoritative.
+    const rendered = panel.getBoundingClientRect();
+    if (rendered.width > 0 && rendered.height > 0) {
+      const boundedLeft = clamp(rendered.left, margin, viewportWidth - rendered.width - margin);
+      const boundedTop = clamp(rendered.top, margin, viewportHeight - rendered.height - margin);
+      const deltaX = boundedLeft - rendered.left;
+      const deltaY = boundedTop - rendered.top;
+      if (deltaX || deltaY) {
+        const scaleX = panel.offsetWidth > 0 ? rendered.width / panel.offsetWidth : 1;
+        const scaleY = panel.offsetHeight > 0 ? rendered.height / panel.offsetHeight : 1;
+        setPanelCoordinate("left", left + deltaX / (scaleX || 1));
+        setPanelCoordinate("top", top + deltaY / (scaleY || 1));
+      }
+    }
+  };
   const setOpen = (value, restoreFocus = false) => {
     open = value;
     // Explicit visibility prevents the native hover rule from opening preferences.
@@ -123,6 +185,7 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
     trigger.setAttribute("aria-expanded", String(open));
     if (open) {
       closeNativeGroups(toolbar, group);
+      positionPanel();
       const first = groups.find(group => !group.fieldset.hidden);
       (first ? (first.fieldset.open ? first.members[0].button : first.legend) : close).focus();
     } else if (restoreFocus) trigger.focus();
@@ -152,6 +215,7 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
       content(description, module.description(text));
     }
     if (toolbar.lastElementChild !== group) toolbar.append(group);
+    if (open) positionPanel();
   };
   const unlisten = [];
   const listen = (node, type, handler, capture = false) => {
@@ -163,6 +227,7 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
     event.stopPropagation();
     menuBar?.setOrientation?.(orientationSelect.value);
     sync();
+    positionPanel();
     orientationSelect.focus();
   });
   listen(close, "click", () => setOpen(false, true));
@@ -194,6 +259,7 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar) 
   const outside = event => { if (open && !group.contains(event.target)) setOpen(false); };
   listen(document, "pointerdown", outside, true);
   listen(toolbar, "click", outside, true);
+  listen(document.defaultView, "resize", positionPanel);
   setOpen(false);
   sync();
   return {

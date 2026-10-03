@@ -183,7 +183,7 @@ function sanitizeRarityCounts(raw) {
 }
 
 function sanitizeAnalyzerSummary(raw, now = Date.now()) {
-  if (!raw || typeof raw !== "object" || raw.protocol !== config.protocol || raw.available !== true) return null;
+  if (!raw || typeof raw !== "object" || raw.protocol !== config.analyzerProtocol || raw.available !== true) return null;
   const capturedAtMs = Number(raw.capturedAtMs);
   const ageMs = Number(now) - capturedAtMs;
   if (!Number.isFinite(capturedAtMs)
@@ -249,7 +249,7 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
 
 export function readAnalyzerSummary(win = globalThis.window, now = undefined) {
   const api = win?.[config.analyzerGlobal];
-  if (api?.protocol !== config.protocol || typeof api.getSummary !== "function") return null;
+  if (api?.protocol !== config.analyzerProtocol || typeof api.getSummary !== "function") return null;
   try {
     const raw = api.getSummary();
     return sanitizeAnalyzerSummary(raw, Number.isFinite(now) ? now : Date.now());

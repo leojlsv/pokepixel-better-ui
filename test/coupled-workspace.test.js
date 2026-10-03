@@ -614,13 +614,30 @@ test("Cards mirrors CURRENT expedition heading and does not inherit a Hunt speci
   const name = cards.querySelector('[data-card-field="target-name"]');
   const meta = cards.querySelector('[data-card-field="target-meta"]');
   const sprite = cards.querySelector('[data-card-sprite="target"]');
+  const summaryHeading = cards.querySelector('[data-card-copy="huntSummary"]');
+  const storyTab = cards.querySelector('[data-card-copy="huntStory"]');
   assert.equal(name.textContent, "EXPEDITION");
   assert.equal(meta.textContent, "Expedição em andamento", "Expedition never reports a missing canonical Hunt target");
   assert.equal(sprite.hidden, true);
+  assert.equal(summaryHeading.textContent, "Resumo da expedição");
+  assert.equal(storyTab.textContent, "Expedition Story");
+  assert.equal(cards.querySelector('[data-card-copy="huntRate"]').textContent, "Taxa de captura");
+  assert.equal(cards.getAttribute("aria-label"), "Console de expedição");
+  assert.equal(cards.querySelector('[data-card-aria="dashboard"]').getAttribute("aria-label"), "Painel da expedição");
+  assert.equal(cards.querySelector("[data-card-attempt-body] .ppbui-cards-empty")?.textContent,
+    "Nenhuma tentativa registrada nesta expedição.");
+  cards.querySelector('[data-card-story-tab="loot"]').click();
+  assert.equal(cards.querySelector("[data-card-loot-body] .ppbui-cards-empty")?.textContent,
+    "Nenhum loot registrado nesta expedição.");
+  cards.querySelector('[data-card-story-tab="hunt"]').click();
   setAnalyzerSummary({ ...base, capturedAtMs: Date.now(), sessionGeneration: 3, activityKind: "hunt", currentTarget: null, currentSessionSpecies: null });
   app.reconcile();
   assert.equal(name.textContent, "Aguardando alvo");
   assert.equal(sprite.hidden, true);
+  assert.equal(summaryHeading.textContent, "Resumo da hunt");
+  assert.equal(storyTab.textContent, "Hunt Story");
+  assert.equal(cards.getAttribute("aria-label"), "Console de hunt");
+  assert.equal(cards.querySelector('[data-card-aria="dashboard"]').getAttribute("aria-label"), "Painel da hunt");
 });
 
 test("CURRENT-to-Cards session lifecycle preserves Hunt and Expedition boundaries without remembered targets", t => {
@@ -2154,7 +2171,7 @@ test("hunt console delegates Pause Resume and Reset explicitly to the embedded A
   pause.click();
   await settle();
   assert.deepEqual(actions, ["pause"]);
-  assert.equal(doc.querySelector('[data-card-control-status="analyzer"]').textContent, "Hunt pausada");
+  assert.equal(doc.querySelector('[data-card-control-status="analyzer"]').textContent, "Sessão pausada");
 
   setAnalyzerSummary({ protocol: 1, available: true, capturedAtMs: Date.now(), leadershipActive: true, status: "paused", attemptHistory: [] });
   app.reconcile();
@@ -2164,7 +2181,7 @@ test("hunt console delegates Pause Resume and Reset explicitly to the embedded A
   reset.click();
   await settle();
   assert.deepEqual(actions, ["pause", "resume", "reset"]);
-  assert.equal(doc.querySelector('[data-card-control-status="analyzer"]').textContent, "Hunt resetada e pausada");
+  assert.equal(doc.querySelector('[data-card-control-status="analyzer"]').textContent, "Sessão resetada e pausada");
 });
 
 test("pending Cards action settling after cleanup cannot mutate detached dashboard state", async t => {

@@ -5,7 +5,7 @@ import { createBetterUI } from "../src/core/bootstrap.js";
 import { createStandaloneCardModeModule, resolveStandaloneRuntimeWindow } from "../src/modules/coupled-workspace/standalone.js";
 import { createMenuBarModule } from "../src/modules/menu-bar/index.js";
 
-function setup(t, { coupled = false, analyzerSummary = undefined, extraModules = [] } = {}) {
+function setup(t, { coupled = false, analyzerSummary = undefined, analyzerUi = undefined, extraModules = [] } = {}) {
   const dom = new JSDOM(`<!doctype html><html lang="pt-BR"><head></head><body>
     <button class="world-server-switch" style="position:fixed;top:8px;right:8px">Server</button>
     <section id="native-game-surface"><canvas width="320" height="180"></canvas><div class="moving-sprite">moving</div></section>
@@ -19,6 +19,17 @@ function setup(t, { coupled = false, analyzerSummary = undefined, extraModules =
       value: { protocol: 1, getSummary: () => currentAnalyzerSummary },
     });
   }
+  const setAnalyzerUi = value => {
+    if (value === undefined) {
+      delete window.__POKEPIXEL_HUNT_ANALYZER_UI__;
+      return;
+    }
+    Object.defineProperty(window, "__POKEPIXEL_HUNT_ANALYZER_UI__", {
+      configurable: true,
+      value,
+    });
+  };
+  setAnalyzerUi(analyzerUi);
   if (coupled) {
     Object.defineProperty(window, "__PPBUI_COUPLED_WORKSPACE__", { configurable: true, value: { protocol: 1 } });
     Object.defineProperty(window, "chrome", { configurable: true, value: { webview: { postMessage() {} } } });
@@ -55,6 +66,7 @@ function setup(t, { coupled = false, analyzerSummary = undefined, extraModules =
     window,
     doc: window.document,
     setAnalyzerSummary(value) { currentAnalyzerSummary = value; },
+    setAnalyzerUi,
   };
 }
 
@@ -110,6 +122,59 @@ test("standalone userscript starts in Game and renders Analyzer data after enter
     "standalone Card Mode height is bounded by the dynamic viewport and scroll stays inside Cards");
   assert.equal(doc.querySelector("[data-ppbui-card-mode-dock]"), null);
   assert.equal(doc.querySelector("[data-ppbui-card-mode-switch]"), null);
+  assert.equal(cards.querySelector('[data-card-analyzer-open="current"]').hidden, true,
+    "Analyzer drilldown stays absent when the optional UI contract is unavailable");
+});
+
+test("standalone Card Mode discovers the optional Analyzer UI bridge and deep-links semantically", async t => {
+  const destinations = [];
+  const summary = {
+    protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",
+    seen: 12, captured: 4, failed: 8,
+  };
+  const analyzerUi = {
+    protocol: 1,
+    async navigate(destination) {
+      destinations.push(destination);
+      return { ok: true };
+    },
+  };
+  const { app, doc, setAnalyzerUi } = setup(t, { analyzerSummary: summary });
+  app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const captureLink = cards.querySelector('[data-card-analyzer-open="current"]');
+  const rarityLink = cards.querySelector('[data-card-analyzer-open="current-rarity"]');
+  const storyLink = cards.querySelector("[data-card-analyzer-story]");
+  assert.equal(captureLink.hidden, true);
+  assert.equal(rarityLink.hidden, true);
+  assert.equal(storyLink.hidden, true);
+
+  setAnalyzerUi(analyzerUi);
+  app.reconcile();
+  assert.equal(captureLink.hidden, false, "late Analyzer UI availability is discovered without remounting Cards");
+  assert.equal(rarityLink.hidden, false);
+  assert.equal(storyLink.hidden, false);
+  assert.equal(captureLink.getAttribute("aria-label"), "Abrir detalhes de Captura no Analyzer");
+  assert.equal(rarityLink.getAttribute("aria-label"), "Abrir detalhes de raridade no Analyzer");
+  assert.equal(storyLink.getAttribute("aria-label"), "Abrir Attempts no Analyzer");
+
+  captureLink.click();
+  await new Promise(resolve => setImmediate(resolve));
+  rarityLink.click();
+  await new Promise(resolve => setImmediate(resolve));
+  storyLink.click();
+  await new Promise(resolve => setImmediate(resolve));
+  cards.querySelector('[data-card-story-tab="loot"]').click();
+  assert.equal(storyLink.getAttribute("aria-label"), "Abrir histórico de Loot no Analyzer");
+  storyLink.click();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(destinations, ["current", "current-rarity", "history-attempts", "history-loot"]);
+
+  setAnalyzerUi({ protocol: 2, navigate: analyzerUi.navigate });
+  app.reconcile();
+  assert.equal(captureLink.hidden, true, "wrong UI protocol fails closed without affecting Card Mode");
+  assert.equal(storyLink.hidden, true);
 });
 
 test("standalone Card Mode reserves the viewport strip occupied by a bottom native toolbar", t => {
