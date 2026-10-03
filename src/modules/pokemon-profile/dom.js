@@ -1,7 +1,7 @@
 const copies = {
   pt: {
     name: "Pokémon Profile", description: "Dossiê de qualquer Pokémon da Team ou Backpack.", title: "Pokémon Profile",
-    all: "Todos", team: "Team", backpack: "Backpack", search: "Buscar Pokémon", refresh: "Atualizar", rarity: "Raridade", element: "Elemento", minLevel: "Nível mín.", maxLevel: "Nível máx.", tags: "Tags", untagged: "Sem tag", clearFilters: "Limpar filtros",
+    all: "Todos", team: "Team", backpack: "Backpack", search: "Buscar Pokémon", refresh: "Atualizar", rarity: "Raridade", element: "Elemento", minLevel: "Nível mín.", maxLevel: "Nível máx.", tags: "Tags", untagged: "Sem tag", clearFilters: "Limpar filtros", filters: "Filtros", pokemonList: "Pokémon disponíveis", levelInvalid: "Use um nível inteiro a partir de 1.",
     loading: "Carregando Pokémon...", loadError: "Não foi possível carregar seus Pokémon.", none: "Nenhum Pokémon corresponde aos filtros.",
     currentMoves: "Moves atuais", savedMoves: "Movesets salvos", savedTeams: "Times que usam este Pokémon",
     movesLoading: "Carregando moves...", movesError: "Não foi possível carregar os moves atuais.", noMoves: "Nenhum move configurado.", retry: "Tentar novamente",
@@ -22,7 +22,7 @@ const copies = {
   },
   en: {
     name: "Pokémon Profile", description: "Dossier for any Pokémon in Team or Backpack.", title: "Pokémon Profile",
-    all: "All", team: "Team", backpack: "Backpack", search: "Search Pokémon", refresh: "Refresh", rarity: "Rarity", element: "Element", minLevel: "Min level", maxLevel: "Max level", tags: "Tags", untagged: "Untagged", clearFilters: "Clear filters",
+    all: "All", team: "Team", backpack: "Backpack", search: "Search Pokémon", refresh: "Refresh", rarity: "Rarity", element: "Element", minLevel: "Min level", maxLevel: "Max level", tags: "Tags", untagged: "Untagged", clearFilters: "Clear filters", filters: "Filters", pokemonList: "Available Pokémon", levelInvalid: "Use a whole level of 1 or higher.",
     loading: "Loading Pokémon...", loadError: "Could not load your Pokémon.", none: "No Pokémon match the filters.",
     currentMoves: "Current moves", savedMoves: "Saved movesets", savedTeams: "Teams using this Pokémon",
     movesLoading: "Loading moves...", movesError: "Could not load current moves.", noMoves: "No moves configured.", retry: "Retry",
@@ -43,7 +43,7 @@ const copies = {
   },
   es: {
     name: "Pokémon Profile", description: "Ficha de cualquier Pokémon del Team o Backpack.", title: "Pokémon Profile",
-    all: "Todos", team: "Team", backpack: "Backpack", search: "Buscar Pokémon", refresh: "Actualizar", rarity: "Rareza", element: "Elemento", minLevel: "Nivel mín.", maxLevel: "Nivel máx.", tags: "Tags", untagged: "Sin tag", clearFilters: "Limpiar filtros",
+    all: "Todos", team: "Team", backpack: "Backpack", search: "Buscar Pokémon", refresh: "Actualizar", rarity: "Rareza", element: "Elemento", minLevel: "Nivel mín.", maxLevel: "Nivel máx.", tags: "Tags", untagged: "Sin tag", clearFilters: "Limpiar filtros", filters: "Filtros", pokemonList: "Pokémon disponibles", levelInvalid: "Usa un nivel entero a partir de 1.",
     loading: "Cargando Pokémon...", loadError: "No se pudieron cargar tus Pokémon.", none: "Ningún Pokémon coincide con los filtros.",
     currentMoves: "Movimientos actuales", savedMoves: "Movesets guardados", savedTeams: "Equipos que usan este Pokémon",
     movesLoading: "Cargando movimientos...", movesError: "No se pudieron cargar los movimientos actuales.", noMoves: "No hay movimientos configurados.", retry: "Reintentar",
@@ -58,7 +58,7 @@ const copies = {
   },
   zh: {
     name: "Pokémon Profile", description: "查看 Team 或 Backpack 中任意宝可梦的资料。", title: "Pokémon Profile",
-    all: "全部", team: "Team", backpack: "Backpack", search: "搜索宝可梦", refresh: "刷新", rarity: "稀有度", element: "属性", minLevel: "最低等级", maxLevel: "最高等级", tags: "标签", untagged: "无标签", clearFilters: "清除筛选",
+    all: "全部", team: "Team", backpack: "Backpack", search: "搜索宝可梦", refresh: "刷新", rarity: "稀有度", element: "属性", minLevel: "最低等级", maxLevel: "最高等级", tags: "标签", untagged: "无标签", clearFilters: "清除筛选", filters: "筛选", pokemonList: "可用宝可梦", levelInvalid: "请输入不小于 1 的整数等级。",
     loading: "正在加载宝可梦...", loadError: "无法加载宝可梦。", none: "没有符合筛选条件的宝可梦。",
     currentMoves: "当前招式", savedMoves: "已保存招式组", savedTeams: "使用这只宝可梦的队伍",
     movesLoading: "正在加载招式...", movesError: "无法加载当前招式。", noMoves: "尚未配置招式。", retry: "重试",

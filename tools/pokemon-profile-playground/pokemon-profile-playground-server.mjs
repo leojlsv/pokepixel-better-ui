@@ -19,6 +19,7 @@ const servedFiles = new Set([
   "src/styles/base.css",
   "src/styles/components.css",
   "src/styles/states.css",
+  "assets/menu-poke-profile-icon.png",
 ]);
 
 await mkdir(join(root, "work"), { recursive: true });
