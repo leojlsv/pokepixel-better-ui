@@ -20,7 +20,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
     "disable-pokemon-hover", "pokemon-profile", "menu-bar",
     "standalone-card-mode", "coupled-workspace", "buff-strip", "inventory",
     "storage", "trade", "chat", "hunts", "team", "team-hud",
-    "team-presets", "evolution-center", "marks-shop", "auto-helper",
+    "team-presets", "evolution-center", "geneticist", "marks-shop", "auto-helper",
   ]);
   assert.equal(new Set(mountIds).size, mountIds.length, "runtime IDs must be unique");
   assert.equal(new Set(controlIds).size, controlIds.length, "preference IDs must be unique");
