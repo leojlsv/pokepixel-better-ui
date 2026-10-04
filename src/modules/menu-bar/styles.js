@@ -8,6 +8,7 @@ export default `
   .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar] {
     padding:3px 32px !important;
     border-radius:var(--ppbui-window-radius) !important;
+    z-index:2147483000 !important;
   }
 
   .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="horizontal"] {

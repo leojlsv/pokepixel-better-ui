@@ -10,7 +10,7 @@ import { buffStripConfig } from "../src/modules/buff-strip/config.js";
 const fixture = readFileSync(new URL("./fixtures/menu-bar.html", import.meta.url), "utf8");
 
 function setup(t, html = fixture) {
-  const dom = new JSDOM(html, { pretendToBeVisual: true });
+  const dom = new JSDOM(html, { pretendToBeVisual: true, url: "https://local.test" });
   const { window } = dom;
   const previous = new Map();
   for (const name of ["document", "MutationObserver", "requestAnimationFrame", "cancelAnimationFrame"]) {
@@ -143,7 +143,7 @@ test("native Poké Hub drag and minimize controls share the navigation rail with
   assert.equal(toolbar.querySelector(".pokeidle-pokehub__handle"), handle);
   assert.equal(toolbar.querySelector(".pokeidle-pokehub__toggle"), toggle);
   assert.match(css,/\.pokeidle-top-toolbar\.pokeidle-pokehub\.pokeidle-island\[data-ppbui-menu-bar\] \{[^}]*padding:3px 32px !important/s);
-  assert.doesNotMatch(css,/z-index:2147483645/,'toolbar does not fake shared layer ownership with a z-index override');
+  assert.match(css,/\.pokeidle-top-toolbar\.pokeidle-pokehub\.pokeidle-island\[data-ppbui-menu-bar\] \{[^}]*z-index:2147483000 !important/s,'toolbar stays above chat and hunt action overlays');
   assert.match(css,/> :is\(\.pokeidle-pokehub__handle,\.pokeidle-pokehub__toggle\) \{[^}]*position:absolute !important[^}]*top:3px !important[^}]*height:56px !important[^}]*transform:none !important/s);
   assert.match(css,/> \.pokeidle-pokehub__handle \{[^}]*left:4px !important/s);
   assert.match(css,/> \.pokeidle-pokehub__toggle \{[^}]*right:4px !important/s);
@@ -252,6 +252,35 @@ test("native Poké Hub movement after mount remains authoritative on cleanup", t
   assert.equal(toolbar.style.getPropertyValue("top"), "100px");
   assert.equal(toolbar.style.getPropertyValue("bottom"), "auto");
   assert.equal(toolbar.style.getPropertyValue("transform"), "none");
+});
+
+test("native Poké Hub movement persists across remounts", t => {
+  const { app, doc, window, toolbar } = setup(t);
+  toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  let rect = { left:38, right:862, top:632, bottom:700, width:824, height:68 };
+  toolbar.getBoundingClientRect = () => rect;
+  const handle = doc.createElement("button");
+  handle.className = "pokeidle-pokehub__handle";
+  toolbar.prepend(handle);
+
+  app.start();
+  handle.dispatchEvent(new window.Event("pointerdown", { bubbles:true }));
+  rect = { left:60, right:884, top:120, bottom:188, width:824, height:68 };
+  toolbar.style.setProperty("left", "60px", "important");
+  toolbar.style.setProperty("top", "120px", "important");
+  window.dispatchEvent(new window.Event("pointerup", { bubbles:true }));
+  assert.equal(window.localStorage.getItem("ppbui:menu-bar-position:v1"), '{"left":60,"top":120}');
+
+  app.stop();
+  toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
+  rect = { left:38, right:862, top:632, bottom:700, width:824, height:68 };
+  app.start();
+  app.reconcile();
+  assert.equal(toolbar.style.getPropertyValue("left"), "60px");
+  assert.equal(toolbar.style.getPropertyValue("top"), "120px");
 });
 
 test("silent host geometry writes preserve the whole normalized geometry set on cleanup", t => {

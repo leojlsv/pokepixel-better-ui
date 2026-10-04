@@ -25,7 +25,7 @@ function setup(t, stored, fail = false, legacyAppearance = null) {
   } };
   const preferences = createModulePreferences(options);
   const menuBar = createMenuBarModule();
-  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }], menuBar });
+  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }] });
   const app = createBetterUI({ modules: [menuBar, controls], preferences });
   const doc = window.document;
   t.after(() => {
@@ -50,7 +50,7 @@ test("corner mode UI is removed and legacy Squared storage is retired", t => {
   const { app, doc, window, trigger } = setup(t, null, false, '{"corners":"square"}');
   app.start(); trigger().click();
   assert.equal(doc.querySelector(".ppbui-module-appearance"), null);
-  assert.equal(doc.querySelectorAll('#ppbui-module-panel select').length, 1);
+  assert.equal(doc.querySelectorAll('#ppbui-module-panel select').length, 0);
   assert.equal(doc.documentElement.hasAttribute("data-ppbui-corners"), false);
   assert.equal(window.localStorage.getItem("ppbui:appearance:v1"), null);
 });
@@ -293,33 +293,11 @@ test("panel keyboard, outside dismissal, locale and toolbar replacement", async 
   assert.equal(doc.querySelector('[data-ppbui-group="shop"]'), null);
 });
 
-test("menu bar orientation control switches and persists horizontal or vertical", t => {
-  const { app, doc, window, trigger } = setup(t);
-  app.start();
-  trigger().click();
-  const events = [];
-  window.addEventListener("ppbui:menu-orientation-change", event => events.push(event.detail?.orientation));
-  const select = doc.querySelector(".ppbui-module-orientation select");
-  assert.ok(select);
-  assert.equal(select.value, "horizontal");
-  select.value = "vertical";
-  select.dispatchEvent(new window.Event("change", { bubbles:true }));
-  assert.equal(doc.querySelector(".pokeidle-top-toolbar").getAttribute("data-ppbui-menu-orientation"), "vertical");
-  assert.equal(window.localStorage.getItem("ppbui:menu-bar-orientation:v1"), "vertical");
-  assert.equal(events.at(-1), "vertical");
-});
-
-test("orientation remains persistent while the menu bar module is disabled", t => {
-  const { app, doc, window, trigger } = setup(t, '{"menu-bar":false}');
-  window.localStorage.setItem("ppbui:menu-bar-orientation:v1", "vertical");
-  app.start();
-  assert.equal(doc.querySelector('[data-ppbui-group="shop"]'), null);
-  trigger().click();
-  const select = doc.querySelector(".ppbui-module-orientation select");
-  assert.equal(select.value, "vertical");
-  select.value = "horizontal";
-  select.dispatchEvent(new window.Event("change", { bubbles:true }));
-  assert.equal(window.localStorage.getItem("ppbui:menu-bar-orientation:v1"), "horizontal");
+test("menu bar position setting is absent from Better UI settings", t => {
+  const { app, doc, trigger } = setup(t);
+  app.start(); trigger().click();
+  assert.equal(doc.querySelector(".ppbui-module-orientation"), null);
+  assert.equal(doc.querySelectorAll('#ppbui-module-panel select').length, 0);
 });
 
 test("theme disclosure persists independently and counts track module settings", async t => {
