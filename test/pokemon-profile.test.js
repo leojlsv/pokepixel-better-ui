@@ -167,7 +167,6 @@ function installNativeCardRenderer(s, { labels = {}, nativeNote = false } = {}) 
       decorated:container.hasAttribute("data-ppbui-profile-native-card"),
       actionsCanonical:!priorActions||priorActions===container.lastElementChild,
       hiddenOwned:container.querySelectorAll("[data-ppbui-profile-native-hidden]").length,
-      compactStatuses:container.querySelectorAll("[data-ppbui-profile-native-status]").length,
     });
     container.replaceChildren();
     const header = doc.createElement("header"); header.className = "pokemon-tooltip__header";
@@ -500,7 +499,7 @@ test("native PokémonCard compacts top status/actions, removes duplicate highlig
   assert.match(nativeCardCss,/\.pokemon-card\[data-ppbui-profile-native-card\] :focus-visible \{[^}]*outline:var\(--ppbui-focus-width,2px\) solid var\(--ppbui-focus\)!important;[^}]*outline-offset:2px!important;/s);
   assert.match(nativeCardCss,/\[data-ppbui-profile-native-actions\] \{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)!important;/s);
   assert.match(nativeCardCss,/\[data-ppbui-profile-native-actions\]:has\(> \.pokemon-card__action:nth-child\(5\)\) \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)!important;/s);
-  assert.match(nativeCardCss,/\.pokemon-tooltip__badge:not\(\[data-ppbui-profile-native-status\]\)/);
+  assert.match(nativeCardCss,/\.pokemon-tooltip__badge\s*\{/);
   assert.match(nativeCardCss,/\.pokemon-tooltip__badge:not\(\.is-level\):not\(\.is-quality\):not\(\.is-shiny\):not\(\.is-mega\):not\(\.is-iv\)/,"generic neutral badge chrome must not override the promoted IV palette");
   assert.match(nativeCardCss,/\[data-ppbui-profile-native-iv\] \{[^}]*border-color:#9bd589!important;[^}]*background:rgba\(111,182,88,\.24\)!important;[^}]*color:#d8f5ce!important;/s);
   assert.match(nativeCardCss,/\[data-ppbui-profile-native-move-copy\] > strong \{[^}]*white-space:normal!important;[^}]*-webkit-line-clamp:2;/s);
@@ -546,7 +545,7 @@ test("native PokémonCard restores canonical DOM before delegating every rerende
   s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1,2,3]});
   await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
   assert.equal(native.calls(),2);
-  assert.deepEqual(native.renderSnapshots[1],{decorated:false,actionsCanonical:true,hiddenOwned:0,compactStatuses:0},"native rerender must receive its original DOM/state before Better UI decorates the fresh result");
+  assert.deepEqual(native.renderSnapshots[1],{decorated:false,actionsCanonical:true,hiddenOwned:0},"native rerender must receive its original DOM/state before Better UI decorates the fresh result");
   assert.equal(card.querySelector(".pokemon-card__actions").previousElementSibling,card.querySelector(".pokemon-tooltip__badges"),"fresh rerender is decorated once after native ownership finishes");
 });
 
@@ -644,9 +643,9 @@ test("native transient hover is augmented in place without inventing an interact
   assert.ok(hover.hasAttribute("data-ppbui-profile-native-card"));
   assert.equal(hover.dataset.ppbuiProfileNativeMode,"hover");
   assert.equal(hover.querySelectorAll("[data-ppbui-profile-native-move]").length,4);
-  assert.equal(hover.querySelector('[data-ppbui-profile-native-status="active"]').textContent,"ACTIVE","read-only hover keeps compact active state because no Equip action exists");
-  assert.equal(hover.querySelector('[data-ppbui-profile-native-status="locked"]').textContent,"PROTECTED","read-only hover keeps compact lock state because no Lock action exists");
-  assert.equal(hover.querySelector("[data-ppbui-profile-native-iv]").textContent,"IV 170/186");
+  assert.equal(hover.querySelector(".pokemon-tooltip__badge.is-active").hidden,true,"read-only hover removes the redundant active icon beside IV");
+  assert.equal(hover.querySelector(".pokemon-tooltip__badge.is-locked").hidden,true,"read-only hover removes the redundant protected icon beside IV");
+  const ivBadge=hover.querySelector("[data-ppbui-profile-native-iv]");assert.equal(ivBadge.textContent,"IV 170/186");assert.equal(ivBadge.previousElementSibling,hover.querySelector(".pokemon-tooltip__badge.is-quality"),"hover keeps IV directly beside rarity after status icons are removed");
   assert.equal(hover.querySelector("[data-ppbui-profile-native-profile]"),null,"transient native hover stays read-only because the game hides it on pointerleave");
   assert.equal(s.doc.querySelector("[data-ppbui-profile-hover]"),null);
 });
@@ -730,7 +729,6 @@ test("native card async move hydration cannot invalidate newer Profile selection
   assert.equal([...card.querySelectorAll(".pokemon-card__cell")].find(node=>node.querySelector(".pokemon-card__cell-label")?.textContent==="TOTAL IV")?.hidden,false);
   assert.equal(card.querySelector(".pokemon-card__cell.is-rarity")?.hidden,false);
   assert.equal(card.querySelector(".pokemon-card__cells")?.hidden,false,"cleanup restores the native highlight grid");
-  assert.equal(card.querySelector("[data-ppbui-profile-native-status]"),null,"cleanup removes compact-status ownership from native badges");
   assert.equal(card.querySelector(".pokemon-tooltip__badge.is-active")?.hidden,false,"cleanup restores native Active status visibility");
   assert.equal(card.querySelector(".pokemon-tooltip__badge.is-locked")?.hidden,false,"cleanup restores native Protected status visibility");
   assert.equal(card.lastElementChild?.classList.contains("pokemon-card__actions"),true,"cleanup returns the native action row to its original bottom position");

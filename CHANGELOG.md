@@ -4,6 +4,14 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **PokémonCard / hover — remove status icons beside IV, corrective 0.2.166 (2026-10-04):**
+  remove `ACTIVE` and `PROTECTED` from the transient hover badge rail as well as pinned/sheet,
+  leaving the promoted green `IV x/186` chip directly beside rarity with no status icons between
+  them. The change removes the obsolete compact-status CSS/ownership path and keeps native hidden
+  state restoration on cleanup before subsequent native renders. Focused Pokémon Profile + Hover
+  tests pass `40/40`; build and `git diff --check` pass. **Validated and approved in-game by the
+  Product Owner on 2026-10-04.**
+
 - **Hunts / Mapa — hierarquia regional e remoção de GYMS, candidato 0.2.166 (2026-10-04):**
   remove por completo o atalho `GYMS` que o Better UI injetava no módulo Hunts e elimina
   o caminho Hunts → `Scene_Gym`. Kanto, Johto e Hoenn passam a formar uma única linha de
