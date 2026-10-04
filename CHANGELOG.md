@@ -4,6 +4,35 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Trade — largura limitada e slots preenchidos sem sobreposição, candidato 0.2.158 (2026-10-04):**
+  reabre o corrective após o Product Owner reprovar `0.2.157` in-game. O candidato
+  anterior ainda forçava `.trade-session-window` a `width:100%`, fazendo a janela
+  ocupar praticamente toda a largura disponível, e fixava `grid-auto-rows:56px` na
+  oferta. A tela real possui vinte slots (`5×4` no desktop), e cards preenchidos podem
+  precisar de mais de `56px`; a altura rígida fazia o conteúdo invadir a linha seguinte.
+  `0.2.158` limita a largura preferencial da janela a `1280px` sem perder o shrink
+  responsivo do pane e troca as linhas da oferta para `minmax(56px,auto)`: vazios
+  permanecem compactos e somente linhas com conteúdo crescem. O fixture de regressão
+  agora usa os vinte slots reais, dois itens altos e host full-width hostil. Handlers,
+  payloads, elegibilidade e regras de Trade permanecem nativos.
+
+- **Trade — compactação resiliente da oferta e inventário responsivo, candidato 0.2.157 (2026-10-04):**
+  **Reprovado in-game pelo Product Owner em 2026-10-04** por largura total automática
+  da janela e sobreposição de conteúdo nos slots preenchidos. A implementação buscava
+  corrigir a regressão visual reportada em que os slots vazios
+  das ofertas eram esticados pelo CSS atual do host e o inventário permanecia preso
+  a apenas quatro colunas de `56px`. O Trade passa a possuir explicitamente sua
+  geometria: ofertas usam cinco colunas nativas de `56px` no desktop,
+  preservam a compactação histórica para quatro colunas no split, e os painéis de
+  oferta deixam de herdar altura mínima/stretch que empurrava status e ações para o
+  rodapé. O inventário mantém cards nativos de `56px`, mas preenche automaticamente
+  todas as colunas inteiras disponíveis e recebe maior participação da largura no
+  layout desktop. O saldo nativo agora é reconciliado com a linha de moeda que contém
+  o input editável mesmo quando o host o renderiza fora do `.trade-side`. Nenhum nó,
+  handler, payload, elegibilidade ou regra de negociação foi recriado ou alterado.
+  Renders locais determinísticos cobrem desktop, split, `500px` e container de
+  `320px`; validação in-game do candidato exato permanece com o Product Owner.
+
 - **Menu Bar — posição livre persistente e camada acima dos overlays, candidato 0.2.156 (2026-10-03):**
   integração da correção visual validada sobre a linha 0.2.155. A configuração de
   orientação/posição foi removida do painel Better UI; a Poké Hub passa a persistir

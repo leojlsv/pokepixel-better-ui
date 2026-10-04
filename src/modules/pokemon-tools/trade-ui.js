@@ -7,15 +7,16 @@ export function createTradeUI(root,tools){
   const copy={filters:"Filtros",close:"Fechar",results:"resultados"};
   const style=doc.createElement("style");style.dataset.ppbuiStyle="trade-layout";
   style.textContent=`
-    .trade-session-window.ppbui-window { container-type:inline-size; box-sizing:border-box; width:100% !important; min-width:0 !important; max-width:100% !important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-window-radius) !important; background:var(--ppbui-bg-1) !important; color:var(--ppbui-text) !important; box-shadow:var(--ppbui-shadow-raised) !important; font-family:var(--ppbui-font-body) !important; }
+    .trade-session-window.ppbui-window { container-type:inline-size; box-sizing:border-box; width:min(1280px,calc(100% - 24px)) !important; min-width:0 !important; max-width:calc(100% - 24px) !important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-window-radius) !important; background:var(--ppbui-bg-1) !important; color:var(--ppbui-text) !important; box-shadow:var(--ppbui-shadow-raised) !important; font-family:var(--ppbui-font-body) !important; }
     .trade-session-window.ppbui-window :where(input:not([type="checkbox"]):not([type="radio"]),select) { box-sizing:border-box; min-height:var(--ppbui-control-height); border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-radius) !important; background:var(--ppbui-bg-0) !important; color:var(--ppbui-text) !important; box-shadow:none !important; font-family:var(--ppbui-font-body) !important; text-shadow:none !important; }
     .trade-session-window.ppbui-window :where(input:not([type="checkbox"]):not([type="radio"]),select):focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus) !important; outline-offset:var(--ppbui-pixel-unit); }
     .trade-session-window.ppbui-window :where(input:not([type="checkbox"]):not([type="radio"]),select):disabled { border-color:var(--ppbui-border) !important; background:var(--ppbui-bg-1) !important; color:var(--ppbui-text-subtle) !important; opacity:1 !important; }
-    .trade-session-window.ppbui-window .trade-shell { box-sizing:border-box; width:100%; max-width:100%; min-width:0; grid-template-columns:minmax(318px,1fr) minmax(318px,1fr) minmax(280px,.9fr); }
+    .trade-session-window.ppbui-window .trade-shell { box-sizing:border-box; width:100%; max-width:100%; min-width:0; grid-template-columns:minmax(318px,1fr) minmax(318px,1fr) minmax(280px,1.25fr); align-items:start; }
     .trade-session-window.ppbui-window :is(.trade-side,.trade-inventory) { box-sizing:border-box; min-width:0; max-width:100%; }
+    .trade-session-window.ppbui-window .trade-side { align-self:start; min-height:0 !important; height:auto !important; }
     .trade-session-window.ppbui-window .trade-inventory { grid-column:auto; }
-    .trade-session-window.ppbui-window .trade-inventory-list { grid-template-columns:repeat(4,56px); }
-    .trade-session-window.ppbui-window .trade-slots { min-width:0; max-width:100%; }
+    .trade-session-window.ppbui-window .trade-inventory-list { grid-template-columns:repeat(auto-fill,56px) !important; justify-content:start; align-content:start; }
+    .trade-session-window.ppbui-window .trade-slots { flex:0 0 auto !important; min-width:0; max-width:100%; height:auto !important; min-height:0 !important; grid-template-columns:repeat(5,56px) !important; grid-template-rows:none !important; grid-auto-rows:minmax(56px,auto); justify-content:center; align-content:start; }
     .trade-session-window.ppbui-window .trade-gold-row { min-height:72px; box-sizing:border-box; flex-wrap:wrap; align-content:center; }
     .trade-session-window.ppbui-window .trade-gold-balance { margin:0; padding:0; flex-basis:100%; color:var(--ppbui-text-muted); font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); }
     .trade-session-window.ppbui-window .trade-confirm,.trade-session-window.ppbui-window .trade-cancel { box-sizing:border-box; min-height:var(--ppbui-control-height) !important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong) !important; border-radius:var(--ppbui-radius) !important; background:var(--ppbui-bg-2) !important; color:var(--ppbui-text) !important; box-shadow:none !important; font:700 var(--ppbui-font-size-body)/var(--ppbui-line-height-tight) var(--ppbui-font-body) !important; text-shadow:none !important; transform:none !important; }
@@ -45,16 +46,16 @@ export function createTradeUI(root,tools){
       .trade-session-window.ppbui-window .trade-shell { grid-template-columns:repeat(2,minmax(0,1fr)); }
       .trade-session-window.ppbui-window .trade-side { grid-column:auto; }
       .trade-session-window.ppbui-window .trade-inventory { grid-column:1/-1; }
-      .trade-session-window.ppbui-window .trade-slots { grid-template-columns:repeat(4,56px); justify-content:center; }
+      .trade-session-window.ppbui-window .trade-slots { grid-template-columns:repeat(4,56px) !important; }
     }
     @container (max-width:519px) {
       .trade-session-window.ppbui-window .trade-shell { grid-template-columns:minmax(0,1fr); }
       .trade-session-window.ppbui-window .trade-side { grid-column:auto; }
       .trade-session-window.ppbui-window .trade-inventory { grid-column:auto; }
-      .trade-session-window.ppbui-window .trade-slots { grid-template-columns:repeat(5,56px); }
+      .trade-session-window.ppbui-window .trade-slots { grid-template-columns:repeat(5,56px) !important; }
     }
     @container (max-width:339px) {
-      .trade-session-window.ppbui-window .trade-slots { grid-template-columns:repeat(4,56px); }
+      .trade-session-window.ppbui-window .trade-slots { grid-template-columns:repeat(4,56px) !important; }
     }
     @media (max-width:520px) {
       .ppbui-trade-filters .ppbui-pokemon-fields { grid-template-columns:repeat(2,minmax(0,1fr)); }
@@ -85,5 +86,5 @@ export function createTradeUI(root,tools){
     for(const [id,label] of [["","Todas as categorias"],...values]){const option=doc.createElement("option");option.value=id;option.textContent=label;select.append(option);}select.value=value;select.onchange=()=>onchange(select.value);
     results.textContent=`${count} ${copy.results}`;bar.append(select,results);const list=claimScroll(panel.querySelector(selectors.list));list?.before(bar);
   },count(count){const node=root.querySelector(`${selectors.bar} small`);if(node)node.textContent=`${count} ${copy.results}`;
-  },sync(){root.querySelectorAll(selectors.side).forEach(side=>{const balance=side.querySelector(selectors.balance);if(balance)side.querySelector(selectors.gold)?.append(balance);});},close,cleanup(){close();style.remove();for(const node of ownedScrolls)node.classList.remove("ppbui-scroll");ownedScrolls.clear();if(!hadWindowClass)root.classList.remove("ppbui-window");}};
+  },sync(){const balance=root.querySelector(selectors.balance),gold=[...root.querySelectorAll(selectors.gold)].find(row=>row.querySelector("input"));if(balance&&gold)gold.append(balance);},close,cleanup(){close();style.remove();for(const node of ownedScrolls)node.classList.remove("ppbui-scroll");ownedScrolls.clear();if(!hadWindowClass)root.classList.remove("ppbui-window");}};
 }
