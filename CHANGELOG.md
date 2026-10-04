@@ -4,6 +4,42 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Geneticista — `Genetic Materials` volta a respeitar `hidden`, 0.2.161 (2026-10-04):**
+  corrige a regressão visual introduzida pelo alinhamento central das abas em `0.2.160`.
+  O botão nativo já continuava com `hidden=true`, porém a regra Better UI
+  `display:flex!important` anulava visualmente esse estado. A aba agora recebe
+  `display:none!important` quando estiver `[hidden]`, inclusive após rerenders nativos,
+  sem alterar a lógica de navegação, handlers ou cleanup. **Validado e aprovado in-game
+  pelo Product Owner em 2026-10-04.**
+
+- **Geneticista — filtros unificados e abas centralizadas, candidato 0.2.160 (2026-10-04):**
+  parte do `0.2.159` validado in-game pelo Product Owner e aplica uma gramática visual
+  única de descoberta/filtros às quatro superfícies restantes sem inventar estado que o
+  jogo não oferece. `Reroll IVs` preserva Search + Quality/Element/Location/Variant/Sort;
+  `Extract` preserva Search/selects/facetas nativos e mantém checkboxes com semântica e
+  geometria próprias; `Awakening` mantém somente o Search nativo; `Exchange` recebe
+  apenas hierarquia visual para a lista de materiais, sem filtros incompletos sobre o
+  carregamento nativo limitado e sem tocar source/target/Units da transação. A política
+  persistida de raridade de material do Reroll continua
+  separada dos filtros de lista, compartilhando apenas a linguagem visual de facetas.
+  Os quatro nomes das abas primárias são centralizados, inclusive no layout estreito 2×2,
+  e controles nativos sem nome acessível recebem `aria-label` sem substituir seus nós,
+  listeners, busy/disabled state ou contratos de cleanup.
+
+- **Geneticista — seleção persistente para extração e cinematic sem espera, candidato 0.2.159 (2026-10-04):**
+  remove a aba redundante `Genetic Materials` do Geneticista enquanto o Better UI está
+  ativo, mantendo o `Trainer > Genetic Vault` como superfície de materiais. O fluxo de
+  extração preserva os cards e handlers nativos: ao escolher uma espécie, a lista nativa
+  é mantida como seletor persistente ao lado dos indivíduos em largura normal e empilhada
+  em largura reduzida, permitindo trocar rapidamente de espécie sem criar estado paralelo.
+  A operação continua deliberadamente limitada ao contrato nativo de uma espécie por
+  requisição; seleção, `all_filtered`, proteção/unlock, snapshot, confirmação,
+  idempotência, retry e refresh pós-commit permanecem do jogo. O cinematic de extração
+  entra imediatamente pelo próprio `Skip` nativo, preservando resultado, `finished` e
+  restauração de foco sem exigir assistir à animação. Renders sintéticos host-realistas
+  cobrem 920/696/390 px sem overflow horizontal. **Validado in-game pelo Product Owner
+  em 2026-10-04.**
+
 - **Trade — largura limitada e slots preenchidos sem sobreposição, candidato 0.2.158 (2026-10-04):**
   reabre o corrective após o Product Owner reprovar `0.2.157` in-game. O candidato
   anterior ainda forçava `.trade-session-window` a `width:100%`, fazendo a janela

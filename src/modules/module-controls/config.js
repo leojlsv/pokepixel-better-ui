@@ -4,7 +4,7 @@ export const moduleControlsConfig = {
   groups: [
     { id: "interface", modules: ["menu-bar", "buff-strip", "chat", "disable-pokemon-hover"] },
     { id: "team", modules: ["team", "team-hud", "team-presets"] },
-    { id: "activities", modules: ["inventory", "hunts", "marks-shop", "auto-helper", "storage", "trade"] },
+    { id: "activities", modules: ["inventory", "hunts", "geneticist", "marks-shop", "auto-helper", "storage", "trade"] },
   ],
   selectors: {
     toolbar: ".pokeidle-top-toolbar",
