@@ -4,6 +4,18 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Menu Bar — posição livre persistente e camada acima dos overlays, candidato 0.2.156 (2026-10-03):**
+  integração da correção visual validada sobre a linha 0.2.155. A configuração de
+  orientação/posição foi removida do painel Better UI; a Poké Hub passa a persistir
+  sua geometria livre `left/top` após movimento e restaurá-la após F5/remount com
+  margem de 8 px do viewport. A orientação deixa de ser persistida por Settings e
+  permanece apenas como detalhe interno de layout da sessão. A barra também recebe
+  camada acima de Chat e das ações `Return City | Capture`, enquanto dropdowns e o
+  painel Better UI continuam em camadas superiores. Preservadas as correções de
+  viewport do painel 0.2.154 e a integração Card Mode ↔ Hunt Analyzer da 0.2.155.
+  **Validado visualmente in-game pelo usuário em 2026-10-03** no candidato funcional
+  anterior criado sobre base desatualizada; esta é a reaplicação correta sobre 0.2.155.
+
 - **Card Mode — integração opcional com detalhes do Hunt Analyzer, candidato 0.2.155 (2026-10-03):**
   o Card Mode passa a detectar a nova capability pública e versionada
   `__POKEPIXEL_HUNT_ANALYZER_UI__` sem acessar Shadow DOM ou IndexedDB do Analyzer.

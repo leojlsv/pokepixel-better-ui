@@ -1,6 +1,6 @@
 export const menuBarConfig = Object.freeze({
   id: "menu-bar",
-  orientationStorageKey: "ppbui:menu-bar-orientation:v1",
+  positionStorageKey: "ppbui:menu-bar-position:v1",
   orientations: ["horizontal", "vertical"],
   events: {
     orientationChange: "ppbui:menu-orientation-change",

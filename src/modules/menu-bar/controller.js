@@ -20,7 +20,6 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   let hoveredEntry = null;
   const placements = new Map();
   let orientation = "horizontal";
-  let orientationPersistent = true;
   let collapsedState = null;
   let nativeGeometryTouched = false;
   let geometryFrame = null;
@@ -194,12 +193,6 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   style.textContent = styles;
   doc.head.append(style);
   attribute(toolbar, "data-ppbui-menu-bar", "");
-  try {
-    const saved = doc.defaultView?.localStorage?.getItem(config.orientationStorageKey);
-    if (config.orientations.includes(saved)) orientation = saved;
-  } catch {
-    orientationPersistent = false;
-  }
   const applyOrientation = value => {
     const before = toolbar.getAttribute("data-ppbui-menu-orientation");
     orientation = config.orientations.includes(value) ? value : "horizontal";
@@ -212,15 +205,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     if (orientationBefore === null) toolbar.removeAttribute("data-ppbui-menu-orientation");
     else toolbar.setAttribute("data-ppbui-menu-orientation", orientationBefore);
   });
-  const setOrientation = value => {
-    applyOrientation(value);
-    try {
-      doc.defaultView?.localStorage?.setItem(config.orientationStorageKey, orientation);
-      orientationPersistent = true;
-    } catch {
-      orientationPersistent = false;
-    }
-  };
+  const setOrientation = value => applyOrientation(value);
   applyOrientation(orientation);
   const mask = (node, hide) => {
     if (hide && !masks.has(node)) {
@@ -441,6 +426,23 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   const ordered = config.order.map(id => slots.get(id)).filter(Boolean);
   for (const node of ordered) toolbar.append(node);
   const clamp = (value, min, max) => Math.min(Math.max(value, min), Math.max(min, max));
+  const readSavedPosition = () => {
+    try {
+      const raw = JSON.parse(win?.localStorage?.getItem(config.positionStorageKey) || "null");
+      const left = Number(raw?.left), top = Number(raw?.top);
+      return Number.isFinite(left) && Number.isFinite(top) ? { left, top } : null;
+    } catch { return null; }
+  };
+  const persistPosition = () => {
+    const rect = toolbar.getBoundingClientRect();
+    const viewportWidth = doc.documentElement?.clientWidth || win?.innerWidth || 0;
+    const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
+    if (!(rect.width > 0 && rect.height > 0 && viewportWidth > 0 && viewportHeight > 0)) return;
+    const margin = 8;
+    const left = clamp(rect.left, margin, viewportWidth - rect.width - margin);
+    const top = clamp(rect.top, margin, viewportHeight - rect.height - margin);
+    try { win?.localStorage?.setItem(config.positionStorageKey, JSON.stringify({ left:Math.round(left), top:Math.round(top) })); } catch {}
+  };
   const normalizeHubGeometry = () => {
     if (geometryClaimed || !toolbar.classList.contains("pokeidle-pokehub") || !toolbar.classList.contains("pokeidle-island")) return geometryClaimed;
     const rect = toolbar.getBoundingClientRect();
@@ -448,8 +450,9 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
     if (!(rect.width > 0 && rect.height > 0 && viewportWidth > 0 && viewportHeight > 0)) return false;
     const margin = 8;
-    const left = clamp(rect.left, margin, viewportWidth - rect.width - margin);
-    const top = clamp(rect.top, margin, viewportHeight - rect.height - margin);
+    const saved = readSavedPosition();
+    const left = clamp(saved?.left ?? rect.left, margin, viewportWidth - rect.width - margin);
+    const top = clamp(saved?.top ?? rect.top, margin, viewportHeight - rect.height - margin);
     claimInitialGeometry("left", `${Math.round(left)}px`);
     claimInitialGeometry("top", `${Math.round(top)}px`);
     claimInitialGeometry("bottom", "auto");
@@ -471,6 +474,9 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     listen(handle, "keydown", event => {
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) nativeGeometryTouched = true;
     }, true);
+    listen(win, "pointerup", persistPosition, true);
+    listen(win, "pointercancel", persistPosition, true);
+    listen(win, "blur", persistPosition);
   }
   const itemOrder = groups.map(({ dropdown }) => ({
     dropdown,
@@ -653,7 +659,6 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     sync,
     getOrientation: () => orientation,
     setOrientation,
-    isOrientationPersistent: () => orientationPersistent,
     isIntact: () => groups.every(({ group, trigger, dropdown }) => group.parentNode === toolbar && trigger.parentNode === group && dropdown.parentNode === group) &&
       ownedCityActions.every(({ button, dropdown }) => button.parentNode === dropdown) &&
       [...placements].every(([button, parent]) => button.parentNode === parent) &&
