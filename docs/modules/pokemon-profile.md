@@ -4,10 +4,10 @@
 > decisão do Product Owner. As referências abaixo a seu PNG e aos testes conjuntos
 > são histórico do freeze `0.2.77`; apenas o ícone do Pokémon Profile permanece.
 
-Status: **Better UI 0.2.149 — candidato local de refinamento de performance, lifecycle, responsividade
-e acessibilidade. O Profile continua dedicado, preserva Team + Backpack por `creatureId` exato,
-Current/Saved Moves, Saved Teams e o editor nativo de moves. Validação in-game permanece pendente do
-Product Owner.**
+Status: **Better UI 0.2.166 — o PokémonCard nativo mantém IV promovido ao lado da raridade e agora
+oculta `ACTIVE`/`PROTECTED` também no hover transitório. O Profile continua dedicado, preserva Team +
+Backpack por `creatureId` exato, Current/Saved Moves, Saved Teams e o editor nativo de moves. Esta
+correção foi validada e aprovada in-game pelo Product Owner em 2026-10-04.**
 
 ## Profile UI Playground
 
@@ -480,10 +480,8 @@ quatro bandas de leitura: identidade/status, ações/vitals, Moves atuais e dado
 - \`TOTAL IV\` continua lido da célula nativa, mas é apresentado uma única vez no rail superior como
   chip verde-claro \`IV x/186\`, imediatamente após o badge de raridade;
 - \`Battle Stats\` deixa de repetir IV no heading e fica restrito aos seis atributos de combate;
-- quando o card possui action row nativa, \`ACTIVE\` e \`PROTECTED\` são ocultados porque Equip e
-  Lock/Unlock já representam esses estados de forma operacional;
-- no hover transitório sem action row, \`ACTIVE\` e \`PROTECTED\` continuam compactados e visíveis para
-  não remover informação que não existe em outro controle;
+- \`ACTIVE\` e \`PROTECTED\` são ocultados do rail superior em pinned/sheet e também no hover
+  transitório, mantendo rarity e o chip promovido de IV sem ícones de status redundantes;
 - todos os estados ocultados são restaurados pelo cleanup antes de qualquer novo render nativo.
 
 ### 0.2.164 — peso visual do chip de IV

@@ -135,11 +135,6 @@ function styleText() {
     [data-ppbui-profile-team-member] img { width:30px; height:30px; object-fit:contain; image-rendering:pixelated; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-power] { margin-left:auto; white-space:nowrap; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-hidden] { display:none!important; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status] { position:relative; display:inline-grid!important; width:22px; min-width:22px; height:22px; box-sizing:border-box; place-items:center; padding:0!important; overflow:hidden; font-size:0!important; line-height:1!important; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status]::before { content:""; display:block; box-sizing:border-box; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="active"]::before { width:8px; height:8px; border-top:2px solid currentColor; border-right:2px solid currentColor; transform:rotate(45deg); }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::before { width:9px; height:7px; margin-top:4px; border:1px solid currentColor; border-radius:1px; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::after { content:""; position:absolute; top:4px; left:50%; width:6px; height:6px; box-sizing:border-box; border:1px solid currentColor; border-bottom:0; border-radius:4px 4px 0 0; transform:translateX(-50%); }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] { margin-top:4px; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-iv] { white-space:nowrap; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-sr] { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
@@ -276,7 +271,7 @@ function styleText() {
       align-items:center!important;
       margin:7px 0 6px!important;
     }
-    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__badge:not([data-ppbui-profile-native-status]) {
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__badge {
       min-height:22px;
       box-sizing:border-box;
       font-size:10px!important;
@@ -969,13 +964,6 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const actionsAnchor = container.querySelector("[data-ppbui-profile-native-actions-anchor]");
     if (actions && actionsAnchor?.parentNode) actionsAnchor.replaceWith(actions);
     actions?.removeAttribute("data-ppbui-profile-native-actions");
-    container.querySelectorAll("[data-ppbui-profile-native-status]").forEach(node => {
-      if (node.dataset.ppbuiProfileNativeStatusTitleAdded === "true") node.removeAttribute("title");
-      if (node.dataset.ppbuiProfileNativeStatusAriaAdded === "true") node.removeAttribute("aria-label");
-      node.removeAttribute("data-ppbui-profile-native-status");
-      node.removeAttribute("data-ppbui-profile-native-status-title-added");
-      node.removeAttribute("data-ppbui-profile-native-status-aria-added");
-    });
     container.querySelectorAll("[data-ppbui-profile-native-owned]").forEach(node => node.remove());
     container.querySelectorAll("[data-ppbui-profile-native-hidden]").forEach(node => {
       node.hidden = node.dataset.ppbuiProfileNativeWasHidden === "true";
@@ -1102,7 +1090,6 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   }
 
   function reconcileNativeStatusBadges(container) {
-    const hasNativeActions = Boolean(container.querySelector(".pokemon-card__actions"));
     const statuses = [
       [".pokemon-tooltip__badge.is-active", "active"],
       [".pokemon-tooltip__badge.is-locked", "locked"],
@@ -1110,20 +1097,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     for (const [selector, kind] of statuses) {
       const badge = container.querySelector(selector);
       if (!badge) continue;
-      if (hasNativeActions) {
-        hideNativeCardCell(badge, "redundant-" + kind);
-        continue;
-      }
-      const label = badge.textContent?.trim() || "";
-      badge.dataset.ppbuiProfileNativeStatus = kind;
-      if (label && !badge.hasAttribute("title")) {
-        badge.title = label;
-        badge.dataset.ppbuiProfileNativeStatusTitleAdded = "true";
-      }
-      if (label && !badge.hasAttribute("aria-label")) {
-        badge.setAttribute("aria-label", label);
-        badge.dataset.ppbuiProfileNativeStatusAriaAdded = "true";
-      }
+      hideNativeCardCell(badge, "redundant-" + kind);
     }
   }
 
