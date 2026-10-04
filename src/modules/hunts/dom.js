@@ -57,15 +57,21 @@ function nativeMarkerSprite(marker,view) {
   return '';
 }
 const texts = {
-  pt: ['Hunts (Map)', 'Encontrar hunts nos resultados dos filtros', 'Todos', 'Localizar no mapa', 'Reset', 'Nenhuma hunt corresponde aos filtros neste mundo.', 'Selecione uma hunt nos resultados.', 'Hunt localizada.', 'Não foi possível localizar esta hunt. Use o mapa nativo.', 'Filtros', 'Alvo', 'GYMS', 'Abrir Gyms de', 'Gyms indisponíveis', 'Filtros ativos', 'Nível mínimo', 'Nível máximo'],
-  en: ['Hunts (Map)', 'Find hunts in filtered results', 'All', 'Locate on map', 'Reset', 'No hunts match the filters in this world.', 'Select a hunt from the results.', 'Hunt located.', 'Unable to locate this hunt. Use the native map.', 'Filters', 'Target', 'GYMS', 'Open Gyms for', 'Gyms unavailable', 'Filters active', 'Minimum level', 'Maximum level'],
-  es: ['Hunts (Map)', 'Encontrar hunts en los resultados filtrados', 'Todos', 'Localizar en el mapa', 'Reset', 'Ninguna hunt coincide con los filtros en este mundo.', 'Selecciona una hunt en los resultados.', 'Hunt localizada.', 'No se pudo localizar esta hunt. Usa el mapa original.', 'Filtros', 'Objetivo', 'GYMS', 'Abrir Gyms de', 'Gyms no disponibles', 'Filtros activos', 'Nivel mínimo', 'Nivel máximo'],
-  zh: ['Hunts (Map)', '在筛选结果中查找狩猎地点', '全部', '在地图上定位', '重置', '当前世界没有符合筛选条件的狩猎地点。', '请从结果中选择狩猎地点。', '已定位。', '无法定位，请使用原生地图。', '筛选', '目标', 'GYMS', '打开地区道馆', '道馆不可用', '筛选已启用', '最低等级', '最高等级'],
+  pt: ['Hunts (Map)', 'Encontrar hunts nos resultados dos filtros', 'Todos', 'Localizar no mapa', 'Reset', 'Nenhuma hunt corresponde aos filtros neste mundo.', 'Selecione uma hunt nos resultados.', 'Hunt localizada.', 'Não foi possível localizar esta hunt. Use o mapa nativo.', 'Filtros', 'Alvo', 'FIM DE SEMANA', 'Filtros ativos', 'Nível mínimo', 'Nível máximo'],
+  en: ['Hunts (Map)', 'Find hunts in filtered results', 'All', 'Locate on map', 'Reset', 'No hunts match the filters in this world.', 'Select a hunt from the results.', 'Hunt located.', 'Unable to locate this hunt. Use the native map.', 'Filters', 'Target', 'WEEKEND', 'Filters active', 'Minimum level', 'Maximum level'],
+  es: ['Hunts (Map)', 'Encontrar hunts en los resultados filtrados', 'Todos', 'Localizar en el mapa', 'Reset', 'Ninguna hunt coincide con los filtros en este mundo.', 'Selecciona una hunt en los resultados.', 'Hunt localizada.', 'No se pudo localizar esta hunt. Usa el mapa original.', 'Filtros', 'Objetivo', 'FIN DE SEMANA', 'Filtros activos', 'Nivel mínimo', 'Nivel máximo'],
+  zh: ['Hunts (Map)', '在筛选结果中查找狩猎地点', '全部', '在地图上定位', '重置', '当前世界没有符合筛选条件的狩猎地点。', '请从结果中选择狩猎地点。', '已定位。', '无法定位，请使用原生地图。', '筛选', '目标', '周末', '筛选已启用', '最低等级', '最高等级'],
+};
+const weekendDescriptions = {
+  pt: 'Disponível nos fins de semana',
+  en: 'Available on weekends',
+  es: 'Disponible los fines de semana',
+  zh: '周末开放',
 };
 export function huntsText(doc = document) {
-  const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || 'pt';
-  const [name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, gyms, openGyms, gymsUnavailable, filtersActive, minLevel, maxLevel] = texts[lang.split(/[-_]/)[0]] || texts.en;
-  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, gyms, openGyms, gymsUnavailable, filtersActive, minLevel, maxLevel};
+  const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || 'pt', language=lang.split(/[-_]/)[0];
+  const [name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, weekend, filtersActive, minLevel, maxLevel] = texts[language] || texts.en;
+  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, weekend, weekendDescription:weekendDescriptions[language]||weekendDescriptions.en, filtersActive, minLevel, maxLevel};
 }
 export const findHunts = () => document.querySelector(selectors.root);
 export function parts(root) {

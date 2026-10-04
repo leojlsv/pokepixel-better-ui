@@ -26,18 +26,6 @@ const markup=()=>`
     <button class="hunt-map-marker" data-zone-index="1" style="left:10%;top:20%"><span class="hunt-map-marker__sprite"></span><strong class="hunt-map-marker__name">Abra Lv. 10–15</strong></button>
   </div></div>`;
 
-function installGymRuntime(win,scene) {
-  let pushes=0;
-  function SceneGym(){this.initialize();}
-  SceneGym.prototype.initialize=function(){this._region='kanto';};
-  win.Scene_Gym=SceneGym;
-  win.SceneManager={
-    _scene:scene,_nextScene:null,
-    push(SceneClass){pushes++;this._nextScene=new SceneClass();},
-  };
-  return {pushes:()=>pushes,next:()=>win.SceneManager._nextScene};
-}
-
 function setup(t){
   const dom=new JSDOM(`<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunt Map</span><button type="button" aria-label="Close">×</button></div><div class="pokeidle-panel__body">${markup()}</div></div>`,{url:'https://test.local',pretendToBeVisual:true});
   const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
@@ -57,7 +45,7 @@ function setup(t){
     _navigationCleanup(){cleanups++;},
     setupWorldMapNavigation(v,stage){setups++;this._worldMapState={...this._worldMapStates[this._tab]};stage.style.transform=`translate3d(${this._worldMapState.x}px,${this._worldMapState.y}px,0) scale(${this._worldMapState.scale})`;},
   };
-  const gym=installGymRuntime(dom.window,scene);
+  dom.window.SceneManager={_scene:scene,_nextScene:null};
   dom.window.PokeIdle={
     Localization:{get:()=>"pt-BR"},
     t:(key,args)=>key==='hunt_selection.element_singular'?'Elemento':key==='hunt_selection.element_plural'?'Elementos':key==='hunt_selection.level_abbr'?`Lv. ${args.level}`:key==='hunt_selection.level_range'?`Lv. ${args.min}–${args.max}`:key,
@@ -89,7 +77,7 @@ function setup(t){
   const reset=()=>root.querySelectorAll('.ppbui-hunts-results button')[1];
   const dossier=()=>root.querySelector('.ppbui-hunts-inspector');
   const choose=(i='0')=>{select().value=i;select().dispatchEvent(new dom.window.Event('change'));};
-  return {dom,doc,root,body,scene,c,before,bind,select,locate,reset,dossier,choose,gym,stats:()=>({nativeClicks,starts,hovers,focusInfos,saves,cleanups,setups,modeClicks})};
+  return {dom,doc,root,body,scene,c,before,bind,select,locate,reset,dossier,choose,stats:()=>({nativeClicks,starts,hovers,focusInfos,saves,cleanups,setups,modeClicks})};
 }
 
 const currentListMarkup=()=>[
@@ -142,8 +130,9 @@ const currentMapMarkup=()=>[
   '</div></div>',
 ].join('');
 
-function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list'}={}){
-  const markup=mode==='map'?currentMapMarkup():currentListMarkup();
+function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list',legendaryEnabled=false,focusLegendaryBeforeMount=false}={}){
+  const nativeMarkup=mode==='map'?currentMapMarkup():currentListMarkup();
+  const markup=legendaryEnabled?nativeMarkup.replace('disabled>Ilhas Lendárias','>Ilhas Lendárias'):nativeMarkup;
   const dom=new JSDOM('<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunts</span><button type="button">×</button></div><div class="pokeidle-panel__body">'+markup+'</div></div>',{url:'https://test.local',pretendToBeVisual:true});
   const doc=dom.window.document,root=doc.body.firstChild,body=root.querySelector('.pokeidle-panel__body');
   const zones=[
@@ -159,13 +148,15 @@ function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list'}={})
   if(inheritedStartHunt)Object.setPrototypeOf(scene,{startHunt:nativeStartHunt});
   else Object.defineProperty(scene,'startHunt',{configurable:true,enumerable:false,writable:true,value:nativeStartHunt});
   const nativeStartHuntDescriptor=Object.getOwnPropertyDescriptor(scene,'startHunt');
-  const gym=installGymRuntime(dom.window,scene);
+  dom.window.SceneManager={_scene:scene,_nextScene:null};
   dom.window.PokeIdle={Localization:{get:()=> 'pt-BR'}};
   root.querySelectorAll('.hunt-list-hunt-button').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
   root.querySelectorAll('.hunt-map-marker').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
-  const before=root.outerHTML,c=mountHunts(root);
+  const before=root.outerHTML;
+  if(focusLegendaryBeforeMount)root.querySelectorAll('.hunt-list-world-tab')[2]?.focus();
+  const c=mountHunts(root);
   t.after(()=>{c.cleanup();dom.window.close();});
-  return {dom,doc,root,body,scene,c,before,nativeStartHunt,nativeStartHuntDescriptor,gym,stats:()=>({starts})};
+  return {dom,doc,root,body,scene,c,before,nativeStartHunt,nativeStartHuntDescriptor,stats:()=>({starts})};
 }
 
 test('current Hunt list keeps native controls while Better UI compacts discovery hierarchy',async t=>{
@@ -180,8 +171,8 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
   assert.equal(s.root.querySelector('[data-ppbui-hunts-list-toolbar]'),null);
   assert.equal(s.root.querySelector('[data-ppbui-hunts-list-surface]'),null);
   assert.deepEqual([...s.root.querySelector('.hunt-list-header').children].map(node=>node.className),[
-    'hunt-list-world-tabs','ppbui-hunts-gym','hunt-presentation-toggle ppbui-hunts-view-toggle','hunt-presentation-toggle ppbui-hunts-presentation-toggle'
-  ],'Gym navigation is inserted between native region context and presentation utility');
+    'hunt-list-world-tabs','hunt-presentation-toggle ppbui-hunts-view-toggle','hunt-presentation-toggle ppbui-hunts-presentation-toggle'
+  ],'native region context flows directly into view and presentation navigation');
   assert.deepEqual([...s.root.querySelector('.hunt-list-toolbar').children].filter(node=>node.nodeType===1).map(node=>node.className),[
     'hunt-list-field hunt-list-search-field','ppbui-hunts-list-utility','ppbui-hunts-list-advanced'
   ],'Search remains persistent while utility and advanced native controls get scoped layout owners');
@@ -193,15 +184,27 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
   ],'Element and Level remain the original native controls inside advanced refinement');
   assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,true,'advanced filters start collapsed');
   assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true,'native region context is folded into result summary instead of occupying a standalone pre-filter row');
-  assert.equal(s.root.querySelector('.hunt-list-world-tab[disabled]').textContent,'Ilhas Lendárias','native unavailable-region state is preserved');
+  const regionTabs=[...s.root.querySelectorAll('.hunt-list-world-tab')],legendary=s.root.querySelector('.ppbui-hunts-region-legendary');
+  assert.deepEqual(regionTabs.map(tab=>tab.textContent),['Kanto','Johto','Hoenn','Ilhas Lendárias'],'mounted keyboard/visual order groups common Hunt regions before the special destination');
+  assert.deepEqual(regionTabs.filter(tab=>tab.classList.contains('ppbui-hunts-region-common')).map(tab=>tab.textContent),['Kanto','Johto','Hoenn'],'ordinary Hunt regions share one visual role');
+  assert.equal(legendary.textContent,'Ilhas Lendárias');
+  assert.equal(legendary.classList.contains('ppbui-hunts-region-legendary'),true,'legendary islands have a dedicated special-destination role');
+  assert.equal(legendary.dataset.ppbuiRegionNote,'FIM DE SEMANA','special destination exposes its temporal availability context');
+  assert.equal(legendary.getAttribute('aria-description'),'Disponível nos fins de semana','weekend availability is exposed beyond generated visual content');
+  assert.equal(legendary.disabled,true,'native unavailable-region state is preserved');
+  assert.equal(s.root.querySelector('.ppbui-hunts-gym'),null,'Hunts no longer injects a Gym destination');
   assert.match(css,/\.ppbui-hunts-current \.hunt-selection-shell \{[^}]*grid-template-columns:minmax\(220px,280px\) minmax\(0,1fr\)/s,'current MAP/LIST share one explicit sidebar/workspace composition');
   assert.match(css,/\.ppbui-hunts-current \.hunt-selection-sidebar \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border\) !important;[^}]*background:var\(--ppbui-bg-1\) !important;/s,'discovery controls read as one bounded current-selector surface');
   assert.match(css,/\.ppbui-hunts-current \.hunt-list-header \{[\s\S]*display:grid !important;/,'current MAP/LIST share one explicit navigation stack');
-  assert.match(css,/\.ppbui-hunts-current \.hunt-list-header > \.ppbui-hunts-gym \{[^}]*width:100%;[^}]*min-height:calc\(var\(--ppbui-control-height\) \+ 4px\)/s,'GYMS uses the regional navigation width instead of collapsing into a small centered control');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tabs \{[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/s,'ordinary Hunt regions use one equal three-column rail');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tab\.ppbui-hunts-region-legendary \{[^}]*grid-column:1 \/ -1;[^}]*min-height:calc\(var\(--ppbui-control-height\) \+ 8px\);[^}]*box-shadow:inset 2px 0 0 var\(--ppbui-accent\)/s,'legendary islands span the region rail with stronger special-destination weight');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tab\.ppbui-hunts-region-legendary \{[^}]*grid-template-columns:minmax\(0,1fr\) auto;[^}]*text-align:center;/s,'legendary islands name is centered in its primary label area while the weekend note keeps a dedicated trailing column');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tab\.ppbui-hunts-region-legendary::after \{[^}]*content:attr\(data-ppbui-region-note\)/s,'legendary islands render the localized weekend note without changing native button text');
+  assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tab\.ppbui-hunts-region-legendary:disabled \{[^}]*opacity:1;/s,'closed legendary islands retain their special visual hierarchy');
   assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-view-toggle \{[\s\S]*width:100%;/,'MAP/LIST owns the available header width');
   assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-view-toggle \.hunt-presentation-toggle__button \{[\s\S]*min-height:calc\(var\(--ppbui-control-height\) \+ 8px\)/,'MAP/LIST receives the strongest segmented-control geometry');
   assert.match(css,/\.hunt-list-toolbar\.ppbui-hunts-list-refined \{[\s\S]*display:grid !important;/,'approved compact current-list toolbar owns the refined composition');
-  assert.match(css,/@container \(max-width:620px\)[\s\S]*\.ppbui-hunts-current \.hunt-list-world-tabs \{ grid-template-columns:repeat\(2,minmax\(0,1fr\)\); \}/,'narrow current region navigation uses a balanced two-column grid without reordering controls');
+  assert.match(css,/@container \(max-width:620px\)[\s\S]*\.ppbui-hunts-current \.hunt-list-world-tabs \{ grid-template-columns:repeat\(3,minmax\(0,1fr\)\); \}/,'narrow current region navigation preserves the three common-region peers in one row');
   assert.match(css,/\.ppbui-hunts-current \.hunt-list-world-tab\.is-active,[\s\S]*color:var\(--ppbui-selected\)/,'world navigation retains selected/current emphasis');
   assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-presentation-toggle \.hunt-presentation-toggle__button\.is-active,[\s\S]*color:var\(--ppbui-text\)/,'presentation mode stays subordinate to MAP/LIST');
   assert.match(css,/\.ppbui-hunts-current \.hunt-list-summary \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\) !important;[^}]*border-bottom:0 !important;/s,'summary is an attached workspace rail instead of detached copy');
@@ -224,16 +227,17 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
   assert.equal(snapshot.marker,zoneNode(s.root,0));
 });
 
-test('current MAP uses the same Better UI navigation stack, filters and regional Gym destination as LIST',t=>{
-  const s=setupCurrentList(t,{mode:'map'}),current=parts(s.root),header=s.root.querySelector('.hunt-list-header');
+test('current MAP uses the same Better UI region hierarchy and filters as LIST',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),current=parts(s.root);
   const css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
   assert.equal(current.mode,'current-map');
   assert.equal(current.viewport.classList.contains('hunt-world-viewport'),true);
   assert.equal(s.root.classList.contains('ppbui-hunts-current'),true);
   assert.equal(s.root.classList.contains('ppbui-hunts-current-map'),true);
   assert.equal(s.root.classList.contains('ppbui-hunts-current-list'),false);
-  assert.ok(s.root.querySelector('.ppbui-hunts-gym'),'GYMS remains present in MAP');
-  assert.equal(s.root.querySelector('.ppbui-hunts-gym').parentElement,header);
+  assert.equal(s.root.querySelector('.ppbui-hunts-gym'),null,'GYMS is absent from MAP');
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-region-common').length,3);
+  assert.equal(s.root.querySelector('.ppbui-hunts-region-legendary')?.dataset.ppbuiRegionNote,'FIM DE SEMANA');
   assert.equal(s.root.querySelector('.ppbui-hunts-view-toggle').textContent,'MAPLIST');
   assert.equal(s.root.querySelector('.ppbui-hunts-presentation-toggle').textContent,'Modo clássicoModo plataforma');
   assert.ok(s.root.querySelector('.ppbui-hunts-filter-toggle'));
@@ -247,21 +251,55 @@ test('current MAP uses the same Better UI navigation stack, filters and regional
   s.c.cleanup();assert.equal(s.root.outerHTML,s.before,'MAP cleanup restores the exact native current-selector DOM');
 });
 
-test('current MAP to LIST reconstruction keeps one GYMS control and the same navigation hierarchy',t=>{
-  const s=setupCurrentList(t,{mode:'map'}),gym=s.root.querySelector('.ppbui-hunts-gym'),filter=s.root.querySelector('.ppbui-hunts-filter-toggle');
+test('current MAP to LIST reconstruction reapplies region hierarchy without adding navigation controls',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),filter=s.root.querySelector('.ppbui-hunts-filter-toggle');
   filter.click();assert.equal(filter.getAttribute('aria-expanded'),'true');
   s.scene._selectionView='list';s.body.innerHTML=currentListMarkup();s.c.sync();
   assert.equal(parts(s.root).mode,'current-list');
   assert.equal(s.root.classList.contains('ppbui-hunts-current-map'),false);
   assert.equal(s.root.classList.contains('ppbui-hunts-current-list'),true);
-  assert.equal(s.root.querySelector('.ppbui-hunts-gym'),gym,'the same GYMS control is rehomed after native mode refresh');
-  assert.equal(s.root.querySelectorAll('.ppbui-hunts-gym').length,1);
+  assert.equal(s.root.querySelector('.ppbui-hunts-gym'),null);
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-region-common').length,3);
+  assert.equal(s.root.querySelectorAll('.ppbui-hunts-region-legendary').length,1);
+  assert.equal(s.root.querySelector('.ppbui-hunts-region-legendary')?.dataset.ppbuiRegionNote,'FIM DE SEMANA');
   assert.equal(s.root.querySelector('.ppbui-hunts-filter-toggle'),filter,'the same disclosure survives MAP→LIST');
   assert.equal(filter.getAttribute('aria-expanded'),'true');
   assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,false);
   assert.equal(s.root.querySelectorAll('.ppbui-hunts-view-toggle').length,1);
   assert.equal(s.root.querySelectorAll('.ppbui-hunts-presentation-toggle').length,1);
   assert.notEqual(s.root.querySelector('.ppbui-hunts-view-toggle'),s.root.querySelector('.ppbui-hunts-presentation-toggle'));
+});
+
+test('current MAP to LIST reconstruction restores equivalent region focus after native body replacement',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),before=s.root.querySelector('.ppbui-hunts-region-legendary');
+  before.disabled=false;before.focus();assert.equal(s.doc.activeElement,before);
+  s.scene._selectionView='list';s.body.innerHTML=currentListMarkup().replace('disabled>Ilhas Lendárias','>Ilhas Lendárias');s.c.sync();
+  const after=s.root.querySelector('.ppbui-hunts-region-legendary');
+  assert.notEqual(after,before,'native reconstruction provides a fresh region button');
+  assert.equal(s.doc.activeElement,after,'logical Legendary focus follows the reacquired native button');
+});
+
+test('current mount preserves focus when the enabled native Legendary button is moved into its special row',t=>{
+  const s=setupCurrentList(t,{legendaryEnabled:true,focusLegendaryBeforeMount:true}),legendary=s.root.querySelector('.ppbui-hunts-region-legendary');
+  assert.equal(s.doc.activeElement,legendary,'initial hierarchy decoration keeps focus on the exact native Legendary button');
+  assert.equal(legendary.parentElement?.lastElementChild,legendary,'the focused native button still moves after the common regions');
+});
+
+test('current cleanup preserves focus on the same surviving native region button while restoring native order',t=>{
+  const s=setupCurrentList(t),legendary=s.root.querySelector('.ppbui-hunts-region-legendary');
+  legendary.disabled=false;legendary.focus();assert.equal(s.doc.activeElement,legendary);
+  s.c.cleanup();
+  assert.equal(s.doc.activeElement,legendary,'cleanup refocuses the same native node after restoring its position');
+  assert.deepEqual([...s.root.querySelectorAll('.hunt-list-world-tab')].map(tab=>tab.textContent),['Kanto','Johto','Ilhas Lendárias','Hoenn']);
+});
+
+test('current reconstruction never steals an intentional focus move outside Hunts',t=>{
+  const s=setupCurrentList(t,{mode:'map'}),johto=[...s.root.querySelectorAll('.hunt-list-world-tab')].find(tab=>tab.textContent==='Johto');
+  const external=s.doc.createElement('button');external.textContent='External';s.doc.body.append(external);
+  johto.focus();assert.equal(s.doc.activeElement,johto);
+  s.body.innerHTML=currentListMarkup();external.focus();assert.equal(s.doc.activeElement,external);
+  s.scene._selectionView='list';s.c.sync();
+  assert.equal(s.doc.activeElement,external,'reconciliation respects a newer explicit focus target');
 });
 
 test('current Hunt list advanced filters preserve native controls, active state and focus',t=>{
@@ -302,99 +340,6 @@ test('current Hunt list reacquires native controls after body reconstruction wit
   assert.equal(toggle.getAttribute('aria-expanded'),'true');assert.equal(advanced.hidden,false,'user disclosure state survives native reconstruction');
   assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true);
   s.c.cleanup();assert.equal(s.root.outerHTML,s.before);
-});
-
-test('Gym navigation follows the active Hunt region and only opens the native Gym scene',t=>{
-  const s=setupCurrentList(t),gym=s.root.querySelector('.ppbui-hunts-gym'),tabs=[...s.root.querySelectorAll('.hunt-list-world-tab')];
-  assert.ok(gym);
-  assert.equal(gym.dataset.region,'kanto');
-  assert.equal(gym.disabled,false);
-  assert.equal(gym.getAttribute('aria-label'),'Abrir Gyms de KANTO');
-  gym.click();
-  assert.equal(s.gym.pushes(),1);
-  assert.equal(s.gym.next().constructor,s.dom.window.Scene_Gym);
-  assert.equal(s.gym.next()._region,'kanto');
-  gym.click();
-  assert.equal(s.gym.pushes(),1,'pending native scene transition blocks duplicate Gym pushes');
-  s.dom.window.SceneManager._nextScene=null;
-
-  tabs[0].classList.remove('is-active');tabs[0].removeAttribute('aria-current');
-  tabs[1].classList.add('is-active');tabs[1].setAttribute('aria-current','page');
-  s.scene._tab='johto';
-  s.c.sync();
-  assert.equal(gym.dataset.region,'johto');
-  assert.equal(gym.getAttribute('aria-label'),'Abrir Gyms de JOHTO');
-  gym.click();
-  assert.equal(s.gym.pushes(),2);
-  assert.equal(s.gym.next()._region,'johto');
-  s.dom.window.SceneManager._nextScene=null;
-
-  tabs[1].classList.remove('is-active');tabs[1].removeAttribute('aria-current');
-  tabs[3].classList.add('is-active');tabs[3].setAttribute('aria-current','page');
-  s.scene._tab='hoenn';
-  s.c.sync();
-  assert.equal(gym.dataset.region,'hoenn');
-  assert.equal(gym.disabled,true,'unsupported native Gym regions fail closed');
-  assert.equal(gym.getAttribute('aria-label'),'Gyms indisponíveis: HOENN');
-  assert.equal(gym.title,'Gyms indisponíveis: HOENN');
-  gym.click();
-  assert.equal(s.gym.pushes(),2,'disabled navigation cannot open a fallback/wrong region');
-
-  tabs[3].classList.remove('is-active');tabs[3].removeAttribute('aria-current');
-  tabs[0].classList.add('is-active');tabs[0].setAttribute('aria-current','page');
-  s.scene._tab='hoenn';s.scene._worlds=[{id:'hoenn',label:'Hoenn'}];
-  s.c.sync();
-  assert.equal(gym.dataset.region,'hoenn','authoritative unsupported scene region wins over stale active-tab DOM');
-  assert.equal(gym.getAttribute('aria-label'),'Gyms indisponíveis: HOENN');
-  assert.equal(gym.disabled,true);
-  gym.click();
-  assert.equal(s.gym.pushes(),2,'stale Kanto DOM cannot reopen the wrong Gym region');
-});
-
-test('Gym navigation is removed exactly on current-list cleanup',t=>{
-  const s=setupCurrentList(t),button=s.root.querySelector('.ppbui-hunts-gym');
-  assert.ok(button?.isConnected);
-  s.c.cleanup();
-  assert.equal(button.isConnected,false);
-  assert.equal(s.root.outerHTML,s.before);
-});
-
-test('Gym navigation rolls back the native stack entry when Gym scene construction throws',t=>{
-  const s=setupCurrentList(t),button=s.root.querySelector('.ppbui-hunts-gym'),manager=s.dom.window.SceneManager;
-  let stops=0;
-  s.scene.stop=()=>{stops++;};
-  manager._scene=s.scene;manager._stack=[];manager._nextScene=null;
-  function BrokenGym(){throw new Error('synthetic Gym constructor failure');}
-  s.dom.window.Scene_Gym=BrokenGym;
-  manager.push=function(SceneClass){
-    this._stack.push(this._scene.constructor);
-    this._nextScene=new SceneClass();
-    this._scene.stop();
-  };
-  s.c.sync();
-  assert.equal(button.disabled,false);
-  button.click();
-  assert.equal(manager._stack.length,0,'failed native construction does not leak a back-stack entry');
-  assert.equal(stops,0,'native goto semantics do not stop the current scene when construction throws');
-  assert.equal(manager._nextScene,null);
-});
-
-test('Gym navigation preserves the native stack when failure happens after Gym construction',t=>{
-  const s=setupCurrentList(t),button=s.root.querySelector('.ppbui-hunts-gym'),manager=s.dom.window.SceneManager;
-  let stops=0;
-  s.scene.stop=()=>{stops++;throw new Error('synthetic current-scene stop failure');};
-  manager._scene=s.scene;manager._stack=[];manager._nextScene=null;
-  manager.push=function(SceneClass){
-    this._stack.push(this._scene.constructor);
-    this._nextScene=new SceneClass();
-    this._scene.stop();
-  };
-  s.c.sync();
-  button.click();
-  assert.equal(stops,1);
-  assert.equal(manager._stack.length,1,'post-construction failure keeps the native back-stack entry intact');
-  assert.equal(manager._nextScene?.constructor,s.dom.window.Scene_Gym);
-  assert.equal(button.disabled,true,'pending native transition blocks another push after a later failure phase');
 });
 
 test('current Hunt list satisfies the module mount gate after upstream selector drift',t=>{
@@ -544,26 +489,11 @@ test('native presentation toggle is moved intact into inspector and restored exa
   assert.equal(s.root.outerHTML,s.before);
 });
 
-test('legacy Hunt map exposes the same region-scoped Gym navigation without starting gameplay',t=>{
-  const s=setup(t),button=s.root.querySelector('.ppbui-hunts-gym'),header=s.root.querySelector('.hunt-world-header-actions');
-  assert.ok(button);
-  assert.equal(button.parentElement,header);
-  assert.equal(header.firstElementChild,button,'Gym navigation precedes lower-priority zoom/presentation utilities');
-  assert.equal(button.dataset.region,'kanto');
+test('legacy Hunt map does not add a Gym destination',t=>{
+  const s=setup(t),header=s.root.querySelector('.hunt-world-header-actions');
+  assert.equal(s.root.querySelector('.ppbui-hunts-gym'),null);
+  assert.equal(header.firstElementChild?.classList.contains('hunt-world-zoom'),true,'native map utilities keep their original leading position');
   assert.equal(s.stats().starts,0);
-  button.click();
-  assert.equal(s.gym.pushes(),1);
-  assert.equal(s.gym.next()._region,'kanto');
-  assert.equal(s.stats().starts,0,'opening Gyms does not enter a Hunt or Gym battle');
-  s.dom.window.SceneManager._nextScene=null;
-
-  s.scene._tab='johto';
-  s.c.sync();
-  assert.equal(button.dataset.region,'johto');
-  assert.equal(button.getAttribute('aria-label'),'Abrir Gyms de JOHTO');
-  button.click();
-  assert.equal(s.gym.pushes(),2);
-  assert.equal(s.gym.next()._region,'johto');
 });
 
 test('Hunt Atlas Finder rail keeps native query, element and count nodes intact without old card groups',t=>{

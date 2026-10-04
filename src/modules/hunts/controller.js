@@ -1,5 +1,5 @@
 import {parts,results,markers,markerLabel,huntsText,huntScene,rememberActiveHuntZone,forgetActiveHuntZone,selectors} from './dom.js';
-import {canLocateHunt,locateHunt,huntRegion,canOpenGymRegion,openGymRegion} from './navigation.js';
+import {canLocateHunt,locateHunt} from './navigation.js';
 import {createHuntInspector} from './dossier.js';
 import {createHuntMarkerInteractions} from './interaction.js';
 import {huntsStyles} from './styles.js';
@@ -14,28 +14,32 @@ function findTitleText(node,NodeCtor) {
   return null;
 }
 
-function createGymNavigation(root) {
-  const doc=root.ownerDocument,button=doc.createElement('button');
-  button.type='button';button.className='ppbui-hunts-gym';button.dataset.ppbuiHuntsGym='';
-  let active=true;
-  const sync=()=>{
-    if(!active)return;
-    const text=huntsText(doc),region=huntRegion(root),available=canOpenGymRegion(root,region),regionLabel=region.toUpperCase();
-    if(button.textContent!==text.gyms)button.textContent=text.gyms;
-    if(button.disabled===available)button.disabled=!available;
-    if(button.dataset.region!==region)button.dataset.region=region;
-    const label=available?`${text.openGyms} ${regionLabel}`:
-      regionLabel?`${text.gymsUnavailable}: ${regionLabel}`:text.gymsUnavailable;
-    if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
-    if(button.title!==label)button.title=label;
-  };
-  const onClick=()=>{
-    if(!active||button.disabled)return;
-    const region=huntRegion(root);
-    if(!openGymRegion(root,region))sync();
-  };
-  button.addEventListener('click',onClick);sync();
-  return {element:button,sync,cleanup(){if(!active)return;active=false;button.removeEventListener('click',onClick);button.remove();}};
+function regionTabIdentity(button) {
+  return [button?.dataset?.region,button?.dataset?.world,button?.getAttribute?.('aria-label'),button?.textContent]
+    .filter(Boolean).join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+}
+
+function isLegendaryRegionTab(button) {
+  return /legend|lendari|传说|傳說|传奇|傳奇/.test(regionTabIdentity(button));
+}
+
+function isCommonRegionTab(button) {
+  return /\b(?:kanto|johto|hoenn)\b|关都|關都|城都|丰缘|豐緣/.test(regionTabIdentity(button));
+}
+
+function regionTabKey(button) {
+  const value=regionTabIdentity(button);
+  if(/legend|lendari|传说|傳說|传奇|傳奇/.test(value))return 'legendary';
+  if(/\bkanto\b|关都|關都/.test(value))return 'kanto';
+  if(/\bjohto\b|城都/.test(value))return 'johto';
+  if(/\bhoenn\b|丰缘|豐緣/.test(value))return 'hoenn';
+  return value?`native:${value}`:'';
+}
+
+function focusNode(node) {
+  if(!node?.isConnected||typeof node.focus!=='function')return false;
+  try {node.focus({preventScroll:true});} catch {node.focus();}
+  return node.ownerDocument?.activeElement===node;
 }
 
 let currentListFilterId=0;
@@ -147,15 +151,23 @@ function mountCurrentHunts(root) {
   const doc=root.ownerDocument,view=doc.defaultView;
   root.classList.add('ppbui-hunts-enhanced','ppbui-hunts-current');
   const style=doc.createElement('style');style.dataset.ppbuiModule='hunts';style.textContent=huntsStyles;root.append(style);
-  const gym=createGymNavigation(root);
   const refinement=createCurrentListRefinement(root);
   const ownedClasses=new Map();
+  const ownedAttributes=new Map();
+  const regionPlacements=new Map();
+  let lastFocused=null;
   const ownClass=(node,className)=>{
     if(!node)return;
     const key=`${className}`;
     let state=ownedClasses.get(node);if(!state){state=new Map();ownedClasses.set(node,state);}
     if(!state.has(key))state.set(key,node.classList.contains(className));
     if(!node.classList.contains(className))node.classList.add(className);
+  };
+  const ownAttribute=(node,name,value)=>{
+    if(!node)return;
+    let state=ownedAttributes.get(node);if(!state){state=new Map();ownedAttributes.set(node,state);}
+    if(!state.has(name))state.set(name,{had:node.hasAttribute(name),value:node.getAttribute(name)});
+    if(node.getAttribute(name)!==value)node.setAttribute(name,value);
   };
   const restoreOwnedClasses=()=>{
     for(const [node,state] of ownedClasses){
@@ -164,6 +176,95 @@ function mountCurrentHunts(root) {
     }
     ownedClasses.clear();
   };
+  const restoreOwnedAttributes=()=>{
+    for(const [node,state] of ownedAttributes){
+      if(!node?.isConnected)continue;
+      for(const [name,original] of state){
+        if(original.had)node.setAttribute(name,original.value??'');
+        else node.removeAttribute(name);
+      }
+    }
+    ownedAttributes.clear();
+  };
+  const restoreRegionPlacements=()=>{
+    for(const [node,placement] of regionPlacements){
+      if(!node?.isConnected||!placement.parent?.isConnected)continue;
+      placement.parent.insertBefore(node,placement.next?.isConnected?placement.next:null);
+    }
+    regionPlacements.clear();
+  };
+  const decorateRegionTabs=(tabs,text)=>{
+    const buttons=[...(tabs?.children||[])].filter(tab=>tab.matches?.('button'));
+    const legendary=buttons.find(isLegendaryRegionTab)||null;
+    for(const tab of buttons){
+      if(!tab.matches?.('button'))continue;
+      if(tab===legendary){
+        ownClass(tab,'ppbui-hunts-region-legendary');
+        ownAttribute(tab,'data-ppbui-region-note',text.weekend);
+        ownAttribute(tab,'aria-description',text.weekendDescription);
+      } else if(isCommonRegionTab(tab))ownClass(tab,'ppbui-hunts-region-common');
+    }
+    if(legendary&&legendary!==buttons.at(-1)){
+      const preserveFocus=doc.activeElement===legendary;
+      if(!regionPlacements.has(legendary))regionPlacements.set(legendary,{parent:tabs,next:legendary.nextSibling});
+      tabs.append(legendary);
+      if(preserveFocus&&doc.activeElement!==legendary)focusNode(legendary);
+    }
+  };
+  const focusDescriptor=node=>{
+    if(!node||!root.contains(node))return null;
+    const current=parts(root);
+    if(!current.current)return null;
+    if(node.matches?.('.hunt-list-world-tab'))return {kind:'region',key:regionTabKey(node)};
+    if(node===refinement.element)return {kind:'filters'};
+    if(node===current.search)return {kind:'search'};
+    if(node===current.elements?.querySelector?.('select'))return {kind:'element'};
+    if(node===current.sortField?.querySelector?.('select'))return {kind:'sort'};
+    if(node===current.minLevel)return {kind:'level',index:0};
+    if(node===current.maxLevel)return {kind:'level',index:1};
+    if(node===current.clear)return {kind:'clear'};
+    for(const [kind,group] of [['view',current.viewToggle],['presentation',current.presentation]]){
+      const buttons=[...(group?.querySelectorAll?.('button')||[])],index=buttons.indexOf(node);
+      if(index>=0)return {kind,index};
+    }
+    const mapButtons=[...(root.querySelectorAll?.('.hunt-region-controls > button')||[])],mapIndex=mapButtons.indexOf(node);
+    if(mapIndex>=0)return {kind:'map-control',index:mapIndex};
+    const row=node.closest?.('.hunt-list-row');
+    if(row){
+      const rows=[...root.querySelectorAll('.hunt-list-row')],rowIndex=rows.indexOf(row);
+      if(rowIndex>=0&&node.matches?.('.hunt-list-hunt-button,.hunt-list-details-button')){
+        return {kind:node.matches('.hunt-list-hunt-button')?'hunt':'details',index:rowIndex};
+      }
+    }
+    return null;
+  };
+  const resolveFocus=descriptor=>{
+    if(!descriptor)return null;
+    const current=parts(root);
+    if(!current.current)return null;
+    if(descriptor.kind==='region')return [...(current.tabs?.querySelectorAll?.('button')||[])].find(button=>regionTabKey(button)===descriptor.key)||null;
+    if(descriptor.kind==='filters')return refinement.element?.isConnected?refinement.element:null;
+    if(descriptor.kind==='search')return current.search;
+    if(descriptor.kind==='element')return current.elements?.querySelector?.('select')||null;
+    if(descriptor.kind==='sort')return current.sortField?.querySelector?.('select')||null;
+    if(descriptor.kind==='level')return descriptor.index===0?current.minLevel:current.maxLevel;
+    if(descriptor.kind==='clear')return current.clear;
+    if(descriptor.kind==='view'||descriptor.kind==='presentation'){
+      const group=descriptor.kind==='view'?current.viewToggle:current.presentation;
+      return group?.querySelectorAll?.('button')?.[descriptor.index]||null;
+    }
+    if(descriptor.kind==='map-control')return root.querySelectorAll?.('.hunt-region-controls > button')?.[descriptor.index]||null;
+    if(descriptor.kind==='hunt'||descriptor.kind==='details'){
+      const row=root.querySelectorAll?.('.hunt-list-row')?.[descriptor.index];
+      return row?.querySelector?.(descriptor.kind==='hunt'?'.hunt-list-hunt-button':'.hunt-list-details-button')||null;
+    }
+    return null;
+  };
+  const onFocusIn=event=>{
+    const descriptor=focusDescriptor(event.target);
+    if(descriptor)lastFocused={node:event.target,descriptor};
+  };
+  root.addEventListener('focusin',onFocusIn);
   const scene=huntScene(root),startHuntDescriptor=scene?Object.getOwnPropertyDescriptor(scene,'startHunt'):undefined,originalStart=scene?.startHunt;
   let wrappedStart=null,active=true;
   if(scene&&typeof originalStart==='function'){
@@ -183,30 +284,36 @@ function mountCurrentHunts(root) {
   }
   const sync=()=>{
     if(!active)return;
+    const restoreFocus=lastFocused&&!lastFocused.node?.isConnected&&
+      (doc.activeElement===doc.body||doc.activeElement===root||!doc.activeElement)?lastFocused.descriptor:null;
     const next=parts(root);if(!next.current)return;
     for(const node of ownedClasses.keys())if(!node.isConnected)ownedClasses.delete(node);
+    for(const node of ownedAttributes.keys())if(!node.isConnected)ownedAttributes.delete(node);
+    for(const node of regionPlacements.keys())if(!node.isConnected)regionPlacements.delete(node);
     root.classList.toggle('ppbui-hunts-current-list',next.mode==='current-list');
     root.classList.toggle('ppbui-hunts-current-map',next.mode==='current-map');
     ownClass(next.viewToggle,'ppbui-hunts-view-toggle');
     ownClass(next.presentation,'ppbui-hunts-presentation-toggle');
-    if(next.header&&gym.element.parentElement!==next.header){
-      const before=next.viewToggle?.parentElement===next.header?next.viewToggle:
-        next.presentation?.parentElement===next.header?next.presentation:null;
-      next.header.insertBefore(gym.element,before);
-    }
-    gym.sync();
+    decorateRegionTabs(next.tabs,huntsText(doc));
     refinement.sync();
+    if(restoreFocus){
+      const target=resolveFocus(restoreFocus);
+      if(focusNode(target))lastFocused={node:target,descriptor:restoreFocus};
+    }
   };
   sync();
   return {sync,cleanup(){
     if(!active)return;active=false;
+    root.removeEventListener('focusin',onFocusIn);
+    const focused=doc.activeElement,restoreFocusedNode=focused&&focused!==doc.body&&root.contains(focused)?focused:null;
     if(scene&&wrappedStart&&scene.startHunt===wrappedStart){
       if(startHuntDescriptor)Object.defineProperty(scene,'startHunt',startHuntDescriptor);
       else delete scene.startHunt;
     }
-    refinement.cleanup();gym.cleanup();restoreOwnedClasses();
+    refinement.cleanup();restoreRegionPlacements();restoreOwnedAttributes();restoreOwnedClasses();
     style.remove();
     root.classList.remove('ppbui-hunts-current-list','ppbui-hunts-current-map','ppbui-hunts-current','ppbui-hunts-enhanced');
+    if(restoreFocusedNode?.isConnected&&doc.activeElement!==restoreFocusedNode)focusNode(restoreFocusedNode);
   }};
 }
 
@@ -243,7 +350,6 @@ function mountLegacyHunts(root) {
 
   const style=doc.createElement('style');style.dataset.ppbuiModule='hunts';style.textContent=huntsStyles;
   root.append(style);
-  const gym=createGymNavigation(root);
 
   let options=[],currentWorld,search=null,raw='',focused=false,selection=null,message='',focusFrame=0,flashTimer=0,located=null,selected=null,selectedNode=null,active=true,layout=null,controls=null,layoutBaseline=null,presentationPlacement=null,countPlacement=null;
   const adjustedLevelWorlds=new Set();
@@ -448,10 +554,6 @@ function mountLegacyHunts(root) {
     const next=parts(root),text=huntsText(doc),scene=huntScene(root),world=scene?._tab;
     if(!next.toolbar||!next.viewport){row.remove();interactions.sync([]);return;}
     if(next.header&&!next.header.classList.contains('ppbui-hunts-atlas-rail'))next.header.classList.add('ppbui-hunts-atlas-rail');
-    if(next.headerActions&&gym.element!==next.headerActions.firstElementChild){
-      next.headerActions.insertBefore(gym.element,next.headerActions.firstElementChild);
-    }
-    gym.sync();
     ensureControls(next.toolbar,next.elements);placeCount(next.count);ensureWorkspace(next.viewport);placePresentation(next.presentation);scene?.hideDropTooltip?.();
     if(search&&next.search!==search&&currentWorld===world&&next.search){
       if(next.search.value.trim().toLowerCase()===raw.trim().toLowerCase())next.search.value=raw;
@@ -532,7 +634,7 @@ function mountLegacyHunts(root) {
     root.querySelectorAll('.ppbui-hunts-atlas-rail').forEach(node=>node.classList.remove('ppbui-hunts-atlas-rail'));
     root.querySelectorAll('.ppbui-hunts-selected-marker').forEach(node=>node.classList.remove('ppbui-hunts-selected-marker'));root.querySelectorAll('.ppbui-hunts-located-marker').forEach(node=>node.classList.remove('ppbui-hunts-located-marker'));root.querySelectorAll('.ppbui-hunts-dimmed-marker').forEach(node=>node.classList.remove('ppbui-hunts-dimmed-marker'));
     root.querySelectorAll('.ppbui-hunts-selected').forEach(node=>node.classList.remove('ppbui-hunts-selected'));root.querySelectorAll('.ppbui-hunts-located').forEach(node=>node.classList.remove('ppbui-hunts-located'));root.querySelectorAll('.ppbui-hunts-dimmed').forEach(node=>node.classList.remove('ppbui-hunts-dimmed'));
-    gym.cleanup();restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');if(focusTarget&&!hadBodyScroll)focusTarget.classList.remove('ppbui-scroll');
+    restorePresentation();teardownWorkspace(true);teardownControls(true);dossier.element.remove();row.remove();style.remove();root.classList.remove('ppbui-hunts-enhanced');if(focusTarget&&!hadBodyScroll)focusTarget.classList.remove('ppbui-scroll');
     if(titleNode?.isConnected&&nativeTitle!==null)titleNode.textContent=nativeTitle;
     if(titleOwner){
       if(nativeTitleStyle===null)titleOwner.removeAttribute('style');else titleOwner.setAttribute('style',nativeTitleStyle);

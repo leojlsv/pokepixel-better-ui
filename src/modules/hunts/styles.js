@@ -180,37 +180,6 @@ export const huntsStyles = `
   }
   .ppbui-hunts-enhanced .hunt-world-zoom > button:last-child { border-right:0 !important; }
 
-  .ppbui-hunts-enhanced .ppbui-hunts-gym {
-    -webkit-appearance:none;
-    appearance:none;
-    box-sizing:border-box;
-    flex:0 0 auto;
-    min-height:var(--ppbui-control-height);
-    padding:0 var(--ppbui-control-padding-x);
-    border:var(--ppbui-border-width) solid var(--ppbui-border-strong);
-    border-radius:var(--ppbui-radius);
-    background:var(--ppbui-bg-2);
-    color:var(--ppbui-text);
-    box-shadow:none;
-    font:600 var(--ppbui-font-size-secondary)/var(--ppbui-line-height-tight) var(--ppbui-font-body);
-    white-space:nowrap;
-  }
-  .ppbui-hunts-enhanced .ppbui-hunts-gym:hover:not(:disabled) {
-    border-color:var(--ppbui-border-strong);
-    background:var(--ppbui-bg-3);
-  }
-  .ppbui-hunts-enhanced .ppbui-hunts-gym:active:not(:disabled) { background:var(--ppbui-bg-0); }
-  .ppbui-hunts-enhanced .ppbui-hunts-gym:focus-visible {
-    outline:var(--ppbui-focus-width) solid var(--ppbui-focus);
-    outline-offset:var(--ppbui-pixel-unit);
-  }
-  .ppbui-hunts-enhanced .ppbui-hunts-gym:disabled {
-    cursor:default;
-    border-color:var(--ppbui-border);
-    background:var(--ppbui-bg-1);
-    color:var(--ppbui-text-subtle);
-  }
-
   /* Native notice participates in Atlas/Finder status language. */
   .ppbui-hunts-enhanced .hunt-world-notice:empty { display:none; }
   .ppbui-hunts-enhanced .hunt-world-notice:not(:empty) {
@@ -756,17 +725,9 @@ export const huntsStyles = `
     gap:var(--ppbui-space-2) !important;
     min-width:0;
   }
-  .ppbui-hunts-current .hunt-list-header > .ppbui-hunts-gym {
-    align-self:stretch;
-    justify-self:stretch;
-    width:100%;
-    min-width:0;
-    min-height:calc(var(--ppbui-control-height) + 4px);
-    font-weight:700;
-  }
   .ppbui-hunts-current .hunt-list-world-tabs {
     display:grid !important;
-    grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+    grid-template-columns:repeat(3,minmax(0,1fr));
     gap:var(--ppbui-space-2) !important;
     min-width:0;
     width:100%;
@@ -778,6 +739,34 @@ export const huntsStyles = `
     min-height:calc(var(--ppbui-control-height) + 6px);
     font-family:var(--ppbui-font-body) !important;
     font-weight:600 !important;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-common {
+    min-height:calc(var(--ppbui-control-height) + 2px);
+    padding-inline:var(--ppbui-space-2) !important;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary {
+    display:grid !important;
+    grid-column:1 / -1;
+    grid-template-columns:minmax(0,1fr) auto;
+    align-items:center;
+    gap:var(--ppbui-space-2);
+    min-height:calc(var(--ppbui-control-height) + 8px);
+    padding-inline:var(--ppbui-space-3) !important;
+    border-color:var(--ppbui-accent) !important;
+    background:var(--ppbui-bg-2) !important;
+    color:var(--ppbui-text) !important;
+    font-weight:700 !important;
+    text-align:center;
+    box-shadow:inset 2px 0 0 var(--ppbui-accent) !important;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary::after {
+    content:attr(data-ppbui-region-note);
+    padding-left:var(--ppbui-space-2);
+    border-left:var(--ppbui-separator-width) solid var(--ppbui-border-strong);
+    color:var(--ppbui-accent-hi);
+    font:700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-tight) var(--ppbui-font-body);
+    letter-spacing:.04em;
+    white-space:nowrap;
   }
   .ppbui-hunts-current .hunt-list-world-tab:not(:disabled):not(.is-active):not([aria-current="page"]):hover {
     border-color:var(--ppbui-border-strong) !important;
@@ -796,6 +785,28 @@ export const huntsStyles = `
     background:var(--ppbui-bg-0) !important;
     color:var(--ppbui-text-subtle) !important;
     opacity:.72;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary:hover:not(:disabled):not(.is-active):not([aria-current="page"]) {
+    border-color:var(--ppbui-accent-hi) !important;
+    background:var(--ppbui-bg-3) !important;
+    color:var(--ppbui-text) !important;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary.is-active,
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary[aria-current="page"] {
+    border-color:var(--ppbui-selected) !important;
+    background:var(--ppbui-bg-3) !important;
+    color:var(--ppbui-selected) !important;
+    box-shadow:inset 2px 0 0 var(--ppbui-accent),inset 0 calc(-1 * var(--ppbui-border-width)) 0 var(--ppbui-selected) !important;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary:disabled {
+    border-color:var(--ppbui-border-strong) !important;
+    background:var(--ppbui-bg-1) !important;
+    color:var(--ppbui-text-subtle) !important;
+    opacity:1;
+    box-shadow:inset 2px 0 0 var(--ppbui-accent) !important;
+  }
+  .ppbui-hunts-current .hunt-list-world-tab.ppbui-hunts-region-legendary:disabled::after {
+    color:var(--ppbui-text-muted);
   }
   .ppbui-hunts-current .ppbui-hunts-view-toggle,
   .ppbui-hunts-current .ppbui-hunts-presentation-toggle {
@@ -1133,7 +1144,7 @@ export const huntsStyles = `
     .ppbui-hunts-current .hunt-selection-sidebar,
     .ppbui-hunts-current .hunt-selection-content { min-width:0; width:100%; }
     .ppbui-hunts-current .hunt-selection-sidebar { padding:var(--ppbui-space-2) !important; }
-    .ppbui-hunts-current .hunt-list-world-tabs { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .ppbui-hunts-current .hunt-list-world-tabs { grid-template-columns:repeat(3,minmax(0,1fr)); }
     .ppbui-hunts-current-map .hunt-world-viewport { min-height:300px; }
   }
   @container (max-width:360px) {
@@ -1168,7 +1179,6 @@ export const huntsStyles = `
     .ppbui-hunts-current .hunt-presentation-toggle__button,
     .ppbui-hunts-current .hunt-list-clear,
     .ppbui-hunts-current .ppbui-hunts-filter-toggle,
-    .ppbui-hunts-current .ppbui-hunts-gym,
     .ppbui-hunts-current-map .hunt-region-controls > button,
     .ppbui-hunts-current-list .hunt-list-hunt-button,
     .ppbui-hunts-current-list .hunt-list-details-button { min-height:40px; }
