@@ -458,6 +458,48 @@ Better UI faz somente um pós-processamento reversível depois do `PokemonCard.r
 - o hover transitório continua read-only, porque o host nativo o fecha em `pointerleave`; Better UI
   não transforma esse hover efêmero em uma segunda janela interativa.
 
+### 0.2.162 — leitura do PokémonCard
+
+O card enriquecido usa a própria largura disponível como contexto responsivo e organiza o conteúdo em
+quatro bandas de leitura: identidade/status, ações/vitals, Moves atuais e dados de combate/genética.
+
+- nome e espécie mantêm o header nativo como âncora principal; Level, Rarity, Active/Protected e Power
+  permanecem compactos e preservam suas cores/semânticas do jogo;
+- cards com cinco ou mais ações distribuem comandos em três colunas; em larguras extremas a grade pode
+  cair para duas, sem recriar os botões nem alterar seus handlers/disabled state;
+- HP/EXP preservam valores exatos e passam a alinhar label e número de forma previsível;
+- Moves atuais continuam na ordem autoritativa e em 2×2 nos tamanhos usuais; nomes podem ocupar duas
+  linhas antes de qualquer reflow estrutural;
+- Battle Stats e Genetics compartilham linhas label→valor, valores tabulares alinhados à direita e
+  separadores discretos. Um bloco com uma única coluna, como Genetics, ocupa a largura inteira;
+- a quebra para uma coluna fica reservada a cards abaixo do mínimo funcional, em vez de transformar
+  320 px em uma lista excessivamente alta.
+
+### 0.2.163 — redução de informação repetida
+
+- \`TOTAL IV\` continua lido da célula nativa, mas é apresentado uma única vez no rail superior como
+  chip verde-claro \`IV x/186\`, imediatamente após o badge de raridade;
+- \`Battle Stats\` deixa de repetir IV no heading e fica restrito aos seis atributos de combate;
+- quando o card possui action row nativa, \`ACTIVE\` e \`PROTECTED\` são ocultados porque Equip e
+  Lock/Unlock já representam esses estados de forma operacional;
+- no hover transitório sem action row, \`ACTIVE\` e \`PROTECTED\` continuam compactados e visíveis para
+  não remover informação que não existe em outro controle;
+- todos os estados ocultados são restaurados pelo cleanup antes de qualquer novo render nativo.
+
+### 0.2.164 — peso visual do chip de IV
+
+O chip promovido de IV agora possui uma exceção explícita à regra de chrome neutro dos badges.
+Isso garante que o render aplique de fato a paleta verde-clara prevista: borda `#9bd589`, fundo
+verde translúcido mais presente e texto `#d8f5ce`, sem alterar geometria, posição ou hierarquia.
+
+### 0.2.165 — scrollbar vertical do PokémonCard
+
+O PokémonCard enriquecido passa a receber `ppbui-scroll-scope`, a mesma gramática compartilhada de
+scrollbar usada pelas superfícies Better UI. A classe estiliza apenas o scroller que já existir no
+host: 10 px, track escuro, thumb estrutural, borda/radius do design system e sem botões WebKit.
+Better UI não cria overflow, não altera altura e não adiciona `scrollbar-gutter`; quando a classe não
+existia antes da decoração, o cleanup a remove e devolve o card ao estado nativo.
+
 Desabilitar o hover transitório continua sendo responsabilidade do módulo de hover existente e não
 desabilita o menu dedicado Pokémon Profile.
 

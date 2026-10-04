@@ -4,6 +4,39 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **PokémonCard / hover — scrollbar vertical compartilhado, candidato 0.2.165 (2026-10-04):**
+  aplica ao PokémonCard nativo o mesmo chrome compartilhado de scrollbar usado pelas superfícies
+  Better UI: track escuro, thumb estrutural, borda/radius do design system e remoção das setas
+  WebKit. O card recebe apenas `ppbui-scroll-scope`; overflow, posição, altura e ownership de scroll
+  continuam nativos. A classe é adicionada de forma reversível e removida no cleanup quando Better UI
+  foi quem a introduziu. **Validado e aprovado in-game pelo Product Owner em 2026-10-04.**
+
+- **PokémonCard / hover — peso visual verde do IV, candidato 0.2.164 (2026-10-04):**
+  corrige a cascata que fazia o chip promovido de IV herdar o chrome neutro dos badges genéricos.
+  O IV agora exclui explicitamente essa regra e renderiza com borda verde-clara, fundo verde
+  translúcido mais presente e texto verde-claro de alto contraste, sem alterar geometria ou
+  hierarquia do rail superior.
+
+- **PokémonCard / hover — menos repetição e IV promovido, candidato 0.2.163 (2026-10-04):**
+  reduz informação duplicada no rail superior do card nativo. Em cards pinned/sheet com action row,
+  os status compactos `ACTIVE` e `PROTECTED` deixam de aparecer ao lado da raridade porque as ações
+  `Equip` e `Lock/Unlock` já comunicam e operam esses estados; no hover transitório, que não possui
+  essas ações, os status continuam disponíveis. O Total IV sai do título de Battle Stats e sobe para
+  o rail de Level/Rarity como chip verde-claro `IV atual/máximo`, imediatamente após a raridade,
+  preservando o valor nativo exato e eliminando a repetição do mesmo dado em duas áreas.
+
+- **PokémonCard / hover — hierarquia e legibilidade responsiva, candidato 0.2.162 (2026-10-04):**
+  redesenha o pós-processamento do card nativo de Pokémon para leitura rápida em hover/pinned/sheet.
+  Identidade e status formam uma faixa compacta; cards com cinco ou mais ações passam a uma grade
+  3×N em vez de comprimir todos os comandos na mesma linha; HP/EXP mantêm valor exato e rails;
+  Current Moves preserva os quatro slots em 2×2 com nome em até duas linhas; Battle Stats e Genetics
+  compartilham a mesma leitura label→valor, numerais tabulares e separadores de 1px. O card passa a
+  responder à própria largura por container queries: 320/360/390 px mantêm o fluxo principal sem
+  overflow horizontal, com empilhamento reservado a superfícies realmente estreitas. O hover
+  transitório continua read-only e cards pinned/sheet preservam os nós, handlers, estados e cleanup
+  nativos. Renders sintéticos finais de 390 e 320 px foram inspecionados; validação in-game do
+  candidato exato permanece com o Product Owner.
+
 - **Geneticista — `Genetic Materials` volta a respeitar `hidden`, 0.2.161 (2026-10-04):**
   corrige a regressão visual introduzida pelo alinhamento central das abas em `0.2.160`.
   O botão nativo já continuava com `hidden=true`, porém a regra Better UI

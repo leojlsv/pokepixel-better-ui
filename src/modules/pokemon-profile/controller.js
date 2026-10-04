@@ -141,7 +141,7 @@ function styleText() {
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::before { width:9px; height:7px; margin-top:4px; border:1px solid currentColor; border-radius:1px; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-status="locked"]::after { content:""; position:absolute; top:4px; left:50%; width:6px; height:6px; box-sizing:border-box; border:1px solid currentColor; border-bottom:0; border-radius:4px 4px 0 0; transform:translateX(-50%); }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] { margin-top:4px; }
-    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-iv] { margin-left:6px; opacity:.72; white-space:nowrap; }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-iv] { white-space:nowrap; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-sr] { position:absolute!important; width:1px!important; height:1px!important; padding:0!important; margin:-1px!important; overflow:hidden!important; clip:rect(0,0,0,0)!important; white-space:nowrap!important; border:0!important; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-moves] { display:grid; gap:6px; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move-grid] { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; min-width:0; }
@@ -213,8 +213,12 @@ function styleText() {
     .pokemon-card[data-ppbui-profile-native-card] {
       --ppbui-border-width:1px;
       --ppbui-separator-width:1px;
+      --ppbui-focus:#37b4d1;
       box-sizing:border-box;
+      min-width:0!important;
       max-width:100%!important;
+      container-type:inline-size;
+      container-name:ppbui-native-pokemon-card;
       border:1px solid #6b6543!important;
       border-radius:var(--ppbui-radius)!important;
       background:rgba(22,29,32,.92)!important;
@@ -223,11 +227,14 @@ function styleText() {
       -webkit-text-size-adjust:100%;
       text-size-adjust:100%;
     }
-    .pokemon-card[data-ppbui-profile-native-card] :focus-visible { outline-width:var(--ppbui-focus-width)!important; }
+    .pokemon-card[data-ppbui-profile-native-card] :focus-visible {
+      outline:var(--ppbui-focus-width,2px) solid var(--ppbui-focus)!important;
+      outline-offset:2px!important;
+    }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__header { border-bottom:1px solid #6b6543!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__portrait { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(35,44,46,.96)!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__identity strong, .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__title { color:#e0c46d!important; }
-    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__badge:not(.is-level):not(.is-quality):not(.is-shiny):not(.is-mega) { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius-badge)!important; background:rgba(35,44,46,.96)!important; color:#eef1df!important; }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__badge:not(.is-level):not(.is-quality):not(.is-shiny):not(.is-mega):not(.is-iv) { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius-badge)!important; background:rgba(35,44,46,.96)!important; color:#eef1df!important; }
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-power] { color:#ffe27a!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__meters { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__track { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; }
@@ -237,6 +244,216 @@ function styleText() {
     .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move] { border:1px solid #6b6543!important; border-radius:var(--ppbui-radius)!important; background:rgba(22,29,32,.85)!important; color:#eef1df!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__action { border:1px solid #6b6543!important; border-radius:var(--ppbui-control-radius)!important; background:rgba(35,44,46,.96)!important; color:#eef1df!important; box-shadow:none!important; }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__action.is-profile { border-color:#d2b45d!important; color:#ffe27a!important; }
+
+    /* Native PokémonCard readability: strong identity, stable actions, quiet data sections. */
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__header {
+      padding-bottom:9px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__identity {
+      min-width:0;
+      gap:2px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__identity strong,
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__name {
+      overflow:hidden;
+      font-size:16px!important;
+      line-height:1.15!important;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__identity small {
+      overflow:hidden;
+      color:#a6aa9f!important;
+      font-size:10px!important;
+      line-height:1.2!important;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__badges {
+      display:flex!important;
+      flex-wrap:wrap!important;
+      gap:4px!important;
+      align-items:center!important;
+      margin:7px 0 6px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-tooltip__badge:not([data-ppbui-profile-native-status]) {
+      min-height:22px;
+      box-sizing:border-box;
+      font-size:10px!important;
+      line-height:1!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-power] {
+      margin-left:auto!important;
+      font-variant-numeric:tabular-nums;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] {
+      display:grid!important;
+      grid-template-columns:repeat(4,minmax(0,1fr))!important;
+      gap:4px!important;
+      width:100%;
+      min-width:0;
+      margin:0 0 8px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions]:has(> .pokemon-card__action:nth-child(5)) {
+      grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] .pokemon-card__action {
+      min-width:0!important;
+      min-height:32px!important;
+      padding:4px 6px!important;
+      overflow-wrap:anywhere;
+      font-size:10px!important;
+      font-weight:700!important;
+      line-height:1.05!important;
+      white-space:normal!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__meters {
+      display:grid!important;
+      gap:7px!important;
+      margin:0 0 8px!important;
+      padding:8px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__meter-head {
+      display:flex;
+      gap:8px;
+      align-items:baseline;
+      justify-content:space-between;
+      min-width:0;
+      font-size:10px!important;
+      line-height:1.2!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__meter-head > :first-child {
+      color:#a6aa9f!important;
+      font-weight:700!important;
+      letter-spacing:.04em;
+      text-transform:uppercase;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__meter-head b {
+      min-width:0;
+      overflow:hidden;
+      color:#eef1df!important;
+      font:700 11px/1.2 var(--ppbui-font-data)!important;
+      font-variant-numeric:tabular-nums;
+      text-align:right;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__track {
+      height:8px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__section {
+      gap:7px!important;
+      margin-top:8px!important;
+      padding:8px 0 0!important;
+      background:transparent!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__title {
+      display:flex;
+      gap:6px;
+      align-items:baseline;
+      min-width:0;
+      margin:0!important;
+      font-size:11px!important;
+      line-height:1.15!important;
+      letter-spacing:.06em!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-iv] {
+      border-color:#9bd589!important;
+      background:rgba(111,182,88,.24)!important;
+      color:#d8f5ce!important;
+      font:700 10px/1 var(--ppbui-font-data)!important;
+      font-variant-numeric:tabular-nums;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__rows {
+      display:grid!important;
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      gap:0 10px!important;
+      min-width:0;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__rows-col {
+      display:grid!important;
+      gap:0!important;
+      min-width:0;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__rows-col:only-child {
+      grid-column:1/-1;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__row {
+      display:flex!important;
+      gap:8px;
+      min-width:0;
+      min-height:26px;
+      box-sizing:border-box;
+      align-items:center;
+      justify-content:space-between;
+      padding:4px 0!important;
+      font-size:10px!important;
+      line-height:1.15!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__row > :first-child {
+      min-width:0;
+      color:#a6aa9f!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__row b,
+    .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__row strong {
+      margin-left:auto;
+      color:#eef1df;
+      font:700 11px/1.1 var(--ppbui-font-data);
+      font-variant-numeric:tabular-nums;
+      text-align:right;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-moves] {
+      gap:7px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move-grid] {
+      grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      gap:6px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move] {
+      grid-template-columns:30px minmax(0,1fr)!important;
+      min-height:46px!important;
+      padding:6px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move] > img {
+      width:26px!important;
+      height:26px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move-copy] {
+      gap:3px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move-copy] > strong {
+      display:-webkit-box;
+      overflow:hidden;
+      font-size:11px!important;
+      line-height:1.15!important;
+      text-overflow:clip!important;
+      white-space:normal!important;
+      overflow-wrap:anywhere;
+      -webkit-box-orient:vertical;
+      -webkit-line-clamp:2;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move-copy] > small {
+      font-size:9.5px!important;
+      line-height:1.1!important;
+      opacity:.82!important;
+    }
+    @container ppbui-native-pokemon-card (max-width:339px) {
+      .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] {
+        grid-template-columns:repeat(3,minmax(0,1fr))!important;
+      }
+      .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__rows {
+        gap:0 7px!important;
+      }
+    }
+    @container ppbui-native-pokemon-card (max-width:239px) {
+      .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-actions] {
+        grid-template-columns:repeat(2,minmax(0,1fr))!important;
+      }
+      .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-move-grid],
+      .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__rows {
+        grid-template-columns:minmax(0,1fr)!important;
+      }
+    }
     @container (max-width:519px) {
       [data-ppbui-profile-picker-tools] { grid-template-columns:minmax(0,1fr) auto; }
       [data-ppbui-profile-sources] { grid-column:1/-1; width:100%; }
@@ -765,7 +982,12 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
       node.removeAttribute("data-ppbui-profile-native-hidden");
       node.removeAttribute("data-ppbui-profile-native-was-hidden");
     });
+    if (container.hasAttribute("data-ppbui-profile-native-scroll-scope-owned")) {
+      container.classList.remove("ppbui-scroll-scope");
+      container.removeAttribute("data-ppbui-profile-native-scroll-scope-owned");
+    }
     container.removeAttribute("data-ppbui-profile-native-card");
+    container.removeAttribute("data-ppbui-profile-native-mode");
     container.removeAttribute("data-ppbui-profile-native-creature-id");
     container.removeAttribute("data-ppbui-profile-native-token");
     nativeCardCreatures.delete(container);
@@ -879,7 +1101,8 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     if (!hasVisibleCell && !hasNativeExtra) hideNativeCardCell(highlights, "highlights");
   }
 
-  function compactNativeStatusBadges(container) {
+  function reconcileNativeStatusBadges(container) {
+    const hasNativeActions = Boolean(container.querySelector(".pokemon-card__actions"));
     const statuses = [
       [".pokemon-tooltip__badge.is-active", "active"],
       [".pokemon-tooltip__badge.is-locked", "locked"],
@@ -887,6 +1110,10 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     for (const [selector, kind] of statuses) {
       const badge = container.querySelector(selector);
       if (!badge) continue;
+      if (hasNativeActions) {
+        hideNativeCardCell(badge, "redundant-" + kind);
+        continue;
+      }
       const label = badge.textContent?.trim() || "";
       badge.dataset.ppbuiProfileNativeStatus = kind;
       if (label && !badge.hasAttribute("title")) {
@@ -900,17 +1127,19 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     }
   }
 
-  function addNativeBattleIv(container, value) {
+  function addNativeIvBadge(container, value) {
     if (!value) return;
-    const battleLabel = nativeCardLabel("creature_details.battle_stats", "BATTLE STATS");
-    const heading = [...container.querySelectorAll(".pokemon-card__section > .pokemon-card__title")].find(node => node.textContent?.trim() === battleLabel);
-    if (!heading) return;
-    const meta = doc.createElement("span");
-    meta.dataset.ppbuiProfileNativeOwned = "";
-    meta.dataset.ppbuiProfileNativeIv = "";
-    meta.textContent = "· IV " + value;
-    meta.title = "IV " + value;
-    heading.append(meta);
+    const badges = container.querySelector(".pokemon-tooltip__badges");
+    if (!badges) return;
+    const badge = doc.createElement("span");
+    badge.className = "pokemon-tooltip__badge is-iv";
+    badge.dataset.ppbuiProfileNativeOwned = "";
+    badge.dataset.ppbuiProfileNativeIv = "";
+    badge.textContent = "IV " + value;
+    badge.title = "IV " + value;
+    const rarity = badges.querySelector(".pokemon-tooltip__badge.is-quality");
+    if (rarity) rarity.after(badge);
+    else badges.append(badge);
   }
 
   function moveNativeActionsToTop(container) {
@@ -929,7 +1158,16 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   function decorateNativeCard(container, creature) {
     if (!container?.matches?.(nativeCardSelector) || !creature) return;
     const id = String(creature?.id || "").trim(), token = ++nativeCardToken;
+    if (!container.classList.contains("ppbui-scroll-scope")) {
+      container.classList.add("ppbui-scroll-scope");
+      container.dataset.ppbuiProfileNativeScrollScopeOwned = "";
+    }
     container.dataset.ppbuiProfileNativeCard = "";
+    container.dataset.ppbuiProfileNativeMode = container.classList.contains("pokemon-card--hover")
+      ? "hover"
+      : container.classList.contains("pokemon-card--sheet")
+        ? "sheet"
+        : "pinned";
     container.dataset.ppbuiProfileNativeCreatureId = id;
     container.dataset.ppbuiProfileNativeToken = String(token);
     nativeCardCreatures.set(container, creature);
@@ -969,8 +1207,8 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     hideNativeCardCell(ivCell, "iv");
     hideNativeCardCell(container.querySelector(".pokemon-card__cell.is-rarity") || nativeCardCellByLabel(container, "pokemon_card.rarity", "RARITY"), "rarity");
     hideNativeHighlightsWhenEmpty(container);
-    addNativeBattleIv(container, ivValue);
-    compactNativeStatusBadges(container);
+    addNativeIvBadge(container, ivValue);
+    reconcileNativeStatusBadges(container);
 
     nativeMovesShell(container);
     addNativeProfileAction(container, id);
