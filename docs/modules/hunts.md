@@ -1,9 +1,10 @@
 # Hunts — current selector refinement + legacy map compatibility
 
-Status: **current PokéPixel Hunt selector remains the functional baseline; regional
-GYMS navigation and the MAP/LIST-unified UI/UX refinement are Product Owner-approved
-and validated in-game on 2026-10-02**. The historical Hunt Atlas result through `3faa712` remains evidence
-for legacy-map interaction/lifecycle behavior, not the current-list visual layout.
+Status: **current PokéPixel Hunt selector remains the functional baseline; the
+2026-10-04 region-hierarchy correction in candidate 0.2.166 is validated and approved
+in-game by the Product Owner**. The historical Hunt Atlas result through `3faa712` remains
+evidence for legacy-map interaction/lifecycle behavior, not the current-list visual
+layout.
 
 Historical visual references: `design-system/pokepixel-better-ui/MASTER.md` and
 `design-system/pokepixel-better-ui/pages/hunts.md`. Per `AGENTS.md` and
@@ -24,9 +25,22 @@ and the native world/context note is folded into the native result summary.
 The two native toggle groups intentionally receive different Better UI roles even
 though upstream gives both `.hunt-presentation-toggle`: MAP/LIST is the full-width,
 primary view switch; Classic/Platform is the full-width but visually subordinate
-presentation preference. `GYMS` also consumes the available navigation width between
-region and view navigation so it does not collapse into a small orphan control; the same
-node remains present in both MAP and LIST and is rehomed after upstream refreshes.
+presentation preference. Hunts no longer injects a Gym destination between these
+controls.
+
+The native world controls now expose two visual roles while preserving their handlers:
+Kanto, Johto and Hoenn are equal-weight common Hunt regions; Ilhas Lendárias
+is a full-width special destination beneath them with a localized weekend note. Better
+UI temporarily moves that exact native Legendary button after the three common buttons
+so keyboard and visual order match, and restores the original native order on cleanup.
+Its native enabled/disabled state remains authoritative, and the weekend availability is
+also exposed through a localized `aria-description`.
+
+The adapter remembers logical focus within the current selector. If a native MAP/LIST
+refresh replaces the focused control, reconciliation restores focus only to its
+equivalent reacquired control and only when focus otherwise fell back to the document;
+an intentional focus move elsewhere is never overridden. Cleanup likewise preserves
+focus on any surviving native control that Better UI must move back to its native place.
 
 Only the content surface differs by view: MAP owns the native atlas/markers and its
 compact zoom/reset overlay; LIST owns the native table, `Details` and `Hunt` actions.
@@ -36,39 +50,30 @@ LIST table receives matching header/row chrome while preserving native rows/acti
 `Hunt` remains the primary gameplay action and `Details` remains secondary. Native
 select/number/search affordances and handlers stay authoritative.
 
-At constrained container widths up to 620px, the existing region buttons use a
-balanced two-column visual grid while keeping DOM order, disabled state and handlers.
-Wider panes use responsive auto-fit columns. This is the explicit narrow-width
-exception to the earlier layout-ownership rule. The current MAP also releases the
-native desktop `370px` atlas minimum to `300px` at this container threshold so the
+At constrained container widths up to 620px, the three common region buttons remain
+one equal three-column rail while Ilhas Lendárias spans the full row beneath them.
+Native nodes, disabled state and handlers remain authoritative. The current MAP also releases
+the native desktop `370px` atlas minimum to `300px` at this container threshold so the
 249×712 target can keep navigation, discovery and a usable map in the same vertical
 workflow even when the outer desktop viewport would not trigger the game's media query.
 
-`GYMS` is a contextual regional navigation action in the header. It follows the
-active Hunt region and opens the game's native `Scene_Gym` already scoped to that
-region. It does not call Gym APIs or start/reserve a battle. The current native Gym
-scene exposes Kanto and Johto; other Hunt regions keep the control disabled rather
-than falling back to the wrong region.
-
 ## Current UI/UX implementation
 
-The Product Owner's 249×712 in-game capture shows the first Hunt result entirely
-below the fold: four full-width region controls, GYMS, two segmented mode rows,
-context copy and the permanently expanded Search/Element/Sort/Level/Clear surface
-consume essentially the whole viewport before results begin.
+The Product Owner's prior 249×712 in-game capture showed the first Hunt result entirely
+below the fold. The current hierarchy reduces the region stack to one common-region row
+plus one special-destination row and keeps the existing progressive filter disclosure.
 
 The implemented pass optimizes both **time to Hunt content** and the visual hierarchy
-of the selector. The target hierarchy is `Region → Hunts/Gyms → view → Search → results → Hunt`.
+of the selector. The target hierarchy is `common regions / special destination → view → Search → results → Hunt`.
 Search stays persistent; Element + Level become advanced refinement; Sort is treated
 as result ordering; Clear remains tertiary and reachable while advanced filters are
 collapsed; and the Classic/Platform control remains available with less visual weight
-than MAP/LIST. On narrow panes the same native region controls may use a compact
-two-column arrangement as an explicit exception to native layout ownership; native
-controls, DOM order, disabled state and handlers remain authoritative.
+than MAP/LIST. Better UI reuses the native region controls, applies reversible hierarchy
+annotations and reorders only the existing Legendary node while mounted.
 
-The full findings, wireframes, implementation constraints and `AC-HUNTS-UX-01..20` are maintained in
-`design-system/pokepixel-better-ui/pages/hunts.md`. The approved GYMS placement and
-native navigation contract are not reopened by this refinement.
+The full findings, wireframes, implementation constraints and `AC-HUNTS-UX-01..27` are
+maintained in `design-system/pokepixel-better-ui/pages/hunts.md`. `AC-HUNTS-UX-21..27`
+supersede the older Hunts-specific GYMS navigation and equal-weight four-region layout.
 
 The current selector adapter wraps the existing scene `startHunt()` only to remember the
 authoritative Hunt-zone snapshot used by Cards. It delegates the native action once,

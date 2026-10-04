@@ -1,12 +1,12 @@
 # Hunts — Hunt Atlas Design Override
 
-Status: **native-first current Hunt selector refinement implemented; regional GYMS navigation and MAP/LIST visual unification user-validated on 2026-10-02**
+Status: **native-first current Hunt selector refinement implemented; region-hierarchy correction validated and approved in-game on 2026-10-04**
 Direction: **Native Hunts + Better UI hierarchy refinement**
-Product Owner approval: **2026-09-12**
+Product Owner approval: **2026-10-04 — region hierarchy candidate 0.2.166 approved**
 Migration classification: **redesign**
-Validation status: **historical Hunt Atlas behavior user-validated; current Miyazaki 16 candidate pending fresh live validation**
-Product Owner live validation: **2026-09-12 — All green**
-Validated implementation: **`3faa712`**
+Validation status: **candidate 0.2.166 validated and approved in-game by the Product Owner**
+Product Owner live validation: **2026-10-04 — All green**
+Validated implementation: **candidate `0.2.166`; repository integration pending**
 
 ## Previous native-first baseline — 2026-10-02
 
@@ -20,10 +20,59 @@ The rules immediately below record the first native-first pass. The later
 requirements where explicitly documented, while preserving native node identity,
 handlers, gameplay behavior and cleanup.
 
+## Region hierarchy correction — 2026-10-04
+
+The Product Owner reopened the current Hunts navigation hierarchy after reviewing the
+MAP surface. Kanto, Johto and Hoenn are ordinary Hunt destinations and must read as one
+peer group. **Ilhas Lendárias** is a special weekend-only destination and must remain
+visually distinct even while its native control is disabled. The Hunts-specific
+`GYMS` destination is removed entirely from this module; Gym access elsewhere in the
+game is outside this correction.
+
+The current-selector target is:
+
+```text
+[ KANTO ] [ JOHTO ] [ HOENN ]     ← common Hunt regions, equal weight
+[      ILHAS LENDÁRIAS · FIM DE SEMANA      ]  ← special destination
+
+[                 MAP | LIST                 ]
+[          CLÁSSICO | PLATAFORMA             ]
+```
+
+The special destination reuses the native button and native availability/disabled
+state. Better UI moves that exact native node after the three common regions while the
+module is mounted so visual order and keyboard order remain aligned, then restores its
+original position on cleanup. It must not infer availability, enable the destination,
+alter its handler or recreate the region control.
+
+- **AC-HUNTS-UX-21:** Hunts creates no `GYMS` control in current MAP, current LIST or
+  the legacy adapter, and the Hunts module contains no Gym-scene navigation path.
+- **AC-HUNTS-UX-22:** Kanto, Johto and Hoenn are classified as common Hunt regions and
+  rendered as equal-weight peers. In the current selector they share one three-column
+  row when space permits; moving the existing Legendary node may normalize the mounted
+  focus order but must preserve every native node and handler.
+- **AC-HUNTS-UX-23:** Ilhas Lendárias receives a dedicated special-destination class,
+  spans the current-selector region rail, and shows a localized persistent weekend
+  note. The treatment remains recognizable while the native button is disabled.
+- **AC-HUNTS-UX-24:** native selected/current, disabled, hover and keyboard-focus states
+  remain authoritative and visually distinguishable for both common and special
+  destinations; styling does not use disabled opacity to erase the special hierarchy.
+- **AC-HUNTS-UX-25:** MAP and LIST reconstruction reacquires the native region buttons
+  without duplication and restores equivalent logical focus when the focused native
+  selector control was replaced. Repeated reconciliation is mutation-free once the
+  annotations and localized note are current and must not steal external focus.
+- **AC-HUNTS-UX-26:** cleanup restores every annotated native region button to its exact
+  previous classes/data attributes and restores the exact native current-selector DOM;
+  when a focused native control survives those moves, focus remains on that same node.
+- **AC-HUNTS-UX-27:** the current selector keeps the region rail free of horizontal
+  overflow at the existing constrained-container target; the three common labels remain
+  readable and the special destination receives its own full-width row.
+
 For the current native Hunt list (`hunt-list-*`):
 
 - preserve the native title, header, toolbar, summary and table hierarchy;
-- preserve native child order and layout ownership; Better UI must not turn the
+- preserve native child order and layout ownership except for the exact reversible
+  Legendary-region move defined by `AC-HUNTS-UX-22/26`; Better UI must not turn the
   header into an Atlas rail or the filter toolbar into its own grid;
 - world navigation remains the dominant context control; presentation mode is a
   subordinate utility and must not receive the same selected/current emphasis;
@@ -58,7 +107,10 @@ For the current native Hunt list (`hunt-list-*`):
 - **AC-HUNTS-NATIVE-08:** cleanup restores the exact native DOM/title/style state and
   Hunt still delegates to the native action exactly once.
 
-### Regional Hunts → Gyms navigation — 2026-10-02
+### Historical: Regional Hunts → Gyms navigation — 2026-10-02
+
+Superseded by `AC-HUNTS-UX-21..27` on 2026-10-04. This section is retained only as
+historical evidence for the previously validated candidate.
 
 Hunts now exposes `GYMS` as a **secondary regional destination**, not as a Hunt
 filter and not as a gameplay action. The player flow is:
@@ -84,7 +136,11 @@ name and tooltip include the current region.
 - **AC-HUNTS-GYM-07:** cleanup removes the Better UI navigation control and restores
   the underlying native Hunts structure exactly.
 
-### Current-list UI/UX implementation — 2026-10-02
+### Historical current-list UI/UX implementation — 2026-10-02
+
+This section documents the 2026-10-02 candidate. Where its hierarchy or acceptance
+criteria mention `GYMS` or equal-weight treatment for all four destinations,
+`AC-HUNTS-UX-21..27` supersede them.
 
 The Product Owner approved the regional `GYMS` control in-game, requested the broader
 Hunts UI/UX study and then authorized implementation. The approved `GYMS`
@@ -231,7 +287,11 @@ view/presentation controls and Hunt rows remain the functional authority.
   permanent standalone row; unique gameplay/unlock/availability context remains
   visible or associated with the result summary.
 
-### MAP/LIST visual-unification correction — 2026-10-02
+### Historical MAP/LIST visual-unification correction — 2026-10-02
+
+This section remains evidence for the shared MAP/LIST shell, view/presentation roles
+and responsive framing. Its `GYMS` requirements and previous four-destination layout
+are superseded by `AC-HUNTS-UX-21..27`.
 
 The Product Owner rejected the preceding candidate as functionally improved but still
 visually under-designed. The concrete failures were: `MAP / LIST` was too small for the

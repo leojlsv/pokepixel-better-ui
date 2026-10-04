@@ -4,6 +4,19 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Hunts / Mapa — hierarquia regional e remoção de GYMS, candidato 0.2.166 (2026-10-04):**
+  remove por completo o atalho `GYMS` que o Better UI injetava no módulo Hunts e elimina
+  o caminho Hunts → `Scene_Gym`. Kanto, Johto e Hoenn passam a formar uma única linha de
+  destinos comuns com o mesmo peso visual; o botão nativo de `Ilhas Lendárias` é preservado,
+  movido reversivelmente para uma faixa especial abaixo das regiões comuns e recebe a indicação
+  localizada de disponibilidade de fim de semana. O estado enabled/disabled e os handlers
+  continuam nativos, a ordem original é restaurada no cleanup e MAP/LIST reaplicam a hierarquia
+  após reconstruções nativas sem duplicar controles, preservando foco lógico sem roubar foco
+  externo; cleanup também mantém foco no mesmo controle nativo sobrevivente. O nome `Ilhas Lendárias`
+  fica centralizado na área principal da faixa especial, mantendo `FIM DE SEMANA` ancorado à direita. Renders locais de
+  1240, 360 e 249 px foram inspecionados. **Validado e aprovado in-game pelo Product Owner em
+  2026-10-04.**
+
 - **PokémonCard / hover — scrollbar vertical compartilhado, candidato 0.2.165 (2026-10-04):**
   aplica ao PokémonCard nativo o mesmo chrome compartilhado de scrollbar usado pelas superfícies
   Better UI: track escuro, thumb estrutural, borda/radius do design system e remoção das setas
