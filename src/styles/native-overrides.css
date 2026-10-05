@@ -1,0 +1,117 @@
+/*
+ * Narrow native compatibility override.
+ *
+ * PokePixel paints an animated conic border by inheriting --ui-border-start /
+ * --ui-border-end into shared ::after rules. Better UI intentionally does not
+ * expose or render that effect, so neutralize the effect tokens on supported
+ * native shells and controls while leaving geometry and interaction native.
+ * Geometry is no longer rewritten globally: the host keeps its own current
+ * radius/layout, while Better UI-owned surfaces use the native-aligned radius tokens.
+ */
+:where(
+  .pokeidle-panel,
+  .pokeidle-form-box,
+  .pokeidle-dialog,
+  .pokeidle-mobile-sheet,
+  .world-servers-window,
+  .pokeidle-persistent-chat,
+  .pokeidle-top-toolbar,
+  .pokeidle-mobile-menu,
+  .pokeidle-ui-window,
+  .pokeidle-mini-view .mini,
+  .npc-nature-window,
+  .npc-iv-window,
+  .npc-evolution-window
+),
+:where(
+  .pokeidle-panel,
+  .pokeidle-form-box,
+  .pokeidle-dialog,
+  .pokeidle-mobile-sheet,
+  .world-servers-window,
+  .pokeidle-persistent-chat,
+  .pokeidle-top-toolbar,
+  .pokeidle-mobile-menu,
+  .pokeidle-ui-window,
+  .pokeidle-mini-view .mini,
+  .npc-nature-window,
+  .npc-iv-window,
+  .npc-evolution-window
+) button:where(
+  :not([class*="slot"]):not([class*="sprite"]):not([class*="close"])
+),
+:where(.pokeidle-btn, .rubinot-btn, .pokeidle-ui-button) {
+  --ui-border-start: transparent !important;
+  --ui-border-end: transparent !important;
+}
+
+/*
+ * The host owns this ring in @layer pokeidle-glass with !important. Layered
+ * important declarations outrank unlayered important declarations, so this
+ * override must join the same layer; an unlayered animation:none loses while
+ * will-change:auto still wins, which is worse than leaving the host untouched.
+ */
+@layer pokeidle-glass {
+  :where(
+    .pokeidle-panel,
+    .pokeidle-form-box,
+    .pokeidle-dialog,
+    .pokeidle-mobile-sheet,
+    .world-servers-window,
+    .pokeidle-persistent-chat,
+    .pokeidle-top-toolbar,
+    .pokeidle-mobile-menu,
+    .pokeidle-ui-window,
+    .pokeidle-mini-view .mini,
+    .npc-nature-window,
+    .npc-iv-window,
+    .npc-evolution-window
+  )::after,
+  :where(
+    .pokeidle-panel,
+    .pokeidle-form-box,
+    .pokeidle-dialog,
+    .pokeidle-mobile-sheet,
+    .world-servers-window,
+    .pokeidle-persistent-chat,
+    .pokeidle-top-toolbar,
+    .pokeidle-mobile-menu,
+    .pokeidle-ui-window,
+    .pokeidle-mini-view .mini,
+    .npc-nature-window,
+    .npc-iv-window,
+    .npc-evolution-window
+  ) button:where(:not([class*="slot"]):not([class*="sprite"]):not([class*="close"]))::after,
+  :where(.pokeidle-btn, .rubinot-btn, .pokeidle-ui-button)::after {
+    animation:none !important;
+    will-change:auto !important;
+  }
+
+  .npc-nature-window::after,
+  .npc-iv-window::after {
+    animation: none !important;
+    will-change: auto !important;
+  }
+
+  /*
+   * These roster-card rings are visually neutralized above, but the
+   * host still starts its animated custom property on hover/focus. On a large
+   * Nature/IV roster that invisible animation forces repeated style work, so
+   * stop it only on the roster cards. Tabs/actions and Evolution stay native.
+   */
+  .npc-nature-window .npc-nature__pokemon::after,
+  .npc-iv-window .npc-iv__pokemon::after {
+    animation: none !important;
+  }
+}
+
+/*
+ * Wallet ownership stays native, but Better UI no longer exposes it beside the
+ * persistent Team HUD. Inventory temporarily reparents the exact same node, so
+ * this adjacency-only rule stops applying while Backpack presents the Wallet.
+ * Keeping this in the design-system layer makes the HUD suppression independent
+ * from the separately-toggleable Team HUD enhancement module.
+ */
+.pokeidle-team-hud + .pokeidle-team-hud__wallet {
+  display: none !important;
+}

@@ -1,0 +1,776 @@
+.ppbui-surface {
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-radius);
+  background: var(--ppbui-bg-1);
+  box-shadow: var(--ppbui-shadow);
+}
+
+.ppbui-window,
+.ppbui-panel,
+.ppbui-dialog {
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-window-radius);
+  background: var(--ppbui-bg-1);
+  color: var(--ppbui-text);
+  box-shadow: var(--ppbui-shadow-raised);
+}
+
+.ppbui-titlebar {
+  display: flex;
+  min-height: var(--ppbui-control-height);
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ppbui-space-3);
+  padding: var(--ppbui-space-2) var(--ppbui-space-3);
+  border-bottom: var(--ppbui-separator-width) solid var(--ppbui-border);
+  background: var(--ppbui-bg-1);
+  color: var(--ppbui-text);
+  font: 500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display);
+}
+
+.ppbui-section {
+  padding: var(--ppbui-space-3);
+  border: var(--ppbui-separator-width) solid var(--ppbui-border);
+  border-radius: var(--ppbui-radius);
+  background: var(--ppbui-bg-2);
+}
+
+.ppbui-card {
+  border: var(--ppbui-separator-width) solid var(--ppbui-border);
+  border-radius: var(--ppbui-radius);
+  background: var(--ppbui-bg-2);
+  color: var(--ppbui-text);
+}
+
+/*
+ * A ppbui-root is an explicit full-visual-ownership boundary. It may contain
+ * native controls that are preserved for behavior, so the master chrome is
+ * applied here without relying on host classes and without touching the game
+ * outside the opted-in surface.
+ */
+.ppbui-root :where(button:not(.ppbui-button)) {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  min-height: var(--ppbui-control-height);
+  margin: 0;
+  padding: 0 var(--ppbui-control-padding-x);
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong) !important;
+  border-radius: var(--ppbui-control-radius) !important;
+  background: var(--ppbui-bg-0) !important;
+  background-image: none !important;
+  color: var(--ppbui-text) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  font: 700 var(--ppbui-font-size-body)/var(--ppbui-line-height-tight) var(--ppbui-font-body) !important;
+  text-shadow: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.ppbui-root :where(input:not([type="checkbox"]):not([type="radio"]):not(.ppbui-input), select:not(.ppbui-select), textarea:not(.ppbui-textarea)) {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ppbui-control-height);
+  padding: 0 var(--ppbui-control-padding-x);
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong) !important;
+  border-radius: var(--ppbui-control-radius) !important;
+  background: var(--ppbui-bg-0) !important;
+  background-image: none !important;
+  color: var(--ppbui-text) !important;
+  box-shadow: none !important;
+  font: 400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body) !important;
+  text-shadow: none !important;
+}
+
+.ppbui-root :where(textarea:not(.ppbui-textarea)) {
+  min-height: calc(var(--ppbui-control-height) * 2);
+  padding-block: var(--ppbui-space-2);
+  resize: vertical;
+}
+
+.ppbui-root :where(select:not(.ppbui-select)) {
+  padding-right: calc(var(--ppbui-control-padding-x) + 14px);
+}
+
+.ppbui-root :where(button:not(.ppbui-button), input:not(.ppbui-input), select:not(.ppbui-select), textarea:not(.ppbui-textarea)):focus-visible {
+  outline: var(--ppbui-focus-width) solid var(--ppbui-focus) !important;
+  outline-offset: var(--ppbui-pixel-unit);
+}
+
+.ppbui-root :where(button:not(.ppbui-button)):hover:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--ppbui-bg-3) !important;
+}
+
+.ppbui-root :where(button:not(.ppbui-button)):active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--ppbui-bg-3) !important;
+  box-shadow: none !important;
+}
+
+.ppbui-root :where(button:not(.ppbui-button):disabled, button:not(.ppbui-button)[aria-disabled="true"], input:not(.ppbui-input):disabled, select:not(.ppbui-select):disabled, textarea:not(.ppbui-textarea):disabled) {
+  cursor: default;
+  border-color: var(--ppbui-border) !important;
+  background: var(--ppbui-bg-1) !important;
+  color: var(--ppbui-text-subtle) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+.ppbui-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: inline-flex;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ppbui-space-2);
+  min-width: var(--ppbui-button-2x1-width);
+  min-height: var(--ppbui-control-height);
+  margin: 0;
+  padding: 0 var(--ppbui-control-padding-x);
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-control-radius);
+  background: var(--ppbui-bg-2);
+  background-image: none;
+  color: var(--ppbui-text);
+  box-shadow: none;
+  filter: none;
+  font: 700 var(--ppbui-font-size-body)/var(--ppbui-line-height-tight) var(--ppbui-font-body);
+  letter-spacing: .01em;
+  text-align: center;
+  text-shadow: none;
+  text-transform: none;
+  vertical-align: middle;
+  transition: none;
+  transform: none;
+  cursor: pointer;
+}
+
+.pokeidle-btn.ppbui-button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  min-height: var(--ppbui-control-height) !important;
+  margin: 0 !important;
+  padding: 0 var(--ppbui-control-padding-x) !important;
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong) !important;
+  border-radius: var(--ppbui-control-radius) !important;
+  background: var(--ppbui-bg-2) !important;
+  background-image: none !important;
+  color: var(--ppbui-text) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  font: 700 var(--ppbui-font-size-body)/var(--ppbui-line-height-tight) var(--ppbui-font-body) !important;
+  text-shadow: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.ppbui-button--compact {
+  min-height: var(--ppbui-compact-control-height);
+  padding: 0 var(--ppbui-compact-control-padding-x);
+  font-size: var(--ppbui-font-size-secondary);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--compact {
+  min-height: var(--ppbui-compact-control-height) !important;
+  padding: 0 var(--ppbui-compact-control-padding-x) !important;
+  font-size: var(--ppbui-font-size-secondary) !important;
+}
+
+.ppbui-button--action {
+  min-height: var(--ppbui-action-height);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--action {
+  min-height: var(--ppbui-action-height) !important;
+}
+
+.ppbui-button--primary {
+  border-color: var(--ppbui-accent);
+  background: var(--ppbui-bg-2);
+  color: var(--ppbui-accent-hi);
+  box-shadow: none;
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--primary {
+  border-color: var(--ppbui-accent) !important;
+  background: var(--ppbui-bg-2) !important;
+  color: var(--ppbui-accent-hi) !important;
+  box-shadow: none !important;
+}
+
+.ppbui-button--danger {
+  border-color: var(--ppbui-danger);
+  background: var(--ppbui-danger-bg);
+  color: var(--ppbui-text);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--danger {
+  border-color: var(--ppbui-danger) !important;
+  background: var(--ppbui-danger-bg) !important;
+  color: var(--ppbui-text) !important;
+}
+
+.ppbui-button--ghost {
+  background: transparent;
+  box-shadow: none;
+}
+
+.pokeidle-btn.ppbui-button.ppbui-button--ghost {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.ppbui-icon-button {
+  flex: 0 0 var(--ppbui-button-1x1-size);
+  width: var(--ppbui-icon-button-size);
+  min-width: var(--ppbui-icon-button-size);
+  height: var(--ppbui-icon-button-size);
+  min-height: var(--ppbui-icon-button-size);
+  padding: 0;
+  line-height: 1;
+}
+
+.ppbui-button--1x1 {
+  flex: 0 0 var(--ppbui-button-1x1-size);
+  width: var(--ppbui-button-1x1-size);
+  min-width: var(--ppbui-button-1x1-size);
+  height: var(--ppbui-button-1x1-size);
+  min-height: var(--ppbui-button-1x1-size);
+  padding: 0;
+}
+
+.ppbui-button--2x1 {
+  width: var(--ppbui-button-2x1-width);
+  min-width: var(--ppbui-button-2x1-width);
+  height: var(--ppbui-button-2x1-height);
+  min-height: var(--ppbui-button-2x1-height);
+  padding: 0 var(--ppbui-space-2);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-icon-button {
+  flex: 0 0 var(--ppbui-icon-button-size);
+  width: var(--ppbui-icon-button-size);
+  min-width: var(--ppbui-icon-button-size);
+  height: var(--ppbui-icon-button-size) !important;
+  min-height: var(--ppbui-icon-button-size) !important;
+  padding: 0 !important;
+  line-height: 1;
+}
+
+.ppbui-icon-button--compact {
+  flex-basis: var(--ppbui-compact-icon-button-size);
+  width: var(--ppbui-compact-icon-button-size);
+  min-width: var(--ppbui-compact-icon-button-size);
+  height: var(--ppbui-compact-icon-button-size);
+  min-height: var(--ppbui-compact-icon-button-size);
+}
+
+.pokeidle-btn.ppbui-button.ppbui-icon-button--compact {
+  flex-basis: var(--ppbui-compact-icon-button-size);
+  width: var(--ppbui-compact-icon-button-size);
+  min-width: var(--ppbui-compact-icon-button-size);
+  height: var(--ppbui-compact-icon-button-size) !important;
+  min-height: var(--ppbui-compact-icon-button-size) !important;
+}
+
+.ppbui-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--ppbui-space-2);
+  min-width: 0;
+}
+
+.ppbui-meter-row {
+  display: grid !important;
+  grid-template-columns: var(--ppbui-meter-label-width, 32px) minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: var(--ppbui-space-2) !important;
+  min-width: 0;
+}
+
+.ppbui-meter-row__label {
+  min-width: 0;
+  color: var(--ppbui-text-muted);
+  font: 700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-data);
+}
+
+.ppbui-pokemon-card {
+  --ppbui-pokemon-card-border: var(--ppbui-border-strong);
+  --ppbui-pokemon-card-bottom-border: var(--ppbui-pokemon-card-accent, var(--slot-element-color, var(--element-color, var(--ppbui-border-strong))));
+  --ppbui-pokemon-card-top-border: var(--ppbui-pokemon-card-border);
+  --ppbui-pokemon-card-right-border: var(--ppbui-pokemon-card-border);
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  transform: none !important;
+  filter: none !important;
+  border: var(--ppbui-border-width) solid var(--ppbui-pokemon-card-border) !important;
+  border-top-color: var(--ppbui-pokemon-card-top-border) !important;
+  border-right-color: var(--ppbui-pokemon-card-right-border) !important;
+  border-bottom: var(--ppbui-border-width) solid var(--ppbui-pokemon-card-bottom-border) !important;
+  border-radius: var(--ppbui-radius) !important;
+  background: var(--ppbui-bg-2) !important;
+  box-shadow: none !important;
+  color: var(--ppbui-text);
+  transition: none !important;
+}
+
+.ppbui-pokemon-card--hud,
+.ppbui-pokemon-card--roster,
+.ppbui-pokemon-card--preset {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.ppbui-pokemon-card--hud {
+  height: 52px;
+  padding: 2px 2px 13px !important;
+}
+
+.ppbui-pokemon-card--roster {
+  height: 72px;
+  padding: 3px 3px 17px !important;
+}
+
+.ppbui-pokemon-card--preset {
+  height: 44px;
+  padding: 2px !important;
+}
+
+.ppbui-pokemon-card__visual {
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0;
+  min-height: 0;
+  place-items: center !important;
+  box-sizing: border-box;
+  padding: 2px !important;
+  border: 0 !important;
+  border-radius: var(--ppbui-control-radius) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  filter: none !important;
+  transform: none !important;
+  pointer-events: none;
+}
+
+.ppbui-pokemon-card__visual > img,
+.ppbui-pokemon-card__visual > canvas,
+.ppbui-pokemon-card > img.ppbui-pokemon-card__visual,
+.ppbui-pokemon-card > canvas.ppbui-pokemon-card__visual {
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.ppbui-pokemon-card--hud .ppbui-pokemon-card__visual > img,
+.ppbui-pokemon-card--hud .ppbui-pokemon-card__visual > canvas,
+.ppbui-pokemon-card--hud > img.ppbui-pokemon-card__visual,
+.ppbui-pokemon-card--hud > canvas.ppbui-pokemon-card__visual {
+  max-width: 32px !important;
+  max-height: 30px !important;
+}
+
+.ppbui-pokemon-card--roster .ppbui-pokemon-card__visual > img,
+.ppbui-pokemon-card--roster .ppbui-pokemon-card__visual > canvas,
+.ppbui-pokemon-card--roster > img.ppbui-pokemon-card__visual,
+.ppbui-pokemon-card--roster > canvas.ppbui-pokemon-card__visual {
+  max-width: 48px !important;
+  max-height: 46px !important;
+}
+
+.ppbui-pokemon-card--preset .ppbui-pokemon-card__visual > img,
+.ppbui-pokemon-card--preset .ppbui-pokemon-card__visual > canvas,
+.ppbui-pokemon-card--preset > img.ppbui-pokemon-card__visual,
+.ppbui-pokemon-card--preset > canvas.ppbui-pokemon-card__visual {
+  max-width: 30px !important;
+  max-height: 28px !important;
+}
+
+.ppbui-pokemon-card__position {
+  position: absolute;
+  z-index: 4;
+  top: 2px;
+  left: 2px;
+  min-width: 14px;
+  padding: 0 2px;
+  border: var(--ppbui-separator-width) solid var(--ppbui-border);
+  background: var(--ppbui-bg-0);
+  color: var(--ppbui-text-muted);
+  font: 700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-data);
+  text-align: center;
+  pointer-events: none;
+}
+
+.ppbui-pokemon-card--hud .ppbui-pokemon-card__position,
+.ppbui-pokemon-card--preset .ppbui-pokemon-card__position {
+  top: 1px;
+  left: 2px;
+  min-width: 0;
+  padding: 0 1px;
+  border: 0;
+  background: var(--ppbui-bg-0);
+}
+
+.ppbui-pokemon-card__meta {
+  position: absolute;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  color: var(--ppbui-text);
+  font: 700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.ppbui-pokemon-card--hud .ppbui-pokemon-card__meta {
+  right: 3px;
+  bottom: 4px;
+  left: 3px;
+  justify-content: center;
+  overflow: visible;
+  text-align: center;
+}
+
+.ppbui-pokemon-card--roster .ppbui-pokemon-card__meta {
+  right: 3px;
+  bottom: 3px;
+  left: 3px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--ppbui-space-1);
+  padding-top: 2px;
+  border-top: var(--ppbui-separator-width) solid var(--ppbui-border);
+  background: var(--ppbui-bg-2);
+}
+
+.ppbui-pokemon-card--roster .ppbui-pokemon-card__meta > :last-child {
+  color: var(--ppbui-text-subtle);
+  text-align: right;
+}
+
+.ppbui-pokemon-card__meter {
+  position: absolute;
+  z-index: 3;
+  right: 3px;
+  bottom: 1px;
+  left: 3px;
+  height: 2px;
+  overflow: hidden;
+  background: var(--ppbui-bg-0);
+  pointer-events: none;
+}
+
+.ppbui-pokemon-card__meter > i {
+  display: block;
+  width: var(--ppbui-pokemon-card-meter-value, 0%);
+  height: 100%;
+  background: var(--ppbui-pokemon-card-meter-color, var(--ppbui-success));
+}
+
+.ppbui-field {
+  display: grid;
+  gap: var(--ppbui-space-1);
+  min-width: 0;
+  color: var(--ppbui-text-muted);
+  font: 600 var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body);
+}
+
+.ppbui-input,
+.ppbui-textarea,
+.ppbui-select {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--ppbui-control-height);
+  padding: 0 var(--ppbui-control-padding-x);
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-radius);
+  background: var(--ppbui-bg-0);
+  color: var(--ppbui-text);
+  box-shadow: none;
+  font: 400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body);
+}
+
+.ppbui-textarea {
+  min-height: calc(var(--ppbui-control-height) * 2);
+  padding: var(--ppbui-space-2) var(--ppbui-control-padding-x);
+  resize: vertical;
+}
+
+.game-window__search.ppbui-input,
+.game-window__select.ppbui-select {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100% !important;
+  height: var(--ppbui-control-height) !important;
+  min-height: var(--ppbui-control-height) !important;
+  padding: 0 var(--ppbui-control-padding-x) !important;
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong) !important;
+  border-radius: var(--ppbui-radius-badge) !important;
+  background: var(--ppbui-bg-0) !important;
+  background-image: none !important;
+  clip-path: none !important;
+  color: var(--ppbui-text) !important;
+  box-shadow: none !important;
+  font: 400 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body) !important;
+}
+
+.ppbui-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--ppbui-space-3);
+  min-width: 0;
+}
+
+.ppbui-list {
+  display: grid;
+  min-width: 0;
+  border: var(--ppbui-separator-width) solid var(--ppbui-border);
+  background: var(--ppbui-bg-0);
+}
+
+.ppbui-list-row {
+  min-width: 0;
+  padding: var(--ppbui-space-2) var(--ppbui-space-3);
+  border-bottom: var(--ppbui-separator-width) solid var(--ppbui-border);
+  background: var(--ppbui-bg-0);
+  color: var(--ppbui-text);
+}
+
+.ppbui-list-row:last-child {
+  border-bottom: 0;
+}
+
+.ppbui-status {
+  min-height: 32px;
+  padding: var(--ppbui-space-2) var(--ppbui-space-3);
+  border: 0;
+  background: var(--ppbui-bg-0);
+  color: var(--ppbui-text);
+}
+
+.ppbui-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 var(--ppbui-space-2);
+  border: var(--ppbui-separator-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-radius-badge);
+  background: var(--ppbui-bg-3);
+  color: var(--ppbui-text);
+  font: 600 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-body);
+  white-space: nowrap;
+}
+
+.ppbui-element-icons {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: var(--ppbui-space-1) !important;
+  min-width: 0;
+}
+
+.ppbui-element-icon {
+  --ppbui-element-swatch: var(--ppbui-element-color, var(--element-color, var(--ppbui-border-strong)));
+  box-sizing: border-box !important;
+  display: inline-grid !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  flex: 0 0 24px !important;
+  place-items: center !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 2px !important;
+  border: var(--ppbui-separator-width) solid var(--ppbui-element-swatch) !important;
+  border-radius: var(--ppbui-radius-badge) !important;
+  background: var(--ppbui-bg-0) !important;
+  background: color-mix(in srgb, var(--ppbui-element-swatch) 28%, var(--ppbui-bg-0)) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  object-fit: contain !important;
+  image-rendering: pixelated;
+  line-height: 18px !important;
+  text-align: center;
+}
+
+.ppbui-element-icon--small {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  flex-basis: 20px !important;
+  padding: 1px !important;
+  line-height: 16px !important;
+}
+
+.ppbui-element-icon > .ppbui-element-icon__image {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated;
+}
+
+.ppbui-element-icon--fallback {
+  color: var(--ppbui-text) !important;
+  font: 700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data) !important;
+  text-shadow: none !important;
+}
+
+.ppbui-quality-badge {
+  --ppbui-quality-color: var(--ppbui-border-strong);
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 20px !important;
+  padding: 2px var(--ppbui-space-2) 2px calc(var(--ppbui-space-2) + var(--ppbui-pixel-unit)) !important;
+  border: var(--ppbui-separator-width) solid var(--ppbui-quality-color) !important;
+  border-left-width: var(--ppbui-border-width) !important;
+  border-radius: var(--ppbui-radius-badge) !important;
+  background: var(--ppbui-bg-2) !important;
+  background-image: none !important;
+  color: var(--ppbui-text) !important;
+  box-shadow: none !important;
+  filter: none !important;
+  font: 700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-body) !important;
+  text-shadow: none !important;
+  white-space: nowrap;
+}
+
+.ppbui-quality-badge.quality-weak { --ppbui-quality-color: var(--quality-weak); }
+.ppbui-quality-badge.quality-common { --ppbui-quality-color: var(--quality-common); }
+.ppbui-quality-badge.quality-uncommon { --ppbui-quality-color: var(--quality-uncommon); }
+.ppbui-quality-badge.quality-rare { --ppbui-quality-color: var(--quality-rare); }
+.ppbui-quality-badge.quality-epic { --ppbui-quality-color: var(--quality-epic); }
+.ppbui-quality-badge.quality-legendary { --ppbui-quality-color: var(--quality-legendary); }
+.ppbui-quality-badge.quality-mythical { --ppbui-quality-color: var(--quality-mythical); }
+
+.ppbui-scroll {
+  scrollbar-width: auto;
+  scrollbar-color: var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track);
+  scrollbar-gutter: stable;
+}
+
+.ppbui-scroll::-webkit-scrollbar {
+  width: var(--ppbui-scrollbar-size);
+  height: var(--ppbui-scrollbar-size);
+}
+
+.ppbui-scroll::-webkit-scrollbar-track {
+  border: var(--ppbui-separator-width) solid var(--ppbui-border);
+  border-radius: var(--ppbui-radius-badge);
+  background: var(--ppbui-scrollbar-track);
+}
+
+.ppbui-scroll::-webkit-scrollbar-thumb {
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-radius-badge);
+  background: var(--ppbui-scrollbar-thumb);
+}
+
+.ppbui-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--ppbui-scrollbar-thumb-hover);
+}
+
+.ppbui-scroll::-webkit-scrollbar-corner {
+  background: var(--ppbui-scrollbar-track);
+}
+
+.ppbui-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.ppbui-scroll-scope,
+.ppbui-scroll-scope * {
+  scrollbar-width: auto !important;
+  scrollbar-color: var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track) !important;
+}
+
+.ppbui-scroll-scope::-webkit-scrollbar,
+.ppbui-scroll-scope *::-webkit-scrollbar {
+  width: var(--ppbui-scrollbar-size) !important;
+  height: var(--ppbui-scrollbar-size) !important;
+}
+
+.ppbui-scroll-scope::-webkit-scrollbar-track,
+.ppbui-scroll-scope *::-webkit-scrollbar-track {
+  border: var(--ppbui-separator-width) solid var(--ppbui-border) !important;
+  border-radius: var(--ppbui-radius-badge) !important;
+  background: var(--ppbui-scrollbar-track) !important;
+  box-shadow: none !important;
+}
+
+.ppbui-scroll-scope::-webkit-scrollbar-thumb,
+.ppbui-scroll-scope *::-webkit-scrollbar-thumb {
+  border: var(--ppbui-border-width) solid var(--ppbui-border-strong) !important;
+  border-radius: var(--ppbui-radius-badge) !important;
+  background: var(--ppbui-scrollbar-thumb) !important;
+  background-clip: border-box !important;
+  box-shadow: none !important;
+}
+
+.ppbui-scroll-scope::-webkit-scrollbar-thumb:hover,
+.ppbui-scroll-scope *::-webkit-scrollbar-thumb:hover {
+  background: var(--ppbui-scrollbar-thumb-hover) !important;
+}
+
+.ppbui-scroll-scope::-webkit-scrollbar-corner,
+.ppbui-scroll-scope *::-webkit-scrollbar-corner {
+  border-radius: var(--ppbui-radius-badge) !important;
+  background: var(--ppbui-scrollbar-track) !important;
+}
+
+.ppbui-scroll-scope::-webkit-scrollbar-button,
+.ppbui-scroll-scope *::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+@supports selector(::-webkit-scrollbar) {
+  .ppbui-scroll,
+  .ppbui-scroll-scope,
+  .ppbui-scroll-scope * { scrollbar-color: auto !important; }
+}
+
+.ppbui-scroll-x { overflow-x: auto; }
+.ppbui-scroll-y { overflow-y: auto; }
+
+.ppbui-separator {
+  height: var(--ppbui-separator-width);
+  border: 0;
+  background: var(--ppbui-border);
+}
+
+.ppbui-progress {
+  position: relative;
+  overflow: hidden;
+  min-height: 8px;
+  border: var(--ppbui-separator-width) solid var(--ppbui-border-strong);
+  border-radius: var(--ppbui-radius);
+  background: var(--ppbui-bg-0);
+}
+
+.ppbui-progress__fill {
+  display: block;
+  width: var(--ppbui-progress-value, 0%);
+  height: 100%;
+  background: var(--ppbui-progress-color, var(--ppbui-accent));
+}

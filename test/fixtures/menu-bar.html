@@ -1,0 +1,76 @@
+<!-- Synthetic toolbar contract fixture. It intentionally models only the host DOM
+     structure Better UI integrates with; it is not a captured PokePixel document. -->
+<div class="pokeidle-top-toolbar">
+  <button class="pokeidle-top-toolbar__btn" data-menu-id="inventory" aria-label="Inventory" aria-keyshortcuts="I"><img class="pokeidle-top-toolbar__icon" alt="Inventory" src="/synthetic/inventory.png"><span class="pokeidle-top-toolbar__label">Inventory</span></button>
+  <button class="pokeidle-top-toolbar__btn" data-menu-id="hunts" aria-label="Hunts" aria-keyshortcuts="H"><img class="pokeidle-top-toolbar__icon" alt="Hunts" src="/synthetic/hunts.png"><span class="pokeidle-top-toolbar__label">Hunts</span></button>
+
+  <div class="pokeidle-top-toolbar__group" data-menu-group="social">
+    <button class="pokeidle-top-toolbar__btn pokeidle-top-toolbar__group-trigger" data-menu-id="social" type="button" aria-label="Social" aria-haspopup="menu" aria-expanded="false" aria-controls="synthetic-menu-social"><img class="pokeidle-top-toolbar__icon" alt="Social" src="/synthetic/social.png"><span class="pokeidle-top-toolbar__label">Social</span></button>
+    <div class="pokeidle-top-toolbar__dropdown" id="synthetic-menu-social" role="menu">
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="friends" aria-label="Friends" aria-keyshortcuts="F"><img class="pokeidle-top-toolbar__icon" alt="Friends" src="/synthetic/friends.png"><span>Friends</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="ranking" aria-label="Ranking" aria-keyshortcuts="R"><img class="pokeidle-top-toolbar__icon" alt="Ranking" src="/synthetic/ranking.png"><span>Ranking</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="guild" aria-label="Guild" aria-keyshortcuts="Q"><img class="pokeidle-top-toolbar__icon" alt="Guild" src="/synthetic/guild.png"><span>Guild</span></button>
+    </div>
+  </div>
+
+  <button class="pokeidle-top-toolbar__btn" data-menu-id="private-message" aria-label="Mailbox" aria-keyshortcuts="N"><img class="pokeidle-top-toolbar__icon" alt="Mailbox" src="/synthetic/private-message.png"><span class="pokeidle-top-toolbar__label">Mailbox</span><span class="pokeidle-top-toolbar__badge" hidden>0</span></button>
+  <button class="pokeidle-top-toolbar__btn" data-menu-id="beta-goals" aria-label="Pack"><img class="pokeidle-top-toolbar__icon" alt="Pack" src="/synthetic/beta-goals.png"><span class="pokeidle-top-toolbar__label">Pack</span></button>
+
+  <div class="pokeidle-top-toolbar__group" data-menu-group="player">
+    <button class="pokeidle-top-toolbar__btn pokeidle-top-toolbar__group-trigger" data-menu-id="player" type="button" aria-label="Player" aria-haspopup="menu" aria-expanded="false" aria-controls="synthetic-menu-player"><img class="pokeidle-top-toolbar__icon" alt="Player" src="/synthetic/player.png"><span class="pokeidle-top-toolbar__label">Player</span></button>
+    <div class="pokeidle-top-toolbar__dropdown" id="synthetic-menu-player" role="menu">
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="team" aria-label="Team" aria-keyshortcuts="E"><img class="pokeidle-top-toolbar__icon" alt="Team" src="/synthetic/team.png"><span>Team</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="encyclopedia" aria-label="Pokédex" aria-keyshortcuts="K"><img class="pokeidle-top-toolbar__icon" alt="Pokédex" src="/synthetic/encyclopedia.png"><span>Pokédex</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="profile" aria-label="Profile" aria-keyshortcuts="P"><img class="pokeidle-top-toolbar__icon" alt="Profile" src="/synthetic/profile.png"><span>Profile</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="capture-records" aria-label="Capture Records" aria-keyshortcuts="C"><img class="pokeidle-top-toolbar__icon" alt="Capture Records" src="/synthetic/capture-records.png"><span>Capture Records</span></button>
+    </div>
+  </div>
+
+  <div class="pokeidle-top-toolbar__group" data-menu-group="city">
+    <button class="pokeidle-top-toolbar__btn pokeidle-top-toolbar__group-trigger" data-menu-id="city" type="button" aria-label="City" aria-haspopup="menu" aria-expanded="false" aria-controls="synthetic-menu-city"><span class="pokeidle-top-toolbar__label">City</span></button>
+    <div class="pokeidle-top-toolbar__dropdown" id="synthetic-menu-city" role="menu">
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="npc-shop" aria-label="npc-shop"><span>npc-shop</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="market" aria-label="market"><span>market</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="storage" aria-label="storage"><span>storage</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="professions" aria-label="professions"><span>professions</span></button>
+    </div>
+  </div>
+
+  <div class="pokeidle-top-toolbar__group" data-menu-group="activities">
+    <button class="pokeidle-top-toolbar__btn pokeidle-top-toolbar__group-trigger" data-menu-id="activities" type="button" aria-label="Quests" aria-haspopup="menu" aria-expanded="false" aria-controls="synthetic-menu-activities"><img class="pokeidle-top-toolbar__icon" alt="Quests" src="/synthetic/activities.png"><span class="pokeidle-top-toolbar__label">Quests</span><span class="pokeidle-top-toolbar__badge pokeidle-top-toolbar__reward-badge" hidden>0</span></button>
+    <div class="pokeidle-top-toolbar__dropdown" id="synthetic-menu-activities" role="menu">
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="quests" aria-label="Quests" aria-keyshortcuts="M"><img class="pokeidle-top-toolbar__icon" alt="Quests" src="/synthetic/quests.png"><span>Quests</span><span class="pokeidle-top-toolbar__badge pokeidle-top-toolbar__reward-badge" hidden>0</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="battle-pass" aria-label="Battle Pass" aria-keyshortcuts="B"><img class="pokeidle-top-toolbar__icon" alt="Battle Pass" src="/synthetic/battle-pass.png"><span>Battle Pass</span><span class="pokeidle-top-toolbar__badge pokeidle-top-toolbar__reward-badge" hidden>0</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="promotion" aria-label="Promotion" aria-keyshortcuts="X"><img class="pokeidle-top-toolbar__icon" alt="Promotion" src="/synthetic/promotion.png"><span>Promotion</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="daily-gift" aria-label="Daily Login" aria-keyshortcuts="Y"><img class="pokeidle-top-toolbar__icon" alt="Daily Login" src="/synthetic/daily-gift.png"><span>Daily Login</span><span class="pokeidle-top-toolbar__badge pokeidle-top-toolbar__reward-badge" hidden>0</span></button>
+    </div>
+  </div>
+
+  <div class="pokeidle-top-toolbar__group" data-menu-group="events">
+    <button class="pokeidle-top-toolbar__btn pokeidle-top-toolbar__group-trigger" data-menu-id="events" type="button" aria-label="Events" aria-haspopup="menu" aria-expanded="false" aria-controls="synthetic-menu-events"><img class="pokeidle-top-toolbar__icon" alt="Events" src="/synthetic/events.png"><span class="pokeidle-top-toolbar__label">Events</span></button>
+    <div class="pokeidle-top-toolbar__dropdown" id="synthetic-menu-events" role="menu">
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="arena-pvp" aria-label="Ranked PvP" aria-keyshortcuts="V"><img class="pokeidle-top-toolbar__icon" alt="Ranked PvP" src="/synthetic/arena-pvp.png"><span>Ranked PvP</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="world-boss" aria-label="World Boss" hidden><img class="pokeidle-top-toolbar__icon" alt="World Boss" src="/synthetic/world-boss.png"><span>World Boss</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="species-goals" aria-label="Mastery" aria-keyshortcuts="G"><img class="pokeidle-top-toolbar__icon" alt="Mastery" src="/synthetic/species-goals.png"><span>Mastery</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="streamer-referral" aria-label="Partner" hidden><img class="pokeidle-top-toolbar__icon" alt="Partner" src="/synthetic/streamer-referral.png"><span>Partner</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="event-calendar" aria-label="event-calendar"><span>event-calendar</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="gacha" aria-label="gacha"><span>gacha</span></button>
+    </div>
+  </div>
+
+  <button class="pokeidle-top-toolbar__btn" data-menu-id="premium" aria-label="Premium Shop" aria-keyshortcuts="L"><img class="pokeidle-top-toolbar__icon" alt="Premium Shop" src="/synthetic/premium.png"><span class="pokeidle-top-toolbar__label">Premium Shop</span></button>
+
+  <div class="pokeidle-top-toolbar__group" data-menu-group="automation">
+    <button class="pokeidle-top-toolbar__btn pokeidle-top-toolbar__group-trigger" data-menu-id="automation" type="button" aria-label="Automation" aria-haspopup="menu" aria-expanded="false" aria-controls="synthetic-menu-automation"><img class="pokeidle-top-toolbar__icon" alt="Automation" src="/synthetic/automation.png"><span class="pokeidle-top-toolbar__label">Automation</span></button>
+    <div class="pokeidle-top-toolbar__dropdown" id="synthetic-menu-automation" role="menu">
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="auto-helper" aria-label="Auto Helper" aria-keyshortcuts="U"><img class="pokeidle-top-toolbar__icon" alt="Auto Helper" src="/synthetic/auto-helper.png"><span>Auto Helper</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="offline-farm" aria-label="Farm Off"><img class="pokeidle-top-toolbar__icon" alt="Farm Off" src="/synthetic/offline-farm.png"><span>Farm Off</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="hunt-analyzer" aria-label="Hunt Analyzer"><img class="pokeidle-top-toolbar__icon" alt="Hunt Analyzer" src="/synthetic/hunt-analyzer.png"><span>Hunt Analyzer</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="shiny-captures" aria-label="Shiny Captures"><img class="pokeidle-top-toolbar__icon" alt="Shiny Captures" src="/synthetic/shiny-captures.png"><span>Shiny Captures</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="mini-view" aria-label="Mini view"><img class="pokeidle-top-toolbar__icon" alt="Mini view" src="/synthetic/mini-view.png"><span>Mini view</span></button>
+      <button class="pokeidle-top-toolbar__dropdown-btn" data-menu-id="game-admin" aria-label="Administration" hidden><img class="pokeidle-top-toolbar__icon" alt="Administration" src="/synthetic/game-admin.png"><span>Administration</span></button>
+    </div>
+  </div>
+
+  <button class="pokeidle-top-toolbar__btn" data-menu-id="settings" aria-label="Settings" aria-keyshortcuts="O"><img class="pokeidle-top-toolbar__icon" alt="Settings" src="/synthetic/settings.png"><span class="pokeidle-top-toolbar__label">Settings</span></button>
+</div>

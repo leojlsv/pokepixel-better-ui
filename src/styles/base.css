@@ -1,0 +1,41 @@
+.ppbui-surface,
+.ppbui-root,
+.ppbui-window,
+.ppbui-panel,
+.ppbui-section,
+.ppbui-card,
+.ppbui-button,
+.ppbui-input,
+.ppbui-textarea,
+.ppbui-select,
+.ppbui-dialog,
+.ppbui-toolbar,
+.ppbui-list,
+.ppbui-list-row,
+.ppbui-status,
+.ppbui-badge,
+.ppbui-progress {
+  box-sizing: border-box;
+}
+
+.ppbui-surface,
+.ppbui-root,
+.ppbui-window,
+.ppbui-panel,
+.ppbui-section,
+.ppbui-card,
+.ppbui-dialog {
+  color: var(--ppbui-text);
+  font-family: var(--ppbui-font-body);
+  font-size: var(--ppbui-font-size-body);
+  line-height: var(--ppbui-line-height-body);
+}
+
+.ppbui-data {
+  font-family: var(--ppbui-font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.ppbui-pixel-sprite {
+  image-rendering: pixelated;
+}

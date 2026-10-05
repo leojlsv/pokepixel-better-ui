@@ -1,0 +1,111 @@
+:root {
+  --ppbui-pixel-unit: 2px;
+
+  --ppbui-space-1: 2px;
+  --ppbui-space-2: 4px;
+  --ppbui-space-3: 6px;
+  --ppbui-space-4: 8px;
+  --ppbui-space-5: 12px;
+  --ppbui-space-6: 16px;
+  --ppbui-space-7: 24px;
+
+  /* Legacy semantic swatches retained for gameplay/status meaning, not neutral surface ownership. */
+  --ppbui-m16-charcoal: #232228;
+  --ppbui-m16-navy: #284261;
+  --ppbui-m16-stone: #5f5854;
+  --ppbui-m16-weathered: #878573;
+  --ppbui-m16-sand: #b8b095;
+  --ppbui-m16-mist: #c3d5c7;
+  --ppbui-m16-ivory: #ebecdc;
+  --ppbui-m16-blue: #2485a6;
+  --ppbui-m16-cyan: #54bad2;
+  --ppbui-m16-brown: #754d45;
+  --ppbui-m16-red: #c65046;
+  --ppbui-m16-salmon: #e6928a;
+  --ppbui-m16-green-dark: #1e7453;
+  --ppbui-m16-green: #55a058;
+  --ppbui-m16-lime: #a1bf41;
+  --ppbui-m16-gold: #e3c054;
+
+  /* Product-wide Game Palette. Alpha belongs to surfaces only; structural lines stay opaque. */
+  --ppbui-surface-window: rgba(22, 29, 32, .92);
+  --ppbui-surface-interactive: rgba(35, 44, 46, .96);
+  --ppbui-surface-values: rgba(22, 29, 32, .85);
+  --ppbui-line: #6b6543;
+  --ppbui-line-width: 1px;
+  --ppbui-art-neutral: #161d20;
+
+  /* Compatibility role aliases consumed by the existing modules. */
+  --ppbui-bg-0: var(--ppbui-surface-values);
+  --ppbui-bg-1: var(--ppbui-surface-window);
+  --ppbui-bg-2: var(--ppbui-surface-interactive);
+  --ppbui-bg-3: var(--ppbui-surface-interactive);
+  --ppbui-action-bg: var(--ppbui-surface-interactive);
+  --ppbui-border: var(--ppbui-line);
+  --ppbui-border-strong: var(--ppbui-line);
+
+  --ppbui-text: var(--ppbui-m16-ivory);
+  --ppbui-text-muted: var(--ppbui-m16-mist);
+  --ppbui-text-subtle: var(--ppbui-m16-mist);
+  --ppbui-text-inverse: var(--ppbui-m16-charcoal);
+
+  --ppbui-accent: var(--ppbui-m16-blue);
+  --ppbui-accent-hi: var(--ppbui-m16-cyan);
+  --ppbui-accent-low: var(--ppbui-m16-navy);
+  --ppbui-selected: var(--ppbui-m16-gold);
+  --ppbui-focus: var(--ppbui-m16-cyan);
+
+  --ppbui-success: var(--ppbui-m16-green);
+  --ppbui-success-text: #69a66f;
+  --ppbui-success-bg: var(--ppbui-m16-green-dark);
+  --ppbui-warning: var(--ppbui-m16-lime);
+  --ppbui-danger: var(--ppbui-m16-red);
+  --ppbui-danger-hi: var(--ppbui-m16-salmon);
+  --ppbui-danger-text: var(--ppbui-danger-hi);
+  --ppbui-danger-bg: var(--ppbui-m16-brown);
+  --ppbui-info: var(--ppbui-m16-blue);
+
+  /* Current game typography observed in the native local reference CSS. */
+  --ppbui-font-body: "Inter", "Segoe UI", Arial, sans-serif;
+  --ppbui-font-data: "Inter", "Segoe UI", Arial, sans-serif;
+  --ppbui-font-display: "Cinzel", Georgia, serif;
+  --ppbui-font-size-title: 15px;
+  --ppbui-font-size-section: 12px;
+  --ppbui-font-size-body: 12px;
+  --ppbui-font-size-secondary: 11px;
+  --ppbui-font-size-meta: 10px;
+  --ppbui-line-height-tight: 1.2;
+  --ppbui-line-height-body: 1.35;
+  --ppbui-line-height-meta: 1.25;
+
+  --ppbui-border-width: var(--ppbui-line-width);
+  --ppbui-separator-width: var(--ppbui-line-width);
+  --ppbui-focus-width: 2px;
+  /* Single project geometry: match the current native PokéPixel reference. */
+  --ppbui-window-radius: 8px;
+  --ppbui-radius: 5px;
+  --ppbui-control-radius: 5px;
+  --ppbui-radius-badge: 4px;
+  --ppbui-shadow-color: rgba(0, 0, 0, .28);
+  --ppbui-shadow: 0 8px 24px var(--ppbui-shadow-color);
+  --ppbui-shadow-raised: var(--ppbui-shadow);
+
+  --ppbui-control-height: 28px;
+  --ppbui-action-height: 28px;
+  --ppbui-icon-button-size: 28px;
+  --ppbui-button-1x1-size: 28px;
+  --ppbui-button-2x1-width: 56px;
+  --ppbui-button-2x1-height: 28px;
+  --ppbui-control-padding-x: 8px;
+  --ppbui-compact-control-height: 24px;
+  --ppbui-compact-icon-button-size: 24px;
+  --ppbui-compact-control-padding-x: 5px;
+
+  --ppbui-scrollbar-size: 10px;
+  --ppbui-scrollbar-track: var(--ppbui-surface-values);
+  --ppbui-scrollbar-thumb: var(--ppbui-line);
+  --ppbui-scrollbar-thumb-hover: var(--ppbui-line);
+
+  --ppbui-motion-fast: 100ms;
+  --ppbui-motion-panel: 160ms;
+}

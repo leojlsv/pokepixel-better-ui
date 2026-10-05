@@ -1,0 +1,33 @@
+export const inventoryConfig = {
+  id: "inventory",
+  key: "ppbui:inventory-order:v1",
+  rarities: ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"],
+  views: ["grid", "list", "grouped"],
+  viewText: {
+    pt: { price: "Venda NPC (Unidade)", label: "Visualização", modes: ["Grade", "Lista", "Categorias"], other: "Outros", quantity: "Quantidade", level: "Nível", quality: "Qualidade", equipped: "Na equipe", locked: "Bloqueado" },
+    en: { price: "NPC Sell Price (Per Unit)", label: "View", modes: ["Grid", "List", "Categories"], other: "Other", quantity: "Quantity", level: "Level", quality: "Quality", equipped: "In team", locked: "Locked" },
+    es: { price: "Venta NPC (Unidad)", label: "Vista", modes: ["Cuadrícula", "Lista", "Categorías"], other: "Otros", quantity: "Cantidad", level: "Nivel", quality: "Calidad", equipped: "En equipo", locked: "Bloqueado" },
+    zh: { price: "NPC单件售价", label: "视图", modes: ["网格", "列表", "分类"], other: "其他", quantity: "数量", level: "等级", quality: "品质", equipped: "队伍中", locked: "已锁定" },
+  },
+  selectors: {
+    root: ".inventory-window--slots",
+    toolbar: ".inventory-slots-toolbar",
+    search: "input.game-window__search",
+    categorySelect: "select.game-window__select:not([data-ppbui-order]):not([data-ppbui-inventory-category-proxy])",
+    categoryTabs: ".inventory-category-tabs",
+    categoryTab: ".inventory-category-tab[data-category]",
+    grid: ".inventory-slot-grid",
+    slot: "button.inventory-slot:not(.is-empty)",
+    level: ".inventory-slot__pokemon-level",
+    quantity: ".inventory-slot__quantity",
+    body: ".pokeidle-panel__body",
+    locked: ".inventory-slot__locked-mark",
+  },
+  modes: ["original", "name", "quantity", "level", "iv", "quality", "price", "rarity"],
+  text: {
+    pt: { unavailableValues: "entradas sem esse dado carregado; posições preservadas.", unavailable: "Pokémon sem esse dado carregado; posições preservadas.", name: "Inventory", description: "Busca e categorias nativas com ordenação explícita.", order: "Ordenar", modes: ["Ordem Original","Nome: A–Z","Itens: Maior Quantidade","Pokémon: Maior Nível","Pokémon: Maior IV","Pokémon: Maior Qualidade","Preço De Venda: Maior Primeiro","Raridade: Maior Primeiro"], apply: "Aplicar", clear: "Limpar", shown: "entradas exibidas", scope: "Categoria", query: "Busca", empty: "Nenhum resultado. Limpe os filtros para conferir a mochila.", unsaved: "Ordem válida só nesta sessão: não foi possível salvar." },
+    en: { unavailableValues: "entries without this loaded value; positions preserved.", unavailable: "Pokémon without this loaded value; positions preserved.", name: "Inventory", description: "Native search and categories with explicit sorting.", order: "Sort", modes: ["Original Order","Name: A–Z","Items: Highest Quantity","Pokémon: Highest Level","Pokémon: Highest IV","Pokémon: Highest Quality","Price: Highest First","Rarity: Highest First"], apply: "Re-sort", clear: "Clear filters", shown: "entries shown", scope: "Category", query: "Search", empty: "No results. Clear filters to check the backpack.", unsaved: "Session-only order: could not save." },
+    es: { unavailableValues: "entradas sin este dato cargado; posiciones conservadas.", unavailable: "Pokémon sin este dato cargado; posiciones conservadas.", name: "Inventario", description: "Búsqueda y categorías nativas con orden explícito.", order: "Ordenar", modes: ["Orden Original","Nombre: A–Z","Objetos: Mayor Cantidad","Pokémon: Mayor Nivel","Pokémon: Mayor IV","Pokémon: Mayor Calidad","Precio De Venta: Mayor Primero","Rareza: Mayor Primero"], apply: "Reordenar", clear: "Limpiar filtros", shown: "entradas mostradas", scope: "Categoría", query: "Búsqueda", empty: "Sin resultados. Limpia los filtros para revisar la mochila.", unsaved: "Orden solo para esta sesión: no se pudo guardar." },
+    zh: { unavailableValues: "个条目未加载此数据，保留位置。", unavailable: "只宝可梦未加载此数据，保留位置。", name: "背包", description: "保留原生搜索和分类，添加手动排序。", order: "排序", modes: ["原始顺序","名称排序","物品：数量降序","宝可梦：等级降序","宝可梦：IV降序","宝可梦：品质降序","售价：降序","稀有度：降序"], apply: "重新排序", clear: "清除筛选", shown: "个条目", scope: "分类", query: "搜索", empty: "无结果。清除筛选以查看背包。", unsaved: "无法保存，排序仅在本次会话生效。" },
+  },
+};
