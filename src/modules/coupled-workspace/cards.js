@@ -323,6 +323,14 @@ function nativeItemRarity(win, item, itemId, name) {
   return "";
 }
 
+function nativeItemIconIndex(item) {
+  const raw = item?.icon_index ?? item?.iconIndex
+    ?? item?.item?.icon_index ?? item?.item?.iconIndex;
+  if (raw === null || raw === undefined || raw === "") return null;
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= 0 ? value : null;
+}
+
 function requestLootCatalog(win, state, requiredItemIds = []) {
   const required = [...new Set(requiredItemIds.map(itemId => String(itemId || "").trim()).filter(Boolean))];
   const now = Date.now();
@@ -340,7 +348,12 @@ function requestLootCatalog(win, state, requiredItemIds = []) {
         const itemId = String(item?.item_id ?? item?.id ?? item?.item?.id ?? "").trim();
         if (!itemId) continue;
         const name = String(item?.name || item?.item?.name || itemId).trim() || itemId;
-        next.set(itemId, { itemId, name, rarity:nativeItemRarity(win, item, itemId, name) });
+        next.set(itemId, {
+          itemId,
+          name,
+          rarity:nativeItemRarity(win, item, itemId, name),
+          iconIndex:nativeItemIconIndex(item),
+        });
       }
       state.lootCatalog = next;
       state.lootCatalogLoaded = true;
@@ -357,6 +370,75 @@ function requestLootCatalog(win, state, requiredItemIds = []) {
     .finally(() => {
       if (!state.disposed) state.lootCatalogRequest = null;
     });
+}
+
+function lootSummaryItems(rows, itemsOf, itemMeta, itemMatches) {
+  const aggregated = new Map();
+  for (const row of rows) {
+    for (const item of itemsOf(row)) {
+      if (!itemMatches(item)) continue;
+      const itemId = String(item?.itemId || "").trim();
+      if (!itemId) continue;
+      const qty = Number(item?.qty);
+      const current = aggregated.get(itemId) || { itemId, qty:0 };
+      current.qty += Number.isFinite(qty) && qty > 0 ? qty : 0;
+      aggregated.set(itemId, current);
+    }
+  }
+  const rarityRank = rarity => {
+    const index = ITEM_RARITIES.indexOf(rarity);
+    return index === -1 ? ITEM_RARITIES.length : index;
+  };
+  return [...aggregated.values()]
+    .map(entry => ({ ...entry, meta:itemMeta(entry) }))
+    .sort((a, b) => (
+      rarityRank(a.meta.rarity) - rarityRank(b.meta.rarity)
+      || (a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0)
+    ));
+}
+
+function renderLootSummary(root, rows, itemsOf, itemMeta, itemMatches, state) {
+  const summary = cardNode(root, "[data-card-loot-summary]");
+  if (!summary) return;
+  summary.replaceChildren();
+  summary.setAttribute("aria-label", state.copy.items);
+  const locale = state.locale || state.copy?.locale || COPY.en.locale;
+  const entries = lootSummaryItems(rows, itemsOf, itemMeta, itemMatches);
+  summary.hidden = entries.length === 0;
+  for (const entry of entries) {
+    const rarity = entry.meta.rarity || "";
+    const rarityLabel = rarity
+      ? (state.rarityLabels[rarity] || rarity)
+      : state.copy.noItemRarity;
+    const quantity = number(entry.qty, 0, locale);
+    const name = entry.meta.name || entry.itemId;
+    const tile = root.ownerDocument.createElement("span");
+    tile.className = "ppbui-cards-loot-drop";
+    tile.dataset.rarity = rarity || "unknown";
+    tile.dataset.itemId = entry.itemId;
+    tile.setAttribute("role", "listitem");
+    tile.setAttribute("aria-label", `${name}, ×${quantity}, ${rarityLabel}`);
+    tile.title = `${name} · ×${quantity} · ${rarityLabel}`;
+
+    const icon = root.ownerDocument.createElement("span");
+    icon.className = "ppbui-cards-loot-drop-icon";
+    icon.setAttribute("aria-hidden", "true");
+    if (entry.meta.iconIndex !== null && entry.meta.iconIndex !== undefined) {
+      const iconIndex = entry.meta.iconIndex;
+      icon.style.backgroundImage = 'url("img/system/IconSet.png?v=20260717-reference-iconset-1")';
+      icon.style.backgroundPosition = `-${(iconIndex % 16) * 32}px -${Math.floor(iconIndex / 16) * 32}px`;
+    } else {
+      icon.classList.add("ppbui-cards-loot-drop-icon--fallback");
+      icon.textContent = "?";
+    }
+
+    const qty = root.ownerDocument.createElement("span");
+    qty.className = "ppbui-cards-loot-drop-qty";
+    qty.textContent = `×${quantity}`;
+    qty.setAttribute("aria-hidden", "true");
+    tile.append(icon, qty);
+    summary.append(tile);
+  }
 }
 
 function cssImageUrl(value) {
@@ -844,7 +926,12 @@ function renderLootHistory(root, lootHistory, available, state) {
   const itemsOf = entry => Array.isArray(entry?.items) ? entry.items.filter(item => item && typeof item === "object") : [];
   const itemIds = rows.flatMap(row => itemsOf(row).map(item => item.itemId));
   if (itemIds.some(Boolean)) requestLootCatalog(root.ownerDocument.defaultView, state, itemIds);
-  const itemMeta = item => state.lootCatalog.get(String(item?.itemId || "")) || { itemId:String(item?.itemId || ""), name:String(item?.itemId || ""), rarity:"" };
+  const itemMeta = item => state.lootCatalog.get(String(item?.itemId || "")) || {
+    itemId:String(item?.itemId || ""),
+    name:String(item?.itemId || ""),
+    rarity:"",
+    iconIndex:null,
+  };
   const itemMatches = item => {
     if (!state.lootRarity) return true;
     const rarity = itemMeta(item).rarity;
@@ -860,6 +947,7 @@ function renderLootHistory(root, lootHistory, available, state) {
   body.dataset.signature = signature;
   body.replaceChildren();
   state.lootTimes = [];
+  renderLootSummary(root, filteredRows, itemsOf, itemMeta, itemMatches, state);
   if (filteredRows.length === 0) {
     const emptyRow = root.ownerDocument.createElement("div");
     emptyRow.className = "ppbui-cards-empty-row";
@@ -1053,6 +1141,7 @@ function markup(context) {
           <div class="ppbui-cards-history-filters ppbui-cards-loot-filters">
             <label><span data-card-copy="itemRarity">${copy.itemRarity}</span><select data-card-loot-rarity><option value="" data-card-copy="all">${copy.all}</option>${lootRarities}<option value="none" data-card-copy="noItemRarity">${copy.noItemRarity}</option></select></label>
           </div>
+          <div class="ppbui-cards-loot-summary" role="list" aria-label="${copy.items}" data-card-loot-summary hidden></div>
           <div class="ppbui-cards-loot-table" role="list" data-card-aria="lootTable">
             <div data-card-loot-body></div>
           </div>
@@ -1126,6 +1215,7 @@ function styles() {
     .ppbui-cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}.ppbui-cards-card{--section-accent:var(--ppbui-border-strong,#6b6543);min-width:0;height:100%;padding:10px;border:1px solid var(--ppbui-border,#6b6543);border-top:1px solid var(--section-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-card--summary{--section-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-card--rarity{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-card--capture{--section-accent:var(--ppbui-success,#55a058)}.ppbui-cards-history{--section-accent:var(--ppbui-info,#2485a6);display:flex;min-height:0;flex-direction:column;grid-column:1/-1}.ppbui-cards-economy{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}.ppbui-cards-stat-grid>div{min-width:0;padding:7px 8px;border-left:1px solid color-mix(in srgb,var(--section-accent,var(--group-accent,#878573)) 68%,transparent);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-stat-grid span{display:block;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:650}.ppbui-cards-stat-grid strong{display:block;margin-top:3px;color:var(--ppbui-text,#ebecdc);font:800 14px/1.15 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums}.ppbui-cards-stat-grid strong[data-tone="positive"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-stat-grid strong[data-tone="negative"]{color:var(--ppbui-danger-hi,#e6928a)}
     .ppbui-cards-rarity{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}.ppbui-cards-rarity>div{display:grid;grid-template-columns:minmax(58px,1fr) auto;grid-template-rows:auto auto;align-items:center;min-width:0;min-height:36px;border:1px solid color-mix(in srgb,var(--rarity-color) 65%,var(--ppbui-border,#6b6543));border-left:1px solid var(--rarity-color);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-rarity span{grid-row:1/-1;min-width:0;padding:0 6px;color:var(--rarity-color);font-size:9px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-rarity strong{padding:2px 7px 0;color:var(--ppbui-text,#ebecdc);font:800 13px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;text-align:right}.ppbui-cards-rarity small{padding:1px 7px 2px;color:var(--ppbui-selected,#e3c054);font:800 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.ppbui-cards-rarity small[hidden]{display:none!important}
     .ppbui-cards-story-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}.ppbui-cards-story-head h2{margin:0}.ppbui-cards-story-tabs{display:inline-flex;min-width:0;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius,5px);overflow:hidden}.ppbui-cards-story-tabs button{height:26px;padding:2px 9px;border:0;border-left:1px solid var(--ppbui-border-strong,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-story-tabs button:first-child{border-left:0}.ppbui-cards-story-tabs button[aria-selected="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-story-tabs button:focus-visible{position:relative;z-index:1;outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:-2px}.ppbui-cards-story-panel[hidden]{display:none!important}.ppbui-cards-history-filters{display:flex;align-items:end;justify-content:flex-end;gap:6px;margin-bottom:6px}.ppbui-cards-history-filters label{display:grid;gap:2px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:700;letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-history-filters select{min-width:106px;height:26px;padding:2px 22px 2px 6px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:600 10px/1.2 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-history-filters select:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-loot-filters{justify-content:flex-start}.ppbui-cards-attempt-scroll{width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-labels,.ppbui-cards-attempt{display:grid;grid-template-columns:64px 74px minmax(140px,1fr) 72px 72px 92px 68px 64px;align-items:center;min-width:648px}.ppbui-cards-attempt-labels{margin:0 1px;padding:0;border:1px solid var(--ppbui-border,#6b6543);border-bottom:0;background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.025em;text-transform:uppercase}.ppbui-cards-attempt-labels>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt-labels>[data-attempt-column="1"]{text-align:center}.ppbui-cards-attempt-labels>[data-attempt-column="3"],.ppbui-cards-attempt-labels>[data-attempt-column="6"],.ppbui-cards-attempt-labels>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt-table,.ppbui-cards-loot-table{width:100%;min-width:0;max-height:190px;overflow-y:auto;overflow-x:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-attempt-table{min-width:648px}.ppbui-cards-attempt,.ppbui-cards-loot-row{align-items:center;min-width:0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-attempt{min-height:36px;border-left:1px solid var(--rarity-color,var(--ppbui-border,#6b6543))}.ppbui-cards-attempt:first-child,.ppbui-cards-loot-row:first-child{border-top:0}.ppbui-cards-attempt[data-shiny="true"]{background:var(--ppbui-bg-0,rgba(22,29,32,.85));box-shadow:none}.ppbui-cards-attempt>span{min-width:0;padding:4px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-attempt>[data-attempt-column="1"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7));font-weight:800;text-align:center}.ppbui-cards-attempt>[data-attempt-column="3"],.ppbui-cards-attempt>[data-attempt-column="6"],.ppbui-cards-attempt>[data-attempt-column="7"]{text-align:right}.ppbui-cards-attempt>[data-attempt-column="5"]{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-attempt[data-shiny="true"]>[data-attempt-column="2"]{color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7))}.ppbui-cards-attempt[data-result="captured"]>[data-attempt-column="4"]{color:var(--ppbui-success-text,#69a66f);font-weight:800}.ppbui-cards-attempt[data-result="fled"]>[data-attempt-column="4"]{color:var(--ppbui-danger-hi,#e6928a);font-weight:800}.ppbui-cards-attempt-pokemon{display:flex;align-items:center;gap:5px}.ppbui-cards-attempt-pokemon img{width:28px;height:28px;flex:0 0 28px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-attempt-pokemon strong{min-width:0;overflow:hidden;text-overflow:ellipsis}.ppbui-cards-attempt>.ppbui-cards-attempt-details{grid-column:1/-1;padding:5px 7px;border-top:1px solid var(--ppbui-border,#6b6543);color:var(--ppbui-text-subtle,#c3d5c7);font:600 9px/1.25 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-align:left;white-space:normal}.ppbui-cards-attempt>.ppbui-cards-attempt-details::before{content:attr(data-label) ': ';color:var(--ppbui-text,#ebecdc);font-weight:800}.ppbui-cards-loot-row{display:grid;gap:5px;padding:7px 8px}.ppbui-cards-loot-head{display:grid;grid-template-columns:72px minmax(100px,1fr) auto;align-items:center;gap:8px}.ppbui-cards-loot-head>*{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-head>span{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-head>strong:last-child{color:var(--ppbui-selected,#e3c054);text-align:right}.ppbui-cards-loot-items{display:flex;flex-wrap:wrap;gap:4px;padding:5px 0;border-top:1px solid var(--ppbui-border,#6b6543)}.ppbui-cards-loot-items::before{content:attr(data-label) ':';align-self:center;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px;font-weight:800}.ppbui-cards-loot-item{display:inline-grid;grid-template-columns:auto auto;align-items:center;gap:4px;padding:3px 5px;border-left:2px solid var(--quality-common,#c3d5c7);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-item[data-rarity="weak"]{border-color:var(--quality-weak,#878573)}.ppbui-cards-loot-item[data-rarity="uncommon"]{border-color:var(--quality-uncommon,#55a058)}.ppbui-cards-loot-item[data-rarity="rare"]{border-color:var(--quality-rare,#2485a6)}.ppbui-cards-loot-item[data-rarity="epic"]{border-color:var(--quality-epic,#e3c054)}.ppbui-cards-loot-item[data-rarity="legendary"]{border-color:var(--quality-legendary,#e6928a)}.ppbui-cards-loot-item[data-rarity="mythical"]{border-color:var(--quality-mythical,#54bad2)}.ppbui-cards-loot-item[data-rarity="none"]{border-color:var(--ppbui-border-strong,#6b6543)}.ppbui-cards-loot-item strong{font-size:9px}.ppbui-cards-loot-item small{color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px}.ppbui-cards-loot-item--empty{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-loot-finance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px}.ppbui-cards-loot-finance>span{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;padding:4px 5px;background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-finance b{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font-size:8px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-loot-finance strong{font:800 9px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-empty-row{display:block}.ppbui-cards-empty{display:block;margin:0;padding:14px;color:var(--ppbui-text-subtle,#c3d5c7);text-align:center}
+    .ppbui-cards-loot-summary{display:flex;flex:0 0 auto;align-items:stretch;gap:5px;min-width:0;margin:0 0 6px;padding:0 0 2px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) var(--ppbui-scrollbar-track,rgba(22,29,32,.85));scrollbar-width:thin}.ppbui-cards-loot-summary[hidden]{display:none!important}.ppbui-cards-loot-drop{position:relative;display:grid;width:46px;height:46px;flex:0 0 46px;place-items:center;overflow:hidden;border:1px solid var(--rarity-color,var(--ppbui-border-strong,#6b6543));border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-loot-drop-icon{display:block;width:32px;height:32px;background-repeat:no-repeat;image-rendering:pixelated}.ppbui-cards-loot-drop-icon--fallback{display:grid;place-items:center;background:none;color:var(--ppbui-text-subtle,#c3d5c7);font:800 16px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-loot-drop-qty{position:absolute;right:2px;bottom:2px;min-width:15px;padding:1px 2px;border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.92));color:var(--ppbui-text,#ebecdc);font:800 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-align:center;white-space:nowrap}
     .ppbui-cards-summary-head{position:relative;display:flex;align-items:start;justify-content:space-between;gap:8px;margin-bottom:8px}.ppbui-cards-summary-head h2{margin:0}.ppbui-cards-session-actions{display:flex;gap:4px}.ppbui-cards-session-actions button{height:24px;padding:2px 7px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-radius);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-text,#ebecdc);font:700 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-session-actions button:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-session-actions button:disabled{color:var(--ppbui-text-subtle,#c3d5c7)}.ppbui-cards-summary-head>small{position:absolute;right:0;top:27px;color:var(--ppbui-text-subtle,#c3d5c7);font-size:9px}.ppbui-cards-summary-head>small[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-summary-head>small[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}
     .ppbui-cards-card-head{display:flex;min-width:0;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:9px}.ppbui-cards-card-head h2{min-width:0;margin:0}.ppbui-cards-analyzer-link{flex:0 0 auto;height:24px;padding:2px 7px;border:1px solid var(--ppbui-border-strong,#6b6543);border-radius:var(--ppbui-control-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96));color:var(--ppbui-accent-hi,#54bad2);font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-analyzer-link:hover{border-color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-analyzer-link:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-story-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px;min-width:0}
     .ppbui-cards-economy{border-top-width:1px;background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-economy-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.ppbui-cards-economy-group{--group-accent:var(--ppbui-border-strong,#6b6543);min-width:0;padding:8px;border:1px solid color-mix(in srgb,var(--group-accent) 72%,var(--ppbui-border,#6b6543));border-left:1px solid var(--group-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-economy-group h3{display:flex;align-items:center;min-height:22px;padding:0 5px;border-bottom:1px solid var(--ppbui-border,#6b6543);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-economy-group .ppbui-cards-stat-grid>div{--section-accent:var(--group-accent)}.ppbui-cards-economy-group .ppbui-cards-kpi-primary{grid-column:1/-1;min-height:48px;padding:8px 10px;border-left-width:1px;background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-economy-group .ppbui-cards-kpi-primary span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.035em}.ppbui-cards-economy-group .ppbui-cards-kpi-primary strong{font-size:20px;line-height:1.05}.ppbui-cards-economy-group--revenue{--group-accent:var(--ppbui-selected,#e3c054)}.ppbui-cards-economy-group--profit{--group-accent:var(--ppbui-success,#55a058)}.ppbui-cards-economy-group--xp{--group-accent:var(--ppbui-accent-hi,#54bad2)}

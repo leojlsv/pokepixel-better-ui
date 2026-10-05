@@ -2080,6 +2080,62 @@ test("Loot Story shows dropped items with explicit metadata and item-rarity filt
   assert.equal(body.textContent,"Nenhum loot corresponde à raridade de item selecionada.");
 });
 
+test("Loot Story icon strip aggregates quantities and sorts by rarity without quantity priority", async t => {
+  const now=Date.now();
+  const { app, doc, window, bridge }=setup(t,{analyzerSummary:{
+    protocol:1,available:true,capturedAtMs:now,status:"running",specialHistory:[],
+    lootHistory:[
+      {atMs:now-1000,species:"Dragonite",items:[
+        {itemId:"mythic-shard",qty:999},
+        {itemId:"weak-thread",qty:1},
+        {itemId:"rare-dust",qty:2},
+        {itemId:"mystery-token",qty:700},
+      ]},
+      {atMs:now-2000,species:"Dragonite",items:[
+        {itemId:"weak-thread",qty:4},
+        {itemId:"common-leaf",qty:500},
+      ]},
+    ],
+  }});
+  window.PokeIdle={Api:{async getInventory(){return{inventory:[
+    {item_id:"weak-thread",name:"Weak Thread",rarity:"weak",qty:5,icon_index:1},
+    {item:{id:"common-leaf",name:"Common Leaf",rarity:"common",icon_index:17},qty:500},
+    {item_id:"rare-dust",name:"Rare Dust",rarity:"rare",qty:2},
+    {item_id:"mythic-shard",name:"Mythic Shard",rarity:"mythical",qty:999,icon_index:33},
+    {item_id:"mystery-token",name:"Mystery Token",qty:700,icon_index:2},
+  ]};}}};
+  app.start();
+  bridge.send({type:"ppbui.coupled.capabilities-accepted",protocol:1,requestId:"caps-1",ok:true});
+  bridge.send({type:"ppbui.coupled.set-view",protocol:1,viewMode:"cards"});
+  doc.querySelector('[data-card-story-tab="loot"]').click();
+  await settle();
+
+  const filter=doc.querySelector("[data-card-loot-rarity]");
+  const summary=doc.querySelector("[data-card-loot-summary]");
+  const table=doc.querySelector(".ppbui-cards-loot-table");
+  assert.equal(summary.previousElementSibling?.contains(filter),true,"icon strip is directly below the rarity filter");
+  assert.equal(summary.nextElementSibling,table,"icon strip is directly above the loot history table");
+  assert.equal(summary.hidden,false);
+  let tiles=[...summary.querySelectorAll(".ppbui-cards-loot-drop")];
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),[
+    "weak-thread","common-leaf","rare-dust","mythic-shard","mystery-token",
+  ],"rarity rank controls order; unknown rarity follows the seven canonical ranks");
+  assert.equal(tiles[0].querySelector(".ppbui-cards-loot-drop-qty")?.textContent,"×5","repeated drops aggregate by item ID");
+  assert.equal(tiles[3].querySelector(".ppbui-cards-loot-drop-qty")?.textContent,"×999","large quantity does not move Mythical ahead of lower rarities");
+  assert.match(tiles[0].getAttribute("aria-label"),/Weak Thread, ×5/);
+  assert.match(tiles[0].querySelector(".ppbui-cards-loot-drop-icon")?.style.backgroundImage,/IconSet\.png/);
+  assert.equal(tiles[1].querySelector(".ppbui-cards-loot-drop-icon")?.style.backgroundPosition,"-32px -32px");
+  assert.equal(tiles[2].querySelector(".ppbui-cards-loot-drop-icon")?.classList.contains("ppbui-cards-loot-drop-icon--fallback"),true);
+  assert.equal(tiles[4].dataset.rarity,"unknown");
+
+  filter.value="rare";
+  filter.dispatchEvent(new window.Event("change"));
+  tiles=[...summary.querySelectorAll(".ppbui-cards-loot-drop")];
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["rare-dust"],"item-rarity filter scopes the visual strip");
+  assert.match(doc.querySelector("[data-card-loot-body]").textContent,/Rare Dust/);
+  assert.doesNotMatch(doc.querySelector("[data-card-loot-body]").textContent,/Weak Thread|Mythic Shard/);
+});
+
 test("Loot Story refreshes native metadata when a newly dropped item was not in the first catalog", async t => {
   const now = Date.now();
   const first = {

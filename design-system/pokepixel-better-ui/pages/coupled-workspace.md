@@ -378,6 +378,15 @@ invalid candidate5 architecture.
   unclassified state. Native inventory metadata may arrive either on the inventory entry itself or
   on its nested `item` object; explicit localized rarity labels are normalized to the same canonical
   filter keys, while rarity is still never guessed from item id/name/value.
+  Directly below that filter and above the history list, Loot Story presents one compact,
+  non-interactive tile per distinct dropped item. Tiles stay in one horizontal row with local
+  horizontal overflow when required, reuse the native item icon when `icon_index` is available,
+  expose the aggregated quantity, and use the canonical rarity color only for their border.
+  Their ordering is strictly **Weak → Common → Uncommon → Rare → Epic → Legendary → Mythical**;
+  aggregate quantity never affects position. Same-rarity ties use stable item ID ordering and
+  items without trustworthy rarity metadata follow the canonical seven with neutral border chrome.
+  The active item-rarity filter scopes this visual strip together with the row item list while
+  preserving the existing financial-total semantics.
 
 ### Host shell and Hunt analytics
 

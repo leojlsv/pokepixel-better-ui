@@ -4,6 +4,22 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Card Mode / Loot Story — preservação da altura da faixa de drops, candidato 0.2.176 (2026-10-05):**
+  impede que a faixa visual de drops seja comprimida pelo layout flex quando o card de Story
+  possui pouca altura disponível. A faixa agora preserva sua altura intrínseca e a tabela continua
+  sendo o elemento flexível que ocupa o espaço restante, mantendo os ícones totalmente visíveis
+  acima do histórico. **Validado e aprovado in-game pelo Product Owner em 2026-10-05.**
+
+- **Card Mode / Loot Story — faixa visual de drops por raridade, candidato 0.2.175 (2026-10-05):**
+  adiciona entre o filtro de raridade e o histórico uma faixa horizontal com um tile por item
+  dropado, usando o `icon_index` nativo do Inventory, quantidade agregada e borda pela raridade.
+  A posição é determinada exclusivamente pela ordem canônica
+  `Weak → Common → Uncommon → Rare → Epic → Legendary → Mythical`; quantidade nunca participa
+  da ordenação. Empates usam `itemId` e itens sem raridade confiável aparecem ao final com borda
+  neutra. A faixa acompanha o filtro existente e possui scroll horizontal local quando necessário,
+  sem alterar o contrato do Hunt Analyzer, cálculos financeiros ou gameplay.
+  **Pendente de validação in-game pelo Product Owner.**
+
 - **Better UI panel — product identity header, candidato 0.2.174 (2026-10-05):**
   substitui o cabeçalho solto `by Rhyxus` / `Better UI modules` por uma identidade compacta
   com logo, `Better UI`, badge da versão atual e `by Rhyxus`. A versão exibida é injetada

@@ -7643,6 +7643,7 @@ namespace PokePixel.CoupledWorkspace
             PerformLayout();
             UpdateCommandDeck();
             Application.DoEvents();
+            await CaptureLootSummarySmokeEvidenceAsync(outputDir);
             AssertCommandDeckGeometry("dual-1600");
             AssertCardsModeShellGeometry("cards-dual-1600");
             await AssertVisualCardDashboardAsync(GetPaneForSide(PaneSide.Left), "cards-dual-1600-left");
@@ -8586,10 +8587,10 @@ namespace PokePixel.CoupledWorkspace
                 + ",is_leader:true},{id:'visual-bench',species_id:'visual-bench',name:'Umbreon',level:160,hp:3200,max_hp:3600,elements:['dark'],is_leader:false}]};"
                 + "window.__visualLeader='visual-player';window.__visualSettings={auto_capture:{enabled:true,common_enabled:true,shiny_enabled:true,common_capsule_item_id:'capsule_ultra',shiny_capsule_item_id:'capsule_master',species_filter:[],min_quality:'common',mode:'split'},auto_potion:{enabled:true,hp_threshold:40,potion_item_id:'potion_hyper',auto_revive:false,revive_item_id:''},auto_sell:{enabled:false,qualities:[]},auto_extract:{enabled:false,qualities:[]}};"
                 + "window.PokeIdle.Bus={on:function(){},off:function(){},emit:function(){}};"
-                + "window.PokeIdle.Api={getSpecies:function(id){return Promise.resolve({data:window.__visualSpecies[String(id)]||{id:String(id),name:String(id)}});},getMoveset:function(id){return Promise.resolve({creature_id:String(id),mode:'manual',selected:[{id:'earthquake',name:'Earthquake',element:'ground'},{id:'rock-slide',name:'Rock Slide',element:'rock'},{id:'drill-run',name:'Drill Run',element:'ground'},{id:'ice-fang',name:'Ice Fang',element:'ice'}]});},getTeam:function(){return Promise.resolve({team:{leader_id:window.__visualLeader}});},setTeamLeader:function(id){window.__visualLeader=String(id);window.PokeIdle.PersistentHud._teamHud._creatures.forEach(function(c){c.is_leader=String(c.id)===window.__visualLeader;});return Promise.resolve({xp_share:null});},getHuntSettings:function(){return Promise.resolve(JSON.parse(JSON.stringify(window.__visualSettings)));},getInventory:function(){return Promise.resolve({inventory:[{item_id:'capsule_master',name:'Master Ball',type:'capsule',qty:2,catch_multiplier:10},{item_id:'capsule_ultra',name:'Ultra Ball',type:'capsule',qty:12,catch_multiplier:2},{item_id:'capsule_great',name:'Great Ball',type:'capsule',qty:30,catch_multiplier:1.5},{item_id:'potion_hyper',name:'Hyper Potion',type:'potion',qty:8},{item_id:'potion_max',name:'Max Potion',type:'potion',qty:3},{item:{id:'reference_straw',name:'Reference Straw',rarity:'rare'},qty:4},{item:{id:'oran_berry',name:'Oran Berry',quality:'common'},qty:9}]});},updateHuntSettings:function(capture,potion,unused,sell,extract){window.__visualSettings={auto_capture:capture,auto_potion:potion,auto_sell:sell,auto_extract:extract};return Promise.resolve({});}};"
+                + "window.PokeIdle.Api={getSpecies:function(id){return Promise.resolve({data:window.__visualSpecies[String(id)]||{id:String(id),name:String(id)}});},getMoveset:function(id){return Promise.resolve({creature_id:String(id),mode:'manual',selected:[{id:'earthquake',name:'Earthquake',element:'ground'},{id:'rock-slide',name:'Rock Slide',element:'rock'},{id:'drill-run',name:'Drill Run',element:'ground'},{id:'ice-fang',name:'Ice Fang',element:'ice'}]});},getTeam:function(){return Promise.resolve({team:{leader_id:window.__visualLeader}});},setTeamLeader:function(id){window.__visualLeader=String(id);window.PokeIdle.PersistentHud._teamHud._creatures.forEach(function(c){c.is_leader=String(c.id)===window.__visualLeader;});return Promise.resolve({xp_share:null});},getHuntSettings:function(){return Promise.resolve(JSON.parse(JSON.stringify(window.__visualSettings)));},getInventory:function(){return Promise.resolve({inventory:[{item_id:'capsule_master',name:'Master Ball',type:'capsule',qty:2,catch_multiplier:10},{item_id:'capsule_ultra',name:'Ultra Ball',type:'capsule',qty:12,catch_multiplier:2},{item_id:'capsule_great',name:'Great Ball',type:'capsule',qty:30,catch_multiplier:1.5},{item_id:'potion_hyper',name:'Hyper Potion',type:'potion',qty:8},{item_id:'potion_max',name:'Max Potion',type:'potion',qty:3},{item:{id:'weak_thread',name:'Weak Thread',rarity:'weak'},qty:9},{item:{id:'common_leaf',name:'Common Leaf',quality:'common'},qty:9},{item:{id:'uncommon_seed',name:'Uncommon Seed',rarity:'uncommon'},qty:9},{item:{id:'rare_straw',name:'Rare Straw',rarity:'rare'},qty:9},{item:{id:'epic_dust',name:'Epic Dust',rarity:'epic'},qty:9},{item:{id:'legendary_gem',name:'Legendary Gem',rarity:'legendary'},qty:9},{item:{id:'mythical_orb',name:'Mythical Orb',rarity:'mythical'},qty:9}]});},updateHuntSettings:function(capture,potion,unused,sell,extract){window.__visualSettings={auto_capture:capture,auto_potion:potion,auto_sell:sell,auto_extract:extract};return Promise.resolve({});}};"
                 + "var rarities=['epic','legendary','mythical','rare'];"
                 + "var now=Date.now();var attempts=[];for(var i=0;i<40;i++){attempts.push({atMs:now-(i+1)*47000,speciesId:i%2===0?'dragonite':'gengar',species:i%2===0?'Dragonite':'Gengar',rarity:rarities[i%rarities.length],shiny:i%4===3,qualityMultiplier:1.25+(i%7)*0.08,chance:i===0?0.00875:0.015+(i*0.001),result:i===3?'captured':'fled',ball:i%2===0?'Ultra Ball':'Great Ball',ivTotal:i===0?176:i===3?151:null,captureDetails:i===3?{gender:'female',nature:'adamant',ivTotal:151,ivs:{hp:31,atk:31,def:25,spa:20,spd:22,spe:22}}:null});}"
-                + "var lootHistory=[];for(var j=0;j<16;j++){var direct=37+j;var lootValue=j*11;var sold=j===2;var autoValue=sold?2500:0;lootHistory.push({atMs:now-(j+1)*53000,species:j%2===0?'Dragonite':'Gengar',directGold:direct,lootSellValue:lootValue,autoSold:sold,autoSellValue:autoValue,totalValue:direct+lootValue+autoValue,items:[{itemId:j%2===0?'reference_straw':'oran_berry',qty:(j%3)+1}]});}"
+                + "var lootIds=['weak_thread','common_leaf','uncommon_seed','rare_straw','epic_dust','legendary_gem','mythical_orb'];var lootHistory=[];for(var j=0;j<16;j++){var direct=37+j;var lootValue=j*11;var sold=j===2;var autoValue=sold?2500:0;lootHistory.push({atMs:now-(j+1)*53000,species:j%2===0?'Dragonite':'Gengar',directGold:direct,lootSellValue:lootValue,autoSold:sold,autoSellValue:autoValue,totalValue:direct+lootValue+autoValue,items:[{itemId:lootIds[j%lootIds.length],qty:(j%5)+1}]});}"
                 + "var rarityCounts={unknown:{captured:0,seen:1,shinyCaptured:0,shinySeen:0},weak:{captured:1,seen:3,shinyCaptured:0,shinySeen:0},common:{captured:4,seen:10,shinyCaptured:0,shinySeen:0},uncommon:{captured:3,seen:8,shinyCaptured:0,shinySeen:0},rare:{captured:3,seen:7,shinyCaptured:1,shinySeen:2},epic:{captured:3,seen:6,shinyCaptured:1,shinySeen:1},legendary:{captured:2,seen:5,shinyCaptured:0,shinySeen:0},mythical:{captured:1,seen:3,shinyCaptured:0,shinySeen:0}};"
                 + "var summary={protocol:1,available:true,appVersion:'1.13.4',leadershipActive:true,status:"
                 + QuoteJs("running")
@@ -8671,19 +8672,19 @@ namespace PokePixel.CoupledWorkspace
                     + "var huntTab=document.querySelector('[data-card-story-tab=hunt]');var lootTab=document.querySelector('[data-card-story-tab=loot]');var huntPanel=document.querySelector('[data-card-story-panel=hunt]');var lootPanel=document.querySelector('[data-card-story-panel=loot]');var lootRarity=document.querySelector('[data-card-loot-rarity]');"
                     + "var loot=document.querySelector('[data-card-field=loot-value]');var profit=document.querySelector('[data-card-field=profit]');var revenue=document.querySelector('[data-card-field=revenue]');var epicFailed=document.querySelector('[data-card-field=epic-failed]');var xpHour=document.querySelector('[data-card-field=pokemon-xp-hour]');"
                     + "var targetMeta=document.querySelector('[data-card-field=target-meta]');var playerTypes=document.querySelector('[data-card-elements=player]');var targetTypes=document.querySelector('[data-card-elements=target]');var playerMoves=document.querySelector('[data-card-player-moves]');var captured=document.querySelector('[data-card-attempt-body] .ppbui-cards-attempt[data-result=captured]');var capturedDetails=captured&&captured.querySelector('.ppbui-cards-attempt-details');var captureToggle=document.querySelector('[data-card-genetics-toggle]');"
-                    + "var lootRows=document.querySelectorAll('[data-card-loot-body] .ppbui-cards-loot-row');var firstLoot=lootRows.length?lootRows[0]:null;var firstLootItem=firstLoot&&firstLoot.querySelector('.ppbui-cards-loot-item:not(.ppbui-cards-loot-item--empty)');var firstLootTotal=firstLoot&&firstLoot.querySelector('[data-card-loot-total]');var history=document.querySelector('.ppbui-cards-attempt-table');var attemptScroll=document.querySelector('[data-card-attempt-scroll]');var attemptLabels=document.querySelector('.ppbui-cards-attempt-labels');var economy=document.querySelector('.ppbui-cards-economy');"
+                    + "var lootRows=document.querySelectorAll('[data-card-loot-body] .ppbui-cards-loot-row');var firstLoot=lootRows.length?lootRows[0]:null;var firstLootItem=firstLoot&&firstLoot.querySelector('.ppbui-cards-loot-item:not(.ppbui-cards-loot-item--empty)');var firstLootTotal=firstLoot&&firstLoot.querySelector('[data-card-loot-total]');var lootSummary=document.querySelector('[data-card-loot-summary]');var lootSummaryTiles=lootSummary?Array.from(lootSummary.querySelectorAll('.ppbui-cards-loot-drop')):[];var history=document.querySelector('.ppbui-cards-attempt-table');var attemptScroll=document.querySelector('[data-card-attempt-scroll]');var attemptLabels=document.querySelector('.ppbui-cards-attempt-labels');var economy=document.querySelector('.ppbui-cards-economy');"
                     + "var summaryCard=document.querySelector('.ppbui-cards-card--summary');var captureCard=document.querySelector('.ppbui-cards-card--capture');var rarityCard=document.querySelector('.ppbui-cards-card--rarity');var teamRoster=document.querySelector('[data-card-team-list]');var teamButtons=teamRoster?teamRoster.querySelectorAll('[data-card-team-member]'):[];var activeTeam=teamRoster?teamRoster.querySelector('[data-card-team-member][aria-pressed=true]'):null;"
                     + "var pause=document.querySelector('[data-card-session-pause]');var reset=document.querySelector('[data-card-session-reset]');var target=document.querySelector('[data-card-combat=target]');var shiny=document.querySelector('[data-card-shiny-badge]');var rarityBadge=document.querySelector('[data-card-target-rarity]');var hpRow=document.querySelector('[data-card-player-hp-row]');var expRow=document.querySelector('[data-card-player-exp-row]');var expMeter=document.querySelector('[data-card-player-exp-meter]');var style=history?getComputedStyle(history):null;"
                     + "var playerSrc=player?player.getAttribute('src')||'':'';var targetSrc=targetImg?targetImg.getAttribute('src')||'':'';var nativeAsset=function(src){return src.indexOf('data:image/png;base64,')===0&&src.length>300&&src.indexOf('pokemondb')<0;};var targetVisualReady=targetImg&&!targetImg.hidden&&nativeAsset(targetSrc);var targetShiny=target&&target.dataset.shiny==='true';"
                     + "var teamLevels=teamButtons.length===2&&Array.from(teamButtons).every(function(button){var name=button.querySelector('strong');var level=button.querySelector('span');return name&&name.textContent&&level&&level.textContent.indexOf('Lv.')===0;});var sixTeamRows=teamRoster&&teamRoster.children.length===6;var teamBeforePlayer=teamRoster&&playerCard&&Boolean(teamRoster.compareDocumentPosition(playerCard)&Node.DOCUMENT_POSITION_FOLLOWING);"
                     + "var legacyControlsRemoved=!document.querySelector('[data-card-matchup]')&&!document.querySelector('[data-card-ball-scope]')&&!document.querySelector('[data-card-ball-select]')&&!document.querySelector('[data-card-potion-select]')&&!document.querySelector('[data-card-ball-label]');var row=history&&history.querySelector('[data-card-attempt-body] .ppbui-cards-attempt');var timelineReady=history&&history.getAttribute('role')==='list'&&!history.querySelector('.ppbui-cards-attempt-head');var rowHeight=row?row.getBoundingClientRect().height:0;var denseRow=rowHeight>0&&rowHeight<=48;var labelsReady=attemptLabels&&attemptLabels.children.length===8&&attemptLabels.textContent.indexOf('Quality')>=0&&attemptLabels.textContent.indexOf('Chance')>=0&&attemptLabels.textContent.indexOf('IV Total')>=0;var fields=row?Array.from(row.children).filter(function(node){return node.hasAttribute&&node.hasAttribute('data-attempt-column');}):[];var centers=fields.map(function(node){var r=node.getBoundingClientRect();return (r.top+r.bottom)/2;});var singleLineReady=centers.length===8&&Math.max.apply(Math,centers)-Math.min.apply(Math,centers)<=2;var chanceCell=row&&row.querySelector('[data-attempt-column=\"6\"]');var historyRect=history?history.getBoundingClientRect():null;var chanceRect=chanceCell?chanceCell.getBoundingClientRect():null;var chanceVisible=Boolean(chanceRect&&historyRect&&chanceRect.width>0&&chanceRect.left>=historyRect.left-1&&chanceRect.right<=historyRect.right+1);var storyScrollReady=attemptScroll&&getComputedStyle(attemptScroll).overflowX==='auto'&&attemptScroll.scrollWidth>=attemptScroll.clientWidth;"
                     + "var resultButtons=Array.from(document.querySelectorAll('button[data-card-attempt-result]'));var resultReady=resultButtons.length===3&&resultButtons.map(function(b){return b.dataset.cardAttemptResult;}).join(',')===',captured,fled'&&resultButtons.filter(function(b){return b.getAttribute('aria-pressed')==='true';}).length===1&&resultButtons.filter(function(b){return b.tabIndex===0;}).length===1;var storyReady=false;if(huntTab&&lootTab&&huntPanel&&lootPanel&&huntTab.getAttribute('aria-selected')==='true'&&!huntPanel.hidden&&lootPanel.hidden){lootTab.click();storyReady=lootTab.getAttribute('aria-selected')==='true'&&huntPanel.hidden&&!lootPanel.hidden;huntTab.click();storyReady=storyReady&&huntTab.getAttribute('aria-selected')==='true'&&!huntPanel.hidden&&lootPanel.hidden;}"
-                    + "var lootTotalReady=firstLootTotal&&firstLootTotal.textContent.indexOf('Total ')===0&&firstLootTotal.getAttribute('aria-label')&&firstLootTotal.getAttribute('aria-label').indexOf('Total: ')===0;var lootStoryReady=lootRows.length===16&&firstLoot&&firstLootItem&&lootTotalReady&&firstLoot.querySelector('.ppbui-cards-loot-finance');var lootFilterReady=lootRarity&&lootRarity.options.length===9&&Array.from(lootRarity.options).map(function(o){return o.value;}).join(',')===',weak,common,uncommon,rare,epic,legendary,mythical,none';var lootFilterFunctional=false;if(lootFilterReady){lootTab.click();lootRarity.value='rare';lootRarity.dispatchEvent(new Event('change'));var filteredLoot=Array.from(document.querySelectorAll('[data-card-loot-body] .ppbui-cards-loot-item:not(.ppbui-cards-loot-item--empty)'));lootFilterFunctional=filteredLoot.length>0&&filteredLoot.every(function(item){return item.dataset.rarity==='rare';})&&!document.querySelector('[data-card-loot-body] .ppbui-cards-loot-item[data-rarity=common]');lootRarity.value='';lootRarity.dispatchEvent(new Event('change'));huntTab.click();}var narrowStory=innerWidth<=640;var rowRect=row?row.getBoundingClientRect():null;var allFieldsVisible=fields.length===8&&rowRect&&historyRect&&fields.every(function(cell){var r=cell.getBoundingClientRect();return r.width>0&&r.height>0&&r.left>=historyRect.left-1&&r.right<=historyRect.left+history.clientLeft+history.clientWidth+1&&r.top>=rowRect.top-1&&r.bottom<=rowRect.bottom+1;});var bandsReady=fields.length===8&&fields[2].getBoundingClientRect().top+4<fields[0].getBoundingClientRect().top&&fields[3].getBoundingClientRect().top>fields[0].getBoundingClientRect().top+4;var compactLabels=fields.length===8&&fields.every(function(cell){var content=getComputedStyle(cell,'::before').content;return content&&content!=='none'&&content!=='normal';});var responsiveTimelineReady=narrowStory?(rowHeight>=65&&rowHeight<=220&&bandsReady&&allFieldsVisible&&compactLabels&&!attemptLabels.offsetParent&&getComputedStyle(attemptScroll).overflowX==='hidden'):(denseRow&&labelsReady&&singleLineReady&&storyScrollReady);var historyBounded=history&&history.clientHeight<=(narrowStory?252:190)+2&&history.scrollHeight>history.clientHeight;"
+                    + "var lootTotalReady=firstLootTotal&&firstLootTotal.textContent.indexOf('Total ')===0&&firstLootTotal.getAttribute('aria-label')&&firstLootTotal.getAttribute('aria-label').indexOf('Total: ')===0;var lootStoryReady=lootRows.length===16&&firstLoot&&firstLootItem&&lootTotalReady&&firstLoot.querySelector('.ppbui-cards-loot-finance');var lootSummaryReady=lootSummary&&lootSummary.getAttribute('role')==='list'&&lootSummaryTiles.length===7&&lootSummaryTiles.map(function(tile){return tile.dataset.rarity;}).join(',')==='weak,common,uncommon,rare,epic,legendary,mythical'&&lootSummaryTiles.every(function(tile){return tile.getAttribute('role')==='listitem'&&tile.getAttribute('aria-label')&&tile.querySelector('.ppbui-cards-loot-drop-qty');})&&lootSummary.previousElementSibling&&lootSummary.previousElementSibling.classList.contains('ppbui-cards-loot-filters')&&lootSummary.nextElementSibling&&lootSummary.nextElementSibling.classList.contains('ppbui-cards-loot-table');var lootFilterReady=lootRarity&&lootRarity.options.length===9&&Array.from(lootRarity.options).map(function(o){return o.value;}).join(',')===',weak,common,uncommon,rare,epic,legendary,mythical,none';var lootFilterFunctional=false;if(lootFilterReady){lootTab.click();lootRarity.value='rare';lootRarity.dispatchEvent(new Event('change'));var filteredLoot=Array.from(document.querySelectorAll('[data-card-loot-body] .ppbui-cards-loot-item:not(.ppbui-cards-loot-item--empty)'));var filteredSummary=Array.from(document.querySelectorAll('[data-card-loot-summary] .ppbui-cards-loot-drop'));lootFilterFunctional=filteredLoot.length>0&&filteredLoot.every(function(item){return item.dataset.rarity==='rare';})&&!document.querySelector('[data-card-loot-body] .ppbui-cards-loot-item:not([data-rarity=rare])')&&filteredSummary.length===1&&filteredSummary[0].dataset.rarity==='rare';lootRarity.value='';lootRarity.dispatchEvent(new Event('change'));huntTab.click();}var narrowStory=innerWidth<=640;var rowRect=row?row.getBoundingClientRect():null;var allFieldsVisible=fields.length===8&&rowRect&&historyRect&&fields.every(function(cell){var r=cell.getBoundingClientRect();return r.width>0&&r.height>0&&r.left>=historyRect.left-1&&r.right<=historyRect.left+history.clientLeft+history.clientWidth+1&&r.top>=rowRect.top-1&&r.bottom<=rowRect.bottom+1;});var bandsReady=fields.length===8&&fields[2].getBoundingClientRect().top+4<fields[0].getBoundingClientRect().top&&fields[3].getBoundingClientRect().top>fields[0].getBoundingClientRect().top+4;var compactLabels=fields.length===8&&fields.every(function(cell){var content=getComputedStyle(cell,'::before').content;return content&&content!=='none'&&content!=='normal';});var responsiveTimelineReady=narrowStory?(rowHeight>=65&&rowHeight<=220&&bandsReady&&allFieldsVisible&&compactLabels&&!attemptLabels.offsetParent&&getComputedStyle(attemptScroll).overflowX==='hidden'):(denseRow&&labelsReady&&singleLineReady&&storyScrollReady);var historyBounded=history&&history.clientHeight<=(narrowStory?252:190)+2&&history.scrollHeight>history.clientHeight;"
                     + "var cvReady=rarityTiles.length===7&&!document.querySelector('[data-rarity-key=unknown]')&&Array.from(rarityTiles).every(function(tile){var value=tile.querySelector('strong');return value&&value.textContent.indexOf('/')>0;});var compactReady=revenue&&/[kMB]/.test(revenue.textContent)&&revenue.title.indexOf('Exact value:')===0;var rarityFilterReady=rarityFilters.length===3&&Array.from(rarityFilters).map(function(i){return i.value;}).join(',')==='epic,legendary,mythical'&&Array.from(rarityFilters).every(function(i){return i.checked;});"
                     + "var typeReady=playerTypes&&!playerTypes.hidden&&targetTypes&&!targetTypes.hidden;var targetMetaReady=targetMeta&&targetMeta.textContent.indexOf('Lv.')===0&&targetMeta.textContent.indexOf('XP')<0;var moveNodes=playerMoves?playerMoves.querySelectorAll('.ppbui-cards-move'):[];var movesReady=playerMoves&&!playerMoves.hidden&&moveNodes.length===4&&Array.from(moveNodes).every(function(node){var image=node.querySelector('img');return node.title&&image&&nativeAsset(image.getAttribute('src')||'');});var captureDetailsReady=capturedDetails&&capturedDetails.textContent.indexOf('Gender')>=0&&capturedDetails.textContent.indexOf('Nature')>=0&&capturedDetails.textContent.indexOf('IV 151')>=0;var qualityReady=captured&&captured.querySelector('[data-attempt-column=\"3\"]')&&captured.querySelector('[data-attempt-column=\"3\"]').textContent.indexOf('×')===0;var geneticsReady=!captureToggle&&capturedDetails&&!capturedDetails.hidden&&captureDetailsReady;"
                     + "var overviewOrderReady=summaryCard&&captureCard&&rarityCard&&Boolean(summaryCard.compareDocumentPosition(captureCard)&Node.DOCUMENT_POSITION_FOLLOWING)&&Boolean(captureCard.compareDocumentPosition(rarityCard)&Node.DOCUMENT_POSITION_FOLLOWING);var targetRect=target?target.getBoundingClientRect():null;var rarityRect=rarityCard?rarityCard.getBoundingClientRect():null;var targetCropAligned=innerWidth<900||Boolean(targetRect&&rarityRect&&Math.abs(targetRect.left-rarityRect.left)<=2&&Math.abs(targetRect.right-rarityRect.right)<=2);var xpPrimary=xpHour&&xpHour.parentElement&&xpHour.parentElement.classList.contains('ppbui-cards-kpi-primary');var expReady=expRow&&!expRow.hidden&&expMeter&&Number(expMeter.getAttribute('aria-valuenow'))>0&&Number(expMeter.getAttribute('aria-valuemax'))>Number(expMeter.getAttribute('aria-valuenow'));var lastChanceToolbarRemoved=!document.querySelector('[data-card-field=battle-last-chance]')&&!document.querySelector('.ppbui-cards-battle-readout');"
-                    + "var ok=Boolean(player&&!player.hidden&&nativeAsset(playerSrc)&&targetVisualReady&&rarityFilterReady&&shinyFilter&&shinyFilter.options.length===3&&resultReady&&storyReady&&timelineReady&&responsiveTimelineReady&&lootStoryReady&&lootFilterReady&&lootFilterFunctional&&geneticsReady&&qualityReady&&overviewOrderReady&&targetCropAligned&&loot&&loot.textContent.indexOf('$')>=0&&profit&&profit.textContent.indexOf('$')>=0&&compactReady&&targetMetaReady&&movesReady&&typeReady&&epicFailed&&epicFailed.textContent!=='—'&&xpPrimary&&cvReady&&shinyRarity&&shinyRarity.textContent.indexOf('✦')===0&&economy&&history&&Boolean(economy.compareDocumentPosition(history)&Node.DOCUMENT_POSITION_FOLLOWING)&&historyBounded&&style&&style.overflowY==='auto'&&teamRoster&&sixTeamRows&&teamButtons.length===2&&teamLevels&&activeTeam&&activeTeam.dataset.cardTeamMember==='visual-player'&&teamBeforePlayer&&legacyControlsRemoved&&pause&&!pause.disabled&&reset&&!reset.disabled&&target&&shiny&&shiny.hidden===!targetShiny&&rarityBadge&&!rarityBadge.hidden&&hpRow&&!hpRow.hidden&&expReady&&lastChanceToolbarRemoved);"
-                    + "window.__PPBUI_SMOKE_DIAG__={innerWidth:innerWidth,rowHeight:rowHeight,resultReady:!!resultReady,storyReady:!!storyReady,timelineReady:!!timelineReady,denseRow:!!denseRow,labelsReady:!!labelsReady,singleLineReady:!!singleLineReady,bandsReady:!!bandsReady,allFieldsVisible:!!allFieldsVisible,compactLabels:!!compactLabels,responsiveTimelineReady:!!responsiveTimelineReady,storyScrollReady:!!storyScrollReady,chanceVisible:!!chanceVisible,lootStoryReady:!!lootStoryReady,lootTotalReady:!!lootTotalReady,lootFilterReady:!!lootFilterReady,lootFilterFunctional:!!lootFilterFunctional,geneticsReady:!!geneticsReady,qualityReady:!!qualityReady,overviewOrderReady:!!overviewOrderReady,targetCropAligned:!!targetCropAligned,targetVisualReady:!!targetVisualReady,historyBounded:!!historyBounded,rarityFilterReady:!!rarityFilterReady,captureDetailsReady:!!captureDetailsReady,compactReady:!!compactReady,typeReady:!!typeReady,targetMetaReady:!!targetMetaReady,movesReady:!!movesReady,expReady:!!expReady};return ok;})()"
+                    + "var ok=Boolean(player&&!player.hidden&&nativeAsset(playerSrc)&&targetVisualReady&&rarityFilterReady&&shinyFilter&&shinyFilter.options.length===3&&resultReady&&storyReady&&timelineReady&&responsiveTimelineReady&&lootStoryReady&&lootSummaryReady&&lootFilterReady&&lootFilterFunctional&&geneticsReady&&qualityReady&&overviewOrderReady&&targetCropAligned&&loot&&loot.textContent.indexOf('$')>=0&&profit&&profit.textContent.indexOf('$')>=0&&compactReady&&targetMetaReady&&movesReady&&typeReady&&epicFailed&&epicFailed.textContent!=='—'&&xpPrimary&&cvReady&&shinyRarity&&shinyRarity.textContent.indexOf('✦')===0&&economy&&history&&Boolean(economy.compareDocumentPosition(history)&Node.DOCUMENT_POSITION_FOLLOWING)&&historyBounded&&style&&style.overflowY==='auto'&&teamRoster&&sixTeamRows&&teamButtons.length===2&&teamLevels&&activeTeam&&activeTeam.dataset.cardTeamMember==='visual-player'&&teamBeforePlayer&&legacyControlsRemoved&&pause&&!pause.disabled&&reset&&!reset.disabled&&target&&shiny&&shiny.hidden===!targetShiny&&rarityBadge&&!rarityBadge.hidden&&hpRow&&!hpRow.hidden&&expReady&&lastChanceToolbarRemoved);"
+                    + "window.__PPBUI_SMOKE_DIAG__={innerWidth:innerWidth,rowHeight:rowHeight,resultReady:!!resultReady,storyReady:!!storyReady,timelineReady:!!timelineReady,denseRow:!!denseRow,labelsReady:!!labelsReady,singleLineReady:!!singleLineReady,bandsReady:!!bandsReady,allFieldsVisible:!!allFieldsVisible,compactLabels:!!compactLabels,responsiveTimelineReady:!!responsiveTimelineReady,storyScrollReady:!!storyScrollReady,chanceVisible:!!chanceVisible,lootStoryReady:!!lootStoryReady,lootSummaryReady:!!lootSummaryReady,lootTotalReady:!!lootTotalReady,lootFilterReady:!!lootFilterReady,lootFilterFunctional:!!lootFilterFunctional,geneticsReady:!!geneticsReady,qualityReady:!!qualityReady,overviewOrderReady:!!overviewOrderReady,targetCropAligned:!!targetCropAligned,targetVisualReady:!!targetVisualReady,historyBounded:!!historyBounded,rarityFilterReady:!!rarityFilterReady,captureDetailsReady:!!captureDetailsReady,compactReady:!!compactReady,typeReady:!!typeReady,targetMetaReady:!!targetMetaReady,movesReady:!!movesReady,expReady:!!expReady};return ok;})()"
                 );
             var attemptRowsRaw = await pane.View.CoreWebView2.ExecuteScriptAsync(
                 "document.querySelectorAll('[data-card-attempt-body] .ppbui-cards-attempt').length"
@@ -8821,6 +8822,143 @@ namespace PokePixel.CoupledWorkspace
             );
             if (!string.Equals(result, "true", StringComparison.Ordinal))
                 throw new InvalidOperationException("Story tab could not switch to " + requested + " for visual evidence.");
+        }
+
+        private async Task CaptureLootSummarySmokeEvidenceAsync(string outputDir)
+        {
+            var left = GetPaneForSide(PaneSide.Left);
+            var right = GetPaneForSide(PaneSide.Right);
+            await Task.WhenAll(
+                ScrollVisualCardsToHistoryAsync(left),
+                ScrollVisualCardsToHistoryAsync(right)
+            );
+            await Task.WhenAll(
+                SetVisualStoryTabAsync(left, "loot"),
+                SetVisualStoryTabAsync(right, "loot")
+            );
+            await Task.Delay(40);
+            Application.DoEvents();
+
+            foreach (var pane in new[] { left, right })
+            {
+                var verified = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                    "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                    + "var summary=document.querySelector('[data-card-loot-summary]');"
+                    + "var filters=document.querySelector('.ppbui-cards-loot-filters');"
+                    + "var table=document.querySelector('.ppbui-cards-loot-table');"
+                    + "var tiles=summary?Array.from(summary.querySelectorAll('.ppbui-cards-loot-drop')):[];"
+                    + "if(!root||!summary||!filters||!table||summary.hidden||tiles.length!==7)return false;"
+                    + "var first=tiles[0].getBoundingClientRect();"
+                    + "var style=getComputedStyle(summary);"
+                    + "return tiles.length===7&&tiles.map(function(t){return t.dataset.rarity;}).join(',')==='weak,common,uncommon,rare,epic,legendary,mythical'"
+                    + "&&tiles.every(function(t){var q=t.querySelector('.ppbui-cards-loot-drop-qty');return q&&/^×[0-9]/.test(q.textContent);})"
+                    + "&&summary.previousElementSibling===filters&&summary.nextElementSibling===table"
+                    + "&&style.display==='flex'&&style.overflowX==='auto'"
+                    + "&&tiles.every(function(t){var r=t.getBoundingClientRect();return Math.abs(r.top-first.top)<=1&&r.width>=44;})"
+                    + "&&new Set(tiles.map(function(t){return getComputedStyle(t).borderTopColor;})).size===7"
+                    + "&&root.scrollWidth<=root.clientWidth+1;})()"
+                );
+                if (!string.Equals(verified, "true", StringComparison.Ordinal))
+                {
+                    var diagnostics = await pane.View.CoreWebView2.ExecuteScriptAsync(
+                        "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                        + "var summary=document.querySelector('[data-card-loot-summary]');"
+                        + "var filters=document.querySelector('.ppbui-cards-loot-filters');"
+                        + "var table=document.querySelector('.ppbui-cards-loot-table');"
+                        + "var tiles=summary?Array.from(summary.querySelectorAll('.ppbui-cards-loot-drop')):[];"
+                        + "var rects=tiles.map(function(t){var r=t.getBoundingClientRect();return {w:r.width,top:r.top};});"
+                        + "return JSON.stringify({count:tiles.length,order:tiles.map(function(t){return t.dataset.rarity;}).join(','),"
+                        + "qty:tiles.map(function(t){var q=t.querySelector('.ppbui-cards-loot-drop-qty');return q?q.textContent:'';}),"
+                        + "adjacent:Boolean(summary&&summary.previousElementSibling===filters&&summary.nextElementSibling===table),"
+                        + "display:summary?getComputedStyle(summary).display:'',overflowX:summary?getComputedStyle(summary).overflowX:'',"
+                        + "rects:rects,colors:tiles.map(function(t){return getComputedStyle(t).borderTopColor;}),"
+                        + "rootClient:root?root.clientWidth:-1,rootScroll:root?root.scrollWidth:-1});})()"
+                    );
+                    throw new InvalidOperationException(
+                        "Loot summary visual evidence failed geometry, order or rarity-border checks. diag="
+                        + diagnostics
+                    );
+                }
+            }
+
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-loot-summary-dual-1600.png"),
+                false
+            );
+            var constrainedVerified = await left.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var panel=document.querySelector('[data-card-story-panel=loot]');"
+                + "var summary=document.querySelector('[data-card-loot-summary]');"
+                + "var table=document.querySelector('.ppbui-cards-loot-table');"
+                + "var first=summary&&summary.querySelector('.ppbui-cards-loot-drop');"
+                + "if(!panel||!summary||!table||!first)return false;"
+                + "panel.style.display='flex';panel.style.flexDirection='column';panel.style.height='126px';"
+                + "table.style.flex='1 1 auto';table.style.minHeight='0';table.style.maxHeight='none';"
+                + "var sr=summary.getBoundingClientRect(),tr=table.getBoundingClientRect(),ir=first.getBoundingClientRect();"
+                + "var ok=sr.height>=ir.height&&ir.height>=46&&tr.top>=sr.bottom+4;"
+                + "panel.style.removeProperty('display');panel.style.removeProperty('flex-direction');panel.style.removeProperty('height');"
+                + "table.style.removeProperty('flex');table.style.removeProperty('min-height');table.style.removeProperty('max-height');"
+                + "return ok;})()"
+            );
+            if (!string.Equals(constrainedVerified, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    "Loot summary collapsed under the history table in a constrained flex Story panel."
+                );
+            var narrowConfigured = await left.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "if(!root)return false;root.style.width='235px';root.style.right='auto';return true;})()"
+            );
+            if (!string.Equals(narrowConfigured, "true", StringComparison.Ordinal))
+                throw new InvalidOperationException("Could not constrain synthetic Loot summary to 235px.");
+            await Task.Delay(40);
+            var narrowVerified = await left.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "var summary=document.querySelector('[data-card-loot-summary]');"
+                + "var tiles=summary?Array.from(summary.querySelectorAll('.ppbui-cards-loot-drop')):[];"
+                + "if(!root||!summary||tiles.length!==7)return false;"
+                + "var top=tiles[0].getBoundingClientRect().top;"
+                + "return getComputedStyle(summary).overflowX==='auto'"
+                + "&&summary.scrollWidth>summary.clientWidth"
+                + "&&tiles.every(function(t){return Math.abs(t.getBoundingClientRect().top-top)<=1;})"
+                + "&&document.documentElement.scrollWidth<=document.documentElement.clientWidth+1;})()"
+            );
+            if (!string.Equals(narrowVerified, "true", StringComparison.Ordinal))
+            {
+                var narrowDiagnostics = await left.View.CoreWebView2.ExecuteScriptAsync(
+                    "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                    + "var summary=document.querySelector('[data-card-loot-summary]');"
+                    + "var tiles=summary?Array.from(summary.querySelectorAll('.ppbui-cards-loot-drop')):[];"
+                    + "return JSON.stringify({rootInlineWidth:root?root.style.width:'',"
+                    + "rootComputedWidth:root?getComputedStyle(root).width:'',"
+                    + "rootClient:root?root.clientWidth:-1,rootScroll:root?root.scrollWidth:-1,"
+                    + "summaryClient:summary?summary.clientWidth:-1,summaryScroll:summary?summary.scrollWidth:-1,"
+                    + "summaryWidth:summary?summary.getBoundingClientRect().width:-1,"
+                    + "overflowX:summary?getComputedStyle(summary).overflowX:'',"
+                    + "order:tiles.map(function(t){return t.dataset.rarity;}).join(','),"
+                    + "rects:tiles.map(function(t){var r=t.getBoundingClientRect();return {w:r.width,top:r.top,left:r.left,right:r.right};}),"
+                    + "documentClient:document.documentElement.clientWidth,documentScroll:document.documentElement.scrollWidth});})()"
+                );
+                throw new InvalidOperationException(
+                    "Loot summary narrow evidence wrapped tiles or leaked horizontal overflow. diag="
+                    + narrowDiagnostics
+                );
+            }
+            await CaptureWorkspaceCompositeAsync(
+                Path.Combine(outputDir, "workspace-cards-loot-summary-narrow-235.png"),
+                false
+            );
+            await left.View.CoreWebView2.ExecuteScriptAsync(
+                "(function(){var root=document.querySelector('[data-ppbui-coupled-cards]');"
+                + "if(root){root.style.removeProperty('width');root.style.removeProperty('right');}"
+                + "return true;})()"
+            );
+            await Task.WhenAll(
+                SetVisualStoryTabAsync(left, "hunt"),
+                SetVisualStoryTabAsync(right, "hunt")
+            );
+            await Task.WhenAll(
+                RestoreVisualCardsTopAsync(left),
+                RestoreVisualCardsTopAsync(right)
+            );
         }
 
         private async Task RestoreVisualCardsTopAsync(AccountPane pane)
