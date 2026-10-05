@@ -5,7 +5,9 @@ const metadata = await readFile(new URL("../userscript/metadata.txt", import.met
 const bundle = await readFile(new URL("../dist/pokepixel-better-ui.user.js", import.meta.url), "utf8");
 
 const expectedTag = `v${packageJson.version}`;
-const requestedTag = process.argv[2] || process.env.GITHUB_REF_NAME || "";
+const requestedTag =
+  process.argv[2] ||
+  (process.env.GITHUB_REF_TYPE === "tag" ? process.env.GITHUB_REF_NAME : "");
 
 if (requestedTag && requestedTag !== expectedTag) {
   throw new Error(`Release tag ${requestedTag} does not match package version ${expectedTag}`);
