@@ -283,6 +283,95 @@ test("native Poké Hub movement persists across remounts", t => {
   assert.equal(toolbar.style.getPropertyValue("top"), "120px");
 });
 
+test("menu bar removes the native top/bottom position row and neutralizes its body flag", t => {
+  const { app, doc, window } = setup(t);
+  window.PokeIdle = {
+    InterfacePreferences: { get: () => ({ toolbarPosition:"bottom" }) },
+  };
+  doc.body.classList.add("pokeidle-toolbar-bottom");
+  const row = doc.createElement("label");
+  row.className = "settings-control";
+  const select = doc.createElement("select");
+  select.add(new window.Option("Top", "top"));
+  select.add(new window.Option("Bottom", "bottom"));
+  select.value = "bottom";
+  row.append(select);
+  doc.body.append(row);
+
+  app.start();
+
+  assert.equal(doc.body.classList.contains("pokeidle-toolbar-bottom"), false);
+  assert.equal(row.hasAttribute("data-ppbui-menu-position-setting"), true);
+  const css = doc.querySelector('[data-ppbui-style="menu-bar"]').textContent;
+  assert.match(css, /\[data-ppbui-menu-position-setting\][^{]*\{[^}]*display:none !important;/s);
+});
+
+test("menu bar follows native preference events while mounted and restores the latest preference on cleanup", t => {
+  const { app, doc, window } = setup(t);
+  let toolbarPosition = "bottom";
+  window.PokeIdle = {
+    InterfacePreferences: { get: () => ({ toolbarPosition }) },
+  };
+  doc.body.classList.add("pokeidle-toolbar-bottom");
+  app.start();
+  assert.equal(doc.body.classList.contains("pokeidle-toolbar-bottom"), false);
+
+  toolbarPosition = "top";
+  window.dispatchEvent(new window.CustomEvent("pokeidle:interface-preferences", { detail:{ toolbarPosition:"top" } }));
+  assert.equal(doc.body.classList.contains("pokeidle-toolbar-bottom"), false);
+
+  toolbarPosition = "bottom";
+  doc.body.classList.add("pokeidle-toolbar-bottom");
+  window.dispatchEvent(new window.CustomEvent("pokeidle:interface-preferences", { detail:{ toolbarPosition:"bottom" } }));
+  assert.equal(doc.body.classList.contains("pokeidle-toolbar-bottom"), false, "native bottom positioning stays neutralized while Better UI owns drag geometry");
+
+  app.stop();
+  assert.equal(doc.body.classList.contains("pokeidle-toolbar-bottom"), true, "cleanup restores the latest native preference rather than the mount-time snapshot");
+});
+
+test("native position row stays suppressed when an external preference change leaves its open select stale", t => {
+  const { app, doc, window } = setup(t);
+  let toolbarPosition = "top";
+  window.PokeIdle = { InterfacePreferences:{ get:() => ({ toolbarPosition }) } };
+  const row = doc.createElement("label");
+  row.className = "settings-control";
+  const select = doc.createElement("select");
+  select.add(new window.Option("Top", "top"));
+  select.add(new window.Option("Bottom", "bottom"));
+  select.value = "top";
+  row.append(select);
+  doc.body.append(row);
+  app.start();
+  assert.equal(row.hasAttribute("data-ppbui-menu-position-setting"), true);
+
+  toolbarPosition = "bottom";
+  window.dispatchEvent(new window.CustomEvent("pokeidle:interface-preferences", { detail:{ toolbarPosition:"bottom" } }));
+  assert.equal(select.value, "top", "fixture keeps the already-rendered native select stale");
+  assert.equal(row.hasAttribute("data-ppbui-menu-position-setting"), true, "row identity comes from its native option contract, not transient selected value");
+  assert.equal(doc.body.classList.contains("pokeidle-toolbar-bottom"), false);
+});
+
+test("menu bar fails closed when more than one top/bottom settings select matches", t => {
+  const { app, doc, window } = setup(t);
+  window.PokeIdle = {
+    InterfacePreferences: { get: () => ({ toolbarPosition:"top" }) },
+  };
+  for (let index = 0; index < 2; index++) {
+    const row = doc.createElement("label");
+    row.className = "settings-control";
+    const select = doc.createElement("select");
+    select.add(new window.Option("Top", "top"));
+    select.add(new window.Option("Bottom", "bottom"));
+    select.value = "top";
+    row.append(select);
+    doc.body.append(row);
+  }
+
+  app.start();
+
+  assert.equal(doc.querySelectorAll("[data-ppbui-menu-position-setting]").length, 0);
+});
+
 test("silent host geometry writes preserve the whole normalized geometry set on cleanup", t => {
   const { app, window, toolbar } = setup(t);
   toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");

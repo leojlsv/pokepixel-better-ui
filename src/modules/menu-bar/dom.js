@@ -16,6 +16,7 @@ export function sameTarget(a, b) {
 }
 
 export function isVisible(node) {
+  if (node?.getAttribute?.("data-ppbui-menu-context-visible") === "false") return false;
   return !node.hidden && node.getAttribute("aria-hidden") !== "true" && node.style.display !== "none";
 }
 
@@ -26,4 +27,17 @@ export function isAvailable(button) {
 export function groupLabel(index) {
   const language = document.defaultView?.PokeIdle?.Localization?.get?.() || document.documentElement.lang || "pt";
   return (config.labels[language.split(/[-_]/)[0]] || config.labels.en)[index];
+}
+
+export function findToolbarPositionControl(doc = document) {
+  const current = doc.defaultView?.PokeIdle?.InterfacePreferences?.get?.()?.toolbarPosition;
+  if (current !== "top" && current !== "bottom") return null;
+  const matches = [...doc.querySelectorAll("label.settings-control")].flatMap(row => {
+    const select = row.querySelector("select");
+    if (!select) return [];
+    const values = [...select.options].map(option => String(option.value));
+    if (values.length !== 2 || !values.includes("top") || !values.includes("bottom")) return [];
+    return [{ row, select }];
+  });
+  return matches.length === 1 ? matches[0] : null;
 }

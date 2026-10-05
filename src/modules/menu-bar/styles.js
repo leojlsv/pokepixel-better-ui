@@ -5,6 +5,10 @@ export default `
  * instead of consuming a dedicated row.
  */
 @layer pokeidle-glass {
+  [data-ppbui-menu-position-setting] {
+    display:none !important;
+  }
+
   .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar] {
     padding:3px 32px !important;
     border-radius:var(--ppbui-window-radius) !important;

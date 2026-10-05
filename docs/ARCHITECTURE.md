@@ -155,9 +155,12 @@ The central observer watches child-list changes and the filtered attributes
 observer watches the document language; it does not observe every class/style
 change or create feature-specific observers. Native Hunt subtrees that no Better UI
 module consumes are filtered before scheduling reconciliation when their mutations
-only affect Hunt-local rendering or native capture controls. This includes nameplates,
-hit/move effects and the current classic/Platform capture surfaces. Mutations outside
-those explicitly scoped subtrees continue through the normal lifecycle path.
+only affect Hunt-local rendering or per-body capture controls. This includes nameplates,
+hit/move effects and the current classic/Platform per-body capture surfaces. The classic
+persistent `.pokeidle-map-action-bar` is intentionally outside those ignored selectors:
+Hunt Controls consumes its lifecycle/`hidden` state and must receive normal global
+reconciliation. Mutations outside those explicitly scoped subtrees continue through
+the normal lifecycle path.
 
 The active Platform Hunt renderer is game-owned except for explicitly shared native
 surfaces. Once `.platform-hunt` is attached, child/attribute mutations whose target is

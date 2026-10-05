@@ -17,7 +17,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   const mountIds = modules.map(module => module.id);
   const controlIds = controls.map(control => control.id);
   assert.deepEqual(mountIds, [
-    "disable-pokemon-hover", "pokemon-profile", "menu-bar",
+    "disable-pokemon-hover", "pokemon-profile", "menu-bar", "hunt-controls",
     "standalone-card-mode", "coupled-workspace", "buff-strip", "inventory",
     "storage", "trade", "chat", "hunts", "team", "team-hud",
     "team-presets", "evolution-center", "geneticist", "marks-shop", "auto-helper",

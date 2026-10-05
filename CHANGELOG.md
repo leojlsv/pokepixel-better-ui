@@ -4,6 +4,24 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Hunt clássico / Poké Hub — centralização do Return to City, 0.2.168 (2026-10-05):**
+  após validação funcional do fluxo contextual, centraliza horizontalmente o texto do botão nativo
+  `Return to City` no popup `Cidade`, sem alterar handler, foco, badge, Capture, Revive ou lifecycle.
+  **Ajuste final aprovado e validado in-game pelo Product Owner em 2026-10-05.**
+
+- **Hunt clássico / Poké Hub — ações contextuais e posição única, candidato 0.2.167 (2026-10-04):**
+  remove da faixa persistente de Hunt o atalho global `Capture`, preservando os prompts
+  de captura por Pokémon e toda a lógica nativa; move o node nativo de `Return to City`
+  para o início do popup `Cidade` como navegação contextual, com badge compacto de
+  disponibilidade e teclado/foco preservados; `Revive` continua nativo e sozinho na
+  faixa inferior quando disponível. O painel Better UI passa a exibir `by Rhyxus`
+  acima do título. Enquanto o Menu Bar arrastável está ativo, a linha nativa
+  `Main menu position` é removida da Settings e seu efeito top/bottom é neutralizado
+  sem alterar a preferência/storage do jogo; ao desativar o Menu Bar, a última posição
+  nativa desejada é restaurada. Rebuilds do Poké Hub/action bar usam cleanup explícito
+  e preservam os handlers originais. **Fluxo funcional validado in-game pelo Product Owner
+  em 2026-10-05; o alinhamento visual do texto de `Return to City` segue corrigido no 0.2.168.**
+
 - **PokémonCard / hover — remove status icons beside IV, corrective 0.2.166 (2026-10-04):**
   remove `ACTIVE` and `PROTECTED` from the transient hover badge rail as well as pinned/sheet,
   leaving the promoted green `IV x/186` chip directly beside rarity with no status icons between

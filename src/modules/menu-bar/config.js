@@ -5,6 +5,7 @@ export const menuBarConfig = Object.freeze({
   events: {
     orientationChange: "ppbui:menu-orientation-change",
     collapseChange: "ppbui:menu-collapse-change",
+    beforeTeardown: "ppbui:menu-before-teardown",
   },
   selectors: {
     toolbar: ".pokeidle-top-toolbar",
@@ -13,12 +14,13 @@ export const menuBarConfig = Object.freeze({
     nativeGroup: ".pokeidle-top-toolbar__group[data-menu-group]",
     trigger: ':scope > button[aria-haspopup="menu"]',
     dropdown: ":scope > .pokeidle-top-toolbar__dropdown",
-    label: ":scope > .pokeidle-top-toolbar__label:not(.pokeidle-menu-vector-icon), :scope > span:not(.pokeidle-top-toolbar__badge):not(.pokeidle-menu-vector-icon)",
+    label: ":scope > .pokeidle-top-toolbar__label:not(.pokeidle-menu-vector-icon), :scope > span:not(.pokeidle-top-toolbar__badge):not(.pokeidle-menu-vector-icon):not(.ppbui-hunt-return-badge)",
     icon: ".pokeidle-top-toolbar__icon, .pokeidle-menu-vector-icon",
     badge: ".pokeidle-top-toolbar__badge",
     handle: ".pokeidle-pokehub__handle",
     toggle: ".pokeidle-pokehub__toggle",
     cityAction: "button[data-ppbui-city-action]",
+    contextualAction: "button[data-ppbui-menu-context-action]",
     owned: '[data-ppbui-module="menu-bar"]',
   },
   classes: {

@@ -18,6 +18,14 @@ native action still appears once, with its original node, children, label, short
 and listeners. Existing group wrappers, triggers, icons and badges are reused.
 Unknown native actions remain available in their native containers.
 
+The City popup also exposes one documented contextual-action integration surface for
+dependent Better UI modules. `getGroupTarget("city")` returns the current City group,
+trigger and popup identities, and `ppbui:menu-before-teardown` is emitted before Menu
+Bar restores/removes those nodes. Contextual actions use
+`data-ppbui-menu-context-action` / `data-ppbui-menu-context-visible`; they participate
+in the same Arrow/Home/End navigation without being treated as Menu Bar-owned City
+shortcuts. Hunt Controls is the first consumer of this contract.
+
 The Product Owner-provided menu artwork is stored in `assets/`: `betterui.png`,
 `genetics.png`, `nature.png`, `trainer.png`, `evolution.png` and `gym.png`. Runtime
 96×96 derivatives in `assets/runtime-icons/` are embedded as data URLs so the
@@ -62,6 +70,17 @@ state before fixed-position dropdowns are used. If the host/user subsequently
 moves the hub by its native handle, that later geometry remains authoritative and
 is not rolled back during Better UI cleanup.
 
+The host's native `Main menu position` setting is redundant while Better UI owns this
+freely draggable Poké Hub. During Menu Bar ownership, the unique native Settings row
+whose select contract is exactly `top` / `bottom` is hidden and the corresponding
+`body.pokeidle-toolbar-bottom` geometry flag is neutralized. Identification is based
+on that native option contract plus the valid `InterfacePreferences.toolbarPosition`
+state, never translated label text or row ordinal, and fails closed when ambiguous.
+Better UI does not mutate the host preference value or native storage. If the native
+preference changes programmatically, its event updates the desired state while Better
+UI keeps drag geometry authoritative. Disabling Menu Bar restores both the Settings
+row and the latest native top/bottom preference behavior.
+
 Cleanup restores original positions/classes without resurrecting removed
 actions. Replacements and updated native labels are retained. Native badge
 references remain intact so the game can continue updating their counts.
@@ -85,6 +104,9 @@ shortcut attributes, locale changes, hidden controls/empty groups, alternate
 composition, cleanup/restart, full/partial replacements, item reordering, mutation
 stability, F5 geometry normalization/late layout, host-owned geometry cleanup and
 the four City shortcuts including native Gym-scene delegation and requested icon ownership.
+It also covers native Main-menu-position suppression/restoration, stale Settings
+select values and ambiguous lookalikes. Hunt-specific contextual integration is
+covered separately by `test/hunt-controls.test.js`.
 The six newer destinations in tests are synthetic contract fixtures, not an
 updated authenticated capture. Destination clicks in tests use mock handlers.
 
