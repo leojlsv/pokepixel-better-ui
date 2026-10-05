@@ -307,6 +307,11 @@ test("species card activation preserves the native list as a persistent chooser 
   assert.equal(s.body.querySelector(".npc-genetic__creature-list")?.textContent, "Charmander #1");
   assert.equal(cards[1].getAttribute("aria-pressed"), "true");
   assert.equal(s.root.dataset.ppbuiGeneticistLayout, "split");
+  assert.equal(
+    s.dom.window.getComputedStyle(s.body.querySelector(".npc-iv__primary-tabs")).display,
+    "none",
+    "primary Geneticist tabs are not reachable while choosing individual Pokémon",
+  );
 
   cards[2].click();
   s.controller.sync();
@@ -319,11 +324,17 @@ test("returning to native species step releases stale chooser and adopts the fre
   const s = setup(t);
   s.body.querySelectorAll(".npc-genetic__species")[0].click();
   s.controller.sync();
+  assert.equal(s.dom.window.getComputedStyle(s.body.querySelector(".npc-iv__primary-tabs")).display, "none");
   s.body.querySelector(".npc-genetic__toolbar button").click();
   s.controller.sync();
   assert.equal(s.root.hasAttribute("data-ppbui-geneticist-layout"), false);
   assert.equal(s.root.querySelector("[data-ppbui-geneticist-species-pane]").hidden, true);
   assert.ok(s.body.querySelector(".npc-genetic__species-list"), "fresh native species list remains in the body");
+  assert.notEqual(
+    s.dom.window.getComputedStyle(s.body.querySelector(".npc-iv__primary-tabs")).display,
+    "none",
+    "primary tabs return with the native species step",
+  );
 });
 
 test("reconcile activates the native cinematic Skip path exactly once without replacing host AnimeFX", t => {
@@ -379,10 +390,14 @@ test("cleanup restores Better UI species selection semantics without overwriting
   const cards = [...s.body.querySelectorAll(".npc-genetic__species")];
   cards[1].click();
   s.controller.sync();
+  const splitTabs = s.body.querySelector(".npc-iv__primary-tabs");
+  assert.equal(s.dom.window.getComputedStyle(splitTabs).display, "none");
   assert.equal(cards[1].getAttribute("aria-pressed"), "true");
   assert.equal(cards[1].classList.contains("ppbui-geneticist-species--active"), true);
   cards[0].setAttribute("aria-pressed", "mixed");
   s.controller.cleanup();
+  assert.notEqual(s.dom.window.getComputedStyle(splitTabs).display, "none", "cleanup restores native tab access");
+  assert.equal(s.root.hasAttribute("data-ppbui-geneticist-layout"), false);
   assert.equal(cards[1].hasAttribute("aria-pressed"), false);
   assert.equal(cards[1].classList.contains("ppbui-geneticist-species--active"), false);
   assert.equal(cards[0].getAttribute("aria-pressed"), "mixed", "newer host ownership survives cleanup");
@@ -390,11 +405,19 @@ test("cleanup restores Better UI species selection semantics without overwriting
 
 test("repeated native rerenders prune detached ownership before cleanup", async t => {
   const s = setup(t);
+  s.body.querySelector(".npc-genetic__species").click();
+  s.controller.sync();
+  assert.equal(s.root.dataset.ppbuiGeneticistLayout, "split");
   const retired = [];
   for (let cycle = 0; cycle < 12; cycle += 1) {
     const previous = [...s.body.querySelectorAll(".npc-genetic__creature, .npc-iv__primary-tabs .npc-shop__tab")];
     s.renderCreatures(`Bulbasaur ${cycle}`);
     s.controller.sync();
+    assert.equal(
+      s.dom.window.getComputedStyle(s.body.querySelector(".npc-iv__primary-tabs")).display,
+      "none",
+      "replacement primary tabs stay unavailable while the individual picker remains active",
+    );
     const detached = previous.filter(node => !node.isConnected);
     for (const node of detached) {
       assert.equal(node.classList.contains("ppbui-geneticist-card"), false);

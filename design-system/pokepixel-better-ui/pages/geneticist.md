@@ -1,6 +1,6 @@
 # Geneticista — Extraction Workspace Design Override
 
-Status: **`0.2.161` validated and approved in-game by Product Owner on 2026-10-04**
+Status: **`0.2.169` validated and approved in-game by Product Owner on 2026-10-05**
 Direction: **dense species picker + shared filter/discovery grammar**
 Recorded: **2026-10-04**
 
@@ -34,7 +34,10 @@ the native destructive request is species-scoped.
 
 ## Hierarchy and component direction
 
-1. Keep the window title/context and primary feature navigation stable.
+1. Keep the window title/context stable. Keep primary feature navigation on the top-level
+   feature and Extract species steps; while the individual-Pokémon picker is active, hide
+   the primary tabs so that selection has one navigation context. The native Back/Change
+   Species action restores the tabs immediately.
 2. Put search/filter controls directly above the current extraction collection.
 3. Species discovery uses compact selectable rows/cards: 48–54px sprite well, species
    name as the scan anchor, Elements/eligible count/material balance as secondary facts.
@@ -70,8 +73,9 @@ The persisted Reroll material-rarity spending policy is not a result-list filter
 a separate native policy surface, although its checkbox/chip treatment may use the same
 facet visual language.
 
-Primary tab labels are centered within equal flexible tracks. At narrow width, the four
-remaining tabs keep the existing 2×2 wrap with centered labels.
+Primary tab labels are centered within equal flexible tracks whenever the primary navigation
+is present. At narrow width, the four remaining tabs keep the existing 2×2 wrap with centered
+labels. The individual-Pokémon Extract picker omits that tab row entirely.
 
 ## States
 
@@ -126,3 +130,5 @@ remaining tabs keep the existing 2×2 wrap with centered labels.
     2×2 layout.
 11. Exchange adds no source Search/select/facet controls that could imply completeness
     beyond the bounded native material load.
+12. After choosing an Extract species, the individual-Pokémon picker exposes no primary
+    Geneticista tabs; Back/Change Species restores the same native feature navigation.

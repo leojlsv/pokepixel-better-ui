@@ -344,6 +344,10 @@ export default `
   grid-template-rows:auto minmax(0,1fr);
 }
 
+.npc-iv-window.ppbui-geneticist[data-ppbui-geneticist-layout="split"] .npc-iv__primary-tabs {
+  display:none!important;
+}
+
 .npc-iv-window.ppbui-geneticist[data-ppbui-geneticist-layout="split"] > .pokeidle-panel__titlebar {
   grid-column:1/-1;
   grid-row:1;

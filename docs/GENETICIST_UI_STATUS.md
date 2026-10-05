@@ -10,7 +10,8 @@ Date: 2026-10-04
   remove the extraction animation.
 - Branch / worktree: `feat/geneticist-ui` / `G:/pokepixel-better-ui`.
 - Baseline artifact / version: `0.2.158`; extraction redesign `0.2.159`; current
-  filter/discovery follow-up candidate `0.2.160`.
+  filter/discovery follow-up candidate `0.2.160`; focused individual-picker navigation
+  follow-up candidate `0.2.169`.
 - Previously Product Owner validated scope: Nature/Geneticista Hunt-performance fixes,
   City Geneticista shortcut and Trainer `Genetic Vault` navigation remain authoritative.
 - Explicitly out of scope: changing extraction yield, eligibility, protection/unlock,
@@ -24,6 +25,11 @@ Date: 2026-10-04
 The Product Owner validated candidate `0.2.159` in-game on 2026-10-04. The follow-up
 request is to improve `IV Reroll` and `Extract Material` filters, use one effective
 filter structure across all four remaining tabs, and center the primary tab labels.
+
+On 2026-10-05 the Product Owner requested one additional Extract workflow change: after
+choosing a species and entering the individual-Pokémon selection step, remove access to
+the primary Geneticista tabs because they interfere with that focused selection flow. The
+tabs must return when the user goes back to species selection.
 
 “Same structure” is implemented as a shared visual/discovery grammar. Native capabilities
 remain authoritative: Awakening exposes only Search. Exchange has no complete native
@@ -73,6 +79,7 @@ suppressing the modal DOM, replacing `AnimeFX` globally or bypassing completion.
 | `AC-GEN-12` | The four remaining primary tab labels are centered at normal width and retain the narrow 2×2 layout. | Native tab order, active state and click handlers. | CSS/DOM regression + wide/narrow render. | Feature Engineer | UX/A11y QA + Visual QA | `pass` |
 | `AC-GEN-13` | Native filter controls that lack an accessible name receive one without replacing the control or changing its listener identity. | Native control nodes, labels/placeholders, disabled/busy state. | Accessibility/identity regression. | Feature Engineer | Technical QA + UX/A11y QA | `pass` |
 | `AC-GEN-14` | Repeated reconciliation and native rerenders do not duplicate headings/ownership or mutate detached host renders during cleanup. | Central observer lifecycle and newer host ownership. | Reconcile/cleanup adversarial regression. | Feature Engineer | Technical QA | `pass` |
+| `AC-GEN-15` | In Extract, the primary Geneticista tabs are absent while the individual-Pokémon picker is active and return immediately on the native Back/Change Species transition. | Native Extract active state, Back/Change Species control, tab node identity/listeners, all other tab behavior outside the individual picker, and cleanup restoration. | DOM transition/lifecycle regression + representative wide/narrow render + Product Owner live check. | Feature Engineer | Technical QA + UX/A11y QA + Visual QA + Product Owner | `pass — 0.2.169 live validated` |
 
 ## Risks / failure hypotheses
 
@@ -85,6 +92,7 @@ suppressing the modal DOM, replacing `AnimeFX` globally or bypassing completion.
 | `R-GEN-05` | A Mark's-Shop-like redesign could accidentally imply cross-species atomic extraction. | UX review verifies active-species context remains explicit and selection count is scoped to it. | `pass` |
 | `R-GEN-06` | Filtering only the bounded Exchange source load could imply that the visible subset represents the whole material catalog. | No Better UI source Search/facets are created; regression preserves the native source list, target radios and Units controls. | `pass` |
 | `R-GEN-07` | Exchange material cards reuse `.npc-genetic__species` / `.npc-genetic__species-list`, so an unscoped Extract capture handler could reparent Exchange DOM before its native click handler runs. | Capture handling is gated by the native active Extract tab; regression clicks an Exchange source and proves its Exchange ancestor/original parent remain intact during the native handler. | `pass — P1 found and fixed during independent TECH QA` |
+| `R-GEN-08` | Hiding the primary navigation during individual selection could persist after Back, native rerender, tab replacement or Better UI cleanup. | Derive the hidden state from the current Extract creature step on every reconcile and verify species-step restoration, native replacement and cleanup. | `pass` |
 
 ## Completed gate results — candidate 0.2.159
 
@@ -113,6 +121,52 @@ suppressing the modal DOM, replacing `AnimeFX` globally or bypassing completion.
 `PM ACCEPTED — exact candidate authorized for Product Owner validation`.
 
 Product Owner in-game validation: **PASS on 2026-10-04**.
+
+## Current gate state — candidate 0.2.169
+
+The 2026-10-05 focused-selection follow-up hides the native primary navigation only while
+the existing Extract `split` state is active. The native tab nodes remain in place and are
+restored automatically when `Back/Change Species` returns to the species step or when Better
+UI cleans up.
+
+Author verification:
+
+- Geneticist focused tests: **15/15 PASS**, including species → individual picker → species,
+  cleanup restoration and repeated native creature/tab rebuilds while the picker stays active.
+- Full repository: **1326/1326 PASS**.
+- `npm run build`: **PASS**.
+- `git diff --check`: **PASS**.
+- Deterministic Chromium/CDP render at a 920 px window: primary nav computes to
+  `display:none`, `0×0`; root/body/content/filter surfaces have no horizontal overflow.
+- Deterministic Chromium/CDP render at a true 390 px window: primary nav computes to
+  `display:none`, `0×0`; document width remains 414 px including the fixture's 12 px outer
+  margins, the Geneticista root is exactly 390 px, and root/body/content/filter surfaces have
+  no horizontal overflow.
+- Exact artifact: `0.2.169`, `dist/pokepixel-better-ui.user.js`, **1,336,593 bytes**,
+  SHA-256 **`ED47A5907AE652688DFB431ECD164EB82141326FE893108D5BF3F4F2EF19C100`**.
+
+Product Owner in-game validation: **PASS — validated and approved on 2026-10-05**.
+
+Independent replacement reviews of the exact candidate:
+
+- Technical QA: **TECH READY — P0/P1 = 0/0**. Review confirmed the production delta is only
+  the scoped `split`-state CSS rule, verified lifecycle restoration and native node/listener
+  preservation, and independently replaced the full primary-tab node while `split` remained
+  active; the replacement stayed hidden without extra sync and became visible immediately when
+  the `split` attribute was removed.
+- UX/A11y QA: **UX READY — P0/P1 = 0/0**. The hidden nav is removed from sequential keyboard
+  focus while preserving native nodes/listeners, and `Change Species` remains the prominent,
+  reachable return path above filters at both reviewed widths.
+- Visual Regression QA: **VISUAL READY — P0/P1 = 0/0**. The 920 px and 390 px renders show the
+  primary tabs fully absent only in the individual picker, active species context retained,
+  `Change Species` visible, extraction action reachable and no material clipping/overlap or
+  horizontal overflow.
+
+### PM / Product Owner decision — 0.2.169
+
+`PM ACCEPTED — exact candidate validated and approved in-game by Product Owner`.
+
+Product Owner in-game validation: **PASS — validated and approved on 2026-10-05**.
 
 ## Current gate state — 0.2.161 validated
 

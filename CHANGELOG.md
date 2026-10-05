@@ -4,6 +4,13 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Geneticista / Extract Material — foco na seleção individual, candidato 0.2.169 (2026-10-05):**
+  ao escolher uma espécie no fluxo de extração, remove a navegação primária do Geneticista
+  enquanto a lista de Pokémon individuais está aberta. `Back/Change Species` restaura as abas
+  imediatamente. A mudança reutiliza o estado `split` existente, preserva os nodes/handlers
+  nativos das abas e não altera filtros, seleção ou a transação de extração.
+  **Validado e aprovado in-game pelo Product Owner em 2026-10-05.**
+
 - **Hunt clássico / Poké Hub — centralização do Return to City, 0.2.168 (2026-10-05):**
   após validação funcional do fluxo contextual, centraliza horizontalmente o texto do botão nativo
   `Return to City` no popup `Cidade`, sem alterar handler, foco, badge, Capture, Revive ou lifecycle.
