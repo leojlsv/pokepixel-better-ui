@@ -177,7 +177,7 @@ test("Better UI panel title uses the shared game display typography", t => {
   const { app, doc } = setup(t);
   app.start();
   const css = doc.querySelector('style[data-ppbui-style="module-controls"]').textContent.replace(/\s+/g, " ");
-  assert.match(css, /\.ppbui-module-panel > #ppbui-module-title \{[^}]*font:500 var\(--ppbui-font-size-title\)\/var\(--ppbui-line-height-tight\) var\(--ppbui-font-display\);[^}]*letter-spacing:normal;/);
+  assert.match(css, /\.ppbui-module-heading > #ppbui-module-title \{[^}]*font:500 var\(--ppbui-font-size-title\)\/var\(--ppbui-line-height-tight\) var\(--ppbui-font-display\);[^}]*letter-spacing:normal;/);
 });
 
 test("controls survive disabling every optional module and preserve native actions", t => {
@@ -298,6 +298,20 @@ test("menu bar position setting is absent from Better UI settings", t => {
   app.start(); trigger().click();
   assert.equal(doc.querySelector(".ppbui-module-orientation"), null);
   assert.equal(doc.querySelectorAll('#ppbui-module-panel select').length, 0);
+});
+
+test("Better UI panel credits Rhyxus above the accessible title without adding a focus stop", t => {
+  const { app, doc, trigger } = setup(t);
+  app.start(); trigger().click();
+  const panel = doc.querySelector("#ppbui-module-panel");
+  const heading = panel.querySelector(".ppbui-module-heading");
+  const author = heading.querySelector(".ppbui-module-author");
+  const title = heading.querySelector("#ppbui-module-title");
+  assert.equal(author.textContent, "by Rhyxus");
+  assert.equal(heading.firstElementChild, author);
+  assert.equal(author.nextElementSibling, title);
+  assert.equal(panel.getAttribute("aria-labelledby"), title.id);
+  assert.equal(author.matches("a,button,input,select,textarea,[tabindex]"), false);
 });
 
 test("theme disclosure persists independently and counts track module settings", async t => {

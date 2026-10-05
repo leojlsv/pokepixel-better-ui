@@ -43,8 +43,12 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
   panel.style.setProperty("top", "8px", "important");
   panel.style.setProperty("bottom", "auto", "important");
   panel.style.setProperty("transform", "none", "important");
+  const heading = create("div", "ppbui-module-heading");
+  const author = create("span", "ppbui-module-author");
+  author.textContent = "by Rhyxus";
   const title = create("div", `${classes.label} ppbui-module-copy`);
   title.id = "ppbui-module-title";
+  heading.append(author, title);
   const status = create("div", `${classes.label} ppbui-module-copy`);
   status.setAttribute("role", "status");
   const rows = modules.map(module => {
@@ -77,7 +81,7 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
   const close = create("button", "pokeidle-btn ppbui-button ppbui-button--compact ppbui-module-close"); close.type = "button";
   const list = create("div", "ppbui-module-list ppbui-scroll");
   list.append(...groups.map(group => group.fieldset));
-  panel.append(title, list, status, close);
+  panel.append(heading, list, status, close);
   const style = create("style");
   style.dataset.ppbuiStyle = config.id;
   style.textContent = `
@@ -85,7 +89,9 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     [data-ppbui-module="module-controls"] { position:relative !important; }
     [data-ppbui-module="module-controls"].is-open { z-index:2147483647; }
     [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:fixed !important; inset:auto !important; left:8px !important; right:auto !important; top:8px !important; bottom:auto !important; display:grid; min-width:min(220px,calc(100vw - 16px)); grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 16px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
-    .ppbui-module-panel > #ppbui-module-title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; }
+    .ppbui-module-heading { display:grid; min-width:0; gap:2px; }
+    .ppbui-module-author { color:var(--ppbui-text-muted); font:500 var(--ppbui-font-size-meta)/1.2 var(--ppbui-font-body); white-space:nowrap; }
+    .ppbui-module-heading > #ppbui-module-title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; }
     .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
     .ppbui-module-panel .ppbui-module-section { min-width:0; margin:4px 0; padding:0; border:0; text-align:left; }

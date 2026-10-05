@@ -4,6 +4,7 @@ import { createTradePokemonModule } from "../modules/pokemon-tools/adapters.js";
 import { createStorageModule, storageText } from "../modules/storage/index.js";
 import { createAutoHelperModule, autoHelperText } from "../modules/auto-helper/index.js";
 import { menuBarModule } from "../modules/menu-bar/index.js";
+import { huntControlsModule } from "../modules/hunt-controls/index.js";
 import { createInventoryModule } from "../modules/inventory/index.js";
 import { inventoryText } from "../modules/inventory/dom.js";
 import { createChatModule } from "../modules/chat/index.js";
@@ -48,6 +49,7 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
       name: text => text.name,
       description: text => text.description,
     } },
+    { module: huntControlsModule },
     { module: createStandaloneCardModeModule() },
     { module: createCoupledWorkspaceModule() },
     toggle(createBuffStripModule(), buffStripText),

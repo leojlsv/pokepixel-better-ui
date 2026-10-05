@@ -18,6 +18,7 @@ export function createMenuBarModule() {
     },
     getMountKey: () => target,
     reconcile: () => mounted?.sync(),
+    getGroupTarget: id => mounted?.getGroupTarget?.(id) || null,
     getOrientation: () => mounted?.getOrientation?.() || pendingOrientation || "horizontal",
     setOrientation: value => {
       pendingOrientation = normalizeOrientation(value);

@@ -1,5 +1,5 @@
 import { menuBarConfig as config } from "./config.js";
-import { groupLabel, isAvailable, isVisible } from "./dom.js";
+import { findToolbarPositionControl, groupLabel, isAvailable, isVisible } from "./dom.js";
 import styles from "./styles.js";
 import { buffStripConfig } from "../buff-strip/config.js";
 
@@ -17,6 +17,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   const collapsedStyles = new Map();
   const groups = [];
   const ownedCityActions = [];
+  const toolbarPositionMarker = "data-ppbui-menu-position-setting";
   let hoveredEntry = null;
   const placements = new Map();
   let orientation = "horizontal";
@@ -64,6 +65,30 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     node.addEventListener(event, fn, capture);
     undo.push(() => node.removeEventListener(event, fn, capture));
   };
+  const nativeToolbarPosition = () => {
+    const value = win?.PokeIdle?.InterfacePreferences?.get?.()?.toolbarPosition;
+    return value === "bottom" || value === "top" ? value : null;
+  };
+  let desiredToolbarPosition = nativeToolbarPosition()
+    || (doc.body?.classList.contains("pokeidle-toolbar-bottom") ? "bottom" : "top");
+  const releaseToolbarPositionRows = except => {
+    for (const row of doc.querySelectorAll(`[${toolbarPositionMarker}]`)) {
+      if (row !== except) row.removeAttribute(toolbarPositionMarker);
+    }
+  };
+  const suppressNativeToolbarPosition = ({ capturePreference = true } = {}) => {
+    if (capturePreference) desiredToolbarPosition = nativeToolbarPosition() || desiredToolbarPosition;
+    doc.body?.classList.remove("pokeidle-toolbar-bottom");
+    const control = findToolbarPositionControl(doc);
+    releaseToolbarPositionRows(control?.row || null);
+    control?.row.setAttribute(toolbarPositionMarker, "");
+  };
+  const onInterfacePreferences = event => {
+    const requested = event?.detail?.toolbarPosition;
+    if (requested === "top" || requested === "bottom") desiredToolbarPosition = requested;
+    suppressNativeToolbarPosition({ capturePreference: false });
+  };
+  listen(win, "pokeidle:interface-preferences", onInterfacePreferences);
   const claimInitialGeometry = (property, value) => {
     if (!geometryBefore.has(property)) {
       geometryBefore.set(property, [
@@ -228,7 +253,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     return !node.hidden && node.getAttribute("aria-hidden") !== "true" &&
       (masked ? masked[0] !== "none" : display !== "none");
   };
-  const menuItems = dropdown => [...dropdown.querySelectorAll(`${selectors.action}, ${selectors.cityAction}`)];
+  const menuItems = dropdown => [...dropdown.querySelectorAll(`${selectors.action}, ${selectors.cityAction}, ${selectors.contextualAction}`)];
   const createMenuIcon = (name, className = "") => {
     const image = doc.createElement("img");
     image.className = `pokeidle-top-toolbar__icon ppbui-menu-owned-icon${className ? ` ${className}` : ""}`;
@@ -351,19 +376,26 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     let originalLabel = label?.textContent;
     let originalAria = trigger.getAttribute("aria-label");
     let appliedLabel;
+    let appliedAria;
     const rename = () => {
       const name = groupLabel(index);
+      const contextAria = trigger.getAttribute("data-ppbui-menu-context-aria");
+      const ariaName = contextAria || name;
       if (appliedLabel !== undefined) {
         if (label && label.textContent !== appliedLabel) originalLabel = label.textContent;
-        if (trigger.getAttribute("aria-label") !== appliedLabel) originalAria = trigger.getAttribute("aria-label");
+        const currentAria = trigger.getAttribute("aria-label");
+        if (appliedAria !== undefined && currentAria !== appliedAria && currentAria !== ariaName && currentAria !== name) {
+          originalAria = currentAria;
+        }
       }
       if (label && label.textContent !== name) label.textContent = name;
-      if (trigger.getAttribute("aria-label") !== name) trigger.setAttribute("aria-label", name);
+      if (trigger.getAttribute("aria-label") !== ariaName) trigger.setAttribute("aria-label", ariaName);
       appliedLabel = name;
+      appliedAria = ariaName;
     };
     undo.push(() => {
       if (label?.textContent === appliedLabel) label.textContent = originalLabel;
-      if (trigger.getAttribute("aria-label") === appliedLabel) {
+      if (trigger.getAttribute("aria-label") === appliedAria) {
         if (originalAria === null) trigger.removeAttribute("aria-label");
         else trigger.setAttribute("aria-label", originalAria);
       }
@@ -628,6 +660,7 @@ export function mountMenuBar({ toolbar, actions, structure }) {
   listen(document, "pointerdown", outside, true);
   listen(toolbar, "click", outside, true);
   const sync = () => {
+    suppressNativeToolbarPosition();
     if (!geometryClaimed) normalizeHubGeometry();
     syncCollapsed();
     syncOwnedCityActions();
@@ -659,6 +692,10 @@ export function mountMenuBar({ toolbar, actions, structure }) {
     sync,
     getOrientation: () => orientation,
     setOrientation,
+    getGroupTarget: id => {
+      const entry = groups.find(group => group.id === id);
+      return entry ? { group:entry.group, trigger:entry.trigger, dropdown:entry.dropdown } : null;
+    },
     isIntact: () => groups.every(({ group, trigger, dropdown }) => group.parentNode === toolbar && trigger.parentNode === group && dropdown.parentNode === group) &&
       ownedCityActions.every(({ button, dropdown }) => button.parentNode === dropdown) &&
       [...placements].every(([button, parent]) => button.parentNode === parent) &&
@@ -668,6 +705,8 @@ export function mountMenuBar({ toolbar, actions, structure }) {
       }) &&
       ordered.every((node, index) => [...toolbar.children].filter(child => ordered.includes(child))[index] === node),
     cleanup() {
+      emitToolbarState(config.events.beforeTeardown, { reason:"cleanup" });
+      for (const entry of groups) entry.rename();
       toolbarStateObserver?.disconnect();
       if (geometryFrame !== null) win?.cancelAnimationFrame?.(geometryFrame);
       clearCollapsedStyles();
@@ -698,6 +737,9 @@ export function mountMenuBar({ toolbar, actions, structure }) {
         for (const button of group.querySelectorAll(selectors.action)) toolbar.append(button);
         group.remove();
       }
+      releaseToolbarPositionRows(null);
+      const latestNativePosition = nativeToolbarPosition() || desiredToolbarPosition;
+      doc.body?.classList.toggle("pokeidle-toolbar-bottom", latestNativePosition === "bottom");
       style.remove();
     },
   };
