@@ -4,6 +4,41 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Better UI panel — product identity header, candidato 0.2.174 (2026-10-05):**
+  substitui o cabeçalho solto `by Rhyxus` / `Better UI modules` por uma identidade compacta
+  com logo, `Better UI`, badge da versão atual e `by Rhyxus`. A versão exibida é injetada
+  pelo build diretamente de `package.json.version`, a mesma fonte usada pelo `@version` do
+  userscript; o header usa apenas uma separação inferior, sem criar outro card ou foco de teclado.
+  **Validado in-game pelo Product Owner em 2026-10-05.**
+
+- **Settings / visual effects — Animated borders removido, candidato 0.2.173 (2026-10-05):**
+  remove da experiência Better UI a opção `Animated borders` e neutraliza o efeito de borda
+  animada nos shells e controles nativos cobertos pelo design system. A linha nativa da Settings
+  é ocultada de forma reversível e reaplicada após rerenders; Better UI não regrava a preferência
+  nativa, portanto o jogo recupera seu comportamento original quando Better UI é desativado.
+  Também elimina o trabalho de animação `::after` correspondente em vez de apenas esconder sua cor.
+  **Pendente de validação in-game pelo Product Owner.**
+
+- **Inventory — Sort acima das rails sticky, candidato 0.2.172 (2026-10-05):**
+  corrige o stacking do `Sort` real, que é mantido como proxy absoluto fora do body para sobreviver
+  aos rebuilds nativos. Com as rails fixas do 0.2.171, o proxy podia ser pintado atrás da segunda
+  rail; agora recebe `z-index` acima das duas superfícies sticky, preservando posição, foco, tamanho
+  e lifecycle existentes. **Pendente de validação in-game pelo Product Owner.**
+
+- **Inventory — rails fixas durante scroll, candidato 0.2.171 (2026-10-05):**
+  mantém a rail de categoria/busca/filtros e a rail de Sort/Wallet/Views visíveis enquanto
+  o conteúdo da Backpack rola no body nativo. As duas superfícies usam `position: sticky`;
+  a segunda acompanha a altura real da primeira, inclusive após wrap responsivo e rebuilds,
+  sem criar um segundo scroll owner ou alterar handlers/estado nativos. **Candidato substituído
+  pelo 0.2.172 após o Product Owner identificar o proxy de Sort abaixo da rail sticky.**
+
+- **Inventory — Poké Filters + Wallet uniforme, candidato 0.2.170 (2026-10-05):**
+  renomeia o trigger inglês `More Filters` para `Poké Filters`. Na segunda utility rail,
+  os dois valores da Wallet passam a usar a altura padrão de 28 px dos controles Better UI
+  e removem o backplate nativo escuro dos wrappers, preservando os ícones internos, o mesmo
+  nó Wallet, seus listeners e o conteúdo dinâmico. **Validado in-game pelo Product Owner em
+  2026-10-05.**
+
 - **Geneticista / Extract Material — foco na seleção individual, candidato 0.2.169 (2026-10-05):**
   ao escolher uma espécie no fluxo de extração, remove a navegação primária do Geneticista
   enquanto a lista de Pokémon individuais está aberta. `Back/Change Species` restaura as abas

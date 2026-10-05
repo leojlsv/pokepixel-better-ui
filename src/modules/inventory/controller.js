@@ -14,9 +14,9 @@ export function mountInventory(root, preference) {
     .inventory-window--slots.ppbui-window > .pokeidle-panel__titlebar .pokeidle-panel__title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display)!important; letter-spacing:normal!important; }
     .inventory-window--slots.ppbui-window > .pokeidle-panel__titlebar button { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; color:var(--ppbui-text)!important; box-shadow:none!important; }
     .inventory-window--slots.ppbui-window > .pokeidle-panel__body { display:grid!important; grid-template-columns:minmax(0,1fr); align-content:start; gap:0; box-sizing:border-box; padding:0!important; background:var(--ppbui-bg-0) !important; color:var(--ppbui-text) !important; font-family:var(--ppbui-font-body) !important; }
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] { box-sizing:border-box; width:100%; margin:0!important; padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] { position:sticky!important; top:0!important; z-index:4; box-sizing:border-box; width:100%; margin:0!important; padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; box-shadow:none!important; }
     .inventory-window--slots.ppbui-window .inventory-category-tabs[data-ppbui-inventory-native-categories][hidden] { display:none!important; }
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] { box-sizing:border-box; width:100%; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); border:0; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-2); }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] { position:sticky; top:var(--ppbui-inventory-sticky-top,calc(var(--ppbui-control-height) + (var(--ppbui-space-3) * 2))); z-index:3; box-sizing:border-box; width:100%; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); border:0; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-2); }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { display:grid; grid-template-columns:minmax(160px,235px) auto minmax(0,1fr) max-content; align-items:center; justify-content:start; gap:var(--ppbui-space-2); margin:0!important; padding:0!important; border:0!important; background:transparent!important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { justify-self:end; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category-proxy] { min-width:140px; width:clamp(140px,24%,190px); max-width:190px; flex:0 1 190px; }
@@ -35,7 +35,7 @@ export function mountInventory(root, preference) {
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] > h3 { margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); background:var(--ppbui-bg-1); color:var(--ppbui-text); }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-category] > .inventory-slot-grid { padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar > .pokeidle-team-hud__wallet[data-ppbui-inventory-wallet] { position:static!important; inset:auto!important; z-index:auto!important; display:flex!important; flex-wrap:nowrap!important; align-items:center!important; justify-content:center!important; justify-self:center; gap:var(--ppbui-space-2)!important; box-sizing:border-box; width:auto!important; min-width:0!important; max-width:100%!important; height:auto!important; min-height:var(--ppbui-control-height); margin:0!important; padding:0!important; border:0!important; border-radius:var(--ppbui-radius)!important; background:transparent!important; box-shadow:none!important; transform:none!important; font-family:var(--ppbui-font-body)!important; }
-    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar > .pokeidle-team-hud__wallet[data-ppbui-inventory-wallet] > * { min-width:0; min-height:24px; box-sizing:border-box; padding:2px 6px!important; border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background-color:transparent!important; box-shadow:none!important; }
+    .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar > .pokeidle-team-hud__wallet[data-ppbui-inventory-wallet] > * { display:inline-flex!important; align-items:center!important; min-width:0; height:var(--ppbui-control-height)!important; min-height:var(--ppbui-control-height); box-sizing:border-box; padding:0 var(--ppbui-space-3)!important; border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background-color:transparent!important; background-image:none!important; box-shadow:none!important; }
     @container (max-width:680px) {
       .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { grid-template-columns:minmax(0,1fr) auto max-content; }
       .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { grid-column:1/-1; width:100%; }
@@ -87,6 +87,20 @@ export function mountInventory(root, preference) {
   status.className = "inventory-slots-hint ppbui-status";
   status.dataset.ppbuiInventoryStatus = "";
   status.setAttribute("role", "status");
+  const stickyFallback="calc(var(--ppbui-control-height) + (var(--ppbui-space-3) * 2))";
+  const syncStickyTop=toolbar=>{
+    const height=toolbar?.getBoundingClientRect?.().height || toolbar?.offsetHeight || 0;
+    const value=height>0?`${height}px`:stickyFallback;
+    if(disclosure.style.getPropertyValue("--ppbui-inventory-sticky-top")!==value)disclosure.style.setProperty("--ppbui-inventory-sticky-top",value);
+  };
+  let observedToolbar=null;
+  const resizeObserver=typeof doc.defaultView.ResizeObserver==="function"?new doc.defaultView.ResizeObserver(()=>syncStickyTop(observedToolbar)):null;
+  const observeStickyToolbar=toolbar=>{
+    if(observedToolbar!==toolbar){resizeObserver?.disconnect();observedToolbar=toolbar;if(toolbar)resizeObserver?.observe(toolbar);}
+    syncStickyTop(toolbar);
+  };
+  const resizeSticky=()=>syncStickyTop(observedToolbar);
+  doc.defaultView.addEventListener("resize",resizeSticky);
   clear.dataset.ppbuiInventoryClear = "";
   bar.append(apply, viewBar);
   disclosure.append(bar, status);
@@ -177,6 +191,7 @@ export function mountInventory(root, preference) {
     content(status, message);
     if (status.hidden !== !message) status.hidden = !message;
     control.sync(next, text.scope, text.query);
+    observeStickyToolbar(next.toolbar);
     scroll.restore();
     control.position();
   };
@@ -214,6 +229,8 @@ export function mountInventory(root, preference) {
       apply.removeEventListener("click", reapply);
       clear.removeEventListener("click", reset);
       viewBar.removeEventListener("click", changeView);
+      resizeObserver?.disconnect();
+      doc.defaultView.removeEventListener("resize",resizeSticky);
       control.cleanup();
       views.cleanup(parts.grid, baseline.filter(node => parts.grid?.contains(node)));
       disclosure.remove();shellStyle.remove();if(!hadWindowClass)root.classList.remove("ppbui-window");

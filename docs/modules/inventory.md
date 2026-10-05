@@ -36,13 +36,17 @@ apresentação final da Wallet em 2026-10-02 e declarou o módulo **Backpack con
 - O placeholder da busca é **Search**; ao desativar o módulo, o original é restaurado.
   Quando o host não fornece um nome acessível próprio, Better UI adiciona o rótulo
   localizado da busca e o remove no cleanup; um `aria-label` nativo existente prevalece.
-- Primeira utility rail: **Categoria · Search · More Filters · Clear Filters/Limpar**.
+- Primeira utility rail: **Categoria · Search · Poké Filters · Clear Filters/Limpar**.
   O dropdown de categoria ocupa 140–190px à esquerda; Search usa o espaço restante e
-  **More Filters** fica imediatamente à sua direita. Ao clicar em More Filters fora da
+  **Poké Filters** fica imediatamente à sua direita. Ao clicar em Poké Filters fora da
   categoria Pokémon, Better UI seleciona **Pokémon** pelo mesmo dropdown/proxy que delega
   ao controle nativo e abre os filtros avançados.
 - Segunda utility rail: **Sort/Ordenar · Re-Sort/Aplicar · Grade · Lista · Categorias**.
   Sort ocupa um track limitado de 160–235px em vez de absorver todo o espaço livre;
+  durante o scroll vertical da Backpack, as duas utility rails permanecem fixas no topo do
+  body nativo. A segunda rail usa a altura renderizada da primeira como offset, inclusive
+  quando os filtros quebram em mais de uma linha em larguras estreitas; o body continua sendo
+  o único scroll owner.
   o proxy absoluto reaplica essa largura com a mesma prioridade do primitive de select e
   o próprio select mantém um fallback CSS escopado de 160–235px, evitando que o
   `width:100%!important` compartilhado volte a expandi-lo no jogo;

@@ -14,3 +14,8 @@ test("userscript header version is derived exactly once from package.json", () =
   assert.throws(() => withUserscriptVersion(`${source}\n// @version`, version), /exactly one/);
   assert.throws(() => withUserscriptVersion(source, "arbitrary text"), /valid package version/);
 });
+
+test("build injects the same package version into the Better UI product header", () => {
+  const build = readFileSync(new URL("../scripts/build.mjs", import.meta.url), "utf8");
+  assert.match(build, /__PPBUI_VERSION__:\s*JSON\.stringify\(packageJson\.version\)/);
+});

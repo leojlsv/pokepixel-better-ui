@@ -120,7 +120,7 @@ test('Wallet is visible only in Backpack and stays globally removed from HUD eve
   assert.equal(team.nextElementSibling,wallet);
   assert.equal(window.getComputedStyle(wallet).display,'none','closing Backpack never brings Wallet back visually on HUD even when Team HUD enhancement is disabled');
 });
-test('Backpack removes Wallet value backplate color without erasing native icon backgrounds', t=>{
+test('Backpack removes Wallet value backplate and matches standard control height without erasing native icon backgrounds', t=>{
   const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots');
   const team=doc.createElement('div');team.className='pokeidle-team-hud';
   const wallet=doc.createElement('div');wallet.className='pokeidle-team-hud__wallet';
@@ -128,11 +128,11 @@ test('Backpack removes Wallet value backplate color without erasing native icon 
   const host=doc.createElement('style');host.textContent='.wallet-value{padding:0!important;border:0!important;background-color:#000!important;background-image:url("currency-backplate.png")!important;box-shadow:0 0 4px #000!important}.wallet-icon{background-image:url("currency-icon.png")!important}';doc.head.append(host);
   root.before(team,wallet);app.start();
   const value=wallet.firstElementChild,icon=value.firstElementChild,computed=window.getComputedStyle(value);
-  assert.equal(computed.backgroundColor,'rgba(0, 0, 0, 0)','Backpack neutralizes only the dark Wallet value fill');
-  assert.notEqual(computed.paddingLeft,'0px','Wallet value box gains horizontal breathing room around the number');
+  assert.equal(computed.backgroundColor,'rgba(0, 0, 0, 0)','Backpack neutralizes the dark Wallet value fill');
+  assert.equal(computed.backgroundImage,'none','Backpack removes the native Wallet backplate image behind each value');
   assert.notEqual(computed.borderTopWidth,'0px','Wallet value box gains a visible boundary instead of floating text');
-  assert.equal(computed.minHeight,'24px','Wallet value box gets a stable useful height without changing native content');
-  assert.match(computed.backgroundImage,/currency-backplate\.png/,'native value background-image is preserved instead of being reset by background shorthand');
+  assert.equal(computed.height,'var(--ppbui-control-height)','Wallet value box uses the standard Better UI control-height token');
+  assert.equal(computed.minHeight,'var(--ppbui-control-height)','Wallet value box keeps the standard Better UI control-height token as its minimum');
   assert.match(window.getComputedStyle(icon).backgroundImage,/currency-icon\.png/,'nested native currency/icon artwork remains untouched');
 });
 test('Wallet survives native Backpack window replacement and returns to Team on final cleanup', async t=>{
@@ -432,7 +432,7 @@ test('two rows keep Clear with filters and keyboard navigation follows the visib
   assert.doesNotMatch(shellCss,/::-webkit-scrollbar|scrollbar-color|scrollbar-width|scrollbar-gutter/,"host-owned Backpack scrollers keep the current native game scrollbar");
   assert.match(shellCss,/\.inventory-slot:focus-visible \{[^}]*outline:var\(--ppbui-focus-width\) solid var\(--ppbui-focus\)!important[^}]*outline-offset:var\(--ppbui-pixel-unit\)/s,"native slot actions receive the shared visible focus treatment without replacing their handlers");
   assert.match(shellCss,/\.inventory-slots-toolbar > \.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] \{[^}]*position:static!important[^}]*display:flex!important[^}]*flex-wrap:nowrap!important[^}]*justify-content:center!important[^}]*justify-self:center[^}]*width:auto!important[^}]*background:transparent!important[^}]*box-shadow:none!important/s,"native Wallet is centered in the flexible space between Re-Sort and Views without retaining HUD positioning");
-  assert.match(shellCss,/\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] > \* \{[^}]*min-height:24px[^}]*padding:2px 6px!important[^}]*border:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)!important[^}]*background-color:transparent!important[^}]*box-shadow:none!important/s,"Wallet value wrappers gain a bordered useful box with breathing room while keeping a transparent fill");
+  assert.match(shellCss,/\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] > \* \{[^}]*height:var\(--ppbui-control-height\)!important[^}]*min-height:var\(--ppbui-control-height\)[^}]*padding:0 var\(--ppbui-space-3\)!important[^}]*border:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)!important[^}]*background-color:transparent!important[^}]*background-image:none!important[^}]*box-shadow:none!important/s,"Wallet value wrappers match standard control height and remove the native backplate while keeping transparent fill");
   assert.doesNotMatch(shellCss,/\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\][^}]*> \*[^}]*background:transparent!important/s,"Wallet value cleanup must not use background shorthand that can erase native icon imagery");
   assert.match(shellCss,/@container \(max-width:680px\)[\s\S]*\.pokeidle-team-hud__wallet\[data-ppbui-inventory-wallet\] \{ grid-column:3; grid-row:1; \}/,"narrow/intermediate Backpack keeps Wallet on the same first row as Sort while Views move below");
   assert.match(shellCss,/\.ppbui-pokemon-tools \{[^}]*width:calc\(100% - \(var\(--ppbui-space-4\) \+ var\(--ppbui-space-4\)\)\)!important[^}]*margin:0 var\(--ppbui-space-4\)!important[^}]*padding:var\(--ppbui-space-3\) 0!important/s,"More filters uses physical horizontal inset instead of relying only on internal padding");
@@ -454,6 +454,8 @@ test('Sort proxy width beats shared native-select width ownership and stays boun
   assert.equal(order.style.getPropertyPriority('width'),'important');
   assert.equal(order.style.getPropertyValue('max-width'),'235px');
   assert.equal(order.style.getPropertyPriority('max-width'),'important');
+  const toolsCss=doc.querySelector('[data-ppbui-inventory-style]').textContent;
+  assert.match(toolsCss,/\[data-ppbui-order\] \{[^}]*position:absolute!important;[^}]*z-index:5/s,'Sort proxy paints above both sticky Inventory rails instead of being covered by the organization rail');
 });
 
 test('Backpack preserves native scroll surfaces without claiming visual ownership',t=>{
@@ -462,6 +464,23 @@ test('Backpack preserves native scroll surfaces without claiming visual ownershi
   for(const node of [root,body,grid]){assert.equal(node.classList.contains('ppbui-scroll'),false);assert.equal(node.hasAttribute('data-ppbui-inventory-scroll'),false);}
   app.stop();
   for(const node of [root,body,grid]){assert.equal(node.classList.contains('ppbui-scroll'),false);assert.equal(node.hasAttribute('data-ppbui-inventory-scroll'),false);}
+});
+
+test('Backpack keeps filter and organization rails sticky while the native body remains the scroll owner',t=>{
+  const {app,doc}=setup(t);const root=doc.querySelector('.inventory-window--slots'),bodyNode=doc.querySelector('.pokeidle-panel__body');
+  const firstToolbar=bodyNode.querySelector('.inventory-slots-toolbar');
+  firstToolbar.getBoundingClientRect=()=>({left:0,top:0,right:520,bottom:40,width:520,height:40,x:0,y:0,toJSON(){}});
+  app.start();
+  const shellCss=doc.querySelector('[data-ppbui-inventory-shell-style]').textContent,tools=doc.querySelector('[data-ppbui-inventory-tools]');
+  assert.match(shellCss,/\[data-ppbui-inventory-toolbar\] \{[^}]*position:sticky!important;[^}]*top:0!important;[^}]*z-index:4/s,'filter rail sticks to the top of the native scrolling body');
+  assert.match(shellCss,/\[data-ppbui-inventory-tools\] \{[^}]*position:sticky;[^}]*top:var\(--ppbui-inventory-sticky-top,[^)]+\)[^}]*z-index:3/s,'organization rail sticks directly below the measured filter rail');
+  assert.equal(tools.style.getPropertyValue('--ppbui-inventory-sticky-top'),'40px');
+  assert.equal(bodyNode.classList.contains('ppbui-scroll'),false,'sticky controls do not replace the native body scroll owner');
+  bodyNode.innerHTML=body();
+  const replacement=bodyNode.querySelector('.inventory-slots-toolbar');
+  replacement.getBoundingClientRect=()=>({left:0,top:0,right:390,bottom:72,width:390,height:72,x:0,y:0,toJSON(){}});
+  app.reconcile();
+  assert.equal(tools.style.getPropertyValue('--ppbui-inventory-sticky-top'),'72px','toolbar rebuilds and responsive wraps refresh the second rail offset');
 });
 
 test('same-toolbar child replacement reacquires master field primitives without leaking old ownership', t=>{

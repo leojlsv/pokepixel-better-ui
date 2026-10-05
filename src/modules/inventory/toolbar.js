@@ -81,7 +81,7 @@ export function mountSortControl(root, order, bar, clear, nextControl) {
     [data-ppbui-inventory-views] > .ppbui-button { min-width:auto; border-width:var(--ppbui-separator-width); }
     [data-ppbui-inventory-views] > .ppbui-button + .ppbui-button { border-left:0; }
     [data-ppbui-inventory-clear] { flex-shrink: 0; }
-    [data-ppbui-order] { position: absolute; min-width: 0; margin: 0; }
+    [data-ppbui-order] { position:absolute!important; z-index:5; min-width:0; margin:0; }
     @container (max-width:519px) {
       [data-ppbui-inventory-toolbar] { flex-wrap:wrap!important; }
       [data-ppbui-inventory-toolbar] > input.game-window__search { flex:1 1 220px; }

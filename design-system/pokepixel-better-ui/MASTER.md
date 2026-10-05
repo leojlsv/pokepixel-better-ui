@@ -455,6 +455,9 @@ Motion exists to explain state change, not decorate the interface.
 - avoid continuous ambient animation in management UI;
 - avoid animating large width/height changes when a discrete transition works;
 - `prefers-reduced-motion: reduce` must remove non-essential motion;
+- Better UI does not expose or render the host `Animated borders` effect. Supported
+  native shells and controls keep static structural borders; the host setting row is
+  suppressed while Better UI is active without rewriting the game's stored preference.
 - loading indicators may animate only while actual work is pending.
 
 ## 13. Content and localization

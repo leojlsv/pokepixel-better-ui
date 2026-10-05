@@ -1,5 +1,5 @@
 import { moduleControlsConfig as config } from "./config.js";
-import { closeNativeGroups, controlsText } from "./dom.js";
+import { closeNativeGroups, controlsText, findAnimatedBorderSettings } from "./dom.js";
 
 export function mountControls({ toolbar, icon }, preferences, modules) {
   const { classes } = config;
@@ -43,14 +43,34 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
   panel.style.setProperty("top", "8px", "important");
   panel.style.setProperty("bottom", "auto", "important");
   panel.style.setProperty("transform", "none", "important");
-  const heading = create("div", "ppbui-module-heading");
+  const heading = create("header", "ppbui-module-heading");
+  const brandLogo = create("img", "ppbui-module-brand-logo");
+  if (typeof __PPBUI_LOGO__ === "string") brandLogo.src = __PPBUI_LOGO__;
+  else if (image.src) brandLogo.src = image.src;
+  brandLogo.draggable = false;
+  brandLogo.alt = "";
+  brandLogo.setAttribute("aria-hidden", "true");
+  const brandCopy = create("div", "ppbui-module-brand-copy");
+  const identity = create("div", "ppbui-module-identity");
+  const title = create("strong", "ppbui-module-product");
+  title.id = "ppbui-module-title";
+  title.textContent = "Better UI";
+  const version = create("span", "ppbui-module-version");
+  const buildVersion = typeof __PPBUI_VERSION__ === "string" ? __PPBUI_VERSION__ : "dev";
+  version.textContent = `v${buildVersion}`;
+  identity.append(title, version);
   const author = create("span", "ppbui-module-author");
   author.textContent = "by Rhyxus";
-  const title = create("div", `${classes.label} ppbui-module-copy`);
-  title.id = "ppbui-module-title";
-  heading.append(author, title);
+  brandCopy.append(identity, author);
+  heading.append(brandLogo, brandCopy);
   const status = create("div", `${classes.label} ppbui-module-copy`);
   status.setAttribute("role", "status");
+  const animatedBorderMarker = "data-ppbui-animated-border-setting";
+  const suppressAnimatedBorderSetting = () => {
+    const current = new Set(findAnimatedBorderSettings(document));
+    for (const row of document.querySelectorAll(`[${animatedBorderMarker}]`)) if (!current.has(row)) row.removeAttribute(animatedBorderMarker);
+    for (const row of current) row.setAttribute(animatedBorderMarker, "");
+  };
   const rows = modules.map(module => {
     const row = create("label", "ppbui-module-row");
     const button = create("input"); button.type = "checkbox";
@@ -89,9 +109,13 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     [data-ppbui-module="module-controls"] { position:relative !important; }
     [data-ppbui-module="module-controls"].is-open { z-index:2147483647; }
     [data-ppbui-module="module-controls"] > .ppbui-module-panel { position:fixed !important; inset:auto !important; left:8px !important; right:auto !important; top:8px !important; bottom:auto !important; display:grid; min-width:min(220px,calc(100vw - 16px)); grid-template-columns:minmax(0,1fr); grid-template-rows:auto minmax(0,1fr) auto auto; gap:var(--ppbui-space-2); padding:var(--ppbui-space-3); max-width:min(360px,calc(100vw - 16px)); max-height:min(480px,calc(100dvh - 16px)); overflow:hidden; transform:none !important; z-index:2147483647; font:var(--ppbui-font-size-secondary)/var(--ppbui-line-height-body) var(--ppbui-font-body); color:var(--ppbui-text); }
-    .ppbui-module-heading { display:grid; min-width:0; gap:2px; }
+    .ppbui-module-heading { display:grid; grid-template-columns:28px minmax(0,1fr); align-items:center; gap:var(--ppbui-space-3); min-width:0; padding:0 0 var(--ppbui-space-3); border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border); }
+    .ppbui-module-brand-logo { display:block; width:26px; height:26px; object-fit:contain; image-rendering:pixelated; }
+    .ppbui-module-brand-copy { display:grid; min-width:0; gap:1px; }
+    .ppbui-module-identity { display:flex; align-items:center; gap:var(--ppbui-space-2); min-width:0; }
+    .ppbui-module-product { color:var(--ppbui-text); font:700 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; white-space:nowrap; }
+    .ppbui-module-version { display:inline-flex; align-items:center; min-height:16px; padding:0 var(--ppbui-space-2); border:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius-badge); background:var(--ppbui-bg-2); color:var(--ppbui-text-muted); font:700 var(--ppbui-font-size-meta)/1 var(--ppbui-font-data); white-space:nowrap; }
     .ppbui-module-author { color:var(--ppbui-text-muted); font:500 var(--ppbui-font-size-meta)/1.2 var(--ppbui-font-body); white-space:nowrap; }
-    .ppbui-module-heading > #ppbui-module-title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display); letter-spacing:normal; }
     .ppbui-module-list { min-height:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
     .ppbui-module-panel > .ppbui-module-copy { max-width:none; white-space:normal; }
     .ppbui-module-panel .ppbui-module-section { min-width:0; margin:4px 0; padding:0; border:0; text-align:left; }
@@ -105,6 +129,7 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     .ppbui-module-row-copy { display:grid; gap:2px; min-width:0; font:inherit; }
     .ppbui-module-description { color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-meta); font-weight:400; line-height:1.35; }
     .ppbui-module-panel > .ppbui-module-close { min-height:28px; padding:4px 8px; font:inherit; }
+    [data-ppbui-animated-border-setting] { display:none !important; }
 
   `;
   group.append(trigger, panel, style);
@@ -186,9 +211,9 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     } else if (restoreFocus) trigger.focus();
   };
   const sync = () => {
+    suppressAnimatedBorderSetting();
     const text = controlsText();
     const content = (node, value) => { if (node.textContent !== value) node.textContent = value; };
-    content(title, text.title);
     content(close, text.close);
     content(status, preferences.isPersistent() && disclosurePersistent ? text.saved : text.unsaved);
     for (const group of groups) {
@@ -248,6 +273,7 @@ export function mountControls({ toolbar, icon }, preferences, modules) {
     isIntact: () => group.parentNode === toolbar && trigger.parentNode === group && panel.parentNode === group && rows.every(row => row.button.parentNode === row.row && panel.contains(row.row)),
     cleanup() {
       for (const remove of unlisten) remove();
+      for (const row of document.querySelectorAll(`[${animatedBorderMarker}]`)) row.removeAttribute(animatedBorderMarker);
       group.remove();
     },
   };

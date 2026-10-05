@@ -55,6 +55,29 @@ test("corner mode UI is removed and legacy Squared storage is retired", t => {
   assert.equal(window.localStorage.getItem("ppbui:appearance:v1"), null);
 });
 
+test("Animated borders native setting is suppressed while Better UI is active and restored on cleanup", t => {
+  const { app, doc } = setup(t);
+  const row = doc.createElement("label");
+  row.className = "settings-control";
+  row.innerHTML = '<span><strong>Animated borders</strong><small>Animates windows and buttons. Respects reduced motion and lightweight mode.</small></span><input type="checkbox" name="animatedBorders">';
+  doc.body.append(row);
+  app.start();
+  assert.equal(row.hasAttribute("data-ppbui-animated-border-setting"), true);
+  const css = doc.querySelector('style[data-ppbui-style="module-controls"]').textContent.replace(/\s+/g, " ");
+  assert.match(css, /\[data-ppbui-animated-border-setting\] \{ display:none !important; \}/);
+
+  row.remove();
+  const replacement = doc.createElement("label");
+  replacement.className = "settings-control";
+  replacement.innerHTML = '<span><strong>Animated borders</strong></span><input type="checkbox" id="animated-border-toggle">';
+  doc.body.append(replacement);
+  app.reconcile();
+  assert.equal(replacement.hasAttribute("data-ppbui-animated-border-setting"), true, "Settings rerenders remain suppressed");
+
+  app.stop();
+  assert.equal(replacement.hasAttribute("data-ppbui-animated-border-setting"), false, "cleanup restores the native Settings row");
+});
+
 test("Better UI panel owns viewport positioning independently from hostile native dropdown CSS", t => {
   const { app, doc, window } = setup(t);
   const hostile = doc.createElement("style");
@@ -173,11 +196,14 @@ test("Better UI panel clamps its rendered rect through a containing-block offset
   assert.ok(rect.top >= 8 && rect.bottom <= 692, `resized vertical bounds: ${rect.top}..${rect.bottom}`);
 });
 
-test("Better UI panel title uses the shared game display typography", t => {
+test("Better UI brand header uses compact product hierarchy without an extra card", t => {
   const { app, doc } = setup(t);
   app.start();
   const css = doc.querySelector('style[data-ppbui-style="module-controls"]').textContent.replace(/\s+/g, " ");
-  assert.match(css, /\.ppbui-module-heading > #ppbui-module-title \{[^}]*font:500 var\(--ppbui-font-size-title\)\/var\(--ppbui-line-height-tight\) var\(--ppbui-font-display\);[^}]*letter-spacing:normal;/);
+  assert.match(css, /\.ppbui-module-heading \{[^}]*grid-template-columns:28px minmax\(0,1fr\)[^}]*border-bottom:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)/);
+  assert.match(css, /\.ppbui-module-product \{[^}]*font:700 var\(--ppbui-font-size-title\)\/var\(--ppbui-line-height-tight\) var\(--ppbui-font-display\);[^}]*letter-spacing:normal;/);
+  assert.match(css, /\.ppbui-module-version \{[^}]*background:var\(--ppbui-bg-2\)[^}]*font:700 var\(--ppbui-font-size-meta\)\/1 var\(--ppbui-font-data\)/);
+  assert.doesNotMatch(css, /\.ppbui-module-heading \{[^}]*background:/);
 });
 
 test("controls survive disabling every optional module and preserve native actions", t => {
@@ -300,18 +326,27 @@ test("menu bar position setting is absent from Better UI settings", t => {
   assert.equal(doc.querySelectorAll('#ppbui-module-panel select').length, 0);
 });
 
-test("Better UI panel credits Rhyxus above the accessible title without adding a focus stop", t => {
+test("Better UI panel presents product identity, version and Rhyxus without extra focus stops", t => {
   const { app, doc, trigger } = setup(t);
   app.start(); trigger().click();
   const panel = doc.querySelector("#ppbui-module-panel");
   const heading = panel.querySelector(".ppbui-module-heading");
+  const logo = heading.querySelector(".ppbui-module-brand-logo");
+  const identity = heading.querySelector(".ppbui-module-identity");
   const author = heading.querySelector(".ppbui-module-author");
   const title = heading.querySelector("#ppbui-module-title");
+  const version = heading.querySelector(".ppbui-module-version");
+  assert.equal(title.textContent, "Better UI");
   assert.equal(author.textContent, "by Rhyxus");
-  assert.equal(heading.firstElementChild, author);
-  assert.equal(author.nextElementSibling, title);
+  assert.match(version.textContent, /^v(?:dev|\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)$/);
+  assert.equal(identity.firstElementChild, title);
+  assert.equal(title.nextElementSibling, version);
+  assert.equal(heading.firstElementChild, logo);
+  assert.equal(logo.alt, "");
+  assert.equal(logo.getAttribute("aria-hidden"), "true");
   assert.equal(panel.getAttribute("aria-labelledby"), title.id);
   assert.equal(author.matches("a,button,input,select,textarea,[tabindex]"), false);
+  assert.equal(version.matches("a,button,input,select,textarea,[tabindex]"), false);
 });
 
 test("theme disclosure persists independently and counts track module settings", async t => {

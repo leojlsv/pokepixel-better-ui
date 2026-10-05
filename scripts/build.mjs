@@ -49,6 +49,7 @@ const options = {
   },
   define: {
     __PPBUI_LOGO__: JSON.stringify(logo),
+    __PPBUI_VERSION__: JSON.stringify(packageJson.version),
     __PPBUI_POKE_PROFILE_ICON__: JSON.stringify(pokemonProfileIcon),
     __PPBUI_MENU_ICONS__: JSON.stringify(menuIcons),
   },

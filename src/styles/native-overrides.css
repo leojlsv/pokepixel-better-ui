@@ -1,9 +1,10 @@
 /*
  * Narrow native compatibility override.
  *
- * PokePixel paints an animated conic border on generic buttons by inheriting
- * --ui-border-start / --ui-border-end into a shared ::after rule. Neutralize
- * only those effect tokens on the native button surfaces that receive it.
+ * PokePixel paints an animated conic border by inheriting --ui-border-start /
+ * --ui-border-end into shared ::after rules. Better UI intentionally does not
+ * expose or render that effect, so neutralize the effect tokens on supported
+ * native shells and controls while leaving geometry and interaction native.
  * Geometry is no longer rewritten globally: the host keeps its own current
  * radius/layout, while Better UI-owned surfaces use the native-aligned radius tokens.
  */
@@ -17,7 +18,25 @@
   .pokeidle-top-toolbar,
   .pokeidle-mobile-menu,
   .pokeidle-ui-window,
-  .pokeidle-mini-view .mini
+  .pokeidle-mini-view .mini,
+  .npc-nature-window,
+  .npc-iv-window,
+  .npc-evolution-window
+),
+:where(
+  .pokeidle-panel,
+  .pokeidle-form-box,
+  .pokeidle-dialog,
+  .pokeidle-mobile-sheet,
+  .world-servers-window,
+  .pokeidle-persistent-chat,
+  .pokeidle-top-toolbar,
+  .pokeidle-mobile-menu,
+  .pokeidle-ui-window,
+  .pokeidle-mini-view .mini,
+  .npc-nature-window,
+  .npc-iv-window,
+  .npc-evolution-window
 ) button:where(
   :not([class*="slot"]):not([class*="sprite"]):not([class*="close"])
 ),
@@ -33,6 +52,41 @@
  * will-change:auto still wins, which is worse than leaving the host untouched.
  */
 @layer pokeidle-glass {
+  :where(
+    .pokeidle-panel,
+    .pokeidle-form-box,
+    .pokeidle-dialog,
+    .pokeidle-mobile-sheet,
+    .world-servers-window,
+    .pokeidle-persistent-chat,
+    .pokeidle-top-toolbar,
+    .pokeidle-mobile-menu,
+    .pokeidle-ui-window,
+    .pokeidle-mini-view .mini,
+    .npc-nature-window,
+    .npc-iv-window,
+    .npc-evolution-window
+  )::after,
+  :where(
+    .pokeidle-panel,
+    .pokeidle-form-box,
+    .pokeidle-dialog,
+    .pokeidle-mobile-sheet,
+    .world-servers-window,
+    .pokeidle-persistent-chat,
+    .pokeidle-top-toolbar,
+    .pokeidle-mobile-menu,
+    .pokeidle-ui-window,
+    .pokeidle-mini-view .mini,
+    .npc-nature-window,
+    .npc-iv-window,
+    .npc-evolution-window
+  ) button:where(:not([class*="slot"]):not([class*="sprite"]):not([class*="close"]))::after,
+  :where(.pokeidle-btn, .rubinot-btn, .pokeidle-ui-button)::after {
+    animation:none !important;
+    will-change:auto !important;
+  }
+
   .npc-nature-window::after,
   .npc-iv-window::after {
     animation: none !important;
@@ -40,7 +94,7 @@
   }
 
   /*
-   * These roster-card rings are already visually neutralized above, but the
+   * These roster-card rings are visually neutralized above, but the
    * host still starts its animated custom property on hover/focus. On a large
    * Nature/IV roster that invisible animation forces repeated style work, so
    * stop it only on the roster cards. Tabs/actions and Evolution stay native.

@@ -102,13 +102,12 @@ test("shared CSS is opt-in and cannot broadly restyle host game controls", () =>
   assert.doesNotMatch(css, /\.pokeidle-(?!btn\.ppbui-button)/i, "host bridge must require both native and PPBUI opt-in classes");
 });
 
-test("global native override removes the host button glint and freezes only proven expensive NPC window rings", () => {
+test("global native override removes animated border effects from supported native shells and controls", () => {
   const normalized = nativeOverridesCss.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
-  assert.match(normalized, /\.pokeidle-panel,[^}]+\.pokeidle-mini-view \.mini[^}]+button:where\([^}]+:not\(\[class\*="slot"\]\):not\(\[class\*="sprite"\]\):not\(\[class\*="close"\]\)[^}]+--ui-border-start: transparent !important;[^}]+--ui-border-end: transparent !important;/);
+  assert.match(normalized, /:where\( \.pokeidle-panel,[^}]+\.npc-evolution-window \), :where\( \.pokeidle-panel,[^}]+\.npc-evolution-window \) button:where\([^}]+--ui-border-start: transparent !important; --ui-border-end: transparent !important;/);
   assert.match(normalized, /:where\(\.pokeidle-btn, \.rubinot-btn, \.pokeidle-ui-button\) \{[^}]+--ui-border-start: transparent !important;[^}]+--ui-border-end: transparent !important;/);
-  assert.match(normalized, /@layer pokeidle-glass \{ \.npc-nature-window::after, \.npc-iv-window::after \{ animation: none !important; will-change: auto !important; \}/, "the override must live in the host's important cascade layer; unlayered !important loses to layered !important");
+  assert.match(normalized, /@layer pokeidle-glass \{ :where\( \.pokeidle-panel,[\s\S]+\.npc-evolution-window \)::after,[\s\S]+:where\(\.pokeidle-btn, \.rubinot-btn, \.pokeidle-ui-button\)::after \{ animation:none !important; will-change:auto !important; \}/, "the host border ring itself is stopped in the host's important cascade layer");
   assert.match(normalized, /\.npc-nature-window \.npc-nature__pokemon::after, \.npc-iv-window \.npc-iv__pokemon::after \{ animation: none !important; \}/, "large Nature\/IV roster cards must not run an invisible host ring animation on hover or focus");
-  assert.doesNotMatch(normalized, /\.npc-evolution-window::after[^}]*animation:\s*none/i, "Evolution remains the native control case");
   assert.doesNotMatch(normalized, /(?:^|})\s*button\s*\{/m, "native overrides have no unscoped button reset");
 });
 
