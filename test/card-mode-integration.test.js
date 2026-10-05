@@ -2009,6 +2009,11 @@ test("Loot Story icon strip aggregates quantities and sorts by rarity without qu
   assert.equal(tiles[1].querySelector(".ppbui-cards-loot-drop-icon")?.style.backgroundPosition,"-32px -32px");
   assert.equal(tiles[2].querySelector(".ppbui-cards-loot-drop-icon")?.classList.contains("ppbui-cards-loot-drop-icon--fallback"),true);
   assert.equal(tiles[4].dataset.rarity,"unknown");
+  const cardsCss=doc.querySelector("style[data-ppbui-card-mode-cards-style]")?.textContent || "";
+  assert.match(cardsCss,/\.ppbui-cards-loot-drop\{[^}]*border:1px solid var\(--ppbui-border-strong,#6b6543\)/,
+    "loot icon tiles use the neutral standard border");
+  assert.doesNotMatch(cardsCss,/\.ppbui-cards-loot-drop\{[^}]*border:[^}]*--rarity-color/,
+    "loot icon tile borders do not inherit item rarity colors");
 
   filter.value="rare";
   filter.dispatchEvent(new window.Event("change"));
@@ -2016,6 +2021,63 @@ test("Loot Story icon strip aggregates quantities and sorts by rarity without qu
   assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["rare-dust"],"item-rarity filter scopes the visual strip");
   assert.match(doc.querySelector("[data-card-loot-body]").textContent,/Rare Dust/);
   assert.doesNotMatch(doc.querySelector("[data-card-loot-body]").textContent,/Weak Thread|Mythic Shard/);
+});
+
+test("Loot Story icon strip keeps the session aggregate after rows leave the 32-row public window and resets on a new Hunt/Expedition generation", async t => {
+  const now = Date.now();
+  const first = {
+    protocol:1,available:true,capturedAtMs:now,status:"running",activityKind:"hunt",
+    sessionGeneration:41,startedAtMs:now-60_000,specialHistory:[],
+    lootHistory:[
+      {atMs:now-3000,species:"Dragonite",items:[{itemId:"old-thread",qty:2}]},
+      {atMs:now-3000,species:"Dragonite",items:[{itemId:"old-thread",qty:1}]},
+    ],
+  };
+  const { app, doc, window, cardMode, setAnalyzerSummary } = setup(t,{analyzerSummary:first});
+  window.PokeIdle={Api:{async getInventory(){return{inventory:[
+    {item_id:"old-thread",name:"Old Thread",rarity:"weak",qty:2,icon_index:1},
+    {item_id:"mid-leaf",name:"Mid Leaf",rarity:"common",qty:3,icon_index:2},
+    {item_id:"fresh-dust",name:"Fresh Dust",rarity:"rare",qty:4,icon_index:3},
+    {item_id:"expedition-shard",name:"Expedition Shard",rarity:"epic",qty:1,icon_index:4},
+  ]};}}};
+  app.start();
+
+  setAnalyzerSummary({
+    ...first,capturedAtMs:Date.now(),
+    lootHistory:[
+      {atMs:now-3000,species:"Dragonite",items:[{itemId:"old-thread",qty:1}]},
+      {atMs:now-3000,species:"Dragonite",items:[{itemId:"mid-leaf",qty:3}]},
+    ],
+  });
+  await new Promise(resolve => setTimeout(resolve, 1050));
+  setAnalyzerSummary({
+    ...first,capturedAtMs:Date.now(),
+    lootHistory:[{atMs:now-2000,species:"Dragonite",items:[{itemId:"old-thread",qty:3}]}],
+  });
+  cardMode.setView("cards");
+  setAnalyzerSummary({
+    ...first,capturedAtMs:Date.now(),
+    lootHistory:[{atMs:now-1000,species:"Dragonite",items:[{itemId:"fresh-dust",qty:4}]}],
+  });
+  app.reconcile();
+  doc.querySelector('[data-card-story-tab="loot"]').click();
+  await settle();
+  let tiles=[...doc.querySelectorAll("[data-card-loot-summary] .ppbui-cards-loot-drop")];
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["old-thread","mid-leaf","fresh-dust"],
+    "items remain in the icon aggregate after their individual history rows have left the public 32-row window");
+  assert.deepEqual(tiles.map(tile=>tile.querySelector(".ppbui-cards-loot-drop-qty")?.textContent),["×6","×3","×4"],
+    "quantities keep accumulating across drops even after the older source row disappears");
+
+  setAnalyzerSummary({
+    ...first,capturedAtMs:Date.now(),activityKind:"expedition",sessionGeneration:42,startedAtMs:now,
+    lootHistory:[{atMs:now,species:"EXPEDITION",items:[{itemId:"expedition-shard",qty:1}]}],
+  });
+  app.reconcile();
+  await settle();
+  tiles=[...doc.querySelectorAll("[data-card-loot-summary] .ppbui-cards-loot-drop")];
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["expedition-shard"],
+    "a new session generation is the reset boundary for the aggregate");
+  assert.equal(tiles[0].querySelector(".ppbui-cards-loot-drop-qty")?.textContent,"×1");
 });
 
 test("Loot Story refreshes native metadata when a newly dropped item was not in the first catalog", async t => {

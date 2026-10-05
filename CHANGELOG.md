@@ -4,6 +4,12 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Card Mode / Loot Story — agregado persistente por sessão, candidato 0.2.178 (2026-10-05):**
+  os ícones de loot deixam de depender apenas da janela pública de 32 registros do
+  Hunt Analyzer. O Card Mode mantém as quantidades agregadas durante toda a Hunt ou
+  Expedition atual, inclusive enquanto a visualização está em Game, e limpa o
+  agregado somente quando a geração da sessão muda em um reset/restart.
+
 - **Tampermonkey native update channel, candidato 0.2.178 (2026-10-05):** adds a
   lightweight `pokepixel-better-ui.meta.js` release asset and stable
   `@updateURL` / `@downloadURL` metadata through GitHub Releases. `v0.2.178` is

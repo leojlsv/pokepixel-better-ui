@@ -1,6 +1,9 @@
 # PokePixel Idle Better UI
 
-Functional UI/UX and QoL layer for PokePixel Idle.
+Better UI is a Tampermonkey userscript that refines PokePixel Idle with a cleaner,
+more consistent interface and focused quality-of-life improvements. It reorganizes
+existing game surfaces, adds clearer information and practical controls, and keeps
+the native game state and rules authoritative.
 
 [![CI](https://github.com/leojlsv/pokepixel-better-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/leojlsv/pokepixel-better-ui/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)

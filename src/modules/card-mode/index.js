@@ -70,7 +70,11 @@ function mountCardMode(win = globalThis.window) {
   let toolbarPath = new Map();
   let toggleOwnedFocus = false;
 
-  const syncAnalyzer = () => cards.render(readAnalyzerSummary(win));
+  const syncAnalyzer = () => {
+    const summary = readAnalyzerSummary(win);
+    if (mode === "cards") cards.render(summary);
+    else cards.ingest(summary);
+  };
   const clearToolbarOwnership = () => {
     if (observedToolbar && !toolbarHadMarker) observedToolbar.removeAttribute(toolbarAttribute);
     for (const [node, hadMarker] of toolbarPath) if (!hadMarker) node.removeAttribute(toolbarPathAttribute);
@@ -149,7 +153,7 @@ function mountCardMode(win = globalThis.window) {
     }
     syncToolbar();
     syncToggle();
-    if (mode === "cards") syncAnalyzer();
+    syncAnalyzer();
     win.queueMicrotask?.(() => win.dispatchEvent(new win.Event("ppbui:card-mode-change")));
   };
   const onSwitch = event => {
@@ -180,9 +184,7 @@ function mountCardMode(win = globalThis.window) {
   win.addEventListener("resize", syncToolbar);
   syncToolbar();
   setMode("game");
-  analyzerTimer = win.setInterval(() => {
-    if (mode === "cards") syncAnalyzer();
-  }, config.analyzerPollMs);
+  analyzerTimer = win.setInterval(syncAnalyzer, config.analyzerPollMs);
 
   return {
     sync() {
