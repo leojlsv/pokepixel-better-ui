@@ -1,9 +1,9 @@
 import { build, context } from "esbuild";
-import { readFile, mkdir } from "node:fs/promises";
+import { readFile, mkdir, writeFile } from "node:fs/promises";
 import { watch as watchFiles } from "node:fs";
 import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { withUserscriptVersion } from "./userscript-metadata.mjs";
+import { userscriptMetadataBlock, withUserscriptVersion } from "./userscript-metadata.mjs";
 
 const watch = process.argv.includes("--watch");
 
@@ -24,6 +24,10 @@ const outputUrl = new URL(
   "../dist/pokepixel-better-ui.user.js",
   import.meta.url,
 );
+const metadataOutputUrl = new URL(
+  "../dist/pokepixel-better-ui.meta.js",
+  import.meta.url,
+);
 const packageSource = await readFile(packageUrl);
 const metadataSource = await readFile(metadataUrl);
 const logoSource = await readFile(logoUrl);
@@ -36,6 +40,7 @@ const logo = `data:image/png;base64,${logoSource.toString("base64")}`;
 const pokemonProfileIcon = `data:image/png;base64,${profileIconSource.toString("base64")}`;
 const menuIcons = Object.fromEntries(Object.entries(menuIconSources).map(([name, source]) => [name, `data:image/png;base64,${source.toString("base64")}`]));
 await mkdir(outputDirUrl, { recursive: true });
+await writeFile(metadataOutputUrl, userscriptMetadataBlock(metadata), "utf8");
 const options = {
   entryPoints: [fileURLToPath(entryUrl)],
   outfile: fileURLToPath(outputUrl),

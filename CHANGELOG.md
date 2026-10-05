@@ -4,6 +4,14 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Tampermonkey native update channel, candidato 0.2.178 (2026-10-05):** adds a
+  lightweight `pokepixel-better-ui.meta.js` release asset and stable
+  `@updateURL` / `@downloadURL` metadata through GitHub Releases. `v0.2.178` is
+  the bootstrap release: installations on `v0.2.177` or older require one final
+  manual update, after which Tampermonkey can discover later releases natively.
+  Release validation now requires matching package/lock versions, identical
+  `.meta.js` / `.user.js` metadata blocks and the canonical update endpoints.
+
 - **Open-source publication preparation (2026-10-05):** adds the MIT license,
   public package/repository metadata, contribution/security/conduct guidance,
   third-party attribution for the MIT-licensed UI/UX Pro Max material, public

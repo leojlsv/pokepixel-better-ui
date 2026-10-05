@@ -50,6 +50,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "$GITHUB_REF_NAME"
+          dist/pokepixel-better-ui.meta.js
           dist/pokepixel-better-ui.user.js
           dist/pokepixel-better-ui.user.js.sha256
           --verify-tag

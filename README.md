@@ -45,8 +45,11 @@ available, or build the current source and import:
 dist/pokepixel-better-ui.user.js
 ```
 
-The userscript does not currently use `@updateURL` / `@downloadURL`, so updating
-an installed copy is an explicit user action.
+Starting with `v0.2.178`, the production userscript delegates update discovery to
+Tampermonkey through a lightweight release metadata asset. Installations on
+`v0.2.177` or older need one final manual update to `v0.2.178`; after that,
+Tampermonkey can detect newer published releases according to the extension's
+own update settings.
 
 The npm package is intentionally marked `private`; GitHub Releases are the
 supported binary distribution channel.
@@ -86,12 +89,14 @@ npm run validate
 the product test suite and rebuilds the userscript.
 
 Release tags use the exact package version (`vX.Y.Z`). The release workflow
-revalidates the repository, audits dependencies, verifies userscript license and
-version metadata, and publishes the generated `.user.js` plus a SHA-256 checksum.
+revalidates the repository, audits dependencies, verifies userscript license,
+version and update metadata, and publishes the generated `.meta.js`, `.user.js`
+and SHA-256 checksum.
 
-Generated userscript:
+Generated release files:
 
 ```text
+dist/pokepixel-better-ui.meta.js
 dist/pokepixel-better-ui.user.js
 ```
 

@@ -1,7 +1,14 @@
 import { readFile } from "node:fs/promises";
+import {
+  PROD_DOWNLOAD_URL,
+  PROD_UPDATE_URL,
+  userscriptMetadataBlock,
+} from "./userscript-metadata.mjs";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const packageLock = JSON.parse(await readFile(new URL("../package-lock.json", import.meta.url), "utf8"));
 const metadata = await readFile(new URL("../userscript/metadata.txt", import.meta.url), "utf8");
+const updateMetadata = await readFile(new URL("../dist/pokepixel-better-ui.meta.js", import.meta.url), "utf8");
 const bundle = await readFile(new URL("../dist/pokepixel-better-ui.user.js", import.meta.url), "utf8");
 
 const expectedTag = `v${packageJson.version}`;
@@ -13,6 +20,12 @@ if (requestedTag && requestedTag !== expectedTag) {
   throw new Error(`Release tag ${requestedTag} does not match package version ${expectedTag}`);
 }
 
+if (packageLock.version !== packageJson.version || packageLock.packages?.[""]?.version !== packageJson.version) {
+  throw new Error(
+    `package-lock version mismatch: package=${packageJson.version}, lock=${packageLock.version}, root=${packageLock.packages?.[""]?.version}`,
+  );
+}
+
 function requireSingleVersion(source, label) {
   const matches = [...source.matchAll(/^\/\/ @version\s+(\S+)\s*$/gm)];
   if (matches.length !== 1 || matches[0][1] !== packageJson.version) {
@@ -21,7 +34,21 @@ function requireSingleVersion(source, label) {
 }
 
 requireSingleVersion(metadata, "userscript metadata template");
+requireSingleVersion(updateMetadata, "Tampermonkey update metadata");
 requireSingleVersion(bundle, "built userscript");
+
+for (const [label, value] of [
+  ["update URL", `// @updateURL    ${PROD_UPDATE_URL}`],
+  ["download URL", `// @downloadURL  ${PROD_DOWNLOAD_URL}`],
+]) {
+  if (!metadata.includes(value) || !updateMetadata.includes(value) || !bundle.includes(value)) {
+    throw new Error(`${label} must match the canonical Tampermonkey update channel`);
+  }
+}
+
+if (userscriptMetadataBlock(updateMetadata) !== userscriptMetadataBlock(bundle)) {
+  throw new Error("Tampermonkey .meta.js and built .user.js metadata blocks differ");
+}
 
 for (const [label, pattern] of [
   ["MIT userscript metadata", /^\/\/ @license\s+MIT\s*$/m],
