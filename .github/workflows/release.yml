@@ -43,7 +43,7 @@ jobs:
         run: npm run release:check -- "$GITHUB_REF_NAME"
 
       - name: Generate SHA-256 checksum
-        run: sha256sum dist/pokepixel-better-ui.user.js > dist/pokepixel-better-ui.user.js.sha256
+        run: (cd dist && sha256sum pokepixel-better-ui.user.js > pokepixel-better-ui.user.js.sha256)
 
       - name: Create GitHub release
         env:

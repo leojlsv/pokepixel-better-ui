@@ -42,5 +42,5 @@ Runtime derivatives:
 | `runtime-icons/nature.png` | `nature.png` | `e4939f47750face6b1c8c3eeb0b136c263664435633ecae3d3fb7a7b572d8ca1` |
 | `runtime-icons/trainer.png` | `trainer.png` | `1b31b5c6d93f296a591e41b0ef2864514fc1e0204a12ad15398d678832f41317` |
 
-Source commits currently visible in repository history are `1465de2` for the six
-menu-art families and `ae1bb46` for the Pokémon Profile icon.
+These assets predate the clean public H3 history. Their earlier development
+commit identifiers are intentionally not part of the public repository history.
