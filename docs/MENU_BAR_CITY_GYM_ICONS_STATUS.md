@@ -36,7 +36,7 @@ composition were validated and approved in-game by the Product Owner on 2026-10-
 Visual status is `PASS`.
 
 Local rendered evidence uses the exact built `0.2.150` userscript inside a synthetic
-WebView2 toolbar fixture. This is sufficient to check Better UI-owned popup geometry,
+toolbar fixture. This is sufficient to check Better UI-owned popup geometry,
 image decoding and integration without accessing the live game. The final capture
 confirmed a visible 282×226 City popup with three equal columns, no horizontal
 overflow (`scrollWidth === clientWidth`), the four requested City labels/icons in
@@ -54,13 +54,13 @@ live-host appearance.
 - `npm run build`: **PASS** for `0.2.150`.
 - Artifact contract check: **PASS**, exact version plus all six runtime PNG payloads
   are present in `dist/pokepixel-better-ui.user.js`.
-- Local WebView2 rendered composition: **PASS** — `Geneticista`, `Nature`,
+- Local rendered composition: **PASS** — `Geneticista`, `Nature`,
   `Evolution Center`, `Gyms`; icon keys `genetics`, `nature`, `evolution`, `gym`;
   six requested owned images decoded at 96×96; three-column City popup has no
   horizontal overflow.
 - Follow-up `Trainer > Genetic Vault`: **PASS** — native DNA emoji remains native,
   but its glyph is centered at 26 px inside the same 31×31 icon footprint used by
-  the dropdown. Local WebView2 computed style confirmed `31×31`, `font-size:26px`,
+  the dropdown. Local computed style confirmed `31×31`, `font-size:26px`,
   `line-height:31px`, `display:grid` and centered placement; Menu Bar regression is
   **34/34 PASS**.
 - Product Owner live validation: **PASS / APPROVED** on 2026-10-03 for candidate

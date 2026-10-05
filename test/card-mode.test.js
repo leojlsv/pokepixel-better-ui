@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { createBetterUI } from "../src/core/bootstrap.js";
-import { createStandaloneCardModeModule, resolveStandaloneRuntimeWindow } from "../src/modules/coupled-workspace/standalone.js";
+import { createCardModeModule, resolveCardModeRuntimeWindow } from "../src/modules/card-mode/index.js";
 import { createMenuBarModule } from "../src/modules/menu-bar/index.js";
 
-function setup(t, { coupled = false, analyzerSummary = undefined, analyzerUi = undefined, extraModules = [] } = {}) {
+function setup(t, { analyzerSummary = undefined, analyzerUi = undefined, extraModules = [] } = {}) {
   const dom = new JSDOM(`<!doctype html><html lang="pt-BR"><head></head><body>
     <button class="world-server-switch" style="position:fixed;top:8px;right:8px">Server</button>
     <section id="native-game-surface"><canvas width="320" height="180"></canvas><div class="moving-sprite">moving</div></section>
@@ -30,11 +30,6 @@ function setup(t, { coupled = false, analyzerSummary = undefined, analyzerUi = u
     });
   };
   setAnalyzerUi(analyzerUi);
-  if (coupled) {
-    Object.defineProperty(window, "__PPBUI_COUPLED_WORKSPACE__", { configurable: true, value: { protocol: 1 } });
-    Object.defineProperty(window, "chrome", { configurable: true, value: { webview: { postMessage() {} } } });
-  }
-
   const previous = new Map();
   for (const name of ["window", "document", "MutationObserver", "requestAnimationFrame", "cancelAnimationFrame"]) {
     previous.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
@@ -44,7 +39,7 @@ function setup(t, { coupled = false, analyzerSummary = undefined, analyzerUi = u
     });
   }
 
-  const app = createBetterUI({ modules: [...extraModules, createStandaloneCardModeModule()] });
+  const app = createBetterUI({ modules: [...extraModules, createCardModeModule()] });
   let stopped = false;
   const stop = () => {
     if (stopped) return;
@@ -86,7 +81,7 @@ test("standalone userscript starts in Game and renders Analyzer data after enter
   });
   app.start();
 
-  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   const toolbar = doc.querySelector(".pokeidle-top-toolbar");
   const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
   assert.ok(cards);
@@ -103,7 +98,6 @@ test("standalone userscript starts in Game and renders Analyzer data after enter
   assert.equal(toggle.getAttribute("aria-pressed"), "true");
   assert.equal(toggle.dataset.ppbuiCardModeState, "cards");
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "12");
-  assert.equal(doc.documentElement.hasAttribute("data-ppbui-coupled-workspace"), false);
   assert.equal(doc.documentElement.getAttribute("data-ppbui-card-mode"), "cards");
   assert.equal(cards.getAttribute("data-ppbui-text-only"), "true");
   assert.equal(cards.getAttribute("data-ppbui-combat-art"), "true");
@@ -117,8 +111,8 @@ test("standalone userscript starts in Game and renders Analyzer data after enter
     "standalone Cards keeps only the static Active/Target art surface enabled");
   assert.equal(cards.querySelector('[data-card-sprite-fallback="target"]').hidden, false,
     "waiting Target keeps an explicit visual placeholder instead of a large empty card");
-  const cardsCss = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
-  assert.match(cardsCss, /\.ppbui-coupled-cards\[data-ppbui-text-only="true"\]\{[^}]*height:calc\(100vh - var\(--ppbui-card-mode-bottom-inset,0px\)\);height:calc\(100dvh - var\(--ppbui-card-mode-bottom-inset,0px\)\);min-height:0;[^}]*overflow:auto/,
+  const cardsCss = doc.querySelector("style[data-ppbui-card-mode-cards-style]").textContent;
+  assert.match(cardsCss, /\.ppbui-card-mode-cards\[data-ppbui-text-only="true"\]\{[^}]*height:calc\(100vh - var\(--ppbui-card-mode-bottom-inset,0px\)\);height:calc\(100dvh - var\(--ppbui-card-mode-bottom-inset,0px\)\);min-height:0;[^}]*overflow:auto/,
     "standalone Card Mode height is bounded by the dynamic viewport and scroll stays inside Cards");
   assert.equal(doc.querySelector("[data-ppbui-card-mode-dock]"), null);
   assert.equal(doc.querySelector("[data-ppbui-card-mode-switch]"), null);
@@ -142,7 +136,7 @@ test("standalone Card Mode discovers the optional Analyzer UI bridge and deep-li
   const { app, doc, setAnalyzerUi } = setup(t, { analyzerSummary: summary });
   app.start();
   doc.querySelector("[data-ppbui-card-mode-toggle]").click();
-  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   const captureLink = cards.querySelector('[data-card-analyzer-open="current"]');
   const rarityLink = cards.querySelector('[data-card-analyzer-open="current-rarity"]');
   const storyLink = cards.querySelector("[data-card-analyzer-story]");
@@ -190,10 +184,10 @@ test("standalone Card Mode reserves the viewport strip occupied by a bottom nati
 
   app.start();
   doc.querySelector("[data-ppbui-card-mode-toggle]").click();
-  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   assert.equal(cards.style.getPropertyValue("--ppbui-card-mode-bottom-inset"), "88px",
     "Cards ends above a horizontal toolbar docked near the viewport bottom, including the 8px separation gap");
-  const cardsCss = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
+  const cardsCss = doc.querySelector("style[data-ppbui-card-mode-cards-style]").textContent;
   assert.match(cardsCss, /height:calc\(100dvh - var\(--ppbui-card-mode-bottom-inset,0px\)\)/,
     "standalone Cards subtracts the measured bottom chrome from the dynamic viewport");
 
@@ -258,7 +252,7 @@ test("standalone Card Mode renders authoritative Active and Target art without e
   await new Promise(resolve => window.setTimeout(resolve, 0));
   await new Promise(resolve => window.setTimeout(resolve, 0));
   app.reconcile();
-  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   const active = cards.querySelector('[data-card-sprite="player"]');
   const target = cards.querySelector('[data-card-sprite="target"]');
   assert.equal(active.hidden, false);
@@ -282,15 +276,15 @@ test("textual Card Mode keeps the only native type labels visible at narrow widt
   const target = cards.querySelector('[data-card-elements="target"]');
   assert.equal(target.querySelector("i")?.textContent, "Fogo");
   assert.equal(target.querySelector(".ppbui-element-icon"), null);
-  const css = doc.querySelector("style[data-ppbui-coupled-cards-style]").textContent;
-  assert.match(css, /\.ppbui-coupled-cards\[data-ppbui-text-only="true"\] \.ppbui-cards-element i\{display:(?:inline|block|inline-block)/,
+  const css = doc.querySelector("style[data-ppbui-card-mode-cards-style]").textContent;
+  assert.match(css, /\.ppbui-card-mode-cards\[data-ppbui-text-only="true"\] \.ppbui-cards-element i\{display:(?:inline|block|inline-block)/,
     "text-only labels must override the narrow-width rule hiding icon-mode labels");
 });
 
 test("one fixed menu-bar toggle switches Cards and Game without moving DOM position", t => {
   const { app, doc, stop } = setup(t);
   app.start();
-  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   const toolbar = doc.querySelector(".pokeidle-top-toolbar");
   const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
   const initialParent = toggle.parentElement;
@@ -320,7 +314,7 @@ test("one fixed menu-bar toggle switches Cards and Game without moving DOM posit
 
   stop();
   assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]"), null);
-  assert.equal(doc.querySelector("[data-ppbui-coupled-cards]"), null);
+  assert.equal(doc.querySelector("[data-ppbui-card-mode-cards]"), null);
   assert.equal(doc.querySelector("style[data-ppbui-card-mode-style]"), null);
   assert.equal(doc.documentElement.hasAttribute("data-ppbui-card-mode"), false);
   assert.equal(toolbar.hasAttribute("data-ppbui-card-mode-toolbar"), false);
@@ -457,7 +451,7 @@ test("standalone runtime prefers Tampermonkey unsafeWindow when it owns the same
   Object.defineProperty(globalThis,"unsafeWindow",{configurable:true,value:window});
   t.after(()=>descriptor?Object.defineProperty(globalThis,"unsafeWindow",descriptor):delete globalThis.unsafeWindow);
   const isolated = { document:window.document };
-  assert.equal(resolveStandaloneRuntimeWindow(isolated),window);
+  assert.equal(resolveCardModeRuntimeWindow(isolated),window);
 });
 
 test("native game navigation switches to Game before preserving the native action", t => {
@@ -471,7 +465,7 @@ test("native game navigation switches to Game before preserving the native actio
     gameVisibleInsideNativeHandler = cards?.hidden === true;
   });
   app.start();
-  cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   const toggle = doc.querySelector('[data-ppbui-card-mode-toggle]');
   toggle.click();
   assert.equal(cards.hidden, false);
@@ -491,7 +485,7 @@ test("standalone Card Mode polls late Analyzer availability without remounting",
   window.setInterval = callback => { analyzerPoll = callback; return 1; };
   window.clearInterval = () => {};
   app.start();
-  const cards = doc.querySelector("[data-ppbui-coupled-cards]");
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
   const before = cards;
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "—");
   assert.equal(typeof analyzerPoll, "function");
@@ -514,15 +508,8 @@ test("standalone Card Mode polls late Analyzer availability without remounting",
   });
   analyzerPoll();
 
-  assert.equal(doc.querySelector("[data-ppbui-coupled-cards]"), before);
+  assert.equal(doc.querySelector("[data-ppbui-card-mode-cards]"), before);
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "27");
-});
-
-test("standalone Card Mode stays out of an active coupled WebView2 host", t => {
-  const { app, doc } = setup(t, { coupled: true });
-  app.start();
-  assert.equal(doc.querySelector("[data-ppbui-card-mode-toggle]"), null);
-  assert.equal(doc.querySelector("[data-ppbui-coupled-cards]"), null);
 });
 
 test("textual Cards suspends other Better UI modules and Game remounts them", async t => {

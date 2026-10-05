@@ -87,9 +87,10 @@ references remain intact so the game can continue updating their counts.
 
 ## Evidence and validation scope
 
-- `G:/pokepixel-custom-ui/research/captures/2026-08-13/dom/main-screen.html`:
-  native toolbar with 27 destinations; its subtree is `test/fixtures/menu-bar.html`.
-- `G:/pokepixel-custom-ui/src/bridge/navigation.ts`: destination identifiers.
+- Historical `pokepixel-custom-ui/research/captures/2026-08-13/dom/main-screen.html`:
+  native toolbar contract with 27 destinations; the current test fixture is a
+  synthetic reconstruction of the required structure.
+- Historical `pokepixel-custom-ui/src/bridge/navigation.ts`: destination identifiers.
 - Public `/play/js/plugins/PersistentHUD.js`, re-inspected 2026-10-02:
   33 destination definitions, alternative native groupings/event contracts and the
   Poké Hub `moveHub()` geometry normalization used after drag/resize.

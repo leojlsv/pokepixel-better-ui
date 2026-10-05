@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { canNavigateAnalyzerUi, navigateAnalyzerUi } from "../src/modules/coupled-workspace/analyzer-ui.js";
+import { canNavigateAnalyzerUi, navigateAnalyzerUi } from "../src/modules/card-mode/analyzer-ui.js";
 
 test("Analyzer UI adapter is optional, versioned and destination-allowlisted", async () => {
   const win = {};

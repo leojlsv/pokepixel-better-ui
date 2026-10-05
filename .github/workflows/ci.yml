@@ -15,16 +15,18 @@ concurrency:
 
 jobs:
   javascript:
-    name: Test and build Better UI (offline)
+    name: Test, audit and build Better UI
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     steps:
       - name: Check out source
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: 24
           cache: npm
@@ -35,27 +37,11 @@ jobs:
       - name: Run offline tests
         run: npm test
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Verify production bundle builds
         run: npm run build
 
-  webview2-build:
-    name: Compile and verify WebView2 host (isolated)
-    runs-on: windows-2022
-    timeout-minutes: 15
-
-    steps:
-      - name: Check out source
-        uses: actions/checkout@v6
-
-      - name: Verify pinned WebView2 SDK and compile in a disposable fixture
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          & .\tools\coupled-workspace-webview2\Ensure-WebView2Sdk.ps1
-          & .\tools\coupled-workspace-webview2\Test-IsolatedBuild.ps1
-
-      - name: Verify settings safety under real Windows file failures
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          & .\tools\coupled-workspace-webview2\Test-WorkspaceSettingsPhysicalIo.ps1
+      - name: Verify distributable metadata
+        run: npm run release:check

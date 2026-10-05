@@ -145,22 +145,3 @@ game stack `Inter, "Segoe UI", Arial, sans-serif`; display/window titles use
 PokéPixel reference: 8px windows, 5px controls/cards and 4px badges. There is no corner
 mode selector or persisted appearance choice; legacy `ppbui:appearance:v1` data is
 retired and removed during startup.
-
-## Pokémon Profile Color Lab
-
-`tools/pokemon-profile-playground/pokemon-profile-playground.html` is the local design sandbox for Pokémon
-Profile and the augmented native PokémonCard. `Game Palette` starts from the
-Product Owner-approved production baseline; subsequent playground edits remain
-preview-only until a new export is explicitly approved for implementation.
-
-The Color Lab exposes role-based colors instead of one-off selector colors. Its
-Game Palette now mirrors the project-wide runtime baseline above. Pokémon type and
-rarity colors stay semantic/native rather than being flattened into the neutral
-palette.
-Surface transparency is controlled independently from color through three inherited
-alpha roles: Window `92%`, Interactive `96%`, Values `85%`. Alpha never applies to
-text, semantic type/rarity colors or the `1px` line system.
-
-Use **Copiar paleta** for the compact role/value handoff or **Copiar CSS** when an
-exact preview snapshot is needed. Current/Obsidian remain comparison skins; only an
-explicitly approved exported palette should be promoted to runtime CSS.

@@ -3,8 +3,8 @@
 Date: 2026-10-03
 Status: TECH READY · UX READY · VISUAL READY · Product Owner VALIDATED
 
-The Product Owner selected the following Card Mode geometry in the approved 4×6
-playground. This task applies that geometry to the production Card Mode and the
+The Product Owner selected the following Card Mode geometry during the 4×6 layout
+design cycle. This task applies that geometry to the production Card Mode and the
 subsequent Product Owner Story/Battle refinements without changing Analyzer state,
 gameplay actions, authoritative game values or the approved outer coordinates.
 
@@ -16,7 +16,7 @@ gameplay actions, authoritative game values or the approved outer coordinates.
 | AC-CARD-4X6-02 | Battle is the same existing battle DOM surface, moved into the shared layout grid rather than cloned or recreated. | source + DOM test | pass |
 | AC-CARD-4X6-03 | Desktop placement is Battle 1/1/2/1; Hunt Summary 1/2/2/1; Capture 1/3/2/1; Captured/Seen 3/1/2/1; Economy/XP 1/4/2/1; History 3/2/2/3. | CSS contract test | pass |
 | AC-CARD-4X6-04 | Existing responsive behavior remains usable: 900–1179px keeps the prior three-column overview, 520–899px keeps the two-column flow, and below 520px uses one column. Desktop coordinates do not leak into narrower layouts. | source + responsive tests + rendered evidence | pass |
-| AC-CARD-4X6-05 | Existing Card Mode controls, focus behavior, Story tabs/result/Shiny filtering, Team switch and data rendering remain functional; the rarity control is intentionally expanded to the seven canonical values plus All. | existing coupled-workspace suites | pass |
+| AC-CARD-4X6-05 | Existing Card Mode controls, focus behavior, Story tabs/result/Shiny filtering, Team switch and data rendering remain functional; the rarity control is intentionally expanded to the seven canonical values plus All. | Card Mode integration suites | pass |
 | AC-CARD-4X6-06 | Production build and bundle checks pass; live in-game validation remains Product Owner-owned. | build/test evidence + Product Owner validation | pass; PO live validated 2026-10-03 |
 | AC-CARD-4X6-07 | At 1180px+ the Story surface consumes the vertical space allocated by rows 2–4, while Hunt/Loot keep local scroll ownership and no root horizontal overflow is introduced. | CSS contract + rendered evidence | pass |
 | AC-CARD-4X6-08 | Hunt Story exposes All plus Weak, Common, Uncommon, Rare, Epic, Legendary and Mythical as visible rarity filters; Unknown is not user-facing. | DOM/interaction tests + rendered evidence | pass |
@@ -44,16 +44,14 @@ gameplay actions, authoritative game values or the approved outer coordinates.
 | economy-xp | 1 | 4 | 2 | 1 |
 | history | 3 | 2 | 2 | 3 |
 
-The approved 4×6 placement activates at 1180px and above. The production grid does
-not manufacture visible empty rows 5–6. Those rows were
-useful playground capacity; because no approved surface occupies them, production
-ends after the occupied fourth row.
+The approved 4×6 placement activates at 1180px and above. The production grid ends
+after the occupied fourth row because no approved surface occupies rows 5–6.
 
 ## Final local evidence
 
 - Branch/worktree: feat/card-mode-layout-4x6 in .worktrees/card-mode-layout-4x6.
-- Latest viewport-safe Card/Coupled/Menu regression: 124/124 pass.
-- Final 0.2.144 coupled + Card/idempotence re-gate: 91/91 pass.
+- Latest viewport-safe Card/Menu regression: 124/124 pass.
+- Final 0.2.144 Card/idempotence re-gate: 91/91 pass.
 - Full repository suite: 611/611 pass.
 - npm run build: pass for package 0.2.144.
 - Built userscript SHA256:
@@ -81,8 +79,8 @@ ends after the occupied fourth row.
   two tracks. The regression test asserts declaration order as well as the layout.
 - Standalone Cards structurally hides native presentation and unmounts Better UI
   modules that do not opt into Card Mode. Cards rendering is incremental and reaches
-  observer quiescence for unchanged data. Existing WebView2 performance evidence is
-  synthetic and explicitly does not establish a live CPU/RAM/FPS/GPU improvement;
+  observer quiescence for unchanged data. Existing synthetic performance evidence
+  explicitly does not establish a live CPU/RAM/FPS/GPU improvement;
   live graphical impact remains unmeasured.
 - The first independent Tech/UX re-review of the live-feedback revision found two
   P2 issues: focus loss when a native toolbar replacement rehomed the Cards/Game

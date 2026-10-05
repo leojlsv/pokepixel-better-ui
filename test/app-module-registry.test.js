@@ -18,7 +18,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   const controlIds = controls.map(control => control.id);
   assert.deepEqual(mountIds, [
     "disable-pokemon-hover", "pokemon-profile", "menu-bar", "hunt-controls",
-    "standalone-card-mode", "coupled-workspace", "buff-strip", "inventory",
+    "card-mode", "buff-strip", "inventory",
     "storage", "trade", "chat", "hunts", "team", "team-hud",
     "team-presets", "evolution-center", "geneticist", "marks-shop", "auto-helper",
   ]);
@@ -28,8 +28,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.equal(defaults["disable-pokemon-hover"], false);
   assert.ok(controlIds.every(id => defaults[id] === true || id === "disable-pokemon-hover"));
   assert.ok(controlIds.every(id => mountIds.includes(id)), "every setting mounts a real module");
-  assert.ok(!controlIds.includes("standalone-card-mode"));
-  assert.ok(!controlIds.includes("coupled-workspace"));
+  assert.ok(!controlIds.includes("card-mode"));
   assert.ok(!controlIds.includes("evolution-center"), "Evolution Center enhancement is an always-on native integration, not a new setting");
   assert.ok(!controlIds.includes(moduleControlsConfig.id));
   assert.ok(moduleControlsConfig.groups.flatMap(group => group.modules).every(id => controlIds.includes(id)));
@@ -40,7 +39,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.ok(controls.every(({ name, description }) => typeof name === "function" && typeof description === "function"));
   assert.ok(modules.every(module => typeof module.shouldMount === "function" && typeof module.mount === "function"));
   assert.deepEqual(modules.filter(module => module.runsInCardMode === true).map(module => module.id),
-    ["pokemon-profile", "menu-bar", "standalone-card-mode"],
+    ["pokemon-profile", "menu-bar", "card-mode"],
     "toolbar owners stay mounted while textual Cards hides the native game surface");
 });
 

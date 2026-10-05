@@ -1,7 +1,25 @@
 {
   "name": "pokepixel-better-ui",
-  "version": "0.2.176",
+  "version": "0.2.177",
+  "description": "Functional UI/UX and quality-of-life userscript for PokePixel Idle.",
   "private": true,
+  "license": "MIT",
+  "author": "Rhyxus",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/leojlsv/pokepixel-better-ui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/leojlsv/pokepixel-better-ui/issues"
+  },
+  "homepage": "https://github.com/leojlsv/pokepixel-better-ui#readme",
+  "keywords": [
+    "userscript",
+    "tampermonkey",
+    "pokepixel",
+    "ui",
+    "qol"
+  ],
   "type": "module",
   "engines": {
     "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
@@ -9,13 +27,9 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",
-    "playground": "node tools/pokemon-profile-playground/pokemon-profile-playground-server.mjs",
-    "playground:card-mode": "node tools/card-mode-layout-playground/server.mjs",
-    "clean:generated": "node scripts/prune-generated.mjs",
-    "test": "node --test",
-    "test:python": "python -m unittest discover -s tools/nayakoko-sprite-extractor -p test_cache.py",
-    "test:tooling:win": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/python-toolchain.test.ps1 && powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/coupled-workspace-webview2/Test-LauncherSafety.ps1 && powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/coupled-workspace-webview2/Test-IsolatedBuild.ps1",
-    "validate:offline:win": "npm run test && npm run test:python && npm run test:tooling:win && npm run build"
+    "test": "node --test \"test/*.test.js\"",
+    "validate": "npm run test && npm run build",
+    "release:check": "node scripts/verify-release.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

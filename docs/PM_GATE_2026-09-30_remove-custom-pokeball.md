@@ -37,7 +37,6 @@
 - Exact candidate: `dist/pokepixel-better-ui.user.js`, `@version 0.2.124`, `1.141.929` bytes, SHA-256 `1641B1AB5DB8E21A12D118687772A768C35611415D7D41EA4468BF36D9E4FB76`.
 - Busca em artefato: nenhum `custom-pokeball`, `customPokeball`, `Custom Pokéball`, `ppbui-custom-ball` ou ícone embutido; as únicas referências ativas em testes são as assertivas negativas e o teste de preferência legada.
 - Preferências `ppbui:custom-pokeball:v1/v2` persistidas previamente no browser tornam-se inertes; a preferência de módulo removido é ignorada no runtime e descartada no próximo salvamento de módulos. Não há código de limpeza de storage no bundle.
-- Cópias históricas em `dist/` e `tools/coupled-workspace-webview2/bin/` foram preservadas; não são o artefato corrente.
 - Product Owner: **APROVADO** em 2026-09-30 para o candidato `0.2.124`, conforme resposta explícita "Aprovado". Não foram fornecidos detalhes de verificações executadas em jogo ou imagens de evidência; isso não altera retroativamente o resultado da auditoria visual independente.
 
 ## PM decision

@@ -223,7 +223,8 @@ para minúsculas; sua semântica não foi substituída por uma busca só no DOM.
 
 ## Evidências e validação
 
-- Captura: `G:/pokepixel-custom-ui/research/captures/2026-08-13/dom/inventory.html`.
+- Captura histórica do projeto irmão `pokepixel-custom-ui`:
+  `research/captures/2026-08-13/dom/inventory.html`.
 - Cliente público consultado: `/play/js/plugins/InventoryScene.js`. Confirma
   handlers por slot e reconstrução síncrona dos controles ao buscar/filtrar.
 - `PokemonCard.js` confirma IV total e `quality_multiplier`; `NonBlockingWindows.js`

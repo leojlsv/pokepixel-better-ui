@@ -7,14 +7,16 @@ Inventory permanece validado e aprovado.
 
 ## Fontes consultadas
 
-- `G:/pokepixel-custom-ui/src/modules/chat/ChatWidget.tsx`
-- `G:/pokepixel-custom-ui/src/modules/chat/chat-model.ts`
-- `G:/pokepixel-custom-ui/src/adapters/chat.ts`
-- `G:/pokepixel-custom-ui/src/bridge/chat-actions.ts`
-- `G:/pokepixel-custom-ui/src/bridge/chat-action-contract.ts`
-- `G:/pokepixel-custom-ui/src/store/chat-preferences-store.ts`
-- `G:/pokepixel-custom-ui/src/types/chat.ts`
-- `G:/pokepixel-custom-ui/docs/project/module-contracts/persistent-chat-phase-1.md`
+Historical sibling project `pokepixel-custom-ui`:
+
+- `src/modules/chat/ChatWidget.tsx`
+- `src/modules/chat/chat-model.ts`
+- `src/adapters/chat.ts`
+- `src/bridge/chat-actions.ts`
+- `src/bridge/chat-action-contract.ts`
+- `src/store/chat-preferences-store.ts`
+- `src/types/chat.ts`
+- `docs/project/module-contracts/persistent-chat-phase-1.md`
 - Relatórios automatizado e smoke do chat persistente no mesmo projeto.
 
 O código atual é a referência de implementação; o contrato contém relatos

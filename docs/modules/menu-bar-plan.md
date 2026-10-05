@@ -26,9 +26,9 @@ conteúdo dos painéis, o HUD, o chat, as ações de combate ou as telas de logi
 
 Fontes locais reutilizadas:
 
-- G:/pokepixel-custom-ui/research/captures/2026-08-13/dom/main-screen.html
-- G:/pokepixel-custom-ui/src/bridge/navigation.ts
-- G:/pokepixel-custom-ui/docs/project/original-ui-module-inventory.md
+- `pokepixel-custom-ui/research/captures/2026-08-13/dom/main-screen.html`
+- `pokepixel-custom-ui/src/bridge/navigation.ts`
+- `pokepixel-custom-ui/docs/project/original-ui-module-inventory.md`
 
 Fontes públicas consultadas:
 

@@ -15,7 +15,7 @@
 - Explicitly out of scope: Analyzer persistence/public protocol, loot valuation,
   gameplay/network behavior, live-game validation and release/merge.
 - Write owners: PM for this record and the approved module contract; Feature /
-  Module Engineer for `src/modules/coupled-workspace/**` and focused tests.
+  Module Engineer for `src/modules/card-mode/**` and focused tests.
 
 ## Acceptance & Evidence Matrix
 
@@ -40,37 +40,20 @@
 ## Gate results
 
 - Author verification: **PASS**. Full Node suite: **1330/1330**, 0 failures.
-  `npm run build`, `npm run test:tooling:win` and `git diff --check` pass.
+  `npm run build`, the product JavaScript suite and `git diff --check` pass.
 - Focused Loot Story regression proves aggregation, native `icon_index` mapping,
   fallback behavior, filter synchronization and rarity-first ordering with
   deliberately conflicting quantities.
-- Local WebView2 loot evidence verifies all seven canonical ranks in exact order,
-  46 px tiles on one row, seven semantic rarity borders, correct placement and no
-  document-level horizontal overflow. At 235 px the strip owns horizontal
-  overflow locally without wrapping.
 - Product Owner validation of `0.2.175` exposed a constrained-height regression:
   the flex Story panel could shrink the loot strip until the following table
   visually covered most of each tile. Candidate `0.2.176` fixes this by making
   the strip non-shrinkable in the flex column. A browser-level regression now
   forces a 126 px Loot Story panel and verifies the first tile remains 46 px tall
   and the table begins below the strip.
-- Wide evidence:
-  `tools/coupled-workspace-webview2/bin/smoke/visual/workspace-cards-loot-summary-dual-1600.png`
-  — SHA-256
-  `5212A5B197BA728BC34DCA85307ED209AC6C35377DF6508F0B71DBEAC7BAFBA9`.
-- Narrow evidence:
-  `tools/coupled-workspace-webview2/bin/smoke/visual/workspace-cards-loot-summary-narrow-235.png`
-  — SHA-256
-  `E7501D19F505AB6AB4562892ED2677E1554CCDEE140548A8AD013FDB76BCB57A`.
 - The synthetic fixture intentionally has no live game `IconSet.png`; it renders
   the explicit `?` fallback. The native `icon_index → IconSet.png` path and
   background-position arithmetic are covered by the DOM regression. Product
   Owner validation of the real in-game sprites/layout passed on 2026-10-05.
-- The feature-specific WebView2 assertions complete successfully. The broader
-  existing smoke proceeds beyond them and then fails unrelated stale Card Mode
-  checks (`geneticsReady=false`, `rarityFilterReady=false`,
-  `captureDetailsReady=false`). Those failures are outside this task and were
-  not weakened or bypassed.
 - `TECH READY / TECH NOT READY`: **not issued** — independent reviewer failed
   to start because its delegated chat timed out.
 - `UX READY / UX NOT READY`: **not issued** — independent reviewer failed to

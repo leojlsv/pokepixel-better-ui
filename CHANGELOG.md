@@ -4,6 +4,36 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Open-source publication preparation (2026-10-05):** adds the MIT license,
+  public package/repository metadata, contribution/security/conduct guidance,
+  third-party attribution for the MIT-licensed UI/UX Pro Max material, public
+  README badges/disclaimer/install guidance, release automation and license
+  metadata in the built userscript. CI now audits dependencies and pins first-party
+  GitHub Actions by commit; Dependabot covers npm and GitHub Actions. Workstation-local
+  documentation paths are normalized and the
+  historical captured Menu Bar test fixture is replaced by a synthetic contract
+  fixture before publication. Asset hashes/provenance are recorded without
+  inventing authorship; the Product Owner then explicitly confirmed sufficient
+  rights to redistribute the recorded Better UI raster assets and derivatives
+  under MIT.
+  The locked transitive `undici` dependency is updated to `8.11.2`, clearing the
+  previously reported high-severity npm advisories (`npm audit`: 0 vulnerabilities).
+
+- **Repository cleanup — retired Coupled Workspace and parallel tooling removed, candidato 0.2.177 (2026-10-05):**
+  removes the retired Coupled Workspace desktop/WebView2 host, native bridge, host-only tests,
+  performance/acceptance records and build/CI hooks. Card Mode is preserved as a first-class
+  `src/modules/card-mode/` module with its Analyzer integration and production test coverage moved
+  out of the former coupled namespace. The cancelled PPTools recommendation artifacts, retired
+  Professions HUD/rotation records and obsolete host-specific Evidence Probe/CDP path were also
+  removed. The dirty historical Geneticist `0.2.160` worktree was reconciled against the current
+  `0.2.169` implementation, proven to contain no unique useful code, and then removed together
+  with its legacy Coupled tree. Obsolete local browser profiles, ad hoc preview/capture helpers,
+  old candidate bundles/logs and the stale Hunt Analyzer embed were pruned while retaining only
+  documentation-cited evidence. The repository-level `tools/` tree and its playgrounds, evidence
+  recorder, sprite pipelines and auxiliary Python/PowerShell validation were then retired entirely;
+  Better UI validation now consists of the product JavaScript suite plus the production userscript
+  build. `npm test` scopes discovery to this checkout's product tests only.
+
 - **Card Mode / Loot Story — preservação da altura da faixa de drops, candidato 0.2.176 (2026-10-05):**
   impede que a faixa visual de drops seja comprimida pelo layout flex quando o card de Story
   possui pouca altura disponível. A faixa agora preserva sua altura intrínseca e a tabela continua

@@ -232,7 +232,7 @@ Focused Hunts coverage verifies:
 Historical Hunts suite: **31/31 tests**; the `3faa712` closure used **214/214**
 full tests, and the later Miyazaki 16 review recorded **249/249** at that time.
 The 2026-09-29 working tree verified **43/43 Hunts tests** and **518/518 full-suite
-tests** before the later PPTools Recommendation removal. Current automated totals
+tests** at that historical snapshot. Current automated totals
 must be taken from the active candidate validation. Historical Team redesign
 hashes remain in `docs/TEAM_REDESIGN_STATUS.md`. Automated checks do not constitute
 in-game validation.
@@ -260,14 +260,3 @@ The coding agent does not open/control/reload PokePixel, the user's browser or
 Tampermonkey to validate this interface. The Product Owner supplied the required
 green light on 2026-09-12 for the delivery through `3faa712`. Any future live
 appearance/behavior change reopens validation only for the changed scope.
-
-## PPTools Recommendation removal
-
-On 2026-10-02 the Product Owner requested complete removal of PPTools
-Recommendation from Hunts. Hunts no longer renders the recommendation widget,
-reads PPTools-specific leader/input projections, parses recommendation payloads,
-searches or locates Hunts from PPTools results, or exchanges recommendation
-messages with the Coupled Workspace bridge.
-
-The former PPTools experiments and acceptance records are historical only and do
-not define current Hunts behavior or acceptance criteria.

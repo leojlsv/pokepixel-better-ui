@@ -24,7 +24,7 @@ A aprovação do Inventory no Custom UI não aprova uma implementação no Bette
 Não reutilizar sua interface substituta, interceptação de rede ou bridge como
 arquitetura padrão: aqui os controles e handlers originais são o baseline.
 
-Fontes locais consultadas, em `G:/pokepixel-custom-ui/`:
+Fontes históricas consultadas no projeto irmão `pokepixel-custom-ui`:
 
 - `research/captures/2026-08-13/dom/inventory.html`
 - `docs/project/module-contracts/inventory-phase-1.md`

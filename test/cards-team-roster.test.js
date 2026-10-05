@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
-import { createCoupledCards } from "../src/modules/coupled-workspace/cards.js";
+import { createCardModeCards } from "../src/modules/card-mode/cards.js";
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -45,7 +45,7 @@ function fixture(t, { pendingFirst = false } = {}) {
       async getTeam() { return { team: { leader_id: leaderId } }; },
     },
   };
-  const cards = createCoupledCards({ win });
+  const cards = createCardModeCards({ win });
   cards.setMode("cards");
   cards.render(null);
   t.after(() => { cards.cleanup(); win.close(); });

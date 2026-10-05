@@ -118,7 +118,7 @@ export function setupShop(doc) {
       filtered.forEach(c => {
         const row = el("label", "npc-shop__row npc-shop__pokemon-row"), checkbox = el("input"); checkbox.type = "checkbox"; checkbox.checked = npc.selectedCreatures.has(c.id);
         checkbox.addEventListener("change", () => { if (checkbox.checked) npc.selectedCreatures.add(c.id); else npc.selectedCreatures.delete(c.id); npc.changes.push(c.id); update(); });
-        const sprite = el("img"); sprite.alt = c.species.name; sprite.src = "/assets/better-ui-icon.png";
+        const sprite = el("img"); sprite.alt = c.species.name; sprite.src = "/assets/runtime-icons/betterui.png";
         const info = el("div", "npc-shop__item-info"), details = el("small", "npc-shop__pokemon-details");
         details.append(el("span", `npc-shop__rarity quality-${c.quality}`, qualityLabel(c.quality)), doc.createTextNode(" · Power 100"));
         info.append(el("b", "", `${c.nickname || c.species.name} · Lv.${c.level}`), details, el("small", "", `Final ${c.sell_value}`));
@@ -136,7 +136,7 @@ export function setupShop(doc) {
         { id:"bb-1", name:"Dragonite", quality:"epic", level:62, price:950 },
         { id:"bb-2", name:"Gengar", quality:"legendary", level:70, price:1450 },
       ].forEach(entry => {
-        const row = el("article", "npc-shop__row npc-shop__buyback-row is-creature"), sprite = el("img", "npc-shop__buyback-sprite"); sprite.src = "/assets/better-ui-icon.png"; sprite.alt = entry.name;
+        const row = el("article", "npc-shop__row npc-shop__buyback-row is-creature"), sprite = el("img", "npc-shop__buyback-sprite"); sprite.src = "/assets/runtime-icons/betterui.png"; sprite.alt = entry.name;
         const info = el("div", "npc-shop__item-info npc-shop__buyback-info"), details = el("small", "npc-shop__pokemon-details");
         details.append(doc.createTextNode(`Lv.${entry.level} · `), el("span", `npc-shop__rarity quality-${entry.quality}`, qualityLabel(entry.quality)), doc.createTextNode(" · Power 100"));
         info.append(el("b", "", entry.name), details, el("small", "npc-shop__buyback-date", "Sold yesterday · expires tomorrow"));

@@ -8,7 +8,7 @@ Date: 2026-10-04
   tab because `Trainer > Genetic Vault` owns that inventory surface; make Pokémon
   extraction selection faster with a card/menu workflow consistent with Mark's Shop;
   remove the extraction animation.
-- Branch / worktree: `feat/geneticist-ui` / `G:/pokepixel-better-ui`.
+- Branch: `feat/geneticist-ui` in the Better UI repository.
 - Baseline artifact / version: `0.2.158`; extraction redesign `0.2.159`; current
   filter/discovery follow-up candidate `0.2.160`; focused individual-picker navigation
   follow-up candidate `0.2.169`.

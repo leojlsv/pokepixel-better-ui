@@ -9,67 +9,6 @@ oculta `ACTIVE`/`PROTECTED` também no hover transitório. O Profile continua de
 Backpack por `creatureId` exato, Current/Saved Moves, Saved Teams e o editor nativo de moves. Esta
 correção foi validada e aprovada in-game pelo Product Owner em 2026-10-04.**
 
-## Profile UI Playground
-
-Para micro-ajustes visuais antes de gerar novo candidate:
-
-~~~powershell
-cd G:\pokepixel-better-ui
-npm run playground
-~~~
-
-Abrir:
-
-~~~text
-http://127.0.0.1:4177/tools/pokemon-profile-playground/pokemon-profile-playground.html
-~~~
-
-O código-fonte do playground está em `tools/pokemon-profile-playground/`; o bundle temporário é gerado em `work/` (ignorado pelo Git). O playground é exclusivamente local e não entra no userscript/runtime. Ele:
-
-- renderiza o Profile real em iframe usando os mesmos componentes e dados simulados do preview QA;
-- mantém pokemon-profile-preview.js em esbuild watch;
-- alterna Profile, Hover, Gengar/Spec, Female, Configure e Filters;
-- simula viewports 760, 420, 340 ou Fill;
-- alterna `Current / Obsidian / Game Palette`; Obsidian reproduz somente a linguagem visual
-  observada em Expedições — shell escuro azul/verde, bordas finas steel/olive, headings compactos,
-  gold restrito a destaque/seleção e painéis retangulares aninhados — sem copiar lógica de
-  Expeditions e sem alterar o runtime;
-- Game Palette parte do baseline aprovado: Window/Values `#161D20`, Interactive `#232C2E`,
-  linhas `#6B6543` em `1px`, com Alpha Window `92%`, Interactive `96%` e Values `85%`;
-  alpha afeta somente superfícies, preservando texto, linhas, tipo e raridade opacos/semânticos;
-- Obsidian mantém contraste leve entre shell, boxes de seção e cards internos, com separadores
-  steel/green-gray de baixo contraste. A referência é a hierarquia de Expedições: linhas finas e
-  suaves, sem transformar cada sub-bloco em uma moldura de mesmo peso;
-- os rails de Current Moves/Saved Moves ocupam 100% da largura útil de sua box; os quatro cards
-  distribuem essa largura por `1fr` quando há espaço, sem reservar gutter de scrollbar à direita
-  quando não há overflow; em viewport estreito, preservam o scroll horizontal local quando o
-  mínimo configurado por move não cabe;
-- permite ajustar live Search card width, Move card min width, Power chip width, Move meta gap e
-  Hover width;
-- permite rearranjar objetos internos por drag-and-drop ou ↑/↓ em seis áreas: Search card,
-  Move topo, Move detalhes, Selecionado topo, Selecionado facts e Hover topo;
-- no Search card, Element e Rarity são objetos independentes de reorder/grid. O estado padrão de
-  produção usa uma única coluna útil com cinco linhas (`Nome → Sprite → Element → Rarity → Level`),
-  evitando desperdiçar metade dos 108 px do card; ao rearranjar no playground, cada objeto pode
-  ocupar linha/coluna/span próprios;
-- ao rearranjar grids, o playground recalcula os tracks por semântica (ex.: o track de PW acompanha
-  o próprio PW), evitando um preview enganoso baseado apenas em CSS order;
-- oferece Grid / Quadrantes opt-in por cada uma dessas seis áreas. Cada grid possui `cols × rows`
-  e cada objeto possui coordenadas `x/y` mais spans `w/h`, todos de 1 a 8;
-- inclui presets 1×4, 2×4, 3×3 e 4×4, overlay numerado, seleção de objeto, inputs numéricos e
-  drag/snap para outra célula preservando o span;
-- rejeita sobreposição entre objetos em vez de aceitar um estado ambíguo. Ao reduzir a grade, tenta
-  preservar a geometria atual e, quando isso deixa de ser válido, redistribui os objetos 1×1 de
-  forma determinística; grades sem capacidade suficiente são rejeitadas;
-- permite cenários como `2×4`, mover um objeto para `x=1/y=3` e definir `w=2` para ocupar toda
-  a terceira linha de uma grade de duas colunas;
-- persiste os valores localmente em schema v4, com leitura compatível dos estados v3/v2/v1, e gera um
-  resumo via Copiar ajustes pronto para enviar ao agente;
-- o resumo exporta skin, dimensões, ordens e geometria completa de cada superfície, por exemplo
-  `grid.selectedFacts=on:4x4;rarity@1,3,4,1;...`;
-- Copiar CSS exporta somente os overrides temporários;
-- nenhum ajuste do playground altera source de produção até ser explicitamente aplicado.
-
 ## 0.2.149 — Priority e heal threshold nos Current Moves
 
 - o Profile lê o `slot_settings` autoritativo do `getMoveset()` por posição 1→4;
@@ -109,9 +48,6 @@ O código-fonte do playground está em `tools/pokemon-profile-playground/`; o bu
 - todos os objetos do Search card ficam centralizados: nome, sprite, Element, Rarity e Level;
 - Current/Saved Moves usam metadata concatenada
   `[Element Icon] Type · CD Ns · PW XXX`, com separadores decorativos fora da árvore acessível;
-- o playground serve o PNG real do Profile para que a evidência local reproduza o title bar final;
-  o capture QA navega pelo servidor localhost, aguarda o mount real e registra viewport/root/body,
-  enquanto o fixture dimensiona o ícone da toolbar como o host nativo para não fabricar overflow.
 
 ## 0.2.145 — performance, lifecycle, responsividade e acessibilidade
 
@@ -152,10 +88,6 @@ the native icon geometry and Custom Pokéball no longer presents the old SVG/vec
 
 Better UI `0.2.77`: `1087375` bytes, SHA-256
 `3E4FE83D7FAAFF673FF8E917B8742020E5A167E2AEBF6BA20387B963DF493442`.
-`PokePixelCoupledWorkspace.candidate76.exe`: `240640` bytes, SHA-256
-`C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`.
-Os três lifecycle smokes saem com exit `0`; host normal permanece intocado em `146944` bytes /
-SHA-256 `924D3E555F8EF94A921AF0C846BE1B39C58B6A2CFB778C1A39DB3E89D46D498F`.
 
 ## 0.2.76 — PokémonCard compacto + Game Palette / Alpha aprovado
 
@@ -174,15 +106,10 @@ O export aprovado pelo Product Owner foi promovido ao runtime sem alterar a auto
 - Type/Rarity continuam com suas cores semânticas nativas e não recebem a paleta neutra.
 
 Freeze local final: Profile `24/24 PASS`; full suite `420/420 PASS`; build/diff-check PASS;
-visual exact-current **READY P0=P1=P2=P3=0**; candidate75 normal / close-during-init /
-close-during-switch todos exit `0`.
+visual exact-current **READY P0=P1=P2=P3=0**.
 
 Better UI `0.2.76`: `1001837` bytes, SHA-256
 `11C2CB82C189F7573B0A1AA24736445C32463D2C9B416DC7380E28F57EEBF928`.
-`PokePixelCoupledWorkspace.candidate75.exe`: `240640` bytes, SHA-256
-`C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`.
-Host normal permanece intocado: `146944` bytes / SHA-256
-`924D3E555F8EF94A921AF0C846BE1B39C58B6A2CFB778C1A39DB3E89D46D498F`.
 
 ## 0.2.71 — promoção do Playground Obsidian aprovado
 
@@ -213,16 +140,8 @@ Freeze local:
 - build: PASS;
 - Better UI `0.2.71`: `982232` bytes, SHA-256
   `2B2721C39C53B2BC2C76FEE88D0FAC92DFA7B4AB1A17E5CC8BE806050F560AA9`;
-- `PokePixelCoupledWorkspace.candidate70.exe`: `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`, intencionalmente
-  byte-idêntico ao candidate69 porque não houve mudança C# e o host carrega o bundle atual de
-  `dist`;
-- candidate70 `--smoke`, `--smoke-close-during-init` e `--smoke-close-during-switch`: PASS,
-  exit `0`, stderr vazio;
 - independent final gates: TECH/ARCH READY, UX/A11y READY e VISUAL READY, com
-  `P0=P1=P2=P3=0`;
-- host normal permanece `146944` bytes / SHA-256
-  `924D3E555F8EF94A921AF0C846BE1B39C58B6A2CFB778C1A39DB3E89D46D498F`.
+  `P0=P1=P2=P3=0`.
 
 Git history e promoção do host normal continuam separados.
 
@@ -273,17 +192,7 @@ Freeze local `0.2.69`:
   h16 Female `7358D2C906BF6CD4747F4F5C8EFD04DF4CBCACF605356226225218E696B555C5`;
 - `dist/pokepixel-better-ui.user.js`: `981996` bytes, SHA-256
   `838A4F84CD7F6F606609247A12B8A45DBCEDD8F4C3D597A434386CF8D6D9C223`, header
-  `@version 0.2.69`;
-- `PokePixelCoupledWorkspace.candidate68.exe`: `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`; host intencionalmente
-  byte-idêntico ao candidate67 porque não houve mudança C#;
-- candidate68 close-during-init / close-during-switch: PASS, exit `0`, stderr `0`;
-- normal smoke teve um timeout isolado no primeiro cold run, depois PASS em retry; uma rodada de
-  paridade candidate67 + candidate68, ambos contra o dist atual, também deu PASS/exit `0`/stderr
-  `0` nos dois, consistente com flake de startup do WebView2/harness e não com regressão do Profile.
-
-candidate67 fica supersedido para esta validação de Profile. Git history e promoção do host normal
-continuam gates separados.
+  `@version 0.2.69`.
 
 ## Corrective 0.2.68 — hierarquia final do Profile
 
@@ -314,14 +223,7 @@ Freeze local `0.2.68`:
   h15 Female `5A6B46A8A2785F52A2127B8BF667499567D759A8CA8095D78EDF8F2649019DB1`;
 - `dist/pokepixel-better-ui.user.js`: `982022` bytes, SHA-256
   `4987131954AA5D835CEAAC120A0E6E16D9736C1FC8D59260D3A3A045C324F328`, header
-  `@version 0.2.68`;
-- `PokePixelCoupledWorkspace.candidate67.exe`: `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`; host intencionalmente
-  byte-idêntico ao candidate66 porque não houve mudança C#;
-- candidate67 normal / close-during-init / close-during-switch: PASS, exit `0`, stderr `0`.
-
-candidate66 fica supersedido para esta validação de Profile. Git history e promoção do host normal
-continuam gates separados.
+  `@version 0.2.68`.
 
 ## Corrective pós-candidate64 — identidade + ações + Team controls
 
@@ -355,16 +257,7 @@ Freeze local `0.2.67`:
   sections collapsed e Team active/inactive/first/last; 340 mantém root/body `320/320` e `310/310`,
   com rails locais Current/Saved `268/454`, `280/454`, `284/454`;
 - `dist/pokepixel-better-ui.user.js`: `972808` bytes, SHA-256
-  `BA880C4BC407E530063407B577E0F76906F037902B4244B617CBA25C6830883E`, header `@version 0.2.67`;
-- `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate65.exe`:
-  `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`; host intencionalmente
-  byte-idêntico ao candidate64 porque este corrective não altera C#;
-- candidate65 `--smoke`, `--smoke-close-during-init` e `--smoke-close-during-switch`: PASS,
-  todos exit `0`, stderr `0`.
-
-`candidate64` é histórico/supersedido para promoção. Git history, normal-host promotion e release
-continuam gates separados.
+  `BA880C4BC407E530063407B577E0F76906F037902B4244B617CBA25C6830883E`, header `@version 0.2.67`.
 
 ## Corrective pós-candidate63 — moves horizontais + discovery avançado
 
@@ -405,13 +298,7 @@ Evidência do freeze corrective 0.2.66:
   apenas warnings LF/CRLF já existentes;
 - `dist/pokepixel-better-ui.user.js`: `953762` bytes, SHA-256
   `6F2230B70EBC36F2396F9535EE91472E74825772780D8E6390766A225276C2FE`, header
-  `@version 0.2.66`;
-- `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate64.exe`:
-  `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`, byte-idêntico ao
-  host candidate63 validado; nenhum drift C# foi recompilado;
-- candidate64 `--smoke`, `--smoke-close-during-init` e `--smoke-close-during-switch`: PASS,
-  todos exit `0`, stderr total `0` bytes.
+  `@version 0.2.66`.
 
 ## Objetivo
 
@@ -536,14 +423,6 @@ desabilita o menu dedicado Pokémon Profile.
   representativos porque o delta posterior é somente de semântica/foco.
 - `dist/pokepixel-better-ui.user.js`: `946788` bytes, SHA-256
   `EDD901556C769DDE15B9930C63CBCBCFA280F322A6F4F832AB9408F54CA0836C`, header `@version 0.2.65`.
-- `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate63.exe`:
-  `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`.
-  O host é byte-idêntico ao candidate62 previamente gated; nenhum C# com drift paralelo foi
-  recompilado para este ciclo.
-- candidate63 `--smoke`, `--smoke-close-during-init` e `--smoke-close-during-switch`: PASS,
-  todos exit `0`, stderr total `0` bytes.
 
-O registro 0.2.65 abaixo permanece histórico. candidate64 também foi supersedido; o gate atual é
-validação in-game do Product Owner no candidate65. Git history, normal-host promotion e release
-continuam separados.
+O registro 0.2.65 abaixo permanece histórico; o gate atual é validação in-game do Product Owner.
+Git history e release continuam separados.

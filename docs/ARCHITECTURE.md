@@ -66,8 +66,8 @@ dependency is explicitly modeled.
 `src/app/module-registry.js` is the one source for the ordered list of runtime
 modules, preference descriptors and persisted defaults. `src/index.js` only
 assembles the app dependencies and appends the non-configurable settings panel.
-An optional setting must correspond to a registered module ID; infrastructure
-modules such as standalone Card Mode and Coupled Workspace have no user toggle.
+An optional setting must correspond to a registered module ID. Card Mode is
+non-configurable infrastructure and has no user toggle.
 The contract is checked in `test/app-module-registry.test.js`.
 
 ### External Hunt Analyzer boundary
@@ -83,8 +83,7 @@ Shadow DOM, raw WebSocket state or reproduce its formulas.
   Pause/Resume/Reset session actions.
 - `__POKEPIXEL_HUNT_ANALYZER_UI__` protocol 1 is optional and standalone-only. Card
   Mode capability-detects it and may navigate to semantic detail destinations; it
-  never uses Analyzer DOM selectors or the Coupled Workspace's native
-  `hunt-analyzer` game-menu route for this purpose.
+  never uses Analyzer DOM selectors or game-menu routing for this purpose.
 
 Every integration must fail closed when the Analyzer is absent, late, stale or on an
 unsupported protocol. Additive Analyzer changes may be consumed opportunistically;

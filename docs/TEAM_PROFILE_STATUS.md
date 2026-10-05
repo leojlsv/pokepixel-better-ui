@@ -263,27 +263,21 @@ Historical 0.2.65 local freeze evidence:
 - final render-first VISUAL re-gate: **READY, P0=P1=P2=P3=0**, all nine dedicated
   Profile/restored Team renders remain representative;
 - exact Better UI 0.2.65 bundle: `946788` bytes, SHA-256
-  `EDD901556C769DDE15B9930C63CBCBCFA280F322A6F4F832AB9408F54CA0836C`;
-- exact validation host: `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate63.exe`,
-  `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`;
-- candidate63 normal / close-during-init / close-during-switch smokes: all `PASS`, exit `0`,
-  stderr total `0` bytes.
+  `EDD901556C769DDE15B9930C63CBCBCFA280F322A6F4F832AB9408F54CA0836C`.
 
-candidate62 and the 0.2.64 Team-dossier bundle remain historical only. No Git history, normal-host
-promotion or live release is authorized by these local checks.
+The 0.2.64 Team-dossier bundle remains historical only. No Git history or live
+release is authorized by these local checks.
 
 ### 0.2.65 PM decision
 
 `LOCAL ACCEPTED — TECH READY + UX READY + VISUAL READY, all P0-P3 = 0, on Better UI 0.2.65
-946788 bytes / SHA-256 EDD901556C769DDE15B9930C63CBCBCFA280F322A6F4F832AB9408F54CA0836C.
-candidate63 is prepared for Product Owner live validation only.`
+946788 bytes / SHA-256 EDD901556C769DDE15B9930C63CBCBCFA280F322A6F4F832AB9408F54CA0836C.`
 
-### Product Owner live result on candidate63
+### Product Owner live result after 0.2.65
 
 `SUPERSEDED FOR PROMOTION` — the dedicated Profile direction remains approved, but the Product
 Owner rejected the vertical move presentation and requested discovery filters for rarity,
-element, level range and tags. Corrective implementation is underway after 0.2.65; candidate63
+element, level range and tags. Corrective implementation is underway after 0.2.65; that delivery
 must not be promoted as the final artifact.
 
 ### 0.2.66 corrective closure
@@ -382,7 +376,6 @@ At the normal Team width, the roster stays `6×1`; at the established narrow thr
 - Corrective UX/A11y re-gate on the same exact artifact: **UX READY**, `P0=0 P1=0 P2=0 P3=0`; reviewer independently reran the full `394/394` suite and matched the updated Current-focus evidence hash.
 - Independent render-first Visual gate on the same exact artifact/evidence set: **VISUAL READY**, `P0=0 P1=0 P2=0 P3=0`; reviewer verified all eight render hashes and the dossier hierarchy, 6×1/3×2 geometry, narrow wrapping, explicit empty/error/focus states, square Miyazaki16 seams and single Team-body scroll ownership.
 - Exact artifact/version/hash independently reviewed: **PASS** — TECH, UX/A11y and Visual reviews all target Better UI `0.2.63`, `944768` bytes, SHA-256 `15721E23B8B7EC82C890F26700818197D254ECCEA2E32658C9C58B7D6C483077`.
-- Product Owner live-validation host prepared as `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate61.exe`. The host executable is intentionally byte-identical to previously gated candidate60 (`240640` bytes, SHA-256 `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`) because Coupled Workspace loads the current Better UI/Analyzer bundles from `dist` at runtime; copying candidate60 isolates this Team-only validation from unrelated later host-source drift. Candidate61 passes `--smoke`, `--smoke-close-during-init` and `--smoke-close-during-switch`, all exit `0`, against the current local bundles.
 - Product Owner live validation: pending; local gates do not substitute for it.
 
 ## PM decision
@@ -459,20 +452,10 @@ Final exact-artifact independent gates so far:
   Legacy Ground name/position/warning separation, explicit focus states, empty/error rhythm and
   constrained-height body clipping all remain coherent with no visual blocker.
 
-Product Owner validation host for this corrective cycle:
-
-- `tools/coupled-workspace-webview2/bin/PokePixelCoupledWorkspace.candidate62.exe`;
-- `240640` bytes, SHA-256
-  `C7DA787C4AA430DE47EBF9CB4AFD2A71659080ED886A0BACC3067FB2BB8702AD`;
-- intentionally byte-identical to candidate60/61 rather than rebuilt from unrelated later C#
-  source; Coupled Workspace loads the current Better UI/Analyzer bundles from `dist` at runtime;
-- `--smoke`, `--smoke-close-during-init` and `--smoke-close-during-switch`: all exit `0` against
-  the frozen 0.2.64 bundle.
-
 ### 0.2.64 PM decision
 
 `LOCAL ACCEPTED — TECH READY + UX READY + VISUAL READY, all P0–P3 = 0, on Better UI 0.2.64
 945418 bytes / SHA-256 217FFDA0122E2E6419ED87E86C771369B7446966F7868B40AE4B5F918D1ACD38.
-candidate62 is prepared for Product Owner live validation only.`
+The 0.2.64 delivery is prepared for Product Owner live validation only.`
 
 Promotion and Git history remain separate gates.

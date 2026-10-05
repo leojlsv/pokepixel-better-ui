@@ -17,8 +17,7 @@ import { createTeamHudModule } from "../modules/team-hud/index.js";
 import { teamHudText } from "../modules/team-hud/dom.js";
 import { createTeamPresetsModule, teamPresetsText } from "../modules/team-presets/index.js";
 import { createPokemonProfileModule, pokemonProfileText } from "../modules/pokemon-profile/index.js";
-import { createCoupledWorkspaceModule } from "../modules/coupled-workspace/index.js";
-import { createStandaloneCardModeModule } from "../modules/coupled-workspace/standalone.js";
+import { createCardModeModule } from "../modules/card-mode/index.js";
 import { createMarksShopModule } from "../modules/marks-shop/index.js";
 import { shopText } from "../modules/marks-shop/dom.js";
 import { createEvolutionCenterModule } from "../modules/evolution-center/index.js";
@@ -38,8 +37,8 @@ const toggle = (module, text, defaultEnabled = true) => ({
 });
 
 export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = {}) {
-  // This order is intentional: native toolbar before its dependents, card-mode
-  // infrastructure before its host, and the preferences panel last in index.js.
+  // This order is intentional: native toolbar before Card Mode and its dependents,
+  // with the preferences panel appended last in index.js.
   const entries = [
     toggle(createPokemonHoverModule(), hoverText, false),
     toggle(createPokemonProfileModule({ teamPresetStore, movesetStore: teamMovesetStore }), pokemonProfileText),
@@ -50,8 +49,7 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
       description: text => text.description,
     } },
     { module: huntControlsModule },
-    { module: createStandaloneCardModeModule() },
-    { module: createCoupledWorkspaceModule() },
+    { module: createCardModeModule() },
     toggle(createBuffStripModule(), buffStripText),
     toggle(createInventoryModule(), inventoryText),
     toggle(createStorageModule(), storageText),

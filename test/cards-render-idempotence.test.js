@@ -1,16 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
-import { createCoupledCards } from "../src/modules/coupled-workspace/cards.js";
+import { createCardModeCards } from "../src/modules/card-mode/cards.js";
 import { createBetterUI } from "../src/core/bootstrap.js";
-import { createStandaloneCardModeModule } from "../src/modules/coupled-workspace/standalone.js";
+import { createCardModeModule } from "../src/modules/card-mode/index.js";
 
 test("re-rendering unchanged Cards data leaves the observed DOM unchanged", t => {
   const dom = new JSDOM("<!doctype html><html lang=\"pt-BR\"><body></body></html>", {
     url: "https://fixture.invalid", pretendToBeVisual: true,
   });
   const win = dom.window;
-  const cards = createCoupledCards({ win, textOnly: true });
+  const cards = createCardModeCards({ win, textOnly: true });
   t.after(() => { cards.cleanup(); win.close(); });
   cards.setMode("cards");
   const summary = {
@@ -41,7 +41,7 @@ test("Story relative timestamps advance on unchanged data without replacing rows
   const win = new JSDOM("<!doctype html><html lang='pt-BR'><body></body></html>", {
     url: "https://fixture.invalid", pretendToBeVisual: true,
   }).window;
-  const cards = createCoupledCards({ win, textOnly: true });
+  const cards = createCardModeCards({ win, textOnly: true });
   t.after(() => { Date.now = originalNow; cards.cleanup(); win.close(); });
   cards.setMode("cards");
   const summary = {
@@ -78,7 +78,7 @@ test("new special-history events insert incrementally and keep all earlier DOM r
   const win = new JSDOM("<!doctype html><html lang='pt-BR'><body></body></html>", {
     url: "https://fixture.invalid", pretendToBeVisual: true,
   }).window;
-  const cards = createCoupledCards({ win, textOnly: true });
+  const cards = createCardModeCards({ win, textOnly: true });
   t.after(() => { cards.cleanup(); win.close(); });
   cards.setMode("cards");
   const now = Date.now();
@@ -108,7 +108,7 @@ test("incremental Story retains existing sprites, changes only edited rows, and 
   }).window;
   let resolveSpecies;
   win.PokeIdle = { Api: { getSpecies: () => new Promise(resolve => { resolveSpecies = resolve; }) } };
-  const cards = createCoupledCards({ win });
+  const cards = createCardModeCards({ win });
   t.after(() => { cards.cleanup(); win.close(); });
   cards.setMode("cards");
   const now = Date.now();
@@ -154,7 +154,7 @@ test("native Elements retry after transient icon failure and late in-place hydra
     },
   };
   win.PokeIdle = { ElementIcons: icons };
-  const cards = createCoupledCards({ win });
+  const cards = createCardModeCards({ win });
   t.after(() => { cards.cleanup(); win.close(); });
   const summary = { status: "running", currentTarget: { speciesId: "pikachu", species: "Pikachu", elements: ["electric"] } };
   cards.setMode("cards");
@@ -194,7 +194,7 @@ test("the central observer reaches quiescence with unchanged standalone Cards", 
     requestAnimationFrame: { configurable: true, value: fn => { pending.set(++nextId, fn); return nextId; } },
     cancelAnimationFrame: { configurable: true, value: id => { pending.delete(id); } },
   });
-  const app = createBetterUI({ modules: [createStandaloneCardModeModule()] });
+  const app = createBetterUI({ modules: [createCardModeModule()] });
   t.after(() => {
     app.stop();
     win.close();

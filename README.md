@@ -2,6 +2,14 @@
 
 Functional UI/UX and QoL layer for PokePixel Idle.
 
+[![CI](https://github.com/leojlsv/pokepixel-better-ui/actions/workflows/ci.yml/badge.svg)](https://github.com/leojlsv/pokepixel-better-ui/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+Better UI is an independent community project. It is not affiliated with or
+endorsed by PokePixel, Pokémon, Nintendo, Game Freak or The Pokémon Company.
+
+Maintained by **Rhyxus**.
+
 ## Principle
 
 Better UI prioritizes functional layout, clear controls, responsiveness and safe
@@ -26,14 +34,29 @@ Not in scope:
 - bypassing game/server restrictions
 - unrelated replacement of game logic or state
 
+## Installation
+
+Better UI is distributed as a Tampermonkey-compatible userscript. Use a tagged
+release artifact from the repository's
+[Releases](https://github.com/leojlsv/pokepixel-better-ui/releases) page when
+available, or build the current source and import:
+
+```text
+dist/pokepixel-better-ui.user.js
+```
+
+The userscript does not currently use `@updateURL` / `@downloadURL`, so updating
+an installed copy is an explicit user action.
+
+The npm package is intentionally marked `private`; GitHub Releases are the
+supported binary distribution channel.
+
 ## Development
 
 Requirements:
 
 - Node.js `^22.22.2 || ^24.15.0 || >=26.0.0` (matches the pinned jsdom toolchain)
 - npm
-- Python 3.10+ for sprite tooling and its offline tests
-- Windows PowerShell 5.1 and .NET Framework 4.x for the optional native WebView2 builder
 
 Install:
 
@@ -53,21 +76,18 @@ Watch:
 npm run watch
 ```
 
-Offline developer validation on Windows (no live game or browser):
+Offline validation (no live game or browser):
 
 ```powershell
-npm run validate:offline:win
+npm run validate
 ```
 
-`npm test` checks the JS application and game-evidence tools. The combined gate
-also runs the Python cache tests, an isolated PowerShell/Python launcher fixture
-and the userscript build. The WebView2 C# compile is a separate **isolated
-candidate** gate: do not rebuild the normal, previously accepted host merely
-to validate source changes. On other operating systems, run `npm test`,
-`npm run test:python` and `npm run build` separately. The Python cache tests
-import NumPy, Pillow, Requests and Beautiful Soup; they require those packages
-already installed in the selected Python interpreter (or the corresponding
-isolated tool venv). The offline gate deliberately does not fetch dependencies.
+`npm test` checks the Better UI JavaScript application. `npm run validate` runs
+the product test suite and rebuilds the userscript.
+
+Release tags use the exact package version (`vX.Y.Z`). The release workflow
+revalidates the repository, audits dependencies, verifies userscript license and
+version metadata, and publishes the generated `.user.js` plus a SHA-256 checksum.
 
 Generated userscript:
 
@@ -75,13 +95,10 @@ Generated userscript:
 dist/pokepixel-better-ui.user.js
 ```
 
-Generated-artifact retention and safe cleanup: `docs/REPOSITORY_LAYOUT.md`.
-Use `npm run clean:generated` to preview disposable files; adding `-- --apply`
-removes only the allowlisted temporary outputs.
+Repository layout and generated-artifact policy: `docs/REPOSITORY_LAYOUT.md`.
 
 For Tampermonkey validation, replace/re-import the installed script with this generated file after a
-build. The local userscript currently has no `@updateURL` / `@downloadURL`, so rebuilding the repository
-does not update an already-installed older Tampermonkey copy automatically.
+build.
 
 Hunt Story's failed-attempt **IV Total** column requires Hunt Analyzer `1.13.6` or newer, because that
 version is the first public-summary build to expose the already-authoritative terminal `ivTotal` scalar
@@ -114,20 +131,6 @@ The PM uses `docs/PM_GATE_TEMPLATE.md` to track criterion-level evidence and
 authorize handoff.
 In-game interface validation is performed exclusively by the user; automated
 tests/builds do not count as an in-game green light.
-
-### Coupled Workspace
-
-The supported multi-account desktop host is the native WinForms + WebView2
-implementation under `tools/coupled-workspace-webview2/`. It supports one or two
-isolated account sessions in one frame, semantic 1:2 / 1:1 / 2:1 layouts,
-Swap/Focus, scoped Home/Reload controls, explicit health state and a Better
-UI-native Maintenance Drawer without mirroring gameplay input.
-
-The legacy `tools/coupled-workspace/Start-CoupledWorkspace.ps1` entry point is a
-compatibility wrapper to the WebView2 host; the superseded Electron prototype
-and its extension mirror have been removed. See `docs/COUPLED_WORKSPACE_STATUS.md` and
-`design-system/pokepixel-better-ui/pages/coupled-workspace.md` for the final
-acceptance and design records.
 
 ## Status
 
@@ -207,3 +210,15 @@ layout. See `docs/modules/storage.md` and `docs/modules/pokemon-tools.md`.
 
 The current Hunts dossier revision, Team HUD and Mark's Shop still require their
 explicit in-game closure; automated coverage is already in place.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development and pull-request rules.
+Security issues should follow [SECURITY.md](SECURITY.md), not public exploit
+disclosure.
+
+## License
+
+Better UI is licensed under the [MIT License](LICENSE). Third-party attribution
+and trademark boundaries are documented in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

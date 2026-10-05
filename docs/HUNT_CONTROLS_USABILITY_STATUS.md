@@ -3,7 +3,7 @@
 ## Task
 
 - Request: simplify the active-Hunt controls, credit Better UI as `by Rhyxus`, and remove the native fixed top/bottom menu-position choice while Better UI owns the draggable Poké Hub.
-- Branch / worktree: `task/hunt-controls-usability` / `G:/pokepixel-better-ui`.
+- Branch: `task/hunt-controls-usability` in the Better UI repository.
 - Baseline artifact / version: `0.2.166` on `main` before this task.
 - Product Owner functional validation: candidate `0.2.167` validated in-game on 2026-10-05; follow-up request was limited to centering the `Return to City` button label.
 - Product Owner final validation: corrective candidate `0.2.168` approved and validated in-game on 2026-10-05, including the centered `Return to City` label.
