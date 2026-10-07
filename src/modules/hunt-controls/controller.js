@@ -2,6 +2,7 @@ import { huntControlsConfig as config } from "./config.js";
 import { findNativeHuntButton, findReviveButton, returnBadgeText } from "./dom.js";
 import styles from "./styles.js";
 import { menuBarConfig } from "../menu-bar/config.js";
+import { groupAriaLabel } from "../menu-bar/dom.js";
 
 function restoreAttribute(node, name, previous) {
   if (!node) return;
@@ -64,11 +65,12 @@ export function mountHuntControls(target) {
   const currentBaseAria = () => cityTrigger.querySelector(".pokeidle-top-toolbar__label")?.textContent?.trim()
     || cityTrigger.getAttribute("aria-label") || "City";
   const restoreTriggerAria = () => {
+    const expected = groupAriaLabel(cityGroup, cityTrigger.getAttribute("data-ppbui-menu-context-aria") || currentBaseAria());
     restoreAttribute(cityTrigger, "data-ppbui-menu-context-aria", prior.contextAria);
     restoreAttribute(cityTrigger, "data-ppbui-hunt-return-trigger", prior.triggerMarker);
-    if (appliedAria !== null && cityTrigger.getAttribute("aria-label") === appliedAria) {
+    if (appliedAria !== null && [appliedAria, expected].includes(cityTrigger.getAttribute("aria-label"))) {
       const base = currentBaseAria();
-      cityTrigger.setAttribute("aria-label", prior.contextAria || base);
+      cityTrigger.setAttribute("aria-label", groupAriaLabel(cityGroup, prior.contextAria || base));
     }
     appliedAria = null;
   };
@@ -87,8 +89,9 @@ export function mountHuntControls(target) {
       if (cityTrigger.getAttribute("data-ppbui-menu-context-aria") !== nextAria) {
         cityTrigger.setAttribute("data-ppbui-menu-context-aria", nextAria);
       }
-      if (cityTrigger.getAttribute("aria-label") !== nextAria) cityTrigger.setAttribute("aria-label", nextAria);
-      appliedAria = nextAria;
+      const combinedAria = groupAriaLabel(cityGroup, nextAria);
+      if (cityTrigger.getAttribute("aria-label") !== combinedAria) cityTrigger.setAttribute("aria-label", combinedAria);
+      appliedAria = combinedAria;
     } else {
       restoreTriggerAria();
     }

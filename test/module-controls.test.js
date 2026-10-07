@@ -9,7 +9,7 @@ import { createModuleControls } from "../src/modules/module-controls/index.js";
 
 const fixture = readFileSync(new URL("./fixtures/menu-bar.html", import.meta.url), "utf8");
 const key = "ppbui:modules:v1";
-function setup(t, stored, fail = false, legacyAppearance = null) {
+function setup(t, stored, fail = false, legacyAppearance = null, wallet = null) {
   const dom = new JSDOM(fixture, { pretendToBeVisual: true, url: "https://local.test" });
   const { window } = dom;
   const previous = new Map();
@@ -25,7 +25,7 @@ function setup(t, stored, fail = false, legacyAppearance = null) {
   } };
   const preferences = createModulePreferences(options);
   const menuBar = createMenuBarModule();
-  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }] });
+  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }], wallet });
   const app = createBetterUI({ modules: [menuBar, controls], preferences });
   const doc = window.document;
   t.after(() => {
@@ -111,7 +111,7 @@ test("Better UI panel owns viewport positioning independently from hostile nativ
   assert.equal(window.getComputedStyle(panel).bottom, "auto");
   assert.equal(window.getComputedStyle(panel).transform, "none");
   assert.match(css, /\[data-ppbui-module="module-controls"\] \{[^}]*position:relative !important;/);
-  assert.match(css, /> \.ppbui-module-panel \{[^}]*position:fixed !important;[^}]*inset:auto !important;[^}]*left:8px !important;[^}]*right:auto !important;[^}]*top:8px !important;[^}]*bottom:auto !important;[^}]*display:grid;[^}]*transform:none !important;/);
+  assert.match(css, /> \.ppbui-module-panel, \.ppbui-module-panel\[data-ppbui-menu-controls-portal\] \{[^}]*position:fixed !important;[^}]*inset:auto !important;[^}]*left:8px !important;[^}]*right:auto !important;[^}]*top:8px !important;[^}]*bottom:auto !important;[^}]*display:grid;[^}]*transform:none !important;/);
 });
 
 test("Better UI panel flips beside a vertical toolbar at the left edge and stays inside viewport", t => {
@@ -368,4 +368,36 @@ test("theme disclosure persists independently and counts track module settings",
   assert.equal(doc.activeElement, restored.querySelector('summary'));
   restored.open = true; toggle().click();
   assert.equal(preferences.isEnabled('menu-bar'), true);
+});
+
+test("Wallet disclosure persists independently without changing active locations", async t => {
+  const wallet = {
+    createSettings({ doc }) {
+      const root = doc.createElement("details");
+      root.className = "ppbui-wallet-settings ppbui-module-section";
+      root.open = true;
+      const summary = doc.createElement("summary");
+      summary.textContent = "Wallet";
+      const checkbox = doc.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = true;
+      checkbox.dataset.ppbuiWalletToggle = "backpack";
+      root.append(summary,checkbox);
+      return { root,sync(){},dispose(){ root.remove(); } };
+    },
+  };
+  const { app,doc,window,trigger } = setup(t,null,false,null,wallet);
+  app.start();trigger().click();
+  const section = doc.querySelector(".ppbui-wallet-settings");
+  const checkbox = section.querySelector('[data-ppbui-wallet-toggle="backpack"]');
+  assert.equal(section.open,true);
+  assert.equal(checkbox.checked,true);
+  section.open=false;
+  await new Promise(resolve=>window.setTimeout(resolve,20));
+  assert.equal(JSON.parse(window.localStorage.getItem("ppbui:module-groups:v1")).wallet,false);
+  assert.equal(checkbox.checked,true,"collapsing settings must not disable Wallet locations");
+  app.stop();app.start();trigger().click();
+  const restored=doc.querySelector(".ppbui-wallet-settings");
+  assert.equal(restored.open,false);
+  assert.equal(restored.querySelector('[data-ppbui-wallet-toggle="backpack"]').checked,true);
 });

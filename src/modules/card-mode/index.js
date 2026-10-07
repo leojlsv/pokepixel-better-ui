@@ -20,7 +20,7 @@ function switchStyles() {
   return `
     html[${modeAttribute}="cards"]{height:100vh!important;height:100dvh!important;overflow:hidden!important}
     html[${modeAttribute}="cards"] body{height:100vh!important;height:100dvh!important;margin:0!important;overflow:hidden!important;background:var(--ppbui-bg-1,#161d20)!important}
-    html[${modeAttribute}="cards"] body>:not([${surfaceAttribute}]):not([${toolbarPathAttribute}]){display:none!important}
+    html[${modeAttribute}="cards"] body>:not([${surfaceAttribute}]):not([${toolbarPathAttribute}]):not([data-ppbui-menu-layout-editor]):not([data-ppbui-menu-controls-portal]){display:none!important}
     html[${modeAttribute}="cards"] [${toolbarPathAttribute}]:not([${toolbarAttribute}])>:not([${toolbarPathAttribute}]):not([${toolbarAttribute}]){display:none!important}
     [data-ppbui-card-mode-toggle]{position:relative!important}
     [data-ppbui-card-mode-toggle] .ppbui-card-mode-toggle-icon{display:grid!important;width:31px!important;height:31px!important;flex:0 0 31px!important;place-items:center!important;margin:0!important}
@@ -37,7 +37,7 @@ function isCardModeHost(win = globalThis.window) {
   return Boolean(runtime?.document?.querySelector?.(config.selectors.toolbar));
 }
 
-function mountCardMode(win = globalThis.window) {
+function mountCardMode(win = globalThis.window, menuBar) {
   win = resolveCardModeRuntimeWindow(win);
   if (!isCardModeHost(win)) throw new Error("Card Mode requires the native top toolbar.");
   const doc = win.document;
@@ -60,6 +60,7 @@ function mountCardMode(win = globalThis.window) {
     </span>
     <span class="pokeidle-top-toolbar__label">Cards/Game</span>
   `;
+  const unregisterParticipant = menuBar?.registerParticipant?.("system:card-mode", toggle);
   const cards = createCardModeCards({ win, textOnly: true, combatArt: true });
   cards.root.dataset.ppbuiModule = moduleId;
   cards.root.setAttribute(surfaceAttribute, "");
@@ -124,8 +125,8 @@ function mountCardMode(win = globalThis.window) {
         }
       }
     }
-    if (observedToolbar && toggle.parentElement !== observedToolbar) {
-      observedToolbar.append(toggle);
+    if (observedToolbar) {
+      if (!menuBar?.placeParticipant?.("system:card-mode", toggle, observedToolbar) && toggle.parentElement !== observedToolbar) observedToolbar.append(toggle);
       if (restoreToggleFocus) toggle.focus({ preventScroll: true });
     }
     syncViewportInset(observedToolbar);
@@ -191,6 +192,7 @@ function mountCardMode(win = globalThis.window) {
       if (mode === "cards") syncAnalyzer();
     },
     cleanup() {
+      unregisterParticipant?.();
       if (analyzerTimer !== null) win.clearInterval(analyzerTimer);
       toggle.removeEventListener("click", onSwitch);
       toggle.removeEventListener("keydown", onToggleKeyDown);
@@ -208,7 +210,7 @@ function mountCardMode(win = globalThis.window) {
   };
 }
 
-export function createCardModeModule() {
+export function createCardModeModule({ menuBar } = {}) {
   let mounted = null;
   return {
     id: moduleId,
@@ -216,7 +218,7 @@ export function createCardModeModule() {
     shouldMount: () => isCardModeHost(resolveCardModeRuntimeWindow(document.defaultView)),
     reconcile: () => mounted?.sync(),
     mount() {
-      mounted = mountCardMode(resolveCardModeRuntimeWindow(document.defaultView));
+      mounted = mountCardMode(resolveCardModeRuntimeWindow(document.defaultView), menuBar);
       return () => {
         mounted?.cleanup();
         mounted = null;

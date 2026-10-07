@@ -5,7 +5,7 @@ import { createInventoryViews, viewText } from "./views.js";
 import { createInventoryScroll } from "./scroll.js";
 import { createInventoryWallet } from "./wallet.js";
 
-export function mountInventory(root, preference) {
+export function mountInventory(root, preference, walletService = null) {
   const doc=root.ownerDocument, hadWindowClass=root.classList.contains("ppbui-window");
   root.classList.add("ppbui-window");
   const shellStyle=doc.createElement("style");shellStyle.dataset.ppbuiInventoryShellStyle="";shellStyle.textContent=`
@@ -56,7 +56,7 @@ export function mountInventory(root, preference) {
   let scope = null;
   let ranks = new Map();
   const scroll = createInventoryScroll(root);
-  const wallet = createInventoryWallet(root);
+  const wallet = createInventoryWallet(root, walletService);
   let viewMode = "grid";
   const views = createInventoryViews(root);
   const disclosure = document.createElement("div");

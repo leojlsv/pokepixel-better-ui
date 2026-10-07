@@ -6,7 +6,7 @@ import { teamPresetHudMemberVisual, teamPresetMemberSnapshot } from "../team-pre
 import { createElementIcon } from "../../core/element-icons.js";
 import { createNativeBusBindings } from "../../core/native-event-bus.js";
 import { fixedTags, freshFilters, matchesPokemon, pokemonElements, pokemonRarities, tagService } from "../pokemon-tools/model.js";
-import { finite, pokemonName, pokemonProfileText } from "./dom.js";
+import { awakeningPreviewState, finite, nativeProgressSelectors, pokemonName, pokemonProfileText } from "./dom.js";
 
 const PROFILE_ID = "pokemon-profile";
 const IV_MAX_TOTAL = 186;
@@ -307,6 +307,121 @@ function styleText() {
       gap:7px!important;
       margin:0 0 8px!important;
       padding:8px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] {
+      display:grid;
+      grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+      gap:8px;
+      min-width:0;
+      margin:0 0 8px;
+      align-items:stretch;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] > .pokemon-card__meters {
+      min-width:0;
+      width:100%;
+      box-sizing:border-box;
+      grid-template-columns:minmax(0,1fr);
+      grid-template-rows:repeat(2,minmax(0,1fr));
+      gap:8px!important;
+      margin:0!important;
+      padding:9px 10px!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] .pokemon-card__meter {
+      min-width:0;
+      align-self:center;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] .pokemon-card__meter-head {
+      flex-wrap:wrap;
+      gap:2px 6px;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] .pokemon-card__meter-head > :first-child {
+      min-width:0;
+      font-size:10px!important;
+      letter-spacing:.02em;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] .pokemon-card__meter-head b {
+      flex:1 1 auto;
+      max-width:100%;
+      overflow:visible;
+      white-space:normal;
+      overflow-wrap:anywhere;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-progress] .pokemon-card__track {
+      box-sizing:border-box;
+      width:100%;
+      height:6px!important;
+      margin-top:4px;
+      border:0!important;
+      box-shadow:none;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-rarity-meter] {
+      width:100%;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-rarity-awakening] [data-ppbui-profile-native-rarity-track] > i {
+      background:var(--ppbui-summary-quality,var(--ppbui-text,#eef1df))!important;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-rarity-awakening] {
+      display:grid;
+      grid-template-rows:repeat(2,minmax(0,1fr));
+      min-width:0;
+      box-sizing:border-box;
+      padding:0 10px;
+      border:1px solid var(--ppbui-border,#6b6543);
+      border-radius:var(--ppbui-radius);
+      background:var(--ppbui-bg-0,rgba(22,29,32,.85));
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-row] {
+      display:flex;
+      min-width:0;
+      align-items:center;
+      padding:8px 0;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-row] + [data-ppbui-profile-native-summary-row] {
+      border-top:1px solid var(--ppbui-border,#6b6543);
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-line] {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:baseline;
+      justify-content:space-between;
+      gap:4px 6px;
+      width:100%;
+      min-width:0;
+      font:600 11px/1.25 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);
+      overflow-wrap:anywhere;
+      white-space:normal;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-label] {
+      color:var(--ppbui-text-muted,#a6aa9f);
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-rarity] [data-ppbui-profile-native-summary-label] {
+      color:var(--ppbui-summary-quality,var(--ppbui-text,#eef1df));
+      font-weight:700;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-value] {
+      margin-left:auto;
+      color:var(--ppbui-text,#eef1df);
+      font:700 12px/1.25 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);
+      font-variant-numeric:tabular-nums;
+      white-space:nowrap;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-value]:not([data-state="awk"]):not([data-state="rarity"]) {
+      white-space:normal;
+      text-align:right;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-maximum] {
+      color:var(--ppbui-text-muted,#a6aa9f);
+      font-size:10px;
+      font-weight:500;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-value][data-state="unavailable"] {
+      color:var(--ppbui-text-muted,#a6aa9f);
+      font-size:10px;
+      font-weight:500;
+      white-space:normal;
+    }
+    .pokemon-card[data-ppbui-profile-native-card] [data-ppbui-profile-native-summary-value][data-state="max"] {
+      color:var(--ppbui-success-text,#8fd67c);
     }
     .pokemon-card[data-ppbui-profile-native-card] .pokemon-card__meter-head {
       display:flex;
@@ -686,9 +801,9 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   body.append(picker, main); root.append(titlebar, body); doc.body.append(root);
 
   let alive = true, opened = false, owned = [], selectedId = "", source = "all", filters = freshFilters(), filterCopySignature = "", loadEpoch = 0, selectionEpoch = 0, openEpoch = 0, busy = false, profileOrigin = null, teamStoreSignature = "", configureMovesAvailable = null, dragState = null, dragPositioned = false;
-  const speciesCache = new Map(), movesCache = new Map(), detailCache = new Map(), collapseState = new Map(), choiceNodes = new Map();
+  const speciesCache = new Map(), movesCache = new Map(), detailCache = new Map(), collapseState = new Map(), choiceNodes = new Map(), awakeningPreviewCache = new Map();
   const tags = tagService(win);
-  const nativeCardCreatures = new WeakMap(), nativeCardHydrationEpoch = new WeakMap();
+  const nativeCardCreatures = new WeakMap(), nativeCardHydrationEpoch = new WeakMap(), nativeCardAwakeningEpoch = new WeakMap();
   const nativeCardSelector = ".pokemon-card--hover,.pokemon-card--pinned,.pokemon-card--sheet";
   let nativeCardOwner = null, nativeCardOriginalRender = null, nativeCardRenderWrapper = null, nativeCardToken = 0;
 
@@ -964,6 +1079,10 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const actionsAnchor = container.querySelector("[data-ppbui-profile-native-actions-anchor]");
     if (actions && actionsAnchor?.parentNode) actionsAnchor.replaceWith(actions);
     actions?.removeAttribute("data-ppbui-profile-native-actions");
+    const meters = container.querySelector("[data-ppbui-profile-native-meters]");
+    const progressAnchor = container.querySelector("[data-ppbui-profile-native-progress-anchor]");
+    if (meters && progressAnchor?.parentNode) progressAnchor.replaceWith(meters);
+    meters?.removeAttribute("data-ppbui-profile-native-meters");
     container.querySelectorAll("[data-ppbui-profile-native-owned]").forEach(node => node.remove());
     container.querySelectorAll("[data-ppbui-profile-native-hidden]").forEach(node => {
       node.hidden = node.dataset.ppbuiProfileNativeWasHidden === "true";
@@ -980,6 +1099,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     container.removeAttribute("data-ppbui-profile-native-token");
     nativeCardCreatures.delete(container);
     nativeCardHydrationEpoch.delete(container);
+    nativeCardAwakeningEpoch.delete(container);
   }
 
   function nativeMoveTile(move) {
@@ -1116,6 +1236,164 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     else badges.append(badge);
   }
 
+  function nativeRaritySummary(creature) {
+    const quality = String(creature?.quality || "").trim();
+    const current = finite(creature?.quality_multiplier);
+    const locale = win?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || undefined;
+    const decimal = value => value.toLocaleString(locale, { minimumFractionDigits:2, maximumFractionDigits:2 });
+    let minimum = null, maximum = null;
+    try {
+      const band = win?.PokeIdle?.PokemonCardData?.qualityBand?.(quality, Boolean(creature?.is_shiny));
+      minimum = finite(band?.min);
+      maximum = finite(band?.max);
+    } catch {}
+    return {
+      label:quality ? qualityLabel(doc, quality) : copy().rarityFact,
+      current:current === null ? "—" : `x${decimal(current)}`,
+      maximum:maximum === null ? "/—" : `/${decimal(maximum)}`,
+      quality:qualityKey(quality),
+      meter:quality && current !== null && current >= 0 && minimum !== null && minimum >= 0 && maximum > minimum
+        ? { value:Math.max(minimum, Math.min(current, maximum)), minimum, maximum } : null,
+    };
+  }
+
+  function setNativeSummaryValue(line, current, maximum, state) {
+    setText(line.querySelector(nativeProgressSelectors.current), current);
+    setText(line.querySelector(nativeProgressSelectors.maximum), maximum);
+    setAttr(line.querySelector(nativeProgressSelectors.value), "data-state", state);
+    setAttr(line, "title", line.textContent);
+  }
+
+  function awakeningSignature(creature) {
+    const quality = String(creature?.quality || "").trim().toLowerCase();
+    const multiplier = finite(creature?.quality_multiplier);
+    return `${quality}:${multiplier === null ? "" : multiplier}:${Boolean(creature?.is_shiny)}`;
+  }
+
+  function applyNativeAwakeningSummary(container, value, token) {
+    if (!alive || !container?.isConnected || container.dataset.ppbuiProfileNativeToken !== String(token)) return;
+    const node = container.querySelector(nativeProgressSelectors.awakening);
+    if (!node) return;
+    const text = copy(), labels = { challenge:text.awakeningChallenge, godChallenge:text.awakeningGodChallenge, god:text.awakeningGod, max:text.awakeningMax };
+    setNativeSummaryValue(node, value?.kind === "awk" ? String(value.index) : labels[value?.kind] || text.awakeningUnavailable,
+      value?.kind === "awk" ? `/${value.total}` : "", value?.kind || "unavailable");
+    setAttr(node, "aria-busy", "false");
+  }
+
+  function markNativeAwakeningPending(container, token) {
+    if (!alive || !container?.isConnected || container.dataset.ppbuiProfileNativeToken !== String(token)) return;
+    const node = container.querySelector(nativeProgressSelectors.awakening);
+    if (!node) return;
+    setAttr(node, "aria-busy", "true");
+    setNativeSummaryValue(node, "…", "", "loading");
+  }
+
+  function hydrateNativeAwakening(container, creature, token) {
+    const id = String(creature?.id || "").trim();
+    if (!alive || !id || container.dataset.ppbuiProfileNativeMode === "hover" || !container.querySelector(nativeProgressSelectors.awakeningAction)) return;
+    const api = win?.PokeIdle?.Api;
+    if (typeof api?.getAwakeningPreview !== "function") return;
+    const hydrationEpoch=(nativeCardAwakeningEpoch.get(container)||0)+1;nativeCardAwakeningEpoch.set(container,hydrationEpoch);
+    const applyIfCurrent=value=>{if(nativeCardAwakeningEpoch.get(container)===hydrationEpoch)applyNativeAwakeningSummary(container,value,token);};
+    const signature = awakeningSignature(creature), cached = awakeningPreviewCache.get(id);
+    if (cached?.signature === signature && Object.hasOwn(cached, "value")) {
+      applyIfCurrent(cached.value);
+      return;
+    }
+    if (cached?.signature === signature && cached.promise) {
+      markNativeAwakeningPending(container, token);
+      cached.promise.then(applyIfCurrent).catch(() => applyIfCurrent(null));
+      return;
+    }
+    markNativeAwakeningPending(container, token);
+    const entry = { signature, promise:null };
+    const promise = Promise.resolve().then(() => alive && awakeningPreviewCache.get(id) === entry ? api.getAwakeningPreview(id) : null).then(preview => {
+      const value = awakeningPreviewState(preview, id);
+      if (awakeningPreviewCache.get(id) === entry) awakeningPreviewCache.set(id, { signature, value });
+      return value;
+    }).catch(() => {
+      if (awakeningPreviewCache.get(id) === entry) awakeningPreviewCache.set(id, { signature, value:null });
+      throw new Error("awakening-preview-unavailable");
+    });
+    entry.promise = promise;
+    awakeningPreviewCache.set(id, entry);
+    promise.then(applyIfCurrent).catch(() => applyIfCurrent(null));
+  }
+
+  function addNativeProgressSummary(container, creature, token) {
+    const meters = container.querySelector(nativeProgressSelectors.meters);
+    if (!meters || container.dataset.ppbuiProfileNativeMode === "hover" || !container.querySelector(nativeProgressSelectors.actions)) return;
+    const anchor = doc.createElement("span");
+    anchor.hidden = true;
+    anchor.dataset.ppbuiProfileNativeOwned = "";
+    anchor.dataset.ppbuiProfileNativeProgressAnchor = "";
+    const progress = doc.createElement("div");
+    progress.dataset.ppbuiProfileNativeOwned = "";
+    progress.dataset.ppbuiProfileNativeProgress = "";
+    const summary = doc.createElement("div");
+    summary.dataset.ppbuiProfileNativeRarityAwakening = "";
+    const addLine = (kind, labelText) => {
+      const row = doc.createElement("div"), line = doc.createElement("span"), label = doc.createElement("span");
+      const value = doc.createElement("strong"), current = doc.createElement("span"), maximum = doc.createElement("span");
+      row.dataset.ppbuiProfileNativeSummaryRow = kind;
+      line.dataset.ppbuiProfileNativeSummaryLine = "";
+      label.dataset.ppbuiProfileNativeSummaryLabel = "";
+      label.textContent = labelText;
+      value.dataset.ppbuiProfileNativeSummaryValue = "";
+      current.dataset.ppbuiProfileNativeSummaryCurrent = "";
+      maximum.dataset.ppbuiProfileNativeSummaryMaximum = "";
+      value.append(current, maximum);
+      line.append(label, doc.createTextNode(" "), value);
+      row.append(line); summary.append(row);
+      return line;
+    };
+    const rarityData = nativeRaritySummary(creature), rarity = addLine("rarity", rarityData.label);
+    rarity.dataset.ppbuiProfileNativeRarity = "";
+    if (pokemonRarities.includes(rarityData.quality) || rarityData.quality === "god") {
+      summary.style.setProperty("--ppbui-summary-quality", `var(--quality-${rarityData.quality},var(--ppbui-text,#eef1df))`);
+    }
+    setNativeSummaryValue(rarity, rarityData.current, rarityData.maximum, "rarity");
+    if (rarityData.meter) {
+      const meter = doc.createElement("div"), track = doc.createElement("div"), fill = doc.createElement("i");
+      meter.className = "pokemon-card__meter";
+      meter.dataset.ppbuiProfileNativeRarityMeter = "";
+      track.className = "pokemon-card__track";
+      track.dataset.ppbuiProfileNativeRarityTrack = "";
+      track.setAttribute("role", "progressbar");
+      track.setAttribute("aria-label", copy().rarityFact);
+      track.setAttribute("aria-valuemin", String(rarityData.meter.minimum));
+      track.setAttribute("aria-valuemax", String(rarityData.meter.maximum));
+      track.setAttribute("aria-valuenow", String(rarityData.meter.value));
+      track.setAttribute("aria-valuetext", rarity.textContent);
+      fill.style.width = `${(rarityData.meter.value - rarityData.meter.minimum) / (rarityData.meter.maximum - rarityData.meter.minimum) * 100}%`;
+      track.append(fill);
+      rarity.replaceWith(meter);
+      meter.append(rarity, track);
+    }
+    const awakening = addLine("awakening", nativeCardLabel("npc.awk.tab", "Awakening"));
+    awakening.dataset.ppbuiProfileNativeAwakening = "";
+    awakening.setAttribute("role", "status");
+    awakening.setAttribute("aria-live", "polite");
+    awakening.setAttribute("aria-atomic", "true");
+    awakening.setAttribute("aria-busy", "false");
+    setNativeSummaryValue(awakening, copy().awakeningUnavailable, "", "unavailable");
+    meters.before(anchor);
+    meters.dataset.ppbuiProfileNativeMeters = "";
+    progress.append(meters, summary);
+    anchor.after(progress);
+    hydrateNativeAwakening(container, creature, token);
+  }
+
+  function refreshNativeAwakening(id = "") {
+    if (id) awakeningPreviewCache.delete(id);
+    else awakeningPreviewCache.clear();
+    for (const card of doc.querySelectorAll(nativeCardSelector)) {
+      if (id && card.dataset.ppbuiProfileNativeCreatureId !== id) continue;
+      const creature = nativeCardCreatures.get(card);
+      if (creature) hydrateNativeAwakening(card, creature, card.dataset.ppbuiProfileNativeToken);
+    }
+  }
+
   function moveNativeActionsToTop(container) {
     const actions = container.querySelector(".pokemon-card__actions");
     const badges = container.querySelector(".pokemon-tooltip__badges");
@@ -1183,6 +1461,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     hideNativeHighlightsWhenEmpty(container);
     addNativeIvBadge(container, ivValue);
     reconcileNativeStatusBadges(container);
+    addNativeProgressSummary(container, creature, token);
 
     nativeMovesShell(container);
     addNativeProfileAction(container, id);
@@ -1269,7 +1548,8 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   const nativeBus = createNativeBusBindings(() => win?.PokeIdle?.Bus);
   const bind = (name, handler) => nativeBus.bind(name, handler);
   bind("moveset.saved",data=>{const id=String(data?.creature_id||"");if(id){movesCache.delete(id);for(const card of doc.querySelectorAll(nativeCardSelector)){if(card.dataset.ppbuiProfileNativeCreatureId===id){const creature=nativeCardCreatures.get(card);if(creature)hydrateNativeCardMoves(card,creature,card.dataset.ppbuiProfileNativeToken);}}}if(opened&&id===selectedId)renderSelected(id);});
-  bind("team.updated",()=>{if(opened)refreshOwned(selectedId);});bind("state.resynced",()=>{if(opened)refreshOwned(selectedId);});
+  bind("creature.updated",data=>refreshNativeAwakening(String(data?.creature_id||data?.creature?.id||"")));
+  bind("team.updated",()=>{if(opened)refreshOwned(selectedId);});bind("state.resynced",()=>{refreshNativeAwakening();if(opened)refreshOwned(selectedId);});
   const previousBridge=win.__PPBUI_POKEMON_PROFILE__;const bridge={open,refresh:()=>refreshOwned(selectedId),close:()=>hide()};win.__PPBUI_POKEMON_PROFILE__=bridge;
   nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();
   return { sync(){nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);titlebar.removeEventListener("lostpointercapture",stopWindowDrag);doc.removeEventListener("pointermove",onWindowDrag,true);doc.removeEventListener("pointerup",stopWindowDrag,true);doc.removeEventListener("pointercancel",stopWindowDrag,true);win.removeEventListener("blur",stopWindowDrag);win.removeEventListener("resize",clampMovedWindow);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };

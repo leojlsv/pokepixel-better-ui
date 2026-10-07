@@ -23,6 +23,7 @@ import { shopText } from "../modules/marks-shop/dom.js";
 import { createEvolutionCenterModule } from "../modules/evolution-center/index.js";
 import { createGeneticistModule } from "../modules/geneticist/index.js";
 import { geneticistText } from "../modules/geneticist/dom.js";
+import { createWalletModule } from "../modules/wallet/index.js";
 
 // A toggle descriptor is the sole authority for a module's persisted default
 // and preferences-panel entry. Module IDs always come from the module itself.
@@ -37,6 +38,7 @@ const toggle = (module, text, defaultEnabled = true) => ({
 });
 
 export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = {}) {
+  const wallet=createWalletModule();
   // This order is intentional: native toolbar before Card Mode and its dependents,
   // with the preferences panel appended last in index.js.
   const entries = [
@@ -49,9 +51,10 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
       description: text => text.description,
     } },
     { module: huntControlsModule },
-    { module: createCardModeModule() },
+    { module: createCardModeModule({ menuBar:menuBarModule }) },
+    { module: wallet },
     toggle(createBuffStripModule(), buffStripText),
-    toggle(createInventoryModule(), inventoryText),
+    toggle(createInventoryModule(undefined,wallet), inventoryText),
     toggle(createStorageModule(), storageText),
     toggle(createTradePokemonModule(), () => ({
       name: "Trade",
