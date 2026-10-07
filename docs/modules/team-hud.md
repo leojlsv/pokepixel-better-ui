@@ -2,11 +2,19 @@
 
 Status: **Miyazaki 16 e a estrutura atual do Team HUD estão cobertos pela declaração do
 Product Owner “Estrutura validada.” A Wallet deixa de fazer parte da superfície visível do
-HUD Better UI; ela continua nativa e autoritativa, mas aparece apenas dentro da Backpack.
+HUD Better UI; ela continua nativa e autoritativa e a Backpack permanece o local padrão.
 A correção atual mantém os Element icons quadrados e restaura a invisibilidade nativa do
 placeholder de Shared Stone quando não existe carrier/recipient.**
 
 Direção visual: `design-system/pokepixel-better-ui/pages/team.md`.
+
+Extensão candidata 0.2.186: **Better UI > Wallet > Cabeçalho Trainer** acrescenta um
+resource strip compacto dentro da coluna `.pokeidle-trainer-hud__info`. A posição foi
+aprovada in-game pelo Product Owner; o 0.2.186 refina somente a organização dos saldos em
+dois segmentos equilibrados dentro de um único well integrado. Essa projeção opcional
+pertence ao módulo Wallet, usa a mesma autoridade nativa e não restaura o bloco externo.
+Ela pode coexistir com Backpack; Menu Bar e Shop não são destinos Wallet. Ver
+`wallet.md`. A aceitação anterior do Team HUD não substitui a validação deste candidato.
 
 ## Escopo
 

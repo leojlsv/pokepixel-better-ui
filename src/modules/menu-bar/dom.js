@@ -1,7 +1,7 @@
 import { menuBarConfig as config } from "./config.js";
 
-export function findMenuTarget() {
-  const toolbar = document.querySelector(config.selectors.toolbar);
+export function findMenuTarget(doc = document) {
+  const toolbar = doc.querySelector(config.selectors.toolbar);
   if (!toolbar) return null;
   const actions = [...toolbar.querySelectorAll(config.selectors.action)].sort((a, b) => a.dataset.menuId.localeCompare(b.dataset.menuId));
   const groups = [...toolbar.querySelectorAll(config.selectors.nativeGroup)].sort((a, b) => a.dataset.menuGroup.localeCompare(b.dataset.menuGroup));
@@ -13,6 +13,15 @@ export function findMenuTarget() {
 
 export function sameTarget(a, b) {
   return a && b && a.toolbar === b.toolbar && ["actions", "structure"].every(key => a[key].length === b[key].length && a[key].every((node, i) => node === b[key][i]));
+}
+
+export function menuVisibilitySignature(target) {
+  if (!target) return "";
+  const nodes = new Set([...target.actions, ...target.structure].filter(Boolean));
+  for (const action of target.actions) {
+    for (let node = action.parentElement; node && node !== target.toolbar; node = node.parentElement) nodes.add(node);
+  }
+  return [...nodes].map(node => `${node.hidden}:${node.getAttribute("aria-hidden")}:${node.style.display}`).join("|");
 }
 
 export function isVisible(node) {
@@ -27,6 +36,11 @@ export function isAvailable(button) {
 export function groupLabel(index) {
   const language = document.defaultView?.PokeIdle?.Localization?.get?.() || document.documentElement.lang || "pt";
   return (config.labels[language.split(/[-_]/)[0]] || config.labels.en)[index];
+}
+
+export function groupAriaLabel(group, base) {
+  const notifications = group?.getAttribute("data-ppbui-menu-notification-label");
+  return `${base}${notifications ? `. ${notifications}` : ""}`;
 }
 
 export function findToolbarPositionControl(doc = document) {

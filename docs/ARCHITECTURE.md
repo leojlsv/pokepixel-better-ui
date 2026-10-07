@@ -169,10 +169,14 @@ lifecycle remains observable because insertion/removal records target `body`, so
 entering/leaving Platform Hunt still runs full reconciliation.
 
 The native Team HUD Wallet and mobile-party button are siblings rather than descendants
-of the Team HUD root. Their internal vitals-driven rerenders are observer-irrelevant to
-Better UI and are ignored, while adding/removing/replacing either root remains visible
-through the parent MutationRecord. Inventory Wallet ownership depends on the wallet root
-identity/placement, not on observing its native value-text mutations.
+of the Team HUD root. Mobile-party internals remain ignored. Wallet internals and its
+owned balance projections share the existing `team-hud` observer scope; a native frame
+updating both Wallet and Team HUD stays local instead of promoting mixed scopes to
+global discovery. Adding/removing/replacing either native root remains lifecycle-visible.
+Inventory exclusively reparents the native Wallet, controlled by the Wallet module's
+per-trainer policy. The optional Trainer Header location renders a read-only projection
+from the same native authority; no balances are persisted and no additional
+polling/observer is used. Wallet has no Menu Bar or Shop participant.
 
 An already enhanced persistent Team HUD is a narrower invalidation domain. Ordinary
 child/attribute churn inside that root is routed only to mounted modules that declare

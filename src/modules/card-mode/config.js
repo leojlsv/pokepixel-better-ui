@@ -9,7 +9,7 @@ export const cardModeConfig = Object.freeze({
   analyzerSourceMaxAgeMs: 3000,
   selectors: {
     toolbar: ".pokeidle-top-toolbar",
-    action: 'button[data-menu-id]:not([aria-haspopup="menu"])',
+    action: 'button[data-menu-id]:not([aria-haspopup="menu"]), button[data-ppbui-city-action]',
     label: ".pokeidle-top-toolbar__label:not(.pokeidle-menu-vector-icon)",
   },
 });
