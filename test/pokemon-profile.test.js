@@ -22,7 +22,7 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
     { id:"dup", name:"Pikachu stale", species_id:"pikachu", level:49, power:290, hp:90, max_hp:100, elements:["electric"] },
     { id:"bag-1", name:"Rhydon", species_id:"rhydon", level:42, power:411, hp:155, max_hp:155, quality:"rare", quality_multiplier:1.5, iv_total:170, gender:"male", nature:"adamant", elements:["ground","rock"] },
   ];
-  const bus = new Map(), saveCalls=[], configureCalls=[];
+  const bus = new Map(), saveCalls=[], configureCalls=[], awakeningCalls=[];
   let moveFailureConsumed = false;
   const getMoveset = async id => {
     if (movesDelay) await movesDelay(id);
@@ -34,12 +34,16 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
     Localization:{ get:()=>"pt-BR" }, DittoDisplayName:{ get:c=>c.name }, Auth:{ getTrainerSummary:()=>({id:"trainer-1"}) },
     ElementIcons:{ definition:element=>({label:element,color:{ground:"#e2bf65",rock:"#b6a136",bug:"#a6b91a",normal:"#a8a77a",ghost:"#735797",poison:"#a33ea1",electric:"#f7d02c"}[element]||"#888"}), create(element){const img=doc.createElement("img");img.src=`/elements/${element}.png`;return img;} },
     t:key=>key,
-    PokemonCardData:{ async loadDetail(id){ const creature=[...team,...inventory].find(entry=>entry.id===id); return { creature:creature?{...creature}:null, moves:[...currentMoves,move("rock-slide","Rock Slide","rock",75,"physical",3000),move("drill-run","Drill Run","ground",80,"physical",4000),move("ice-fang","Ice Fang","ice",65,"physical",5000)].map(entry=>({id:entry.id,move:{...entry}})) }; } },
+    PokemonCardData:{
+      qualityBand(quality){ const max=String(quality||"").toLowerCase()==="legendary"?1.69:1.54;return {min:max-.14,max,chance:1}; },
+      async loadDetail(id){ const creature=[...team,...inventory].find(entry=>entry.id===id); return { creature:creature?{...creature}:null, moves:[...currentMoves,move("rock-slide","Rock Slide","rock",75,"physical",3000),move("drill-run","Drill Run","ground",80,"physical",4000),move("ice-fang","Ice Fang","ice",65,"physical",5000)].map(entry=>({id:entry.id,move:{...entry}})) }; }
+    },
     Bus:{ on(name,fn){ if(!bus.has(name))bus.set(name,new Set());bus.get(name).add(fn); }, off(name,fn){ bus.get(name)?.delete(fn); }, emit(name,data){ for(const fn of bus.get(name)||[])fn(data); } },
     MovesetConfig:{ open(id){ configureCalls.push(String(id)); } },
     Api:{
       async getCreatures(location){ return { data: location === "team" ? team.map(x=>({...x})) : inventory.map(x=>({...x})) }; },
       async getSpecies(id){ return { id, name:id, normal_sprite_url:`/img/${id}.png` }; },
+      async getAwakeningPreview(id){ awakeningCalls.push(String(id)); return { creature:{id}, stage:{tier:"legendary",quality_cents:162}, awk:{index:3,total:5,from_cents:162,to_cents:164} }; },
       getMoveset,
       async saveMoveset(id,payload){ saveCalls.push({id,payload:{...payload,move_ids:[...payload.move_ids]}}); return { creature_id:id, revision:4, mode:"manual", selected:payload.move_ids.map(moveId => [...currentMoves,move("shadow-ball","Shadow Ball","ghost",80),move("sludge-wave","Sludge Wave","poison",95)].find(entry=>entry.id===moveId)).filter(Boolean), available:[...currentMoves] }; },
     },
@@ -57,7 +61,7 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
   dom.window.localStorage.setItem("ppbui:pokemon-tags:v2:trainer-1", JSON.stringify({ assigned:{ "bag-1":["boss"], "team-1":["pve"] } }));
   const mounted = mountPokemonProfile(doc);
   t.after(() => { mounted.cleanup(); dom.window.close(); });
-  return { dom, doc, mounted, team, inventory, saveCalls, configureCalls };
+  return { dom, doc, mounted, team, inventory, saveCalls, configureCalls, awakeningCalls };
 }
 
 test("Profile detaches events from the original native Bus and rebinds after rehydration", t => {
@@ -73,7 +77,7 @@ test("Profile detaches events from the original native Bus and rebinds after reh
   };
   s.dom.window.PokeIdle.Bus = nextBus;
   s.mounted.sync();
-  assert.deepEqual(removed.sort(), ["moveset.saved", "state.resynced", "team.updated"]);
+  assert.deepEqual(removed.sort(), ["creature.updated", "moveset.saved", "state.resynced", "team.updated"]);
   assert.deepEqual([...attached.keys()].sort(), removed);
   s.mounted.cleanup();
   assert.equal(attached.size, 0, "teardown must detach from the exact registered Bus");
@@ -147,7 +151,7 @@ test("transient Species failures are evicted so a later Profile Refresh can reco
   assert.match(visual().querySelector("img").src,/\/img\/rhydon\.png$/);
 });
 
-function installNativeCardRenderer(s, { labels = {}, nativeNote = false } = {}) {
+function installNativeCardRenderer(s, { labels = {}, nativeNote = false, awakeningAction = true } = {}) {
   const { doc } = s, pokemonCard = s.dom.window.PokeIdle.PokemonCard || {};
   let calls = 0;
   const actionClicks = new Map();
@@ -174,21 +178,26 @@ function installNativeCardRenderer(s, { labels = {}, nativeNote = false } = {}) 
     const name = doc.createElement("strong"); name.className = "pokemon-tooltip__name"; name.textContent = creature.name;
     identity.append(name); header.append(identity);
     const badges = doc.createElement("div"); badges.className = "pokemon-tooltip__badges";
-    for (const [label,className] of [["LEVEL " + creature.level,"is-level"],["EPIC ×1.49","is-quality"],["ACTIVE","is-active"],["PROTECTED","is-locked"]]) { const badge=doc.createElement("span");badge.className=("pokemon-tooltip__badge " + className).trim();badge.textContent=label;badges.append(badge); }
+    const quality=String(creature.quality||"common"),qualityMultiplier=Number(creature.quality_multiplier||1),qualityBand=s.dom.window.PokeIdle.PokemonCardData.qualityBand(quality,Boolean(creature.is_shiny));
+    for (const [label,className] of [["LEVEL " + creature.level,"is-level"],[`${quality.toUpperCase()} ×${qualityMultiplier.toFixed(2)}`,"is-quality"],["ACTIVE","is-active"],["PROTECTED","is-locked"]]) { const badge=doc.createElement("span");badge.className=("pokemon-tooltip__badge " + className).trim();badge.textContent=label;badges.append(badge); }
+    const meters=doc.createElement("div");meters.className="pokemon-card__meters";
+    const meter=(label,value)=>{const node=doc.createElement("div");node.className="pokemon-card__meter";const head=doc.createElement("div");head.className="pokemon-card__meter-head";const caption=doc.createElement("span");caption.textContent=label;const strong=doc.createElement("b");strong.textContent=value;head.append(caption,strong);const track=doc.createElement("div");track.className="pokemon-card__track";const fill=doc.createElement("i");track.append(fill);node.append(head,track);return node;};
+    meters.append(meter("HP",`${creature.hp}/${creature.max_hp}`),meter("EXPERIENCE","94% to next level"));
     const cells = doc.createElement("div"); cells.className = "pokemon-card__cells";
     const cell = (label, value, className = "") => { const node=doc.createElement("div");node.className=("pokemon-card__cell " + className).trim();const caption=doc.createElement("span");caption.className="pokemon-card__cell-label";caption.textContent=label;const strong=doc.createElement("b");strong.className="pokemon-card__cell-value";strong.textContent=value;node.append(caption,strong);return node; };
     cells.append(
       cell(copy.power, String(creature.power), "is-power"),
       cell(copy.iv, String(creature.iv_total || 0) + "/186"),
       cell(copy.sale, "2.970 dólares"),
-      cell(copy.rarity, "×1.49 / ×1.54", "is-rarity"),
+      cell(copy.rarity, `×${qualityMultiplier.toFixed(2)} / ×${qualityBand?.max?.toFixed(2)||"—"}`, "is-rarity"),
     );
     if(nativeNote){const note=doc.createElement("small");note.className="pokemon-card__note is-mastery";note.textContent="MASTERY +10%";cells.append(note);}
     const battle = doc.createElement("section"); battle.className = "pokemon-card__section"; const battleTitle=doc.createElement("h4");battleTitle.className="pokemon-card__title";battleTitle.textContent=copy.battle;battle.append(battleTitle);
-    container.append(header,badges,cells,battle);
+    container.append(header,badges,meters,cells,battle);
     if (options.actions?.length) {
       const actions=doc.createElement("div");actions.className="pokemon-card__actions";
-      for(const label of ["EQUIP","LOCK","CHAT"]){const action=doc.createElement("button");action.type="button";action.className="pokemon-card__action";action.textContent=label;action.addEventListener("click",()=>actionClicks.set(label,(actionClicks.get(label)||0)+1));actions.append(action);}
+      const definitions=[["EQUIP",""],["LOCK",""],["CHAT",""]];if(awakeningAction)definitions.push(["AWK","is-awakening"]);
+      for(const [label,className] of definitions){const action=doc.createElement("button");action.type="button";action.className=("pokemon-card__action "+className).trim();action.textContent=label;action.addEventListener("click",()=>actionClicks.set(label,(actionClicks.get(label)||0)+1));actions.append(action);}
       container.append(actions);
     }
     return creature;
@@ -535,6 +544,131 @@ test("native PokémonCard compacts top status/actions, removes duplicate highlig
   const root=s.doc.querySelector("[data-ppbui-pokemon-profile-window]");assert.equal(root.hidden,false);assert.equal(root.querySelector("[data-ppbui-profile-name]").textContent,"Rhydon");
 });
 
+test("native actionable PokémonCard pairs HP/Experience with authoritative Rarity/Awakening summary", async t => {
+  const s=setup(t),native=installNativeCardRenderer(s),card=s.doc.createElement("aside"),creature=s.inventory.find(entry=>entry.id==="bag-1");
+  s.dom.window.PokeIdle.Localization.get=()=>"en-US";
+  creature.quality="legendary";creature.quality_multiplier=1.62;
+  s.dom.window.PokeIdle.PokemonCardData.qualityBand=()=>({min:1.55,max:1.69});
+  card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1,2,3]});
+  await new Promise(resolve=>s.dom.window.setTimeout(resolve,30));
+  assert.equal(native.calls(),1);
+  const progress=card.querySelector("[data-ppbui-profile-native-progress]"),meters=progress?.querySelector(":scope > .pokemon-card__meters"),summary=progress?.querySelector("[data-ppbui-profile-native-rarity-awakening]");
+  assert.ok(progress);assert.ok(meters,"native HP/Experience meters are moved intact into the left box");assert.ok(summary,"Rarity/Awakening owns the adjacent read-only box");
+  assert.equal(progress.children.length,2);assert.equal(progress.firstElementChild,meters);assert.equal(progress.lastElementChild,summary);
+  assert.deepEqual([...meters.querySelectorAll(".pokemon-card__meter-head > span")].map(node=>node.textContent),["HP","EXPERIENCE"]);
+  assert.equal(summary.querySelector("[data-ppbui-profile-native-rarity]").textContent,"Legendary x1.62/1.69");
+  const rarityTrack=summary.querySelector("[data-ppbui-profile-native-rarity-track]");
+  assert.ok(rarityTrack.classList.contains("pokemon-card__track"));
+  assert.ok(Math.abs(parseFloat(rarityTrack.firstElementChild.style.width)-50)<1e-8);
+  assert.equal(rarityTrack.getAttribute("role"),"progressbar");
+  assert.equal(rarityTrack.getAttribute("aria-valuemin"),"1.55");
+  assert.equal(rarityTrack.getAttribute("aria-valuenow"),"1.62");
+  assert.equal(rarityTrack.getAttribute("aria-valuemax"),"1.69");
+  assert.equal(rarityTrack.getAttribute("aria-valuetext"),"Legendary x1.62/1.69");
+  const awakening=summary.querySelector("[data-ppbui-profile-native-awakening]");assert.equal(awakening.textContent,"Awakening 3/5");assert.equal(awakening.getAttribute("role"),"status");assert.equal(awakening.getAttribute("aria-live"),"polite");assert.equal(awakening.getAttribute("aria-busy"),"false");
+  assert.deepEqual(s.awakeningCalls,["bag-1"],"one preview supplies the authoritative AWK index/total");
+  const css=s.doc.querySelector('style[data-ppbui-module="pokemon-profile"]').textContent;
+  assert.match(css,/\[data-ppbui-profile-native-progress\] \{[^}]*grid-template-columns:minmax\(0,1.1fr\) minmax\(0,1fr\);/s,"the two boxes stay on one progress row with room for native meters");
+  s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1,2,3]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.deepEqual(s.awakeningCalls,["bag-1"],"same quality rerender reuses the preview instead of refetching");
+  assert.equal(card.querySelectorAll("[data-ppbui-profile-native-rarity-track]").length,1,"rerender replaces the owned bar without duplicating it");
+  assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").textContent,"Awakening 3/5");
+  s.dom.window.PokeIdle.Bus.emit("creature.updated",{creature_id:"bag-1"});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.deepEqual(s.awakeningCalls,["bag-1","bag-1"],"authoritative creature updates invalidate the cached preview");
+});
+
+test("rarity fill is relative to native Normal/Shiny min and max and omits invalid ranges", t => {
+  const s=setup(t);installNativeCardRenderer(s,{awakeningAction:false});
+  const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  const creature={...s.inventory.find(entry=>entry.id==="bag-1"),quality:"legendary",quality_multiplier:1.62};
+  s.dom.window.PokeIdle.PokemonCardData.qualityBand=(_quality,shiny)=>({min:shiny?2.5:1.55,max:shiny?2.99:1.69});
+  const render=(changes={})=>{s.dom.window.PokeIdle.PokemonCard.render(card,{...creature,...changes},{actions:[1]});return card.querySelector("[data-ppbui-profile-native-rarity-track]");};
+  const normal=render();assert.ok(Math.abs(parseFloat(normal.firstElementChild.style.width)-50)<1e-8,"1.62 is halfway through the native 1.55–1.69 band");
+  assert.equal(normal.getAttribute("aria-valuemin"),"1.55");
+  assert.equal(render({quality_multiplier:1.55}).firstElementChild.style.width,"0%","native minimum is empty");
+  const shiny=render({is_shiny:true,quality_multiplier:"2.50"});
+  assert.equal(shiny.getAttribute("aria-valuemin"),"2.5");
+  assert.equal(shiny.getAttribute("aria-valuemax"),"2.99");
+  assert.equal(shiny.firstElementChild.style.width,"0%","Shiny uses its own minimum");
+  assert.ok(Math.abs(parseFloat(render({is_shiny:true,quality_multiplier:"2.745"}).firstElementChild.style.width)-50)<1e-8);
+  assert.equal(render({is_shiny:true,quality_multiplier:2.99}).firstElementChild.style.width,"100%");
+  assert.equal(render({quality_multiplier:1.69}).firstElementChild.style.width,"100%");
+  const over=render({quality_multiplier:2});assert.equal(over.firstElementChild.style.width,"100%");assert.equal(over.getAttribute("aria-valuenow"),"1.69");
+  const below=render({quality_multiplier:1.4});assert.equal(below.firstElementChild.style.width,"0%");assert.equal(below.getAttribute("aria-valuenow"),"1.55");
+  const zero=render({quality_multiplier:0});assert.equal(zero.firstElementChild.style.width,"0%");assert.equal(zero.getAttribute("aria-valuenow"),"1.55","ARIA clamps to the same lower bound as the visual fill");
+  for(const value of [null,undefined,"",-1,NaN,Infinity,true])assert.equal(render({quality_multiplier:value}),null);
+  assert.equal(render({quality:""}),null);
+  for(const band of [null,{}, {max:1.69}, {min:1.55}, {min:null,max:1.69}, {min:"",max:1.69}, {min:true,max:1.69}, {min:NaN,max:1.69}, {min:Infinity,max:1.69}, {min:-Infinity,max:1.69}, {min:-1,max:1.69}, {min:1.55,max:0}, {min:1.55,max:-1}, {min:1.55,max:NaN}, {min:1.55,max:Infinity}, {min:1.69,max:1.69}, {min:1.7,max:1.69}]){s.dom.window.PokeIdle.PokemonCardData.qualityBand=()=>band;assert.equal(render(),null,"invalid native range must not fabricate empty/full progress");}
+  s.dom.window.PokeIdle.PokemonCardData.qualityBand=()=>({min:"1.55",max:1.69});assert.ok(Math.abs(parseFloat(render().firstElementChild.style.width)-50)<1e-8);
+  s.dom.window.PokeIdle.PokemonCardData.qualityBand=()=>({min:0,max:2});assert.equal(render({quality_multiplier:1}).firstElementChild.style.width,"50%","explicit zero minimum is valid");
+  assert.deepEqual(s.awakeningCalls,[],"the passive rarity bar does not request Awakening data");
+  s.mounted.cleanup();assert.equal(card.querySelector("[data-ppbui-profile-native-rarity-track]"),null);assert.equal(card.querySelector(".pokemon-card__meters").parentElement,card);
+});
+
+test("native Rarity/Awakening summary fails closed when Awakening preview is unavailable", async t => {
+  const s=setup(t);let attempts=0;s.dom.window.PokeIdle.Api.getAwakeningPreview=async()=>{attempts++;throw new Error("offline");};installNativeCardRenderer(s);
+  const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  const creature=s.inventory.find(entry=>entry.id==="bag-1");s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1]});
+  await new Promise(resolve=>s.dom.window.setTimeout(resolve,30));
+  const awakening=card.querySelector("[data-ppbui-profile-native-awakening]");assert.equal(awakening?.textContent,"Awakening Indisponível");assert.equal(awakening?.getAttribute("aria-busy"),"false");
+  assert.equal(attempts,1);
+  s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));assert.equal(attempts,1,"failed preview is negatively cached for the same authoritative creature state");
+  s.dom.window.PokeIdle.Bus.emit("creature.updated",{creature_id:"bag-1"});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));assert.equal(attempts,2,"authoritative creature update permits one fresh preview attempt");
+});
+
+test("native actionable card keeps Rarity summary when Awakening action is unavailable", async t => {
+  const s=setup(t);installNativeCardRenderer(s,{awakeningAction:false});const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  s.dom.window.PokeIdle.PokemonCard.render(card,s.inventory.find(entry=>entry.id==="bag-1"),{actions:[1]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.ok(card.querySelector("[data-ppbui-profile-native-progress]"));
+  assert.match(card.querySelector("[data-ppbui-profile-native-rarity]").textContent,/^Rare x/);
+  assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").textContent,"Awakening Indisponível");
+  assert.deepEqual(s.awakeningCalls,[],"absence of the native Awakening action suppresses only the preview request");
+});
+
+test("newer native-card Awakening preview wins when invalidated requests resolve out of order", async t => {
+  const s=setup(t),pending=[];s.dom.window.PokeIdle.Api.getAwakeningPreview=id=>new Promise(resolve=>pending.push({id,resolve}));installNativeCardRenderer(s);
+  const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  const creature=s.inventory.find(entry=>entry.id==="bag-1");s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1]});
+  for(let attempt=0;attempt<10&&pending.length<1;attempt++)await Promise.resolve();assert.equal(pending.length,1);assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").textContent,"Awakening …");assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").getAttribute("aria-busy"),"true");
+  s.dom.window.PokeIdle.Bus.emit("state.resynced",{});
+  for(let attempt=0;attempt<10&&pending.length<2;attempt++)await Promise.resolve();assert.equal(pending.length,2);
+  pending[1].resolve({stage:{tier:"legendary"},awk:{index:4,total:5}});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").textContent,"Awakening 4/5");
+  pending[0].resolve({stage:{tier:"legendary"},awk:{index:2,total:5}});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").textContent,"Awakening 4/5","stale preview cannot overwrite a newer generation");
+  s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.equal(pending.length,2,"stale response cannot overwrite the newer cache and force another preview request");
+  assert.equal(card.querySelector("[data-ppbui-profile-native-awakening]").textContent,"Awakening 4/5");
+});
+
+test("Epic at its rarity ceiling displays the native Challenge branch instead of missing Awakening", async t => {
+  const s=setup(t);s.dom.window.PokeIdle.Localization.get=()=>"en-US";installNativeCardRenderer(s);
+  const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  const creature={...s.inventory.find(entry=>entry.id==="bag-1"),quality:"epic",quality_multiplier:1.54,hp:6449,max_hp:8876};
+  let preview={creature:{id:creature.id},stage:{tier:"epic",quality_cents:154,min_cents:140,max_cents:154,gain_cents:3},challenge:{from_tier:"epic",to_tier:"legendary",active:false}};
+  s.dom.window.PokeIdle.Api.getAwakeningPreview=async()=>preview;
+  s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.equal(card.querySelector("[data-ppbui-profile-native-rarity]").textContent,"Epic x1.54/1.54");
+  assert.equal(card.querySelector("[data-ppbui-profile-native-rarity-track] > i").style.width,"100%");
+  const line=card.querySelector("[data-ppbui-profile-native-awakening]");
+  assert.equal(line.textContent,"Awakening Challenge");assert.equal(line.getAttribute("aria-busy"),"false");
+  assert.equal(card.querySelector("[data-ppbui-profile-native-rarity-awakening]").style.getPropertyValue("--ppbui-summary-quality"),"var(--quality-epic,var(--ppbui-text,#eef1df))");
+  preview={creature:{id:creature.id},stage:{tier:"mythical",quality_cents:250},god_tier:{kills_required:100}};
+  s.dom.window.PokeIdle.Bus.emit("state.resynced",{});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.equal(line.textContent,"Awakening God Tier Challenge","a final challenge is distinct from already being God Tier");
+  preview={creature:{id:creature.id},stage:{tier:"god",quality_cents:300}};
+  s.dom.window.PokeIdle.Bus.emit("creature.updated",{creature_id:creature.id});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.equal(line.textContent,"Awakening God Tier");
+});
+
+test("queued Awakening reads do not start after module cleanup", async t => {
+  const s=setup(t);installNativeCardRenderer(s);const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  s.dom.window.PokeIdle.PokemonCard.render(card,s.inventory.find(entry=>entry.id==="bag-1"),{actions:[1]});
+  s.mounted.cleanup();await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  assert.deepEqual(s.awakeningCalls,[]);assert.equal(card.querySelector(".pokemon-card__meters").parentElement,card);
+});
+
 test("native PokémonCard restores canonical DOM before delegating every rerender", async t => {
   const s=setup(t),native=installNativeCardRenderer(s),card=s.doc.createElement("aside");
   card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
@@ -647,6 +781,8 @@ test("native transient hover is augmented in place without inventing an interact
   assert.equal(hover.querySelector(".pokemon-tooltip__badge.is-locked").hidden,true,"read-only hover removes the redundant protected icon beside IV");
   const ivBadge=hover.querySelector("[data-ppbui-profile-native-iv]");assert.equal(ivBadge.textContent,"IV 170/186");assert.equal(ivBadge.previousElementSibling,hover.querySelector(".pokemon-tooltip__badge.is-quality"),"hover keeps IV directly beside rarity after status icons are removed");
   assert.equal(hover.querySelector("[data-ppbui-profile-native-profile]"),null,"transient native hover stays read-only because the game hides it on pointerleave");
+  assert.equal(hover.querySelector("[data-ppbui-profile-native-progress]"),null,"hover keeps the native single meters box and does not add the actionable summary");
+  assert.deepEqual(s.awakeningCalls,[],"hover never requests Awakening preview data");
   assert.equal(s.doc.querySelector("[data-ppbui-profile-hover]"),null);
 });
 
@@ -731,6 +867,8 @@ test("native card async move hydration cannot invalidate newer Profile selection
   assert.equal(card.querySelector(".pokemon-card__cells")?.hidden,false,"cleanup restores the native highlight grid");
   assert.equal(card.querySelector(".pokemon-tooltip__badge.is-active")?.hidden,false,"cleanup restores native Active status visibility");
   assert.equal(card.querySelector(".pokemon-tooltip__badge.is-locked")?.hidden,false,"cleanup restores native Protected status visibility");
+  assert.equal(card.querySelector("[data-ppbui-profile-native-progress]"),null,"cleanup removes the Better UI progress pairing");
+  assert.equal(card.querySelector(".pokemon-card__meters")?.parentElement,card,"cleanup returns native HP/Experience meters to their canonical parent");
   assert.equal(card.lastElementChild?.classList.contains("pokemon-card__actions"),true,"cleanup returns the native action row to its original bottom position");
 });
 

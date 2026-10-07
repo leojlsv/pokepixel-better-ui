@@ -17,13 +17,14 @@ function siblingWallet(root) {
   return candidate?.matches?.(WALLET_SELECTOR) ? candidate : null;
 }
 
-export function createInventoryWallet(root) {
+export function createInventoryWallet(root, service = null) {
   const doc = root.ownerDocument;
   let wallet = null;
   let anchor = null;
   let originalParent = null;
   let originalNext = null;
   let marker = null;
+  let lastTarget = null, lastBefore = null;
 
   const findWallet = () => runtimeWallet(root)
     || (wallet?.isConnected ? wallet : null)
@@ -42,7 +43,9 @@ export function createInventoryWallet(root) {
     if (!wallet) return;
     marker === null ? wallet.removeAttribute("data-ppbui-inventory-wallet") : wallet.setAttribute("data-ppbui-inventory-wallet", marker);
     if (retire) wallet.remove();
-    else if (restore) {
+    // A detached Inventory ancestor may still own the live native node. An
+    // explicitly removed Wallet has no such parent and must not be resurrected.
+    else if (restore && (wallet.isConnected || root.contains(wallet))) {
       if (anchor?.isConnected) anchor.replaceWith(wallet);
       else {
         if (originalParent?.isConnected) originalParent.insertBefore(wallet, originalNext?.parentNode === originalParent ? originalNext : null);
@@ -61,6 +64,8 @@ export function createInventoryWallet(root) {
   };
 
   const sync = (target, before = null) => {
+    lastTarget=target;lastBefore=before;
+    if (service && !service.isBackpackEnabled()) { release();return; }
     const next = findWallet();
     if (!next) {
       if (wallet && !wallet.isConnected) release({ restore: false });
@@ -79,5 +84,6 @@ export function createInventoryWallet(root) {
     }
   };
 
-  return { sync, cleanup: () => release() };
+  const unsubscribe=service?.subscribe(()=>{if(lastTarget?.isConnected)sync(lastTarget,lastBefore);});
+  return { sync, cleanup: () => {unsubscribe?.();release();} };
 }

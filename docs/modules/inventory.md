@@ -29,6 +29,12 @@ apresentação final da Wallet em 2026-10-02 e declarou o módulo **Backpack con
 
 ## Uso
 
+Extensão candidata 0.2.185: **Better UI > Wallet > Backpack** controla esta apresentação por
+treinador, mantendo-a ligada por padrão. Inventory permanece o único dono do movimento
+do nó nativo; desligar devolve o nó vivo ao contexto nativo oculto. Nó removido pelo
+jogo não é reinserido. O único outro local é **Trainer Header**, uma projeção independente
+descrita em `wallet.md`; ela não disputa o nó nativo com a Backpack.
+
 - A busca continua sendo o controle original do jogo. Quando o jogo expõe categorias como
   tabs, Better UI oculta somente a faixa visual e cria um dropdown proxy que espelha as
   opções/seleção e delega cada mudança ao tab nativo correspondente. Os handlers e a

@@ -195,7 +195,7 @@ test("Platform Hunt keeps the shared Buff Strip observable while ignoring its pr
   observer.stop();
 });
 
-test("Team HUD auxiliary sibling churn is ignored while auxiliary root lifecycle stays global", (t) => {
+test("Wallet updates share the HUD scope while mobile internals remain ignored and roots remain global", (t) => {
   const browser = mockBrowser(t);
   const scopes = [];
   const observer = createDomObserver(scope => scopes.push(scope));
@@ -209,13 +209,15 @@ test("Team HUD auxiliary sibling churn is ignored while auxiliary root lifecycle
 
   browser.mutate([{ type: "childList", target: wallet, addedNodes: [walletValue], removedNodes: [] }]);
   browser.mutate([{ type: "childList", target: mobile, addedNodes: [mobileHp], removedNodes: [] }]);
-  assert.equal(browser.frames.size, 0, "vitals-driven wallet/mobile rerenders must not fan out into global discovery");
+  assert.equal(browser.frames.size, 1, "wallet updates wake local HUD consumers, not global discovery");
+  browser.flush();
+  assert.deepEqual(scopes,["team-hud"]);
 
   browser.mutate([{ type: "childList", target: body, addedNodes: [wallet], removedNodes: [] }]);
   browser.flush();
   browser.mutate([{ type: "childList", target: body, addedNodes: [], removedNodes: [mobile] }]);
   browser.flush();
-  assert.deepEqual(scopes, ["global", "global"], "adding/removing auxiliary roots remains lifecycle-visible");
+  assert.deepEqual(scopes, ["team-hud", "global", "global"], "adding/removing auxiliary roots remains lifecycle-visible");
   observer.stop();
 });
 
@@ -234,6 +236,12 @@ test("enhanced Team HUD churn stays local while structural or mixed mutations pr
   browser.mutate([{ type: "childList", target: list, addedNodes: [card], removedNodes: [] }]);
   browser.flush();
   assert.deepEqual(scopes, ["team-hud"], "native card reappend should not wake every Better UI module");
+
+  const wallet = fakeElement("pokeidle-team-hud__wallet", body);
+  browser.mutate([{type:"childList",target:wallet,addedNodes:[],removedNodes:[]}]);
+  browser.mutate([{type:"childList",target:card,addedNodes:[],removedNodes:[]}]);
+  browser.flush();
+  assert.equal(scopes.pop(),"team-hud","native renderWallet plus Team render in one frame stays local");
 
   browser.mutate([{ type: "attributes", target: card, attributeName: "aria-disabled" }]);
   browser.mutate([{ type: "childList", target: body, addedNodes: [relevant], removedNodes: [] }]);

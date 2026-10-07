@@ -18,7 +18,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   const controlIds = controls.map(control => control.id);
   assert.deepEqual(mountIds, [
     "disable-pokemon-hover", "pokemon-profile", "menu-bar", "hunt-controls",
-    "card-mode", "buff-strip", "inventory",
+    "card-mode", "wallet", "buff-strip", "inventory",
     "storage", "trade", "chat", "hunts", "team", "team-hud",
     "team-presets", "evolution-center", "geneticist", "marks-shop", "auto-helper",
   ]);
@@ -39,7 +39,7 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.ok(controls.every(({ name, description }) => typeof name === "function" && typeof description === "function"));
   assert.ok(modules.every(module => typeof module.shouldMount === "function" && typeof module.mount === "function"));
   assert.deepEqual(modules.filter(module => module.runsInCardMode === true).map(module => module.id),
-    ["pokemon-profile", "menu-bar", "card-mode"],
+    ["pokemon-profile", "menu-bar", "card-mode", "wallet"],
     "toolbar owners stay mounted while textual Cards hides the native game surface");
 });
 

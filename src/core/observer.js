@@ -16,6 +16,7 @@ const OBSERVER_IGNORED_HUNT_SELECTOR = [
 const TEAM_HUD_ENHANCED_SELECTOR = ".pokeidle-team-hud[data-ppbui-team-hud-enhanced]";
 const TEAM_HUD_MOUNT_SENTINEL = ".pokeidle-team-hud__list";
 const TEAM_HUD_AUXILIARY_SELECTOR = ".pokeidle-team-hud__wallet,.pokeidle-mobile-party-button";
+const WALLET_PRESENTATION_SELECTOR = ".pokeidle-team-hud__wallet,.ppbui-wallet-values,[data-ppbui-wallet-trainer]";
 const CHAT_ROOT_SELECTOR = ".pokeidle-persistent-chat";
 const CHAT_MOUNT_SENTINEL = ".pokeidle-persistent-chat__tabs";
 const PLATFORM_HUNT_ROOT_SELECTOR = ".platform-hunt";
@@ -90,6 +91,8 @@ function localMutationScope(record) {
 
 function mutationScope(record) {
   if (!record?.type) return "global";
+  // Wallet projections share the HUD scope: one native render often updates both.
+  if (elementFor(record.target)?.closest?.(WALLET_PRESENTATION_SELECTOR)) return "team-hud";
   if (record.type === "attributes") {
     if (isTeamHudAuxiliaryInternalTarget(record.target)) return null;
     // Better UI owns no descendants inside the Platform Hunt renderer. That

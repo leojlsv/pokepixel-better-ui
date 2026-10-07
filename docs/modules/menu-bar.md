@@ -1,6 +1,77 @@
 # Menu bar
 
-Category: Rearrange. Implements the organization authorized on 2026-08-31:
+Status: **0.2.183 — freely placed destinations and 10–15 slots per trainer;
+validated and approved in-game by the Product Owner at 2026-10-07T17:03:19Z**.
+The Product Owner approved the 0.2.182 functionality on 2026-10-07 and explicitly
+replaced its fixed-destination/13-slot restrictions. Current gate:
+`docs/PM_GATE_2026-10-07_MENU_FREEDOM.md`; prior evidence remains in `MENU_LAYOUT`.
+
+## Customize for the signed-in trainer
+
+Open **Better UI > Menu bar > Personalizar menu bar / Customize menu bar**.
+The editor identifies the active trainer and offers a passive preview, groups and
+item details. Drag to reorder, or use Previous/Next and Move to / Position / Apply.
+Only Save applies the draft to the real bar. Cancel/Escape discard it; Restore
+default changes the draft and still requires Save. It works in both Game and Cards.
+
+The player selects a capacity from ten to fifteen logical main positions using
+Slots. The initial value is thirteen, preserving the previous arrangement. Reducing
+capacity below current occupancy keeps an editable draft, shows the excess and
+disables Save/Overwrite until the player frees space or increases capacity. Nothing
+is moved or hidden automatically to satisfy the new limit.
+
+All catalog action destinations may move among groups or onto the bar, including
+Inventory, Hunts, Mailbox, Settings, the rewards trio, Cards/Game and Better UI.
+There is no mandatory system tail or direct-action lock. Empty groups remain
+available as editor destinations and can be repopulated without restoring defaults;
+their runtime triggers may be hidden until they contain an available item.
+Each destination has one location. Return to City remains a contextual first entry of City and is
+never stored as a customizable destination. No manual hiding, duplicate shortcuts,
+custom groups, nested groups, renamed icons, cloud sync or multiple named presets.
+
+The trainer's native ID scopes `ppbui:menu-layout:v1:<encoded trainer ID>`, containing
+only a versioned arrangement, slot capacity, orientation and position. Layout version
+2 reads version 1 arrangements with capacity thirteen, preserving their existing
+order and geometry. Reading does not rewrite saved bytes; an explicit save upgrades
+the inner layout. The outer storage record/key format remains version 1.
+Native hidden/disabled and
+permission state remain authoritative. Unknown native destinations retain their
+containers. An incompatible main-rail capacity suspends customization while preserving
+native access; visibility or structural changes can restore it without retry churn.
+
+Missing known items keep their saved position for their return. Identity pending or
+disagreement uses the default without an anonymous write. Logout/account changes
+discard the old editor draft; native toolbar rebuilds for the same owner preserve it.
+Legacy global position can migrate once to the first confirmed trainer, leaving
+`ppbui:menu-bar-position:v1` intact. Orientation is a new owner-scoped preference.
+
+Blocked storage retains choices in memory for that trainer and reports session-only
+application. Corrupt, oversized or future records require explicit replacement.
+External revisions conflict with stale drafts; session overlays remember their base
+record so a later external edit is not hidden. Detectable interleavings are rejected;
+localStorage does not provide atomic compare-and-set across windows.
+
+Menu Bar owns placement of registered system participants while their original
+modules own creation and handlers. The expected layout follows the saved arrangement,
+not a mandatory static order. Native action nodes, badges and shortcut attributes are
+preserved; no game action is triggered by editing.
+
+Grouped Cards/Game uses the same toggle and remains available through its selected
+group in both modes. Grouped Better UI temporarily mounts its existing preferences
+panel as a body-level portal while open, avoiding clipping or hiding when its parent
+dropdown closes. Card Mode admits only this marked panel. Escape/Cancel returns
+focus through the current group; teardown removes/restores the owned surface.
+
+## Default composition
+
+The rejected Wallet candidate 0.2.184 briefly introduced the optional IDs
+`wallet:menu` and `wallet:shop`. Candidate 0.2.185+ retires both completely: Wallet no
+longer registers Menu Bar participants or exposes Menu/Shop locations. Layout validation
+accepts those two IDs only as migration input and normalizes them away without changing
+the remaining order, groups or 10–15 slot capacity. They never join defaults or
+missing-item normalization.
+
+Category: Rearrange. The default retains the organization authorized on 2026-08-31:
 
 Inventory | Hunts | Trainer | City | Goals | Events | Social | Mailbox |
 Tools | Shop | Settings.
@@ -42,19 +113,39 @@ Opening a group never forwards a click to a game action.
 
 Toolbar and dropdown classes are adapted to the destination's new position.
 Managed triggers use the native standalone button class: the group-trigger
-class wraps longer labels into adjacent flex columns. Dimensions, fonts, palette
-and native responsive rules are unchanged; the explicitly requested Better UI,
+class wraps longer labels into adjacent flex columns. Main-rail columns use the
+selected capacity. The vertical rail reserves its drag/collapse regions and shares
+the remaining height among the selected rows without changing font/icon sizes.
+The explicitly requested Better UI,
 Trainer and City-service icons are the icon-level exception. Temporary inline `display:none` masks preserve native hidden
 states after moving nodes and suppress empty groups; cleanup restores the
-previous inline display value. No new badge aggregation is introduced.
+previous inline display value.
+
+Destination badges remain their original nodes and are updated by the native game.
+When reward destinations leave Goals, its original aggregate is reversibly masked
+to avoid reporting rewards at the wrong location. Current groups receive a compact
+`!` indicator whose tooltip and accessible group label quote each visible native
+badge literally (for example `Mailbox: 7; Quests: 99+`). Counts are not recomputed
+from display strings. `groupAriaLabel()` composes this summary with Hunt Controls'
+Return to City context, so the later contextual update cannot erase notifications.
 
 ## Lifecycle and interaction
 
-The core's single observer schedules reconciliation for DOM replacements and
-native hidden/disabled/ARIA state changes. The optional mount key tracks the
-toolbar, action nodes and native group structure; the optional reconcile hook
-updates labels and visibility without remounting an intact toolbar. No polling,
-feature observer, game-global patching or network interception is used.
+Core reconciliation tracks DOM replacements and native hidden/disabled/ARIA state
+changes. Menu Bar rebuilds its native-node integration internally when the toolbar,
+actions or group identities change; its body-scoped lifecycle keeps the same-owner
+editor draft alive. Stable reconciliation does not rewrite the editor or arrangement.
+No polling, additional DOM observer or network interception is introduced.
+
+The native TopToolbar installs `handleShortcut` through a window-capture listener,
+before a modal's bubbling listener could intercept it. While the editor is open,
+`layout-shortcut-guard.js` temporarily adapts only the exposed
+`PokeIdle.PersistentHud._toolbar.handleShortcut` instance method. It suppresses menu
+shortcut dispatch while the editor owns the interaction and delegates normally as
+soon as the editor closes. Replacement/cleanup restores only the method it still
+owns, including inherited-property semantics; stale captured adapters are inert.
+This narrowly scoped native UI adapter is justified by the modal's passive-editing
+contract. Browser event APIs, network, navigation APIs and combat are not patched.
 
 Group interaction supports clicks, outside pointer, focus transitions,
 Arrow Up/Down, Home/End and Escape. Existing native hover/focus CSS still
@@ -116,8 +207,10 @@ Local browser checks used the 27-destination capture and native CSS at
 simulated destination dispatch and arrow-key navigation. No new visual
 overlap was observed at that viewport; this does not certify all viewports.
 
-The user previously validated the pre-2026-10-02 menu-bar organization and native
-drag/collapse behavior. The 2026-10-02 F5 geometry fix and City shortcuts are a new
-candidate scope and remain pending Product Owner in-game validation. The prior
-acceptance does not certify the new post-F5 pointer behavior or final rendered City
-composition.
+Historical note: the pre-2026-10-02 menu organization and native drag/collapse
+behavior were approved before the later F5 geometry/City-shortcut changes; those
+changes were recorded as pending at their earlier delivery. The current custom-bar
+`0.2.183` feature was explicitly approved at 2026-10-07T17:03:19Z: “Bar custom validada
+e aprovada.” Its live-validation pending status is closed in
+`docs/PM_GATE_2026-10-07_MENU_FREEDOM.md`; the recorded local viewport coverage remains
+unchanged.

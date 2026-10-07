@@ -23,6 +23,7 @@ const moduleControls = createModuleControls({
   preferences,
   modules: registry.controls,
   menuBar: registry.modules.find(module => module.id === "menu-bar"),
+  wallet: registry.modules.find(module => module.id === "wallet"),
 });
 
 createBetterUI({

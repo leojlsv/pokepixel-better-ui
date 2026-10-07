@@ -4,10 +4,60 @@
 > decisão do Product Owner. As referências abaixo a seu PNG e aos testes conjuntos
 > são histórico do freeze `0.2.77`; apenas o ícone do Pokémon Profile permanece.
 
-Status: **Better UI 0.2.166 — o PokémonCard nativo mantém IV promovido ao lado da raridade e agora
-oculta `ACTIVE`/`PROTECTED` também no hover transitório. O Profile continua dedicado, preserva Team +
-Backpack por `creatureId` exato, Current/Saved Moves, Saved Teams e o editor nativo de moves. Esta
-correção foi validada e aprovada in-game pelo Product Owner em 2026-10-04.**
+Status: **Better UI 0.2.181 — barra de raridade relativa ao mínimo/máximo validada in-game
+pelo Product Owner em 2026-10-07. O relato de barra ausente foi esclarecido pelo usuário como
+teste em versão desatualizada; a implementação entregue permanece inalterada.**
+
+## 0.2.181 — preenchimento relativo à faixa da raridade
+
+A proporção usa `(Quality atual - mínimo) / (máximo - mínimo)`, limitada a 0–100%.
+Os dois limites vêm da mesma resposta nativa `PokemonCardData.qualityBand()` para
+a raridade e variante Normal/Shiny. Legendary 1.62 na faixa 1.55–1.69 representa
+50%; no mínimo a barra fica vazia e no máximo, cheia. Faixas ausentes, iguais ou
+invertidas omitem o trilho. ARIA usa o mínimo nativo e o valor limitado à mesma faixa.
+Texto, cores, estrutura HP/XP, Awakening e quantidade de consultas permanecem iguais.
+
+## 0.2.180 — barra de preenchimento da raridade (escala substituída por 0.2.181)
+
+A linha de raridade mantém nome, Quality atual e máximo e recebe abaixo o mesmo trilho
+`.pokemon-card__track > i` de HP/XP, com 6px de altura e a cor canônica da raridade.
+O preenchimento é `Quality atual / máximo da própria raridade`, limitado visualmente a
+0–100%; `PokemonCardData.qualityBand()` determina o máximo Normal ou Shiny. A proporção
+não subtrai o mínimo da faixa nem representa a contagem de passos de Awakening.
+Dados ausentes/inválidos omitem o trilho; o progressbar expõe nome e valores acessíveis.
+Não há consulta adicional, polling ou estado persistido.
+
+## 0.2.179 — hierarquia do resumo e etapas completas de Awakening
+
+- duas colunas flexíveis, gap de 8px, valores alinhados, rótulo da raridade na cor canônica e um
+  divisor discreto entre as duas linhas do resumo; atual e teto têm pesos tipográficos distintos;
+- os meters nativos mantêm seus textos e barras; `min-width:0` nos filhos elimina a largura
+  mínima intrínseca que fazia o conteúdo invadir a outra caixa; o texto pode refluir localmente;
+- o parser segue a mesma ordem do `GeneticAwakening.js`: `awk`, `challenge`, `god_tier`, terminal.
+  Somente `awk` fornece `index/total`. No teto Epic, `challenge` é um estado válido e mostra
+  `Awakening Challenge`; não se infere um `5/5`. Sem próximo ramo, a leitura é `MAX` ou `God Tier`;
+- carregamento (`…`), falha de leitura (`Indisponível` no PT) e estados válidos têm apresentação
+  distinta. O label permanece estável em uma região de status; apenas seu valor é atualizado;
+- `state.resynced` agora invalida e reidrata summaries abertos; as proteções de geração/cache e
+  a restauração dos nós originais continuam ativas. Leituras ainda não iniciadas não partem após
+  cleanup. Nenhuma ação de Awakening é executada pela melhoria.
+
+Evidência local: `work/profile-rarity-179/preview.png` e `metrics.json`, gerados pelo Chromium com
+CSS nativo público e o módulo corrente; a fixture cobre 320/360/390px e estados de progressão.
+
+## 0.2.178 — Rarity / Awakening ao lado de HP / Experience (reprovado; histórico)
+
+- o bloco nativo `.pokemon-card__meters` é movido como nó, sem recriar HP ou Experience, para a
+  coluna esquerda de um grid `1fr / 1fr`;
+- a coluna direita mostra `<Raridade> x<Quality atual>/<teto da faixa>`, usando
+  `creature.quality_multiplier` e `PokemonCardData.qualityBand()`; os decimais seguem o locale do
+  jogo e dados ausentes permanecem indisponíveis;
+- `Awakening <index>/<total>` usa exclusivamente `Api.getAwakeningPreview().awk`; a consulta só
+  ocorre em cards acionáveis que já possuem a ação nativa `.is-awakening`, nunca no hover;
+- previews são compartilhados por criatura/estado de Quality, invalidados por `creature.updated` e
+  `state.resynced`, e respostas tardias só atualizam o token atual do mesmo card;
+- rerender e cleanup devolvem o meter nativo ao ponto original antes de remover a decoração Better
+  UI, preservando o lifecycle do renderer e handlers nativos.
 
 ## 0.2.149 — Priority e heal threshold nos Current Moves
 

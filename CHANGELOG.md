@@ -18,6 +18,97 @@ All notable project changes are recorded in this file.
   Release validation now requires matching package/lock versions, identical
   `.meta.js` / `.user.js` metadata blocks and the canonical update endpoints.
 
+- **Wallet — resource strip integrado no Trainer Header, candidato 0.2.186 (2026-10-07):**
+  preserva a posição do Wallet no cabeçalho aprovada in-game pelo Product Owner, mas
+  substitui a linha visualmente solta por uma composição compacta e integrada dos dois
+  recursos. Gold e Diamonds passam a ocupar segmentos equilibrados de um único well,
+  com alinhamento consistente, divisor interno e tratamento interativo discreto, sem
+  restaurar card externo nem alterar a autoridade nativa. **Validado e aprovado in-game
+  pelo Product Owner em 2026-10-07T19:02:22Z:** “Validado.”
+
+- **Wallet — simplificação Backpack / Trainer Header, candidato 0.2.185 (2026-10-07):**
+  remove completamente os atalhos Wallet da Menu Bar e de Shop após validação visual
+  negativa do Product Owner. Better UI > Wallet passa a oferecer somente **Backpack** e
+  **Trainer Header**, em seção colapsável. Toggles preservam o scroll/foco do painel;
+  Trainer integra os saldos à coluna de informações do treinador, usa o ícone nativo de
+  Diamantes e geometria compacta; o painel continua disponível pelo resumo do Trainer.
+  Layouts 0.2.184 contendo `wallet:menu`/`wallet:shop` são normalizados sem quebrar a
+  customização da barra. Na validação in-game posterior, o Product Owner aprovou a
+  **posição** do Trainer Wallet, mas rejeitou sua organização visual por parecer
+  “largada”; esse ponto é supersedido pelo 0.2.186.
+
+- **Wallet — locais independentes por treinador, candidato 0.2.184 (2026-10-07):**
+  adiciona Backpack, atalho menu, atalho Shop e resumo no cabeçalho Trainer como
+  opções combináveis em Better UI > Wallet. Preserva Backpack como único padrão;
+  atalhos opcionais respeitam capacidade/ordem do menu existente e abrem um painel
+  comum de leitura. Inventory mantém ownership exclusivo do nó nativo; os demais
+  locais projetam saldos da autoridade atual, com guardas de troca de treinador e
+  indisponibilidade. Não há polling, requisição nova de saldo ou persistência de valores.
+  Trata falhas de storage e preserva escolhas de sessão através de indisponibilidade
+  intermitente. **Candidato rejeitado em validação visual pelo Product Owner e
+  supersedido pelo 0.2.185; não deve ser entregue nem tratado como aprovado.**
+
+- **Menu Bar — destinos livres e capacidade 10–15, candidato 0.2.183 (2026-10-07):**
+  remove bloqueios que prendiam Inventory, Hunts, Mailbox, Settings, Cards/Game,
+  Better UI e recompensas a um local obrigatório. Todos os atalhos do catálogo podem
+  usar a barra ou qualquer grupo. Slots passa a ser uma escolha por treinador entre
+  10 e 15; reduzir capacidade mantém o rascunho editável e exige liberar espaço
+  antes de salvar, sem ocultação/reorganização automática. Layouts anteriores mantêm
+  ordem, posição e capacidade inicial 13. Sistemas agrupados preservam seus controles;
+  Better UI usa portal para manter preferências/editor alcançáveis. Avisos seguem os
+  destinos movidos e compõem corretamente com City durante Hunt; grupos vazios
+  continuam disponíveis no editor. **Barra customizável validada e aprovada in-game
+  pelo Product Owner em 2026-10-07T17:03:19Z:** “Bar custom validada e aprovada.”
+
+- **Menu Bar — personalização por treinador, candidato 0.2.182 (2026-10-07):**
+  adiciona Personalizar no painel Better UI, com prévia, arraste, controles de teclado
+  e Salvar/Cancelar/Restaurar. Ordem da barra, conteúdo dos grupos, orientação e posição
+  passam a ser armazenados por treinador, preservando os mesmos botões nativos.
+  Mantém 13 posições, Cards/Game + Better UI fixos ao final, o trio de recompensas em
+  Goals e Return to City contextual. Trata identidade pendente, mudanças de conta,
+  reconstruções nativas, conflitos externos, storage indisponível e dados protegidos;
+  o editor não executa destinos ou atalhos nativos enquanto estiver aberto.
+  **Funcionalidades aprovadas in-game pelo Product Owner em 2026-10-07.** A mesma
+  confirmação solicitou remover as restrições de posição e permitir 10–15 slots,
+  implementados no candidato seguinte.
+
+- **PokémonCard — raridade relativa ao mínimo/máximo, candidato 0.2.181 (2026-10-07):**
+  ajusta o preenchimento para `(Quality atual - mínimo) / (máximo - mínimo)`, usando
+  os limites nativos da própria raridade Normal/Shiny. Legendary 1.62 na faixa
+  1.55–1.69 passa a 50%; mínimo é 0% e máximo é 100%. Mantém textos, cor, estrutura
+  HP/XP e estados de Awakening; ARIA acompanha os limites da faixa. Faixas ausentes,
+  inválidas ou sem amplitude omitem a barra. Substitui a escala atual/máximo de 0.2.180.
+  **Barra validada in-game pelo Product Owner em 2026-10-07.** O usuário esclareceu
+  que o relato posterior de barra ausente usava versão desatualizada. O corretivo
+  experimental seguinte foi cancelado; a implementação 0.2.181 foi preservada.
+
+- **PokémonCard — barra proporcional de raridade, candidato 0.2.180 (2026-10-07):**
+  adiciona abaixo da linha de raridade o mesmo trilho de HP/XP, com preenchimento na cor
+  canônica da raridade. A proporção usa Quality atual / máximo nativo da própria faixa
+  Normal ou Shiny: `1.62/1.69` preenche 95,86% e `1.54/1.54`, 100%. Dados ausentes ou
+  inválidos não fabricam uma barra vazia; a leitura numérica permanece disponível.
+  **Substituído antes de aprovação:** o Product Owner rejeitou Menu/Shop, dimensionamento
+  do Trainer, ausência do ícone de Diamante, salto de scroll e seção Wallet não colapsável.
+
+- **PokémonCard — hierarquia visual e estados completos de Awakening, corretivo 0.2.179 (2026-10-07):**
+  corrige a reprovação de 0.2.178: HP / Experience preservam o texto nativo sem invadir a coluna
+  adjacente; o resumo ganha rótulos e valores alinhados, cor canônica da raridade, divisor e
+  diferenciação entre valor atual e teto. Awakening passa a acompanhar os ramos nativos
+  `awk → challenge → god_tier → terminal`: um Epic no teto pode mostrar `Challenge`, em vez de
+  ser tratado como dado ausente. Contadores só aparecem quando fornecidos pelo ramo AWK;
+  total concluído não é inferido. Loading e falha possuem estados distintos; ressincronização
+  atualiza os resumos abertos e cleanup impede novas leituras pendentes.
+  **Pendente de validação in-game pelo Product Owner.**
+
+- **PokémonCard — Rarity / Awakening ao lado de HP / Experience, candidato 0.2.178 (2026-10-07):**
+  transforma a faixa de progresso do card acionável em duas caixas lado a lado: os meters nativos
+  de HP / Experience permanecem intactos à esquerda e a nova leitura compacta mostra
+  `<Raridade> x<Quality atual>/<teto da faixa>` e `Awakening <etapa>/<total>` à direita. O teto vem
+  de `PokemonCardData.qualityBand()` e o progresso de `Api.getAwakeningPreview().awk`; hover não
+  consulta Awakening, falhas permanecem indisponíveis e rerender/cleanup devolvem os meters ao DOM
+  nativo antes de liberar o renderer. **Reprovado in-game pelo Product Owner em 2026-10-07;
+  substituído pelo corretivo 0.2.179.**
+
 - **Open-source publication preparation (2026-10-05):** adds the MIT license,
   public package/repository metadata, contribution/security/conduct guidance,
   third-party attribution for the MIT-licensed UI/UX Pro Max material, public

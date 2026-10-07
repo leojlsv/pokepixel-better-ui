@@ -18,12 +18,12 @@ export default `
   .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="horizontal"] {
     display:grid !important;
     grid-auto-flow:column !important;
-    grid-template-columns:repeat(13,minmax(54px,1fr)) !important;
+    grid-template-columns:repeat(var(--ppbui-menu-slot-capacity,13),minmax(54px,1fr)) !important;
     grid-template-rows:minmax(56px,auto) !important;
     grid-auto-rows:0 !important;
     width:max-content !important;
     max-width:calc(100vw - 16px) !important;
-    min-width:min(100%,766px) !important;
+    min-width:min(100%,calc(var(--ppbui-menu-slot-capacity,13) * 54px + 64px)) !important;
     overflow:visible !important;
   }
 
@@ -36,8 +36,10 @@ export default `
     display:grid !important;
     grid-auto-flow:row !important;
     grid-template-columns:minmax(68px,auto) !important;
-    grid-template-rows:none !important;
-    grid-auto-rows:minmax(56px,auto) !important;
+    grid-template-rows:repeat(var(--ppbui-menu-slot-capacity,13),minmax(0,1fr)) !important;
+    grid-auto-rows:0 !important;
+    row-gap:1px !important;
+    height:min(calc(var(--ppbui-menu-slot-capacity,13) * 57px + 65px),calc(100dvh - 16px)) !important;
     width:max-content !important;
     min-width:68px !important;
     max-width:min(180px,calc(100vw - 16px)) !important;
@@ -48,6 +50,12 @@ export default `
   .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] > :is(.pokeidle-top-toolbar__btn,.pokeidle-top-toolbar__group,[data-ppbui-module="module-controls"],[data-ppbui-card-mode-toggle]) {
     grid-column:1 !important;
     min-width:68px !important;
+    min-height:0 !important;
+    height:100% !important;
+  }
+  .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-orientation="vertical"] > .pokeidle-top-toolbar__group > .pokeidle-top-toolbar__btn {
+    min-height:0 !important;
+    height:100% !important;
   }
 
   .pokeidle-top-toolbar[data-ppbui-menu-bar] > :is(.pokeidle-top-toolbar__btn,.pokeidle-top-toolbar__group),
@@ -166,6 +174,35 @@ export default `
     place-items:center !important;
     font-size:26px !important;
     line-height:31px !important;
+  }
+
+  .pokeidle-top-toolbar[data-ppbui-menu-bar] .ppbui-menu-popup [data-ppbui-menu-system-action] {
+    display:flex !important;
+    min-height:64px !important;
+    width:100% !important;
+    min-width:0 !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:3px !important;
+    padding:5px !important;
+    border:var(--ppbui-separator-width) solid transparent !important;
+    border-radius:var(--ppbui-control-radius) !important;
+    background:var(--ppbui-surface-interactive) !important;
+    color:var(--ppbui-text) !important;
+    font:700 var(--ppbui-font-size-meta)/1.1 var(--ppbui-font-body) !important;
+    text-align:center !important;
+    white-space:normal !important;
+    box-shadow:none !important;
+  }
+  .pokeidle-top-toolbar[data-ppbui-menu-bar] .ppbui-menu-popup [data-ppbui-menu-system-action]:focus-visible {
+    outline:var(--ppbui-focus-width) solid var(--ppbui-focus) !important;
+    outline-offset:-1px !important;
+  }
+  .pokeidle-top-toolbar[data-ppbui-menu-bar] .ppbui-menu-popup [data-ppbui-menu-system-action] > .pokeidle-top-toolbar__icon {
+    width:31px !important;
+    height:31px !important;
+    object-fit:contain !important;
   }
 
   .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar] > :is(.pokeidle-pokehub__handle,.pokeidle-pokehub__toggle) {

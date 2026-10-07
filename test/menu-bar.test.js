@@ -113,7 +113,7 @@ test("horizontal menu bar owns one 13-slot row and restores native orientation s
   app.start();
   assert.equal(toolbar.getAttribute("data-ppbui-menu-orientation"), "horizontal");
   const css = doc.querySelector('[data-ppbui-style="menu-bar"]').textContent;
-  assert.match(css, /data-ppbui-menu-orientation="horizontal"\][^{]*\{[^}]*grid-auto-flow:column !important;[^}]*grid-template-columns:repeat\(13,minmax\(54px,1fr\)\) !important;[^}]*grid-template-rows:minmax\(56px,auto\) !important;/s);
+  assert.match(css, /data-ppbui-menu-orientation="horizontal"\][^{]*\{[^}]*grid-auto-flow:column !important;[^}]*grid-template-columns:repeat\(var\(--ppbui-menu-slot-capacity,13\),minmax\(54px,1fr\)\) !important;[^}]*grid-template-rows:minmax\(56px,auto\) !important;/s);
   assert.match(css, /data-ppbui-menu-orientation="horizontal"\] > :is\([^}]*\) \{[^}]*grid-row:1 !important;/s);
   app.stop();
   assert.equal(toolbar.hasAttribute("data-ppbui-menu-orientation"), false);
@@ -256,6 +256,7 @@ test("native Poké Hub movement after mount remains authoritative on cleanup", t
 
 test("native Poké Hub movement persists across remounts", t => {
   const { app, doc, window, toolbar } = setup(t);
+  window.PokeIdle = { Auth:{ getTrainerSummary:() => ({ id:"position-owner" }) } };
   toolbar.classList.add("pokeidle-pokehub", "pokeidle-island");
   toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
   Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
@@ -272,7 +273,8 @@ test("native Poké Hub movement persists across remounts", t => {
   toolbar.style.setProperty("left", "60px", "important");
   toolbar.style.setProperty("top", "120px", "important");
   window.dispatchEvent(new window.Event("pointerup", { bubbles:true }));
-  assert.equal(window.localStorage.getItem("ppbui:menu-bar-position:v1"), '{"left":60,"top":120}');
+  assert.deepEqual(JSON.parse(window.localStorage.getItem("ppbui:menu-layout:v1:position-owner")).layout.position, { left:60, top:120 });
+  assert.equal(window.localStorage.getItem("ppbui:menu-bar-position:v1"), null, "profile movement does not write the legacy global key");
 
   app.stop();
   toolbar.style.cssText = "left:50%;top:auto;bottom:0;transform:translateX(-50%)";
