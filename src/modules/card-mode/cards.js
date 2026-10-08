@@ -1034,7 +1034,7 @@ function markup(context) {
     .filter(([key]) => key !== "unknown")
     .map(([key, label]) => `<div data-rarity-key="${key}" data-rarity="${key}"><span data-card-rarity-label="${key}">${label}</span><strong>—/—</strong><small data-rarity-shiny hidden>✦ —/—</small></div>`)
     .join("");
-  const historyRarities = STORY_RARITIES.map(key => `<label data-rarity="${key}"><input type="checkbox" data-card-attempt-rarity value="${key}" checked><span data-card-rarity-label="${key}">${rarityLabels[key]}</span></label>`).join("");
+  const historyRarities = STORY_RARITIES.map(key => `<label data-rarity="${key}"><input type="checkbox" id="ppbui-card-attempt-rarity-${key}" data-card-attempt-rarity value="${key}" checked><span data-card-rarity-label="${key}">${rarityLabels[key]}</span></label>`).join("");
   const lootRarities = ITEM_RARITIES.map(key => `<option value="${key}" data-card-rarity-label="${key}">${rarityLabels[key]}</option>`).join("");
   return `
     <nav class="ppbui-cards-shortcuts" data-card-shortcuts hidden aria-label="${copy.sectionNavigation}">
@@ -1117,9 +1117,9 @@ function markup(context) {
         </div>
         <section class="ppbui-cards-story-panel" id="ppbui-card-story-panel-hunt" role="tabpanel" aria-labelledby="ppbui-card-story-tab-hunt" data-card-story-panel="hunt">
           <div class="ppbui-cards-history-filters">
-            <fieldset class="ppbui-cards-rarity-filter"><label class="ppbui-cards-rarity-filter-all"><input type="checkbox" data-card-attempt-rarity-all checked><span data-card-copy="all">${copy.all}</span></label>${historyRarities}</fieldset>
+            <fieldset class="ppbui-cards-rarity-filter"><label class="ppbui-cards-rarity-filter-all"><input type="checkbox" id="ppbui-card-attempt-rarity-all" data-card-attempt-rarity-all checked><span data-card-copy="all">${copy.all}</span></label>${historyRarities}</fieldset>
             <div class="ppbui-cards-result-filter" role="group" aria-label="${copy.outcome}"><span data-card-copy="outcome">${copy.outcome}</span><div class="ppbui-cards-result-options"><button type="button" data-card-attempt-result="" aria-pressed="true" tabindex="0" data-card-copy="all">${copy.all}</button><button type="button" data-card-attempt-result="captured" aria-pressed="false" tabindex="-1" data-card-copy="captured">${copy.captured}</button><button type="button" data-card-attempt-result="fled" aria-pressed="false" tabindex="-1" data-card-copy="failed">${copy.failed}</button></div></div>
-            <label><span data-card-copy="shiny">${copy.shiny}</span><select data-card-attempt-shiny><option value="" data-card-copy="all">${copy.all}</option><option value="yes" data-card-copy="yes">${copy.yes}</option><option value="no" data-card-copy="no">${copy.no}</option></select></label>
+            <label><span data-card-copy="shiny">${copy.shiny}</span><select id="ppbui-card-attempt-shiny" data-card-attempt-shiny><option value="" data-card-copy="all">${copy.all}</option><option value="yes" data-card-copy="yes">${copy.yes}</option><option value="no" data-card-copy="no">${copy.no}</option></select></label>
           </div>
           <div class="ppbui-cards-attempt-scroll" data-card-attempt-scroll>
             <div class="ppbui-cards-attempt-labels" aria-hidden="true">
@@ -1139,7 +1139,7 @@ function markup(context) {
         </section>
         <section class="ppbui-cards-story-panel" id="ppbui-card-story-panel-loot" role="tabpanel" aria-labelledby="ppbui-card-story-tab-loot" data-card-story-panel="loot" hidden>
           <div class="ppbui-cards-history-filters ppbui-cards-loot-filters">
-            <label><span data-card-copy="itemRarity">${copy.itemRarity}</span><select data-card-loot-rarity><option value="" data-card-copy="all">${copy.all}</option>${lootRarities}<option value="none" data-card-copy="noItemRarity">${copy.noItemRarity}</option></select></label>
+            <label><span data-card-copy="itemRarity">${copy.itemRarity}</span><select id="ppbui-card-loot-rarity" data-card-loot-rarity><option value="" data-card-copy="all">${copy.all}</option>${lootRarities}<option value="none" data-card-copy="noItemRarity">${copy.noItemRarity}</option></select></label>
           </div>
           <div class="ppbui-cards-loot-summary" role="list" aria-label="${copy.items}" data-card-loot-summary hidden></div>
           <div class="ppbui-cards-loot-table" role="list" data-card-aria="lootTable">

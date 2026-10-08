@@ -104,6 +104,7 @@ test("Profile dialog and dossier expose stable accessible names and value semant
   assert.match(root.querySelector("[data-ppbui-profile-list]").getAttribute("aria-label"),/Pokémon disponíveis/i);
   const hp=root.querySelector("[data-ppbui-profile-hp-track]");assert.equal(hp.getAttribute("role"),"progressbar");assert.equal(hp.getAttribute("aria-valuemin"),"0");assert.equal(hp.getAttribute("aria-valuemax"),"155");assert.equal(hp.getAttribute("aria-valuenow"),"155");assert.equal(hp.getAttribute("aria-valuetext"),"155 / 155");
   const teamMembers=root.querySelector("[data-ppbui-profile-team-members]");assert.equal(teamMembers.getAttribute("role"),"list");const rhydon=teamMembers.querySelector('[data-ppbui-profile-team-member][aria-current="true"]');assert.equal(rhydon.getAttribute("role"),"listitem");assert.match(rhydon.getAttribute("aria-label"),/Rhydon.*Ativo/i);assert.ok(rhydon.querySelector('img[alt=""]'),"sprite remains decorative because the member cell owns the accessible name");
+  const fields=[...root.querySelectorAll("input,select,textarea")],fieldIds=fields.map(field=>field.id);assert.ok(fields.length>0);assert.ok(fields.every(field=>field.id||field.name),"every Profile form field exposes a browser form identity");assert.equal(new Set(fieldIds).size,fieldIds.length,"Profile form field ids remain unique");
 });
 
 test("Profile picker reuses keyed cards and selection keeps keyboard focus without list churn", async t => {

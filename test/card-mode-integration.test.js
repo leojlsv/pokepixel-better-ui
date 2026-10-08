@@ -1587,6 +1587,7 @@ test("card dashboard keeps Hunt/Loot Story compact, locally scrollable and respo
   assert.ok(doc.querySelector('[data-card-story-tab="loot"]'));
   assert.ok(doc.querySelector("[data-card-loot-body]"));
   assert.ok(doc.querySelector("[data-card-loot-rarity]"), "Loot Story exposes an item-rarity filter");
+  const fields=[...cards.querySelectorAll("input,select,textarea")],fieldIds=fields.map(field=>field.id);assert.ok(fields.length>0);assert.ok(fields.every(field=>field.id||field.name),"every Cards form field exposes a browser form identity");assert.equal(new Set(fieldIds).size,fieldIds.length,"Cards form field ids remain unique");
   const scroll = doc.querySelector("[data-card-attempt-scroll]");
   assert.ok(scroll?.querySelector(".ppbui-cards-attempt-labels"));
   assert.ok(scroll?.querySelector(".ppbui-cards-attempt-table"), "Hunt labels and rows share the same horizontal scroll surface");
