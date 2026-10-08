@@ -1083,6 +1083,10 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const progressAnchor = container.querySelector("[data-ppbui-profile-native-progress-anchor]");
     if (meters && progressAnchor?.parentNode) progressAnchor.replaceWith(meters);
     meters?.removeAttribute("data-ppbui-profile-native-meters");
+    const highlights = container.querySelector("[data-ppbui-profile-native-highlights]");
+    const highlightsAnchor = container.querySelector("[data-ppbui-profile-native-highlights-anchor]");
+    if (highlights && highlightsAnchor?.parentNode) highlightsAnchor.replaceWith(highlights);
+    highlights?.removeAttribute("data-ppbui-profile-native-highlights");
     container.querySelectorAll("[data-ppbui-profile-native-owned]").forEach(node => node.remove());
     container.querySelectorAll("[data-ppbui-profile-native-hidden]").forEach(node => {
       node.hidden = node.dataset.ppbuiProfileNativeWasHidden === "true";
@@ -1139,7 +1143,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     grid.dataset.ppbuiProfileNativeMoveGrid = "";
     for (let index = 0; index < 4; index += 1) grid.append(nativeMoveTile(null));
     section.append(heading, grid);
-    const anchor = container.querySelector(".pokemon-card__section,.pokemon-card__actions,.pokemon-card__hint");
+    const anchor = container.querySelector(".pokemon-card__actions,.pokemon-card__hint");
     if (anchor) anchor.before(section);
     else container.append(section);
     return grid;
@@ -1198,6 +1202,31 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   function nativeCardCellByLabel(container, key, fallback) {
     const label = nativeCardLabel(key, fallback);
     return [...container.querySelectorAll(".pokemon-card__cell")].find(cell => cell.querySelector(".pokemon-card__cell-label")?.textContent?.trim() === label) || null;
+  }
+
+  function nativeCardSectionByTitle(container, key, fallback) {
+    const label = nativeCardLabel(key, fallback);
+    return [...container.querySelectorAll(".pokemon-card__section")].find(section => section.querySelector(":scope > .pokemon-card__title")?.textContent?.trim() === label) || null;
+  }
+
+  function orderNativeSecondarySections(container) {
+    const primary = nativeCardSectionByTitle(container, "creature_details.genetics", "GENETICS")
+      || nativeCardSectionByTitle(container, "creature_details.battle_stats", "BATTLE STATS");
+    if (!primary) return;
+    let cursor = primary;
+    const mastery = container.querySelector(".pokemon-card__note.is-mastery")?.closest(".pokemon-card__cells");
+    if (mastery?.parentElement === container) {
+      const anchor = doc.createElement("span");
+      anchor.hidden = true;
+      anchor.dataset.ppbuiProfileNativeOwned = "";
+      anchor.dataset.ppbuiProfileNativeHighlightsAnchor = "";
+      mastery.before(anchor);
+      mastery.dataset.ppbuiProfileNativeHighlights = "";
+      cursor.after(mastery);
+      cursor = mastery;
+    }
+    const moves = container.querySelector("[data-ppbui-profile-native-moves]");
+    if (moves?.parentElement === container) cursor.after(moves);
   }
 
   function hideNativeHighlightsWhenEmpty(container) {
@@ -1275,8 +1304,34 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const node = container.querySelector(nativeProgressSelectors.awakening);
     if (!node) return;
     const text = copy(), labels = { challenge:text.awakeningChallenge, godChallenge:text.awakeningGodChallenge, god:text.awakeningGod, max:text.awakeningMax };
-    setNativeSummaryValue(node, value?.kind === "awk" ? String(value.index) : labels[value?.kind] || text.awakeningUnavailable,
-      value?.kind === "awk" ? `/${value.total}` : "", value?.kind || "unavailable");
+    const shortLabels = { challenge:text.awakeningChallengeShort, godChallenge:text.awakeningGodChallengeShort };
+    const locale = win?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || undefined;
+    const compactGoal = target => target >= 1000000 && target % 1000000 === 0
+      ? `${target / 1000000}M`
+      : target >= 1000 && target % 1000 === 0
+        ? `${target / 1000}k`
+        : target.toLocaleString(locale);
+    const challengeProgress = (value?.kind === "challenge" || value?.kind === "godChallenge")
+      && Number.isSafeInteger(value?.kills) && Number.isSafeInteger(value?.killsRequired) && value.killsRequired > 0;
+    const current = value?.kind === "awk"
+      ? String(value.index)
+      : challengeProgress
+        ? `${shortLabels[value.kind] || labels[value.kind]} ${value.kills.toLocaleString(locale)}`
+        : labels[value?.kind] || text.awakeningUnavailable;
+    const maximum = value?.kind === "awk"
+      ? `/${value.total}`
+      : challengeProgress
+        ? `/${compactGoal(value.killsRequired)}`
+        : "";
+    setNativeSummaryValue(node, current, maximum, value?.kind || "unavailable");
+    if (challengeProgress) {
+      const fullValue = `${labels[value.kind]} ${value.kills.toLocaleString(locale)}/${value.killsRequired.toLocaleString(locale)}`;
+      const label = node.querySelector(nativeProgressSelectors.label)?.textContent?.trim() || "Awakening";
+      setAttr(node, "title", `${label} ${fullValue}`);
+      setAttr(node, "aria-label", `${label} ${fullValue}`);
+    } else {
+      node.removeAttribute("aria-label");
+    }
     setAttr(node, "aria-busy", "false");
   }
 
@@ -1290,7 +1345,8 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
 
   function hydrateNativeAwakening(container, creature, token) {
     const id = String(creature?.id || "").trim();
-    if (!alive || !id || container.dataset.ppbuiProfileNativeMode === "hover" || !container.querySelector(nativeProgressSelectors.awakeningAction)) return;
+    const isHover = container.dataset.ppbuiProfileNativeMode === "hover";
+    if (!alive || !id || (!isHover && !container.querySelector(nativeProgressSelectors.awakeningAction))) return;
     const api = win?.PokeIdle?.Api;
     if (typeof api?.getAwakeningPreview !== "function") return;
     const hydrationEpoch=(nativeCardAwakeningEpoch.get(container)||0)+1;nativeCardAwakeningEpoch.set(container,hydrationEpoch);
@@ -1322,7 +1378,8 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
 
   function addNativeProgressSummary(container, creature, token) {
     const meters = container.querySelector(nativeProgressSelectors.meters);
-    if (!meters || container.dataset.ppbuiProfileNativeMode === "hover" || !container.querySelector(nativeProgressSelectors.actions)) return;
+    const isHover = container.dataset.ppbuiProfileNativeMode === "hover";
+    if (!meters || (!isHover && !container.querySelector(nativeProgressSelectors.actions))) return;
     const anchor = doc.createElement("span");
     anchor.hidden = true;
     anchor.dataset.ppbuiProfileNativeOwned = "";
@@ -1372,9 +1429,11 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     }
     const awakening = addLine("awakening", nativeCardLabel("npc.awk.tab", "Awakening"));
     awakening.dataset.ppbuiProfileNativeAwakening = "";
-    awakening.setAttribute("role", "status");
-    awakening.setAttribute("aria-live", "polite");
-    awakening.setAttribute("aria-atomic", "true");
+    if (!isHover) {
+      awakening.setAttribute("role", "status");
+      awakening.setAttribute("aria-live", "polite");
+      awakening.setAttribute("aria-atomic", "true");
+    }
     awakening.setAttribute("aria-busy", "false");
     setNativeSummaryValue(awakening, copy().awakeningUnavailable, "", "unavailable");
     meters.before(anchor);
@@ -1464,6 +1523,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     addNativeProgressSummary(container, creature, token);
 
     nativeMovesShell(container);
+    orderNativeSecondarySections(container);
     addNativeProfileAction(container, id);
     moveNativeActionsToTop(container);
     hydrateNativeCardMoves(container, creature, token);

@@ -6,9 +6,10 @@ test("Awakening mirrors the native preview branches without deriving counters at
   const base={creature:{id:"pokemon-1"},stage:{tier:"epic",quality_cents:154,max_cents:154}};
   const cases=[
     [{...base,awk:{index:3,total:5}}, {kind:"awk",index:3,total:5}],
+    [{...base,challenge:{from_tier:"epic",to_tier:"legendary",active:true,kills:1744,kills_required:8000}}, {kind:"challenge",kills:1744,killsRequired:8000}],
     [{...base,challenge:{from_tier:"epic",to_tier:"legendary",active:false}}, {kind:"challenge"}],
     [{...base,challenge:{active:true}}, {kind:"challenge"}],
-    [{...base,god_tier:{kills_required:100}}, {kind:"godChallenge"}],
+    [{...base,god_tier:{kills:25,kills_required:100}}, {kind:"godChallenge",kills:25,killsRequired:100}],
     [base, {kind:"max"}],
     [{...base,stage:{tier:"god",quality_cents:300}}, {kind:"god"}],
     [{data:{...base,awk:{index:1,total:7}}}, {kind:"awk",index:1,total:7}],

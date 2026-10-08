@@ -7,7 +7,7 @@ const copies = {
     movesLoading: "Carregando moves...", movesError: "Não foi possível carregar os moves atuais.", noMoves: "Nenhum move configurado.", retry: "Tentar novamente",
     power: "Power", movePower: "PW", moveCooldown: "Cooldown", movePhysical: "Phys", moveSpecial: "Spec", moveStatus: "Status", hp: "HP", level: "Lv.", iv: "IV", rarityFact: "Rarity", gender: "Gender", nature: "Nature", source: "Origem", activeTeam: "No Team", inBackpack: "Backpack",
     configureMoves: "Configurar moves",
-    awakeningUnavailable: "Indisponível", awakeningMax: "MAX", awakeningChallenge: "Challenge", awakeningGodChallenge: "God Tier Challenge", awakeningGod: "God Tier",
+    awakeningUnavailable: "Indisponível", awakeningMax: "MAX", awakeningChallenge: "Challenge", awakeningChallengeShort: "Ch.", awakeningGodChallenge: "God Tier Challenge", awakeningGodChallengeShort: "God Ch.", awakeningGod: "God Tier",
     collapseSavedMoves: "Recolher movesets salvos", expandSavedMoves: "Expandir movesets salvos", collapseSavedTeams: "Recolher times", expandSavedTeams: "Expandir times",
     saveCurrent: "Salvar atual", presetName: "Nome do moveset", apply: "Aplicar", update: "Atualizar", remove: "Excluir", active: "Ativo",
     noSavedMoves: "Nenhum moveset salvo para este Pokémon.", noSavedTeams: "Este Pokémon não participa de nenhum time salvo.",
@@ -29,7 +29,7 @@ const copies = {
     movesLoading: "Loading moves...", movesError: "Could not load current moves.", noMoves: "No moves configured.", retry: "Retry",
     power: "Power", movePower: "PW", moveCooldown: "Cooldown", movePhysical: "Phys", moveSpecial: "Spec", moveStatus: "Status", hp: "HP", level: "Lv.", iv: "IV", rarityFact: "Rarity", gender: "Gender", nature: "Nature", source: "Source", activeTeam: "In Team", inBackpack: "Backpack",
     configureMoves: "Configure moves",
-    awakeningUnavailable: "Unavailable", awakeningMax: "MAX", awakeningChallenge: "Challenge", awakeningGodChallenge: "God Tier Challenge", awakeningGod: "God Tier",
+    awakeningUnavailable: "Unavailable", awakeningMax: "MAX", awakeningChallenge: "Challenge", awakeningChallengeShort: "Ch.", awakeningGodChallenge: "God Tier Challenge", awakeningGodChallengeShort: "God Ch.", awakeningGod: "God Tier",
     collapseSavedMoves: "Collapse saved movesets", expandSavedMoves: "Expand saved movesets", collapseSavedTeams: "Collapse teams", expandSavedTeams: "Expand teams",
     saveCurrent: "Save current", presetName: "Moveset name", apply: "Apply", update: "Update", remove: "Delete", active: "Active",
     noSavedMoves: "No saved movesets for this Pokémon.", noSavedTeams: "This Pokémon is not part of any saved team.",
@@ -51,7 +51,7 @@ const copies = {
     movesLoading: "Cargando movimientos...", movesError: "No se pudieron cargar los movimientos actuales.", noMoves: "No hay movimientos configurados.", retry: "Reintentar",
     power: "Power", movePower: "PW", moveCooldown: "Enfriamiento", movePhysical: "Phys", moveSpecial: "Spec", moveStatus: "Status", hp: "PS", level: "Nv.", iv: "IV", rarityFact: "Rareza", gender: "Género", nature: "Naturaleza", source: "Origen", activeTeam: "En Team", inBackpack: "Backpack",
     configureMoves: "Configurar movimientos",
-    awakeningUnavailable: "No disponible", awakeningMax: "MÁX.", awakeningChallenge: "Desafío", awakeningGodChallenge: "Desafío God Tier", awakeningGod: "God Tier",
+    awakeningUnavailable: "No disponible", awakeningMax: "MÁX.", awakeningChallenge: "Desafío", awakeningChallengeShort: "Des.", awakeningGodChallenge: "Desafío God Tier", awakeningGodChallengeShort: "God Des.", awakeningGod: "God Tier",
     collapseSavedMoves: "Contraer movesets guardados", expandSavedMoves: "Expandir movesets guardados", collapseSavedTeams: "Contraer equipos", expandSavedTeams: "Expandir equipos",
     saveCurrent: "Guardar actual", presetName: "Nombre del moveset", apply: "Aplicar", update: "Actualizar", remove: "Eliminar", active: "Activo",
     noSavedMoves: "No hay movesets guardados para este Pokémon.", noSavedTeams: "Este Pokémon no participa en ningún equipo guardado.",
@@ -67,7 +67,7 @@ const copies = {
     movesLoading: "正在加载招式...", movesError: "无法加载当前招式。", noMoves: "尚未配置招式。", retry: "重试",
     power: "Power", movePower: "PW", moveCooldown: "冷却", movePhysical: "Phys", moveSpecial: "Spec", moveStatus: "Status", hp: "HP", level: "Lv.", iv: "IV", rarityFact: "稀有度", gender: "性别", nature: "性格", source: "来源", activeTeam: "Team 中", inBackpack: "Backpack",
     configureMoves: "配置招式",
-    awakeningUnavailable: "不可用", awakeningMax: "已满", awakeningChallenge: "挑战", awakeningGodChallenge: "神级挑战", awakeningGod: "神级",
+    awakeningUnavailable: "不可用", awakeningMax: "已满", awakeningChallenge: "挑战", awakeningChallengeShort: "挑战", awakeningGodChallenge: "神级挑战", awakeningGodChallengeShort: "神级挑战", awakeningGod: "神级",
     collapseSavedMoves: "收起已保存招式组", expandSavedMoves: "展开已保存招式组", collapseSavedTeams: "收起队伍", expandSavedTeams: "展开队伍",
     saveCurrent: "保存当前", presetName: "招式组名称", apply: "应用", update: "更新", remove: "删除", active: "当前",
     noSavedMoves: "这只宝可梦没有已保存招式组。", noSavedTeams: "这只宝可梦不在任何已保存队伍中。",
@@ -101,6 +101,13 @@ export const nativeProgressSelectors = Object.freeze({
 export function awakeningPreviewState(response, creatureId) {
   const preview = response?.data || response;
   const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
+  const challengeState = (value, kind) => {
+    if (!object(value)) return null;
+    const kills = finite(value.kills), killsRequired = finite(value.kills_required);
+    return Number.isSafeInteger(kills) && kills >= 0 && Number.isSafeInteger(killsRequired) && killsRequired > 0
+      ? { kind, kills, killsRequired }
+      : { kind };
+  };
   if (!object(preview?.stage) || !String(preview.stage.tier || "").trim()) return null;
   if (preview.creature?.id != null && String(preview.creature.id) !== String(creatureId)) return null;
   // The native UI selects these mutually exclusive branches by presence. At the
@@ -110,7 +117,7 @@ export function awakeningPreviewState(response, creatureId) {
     return Number.isSafeInteger(index) && Number.isSafeInteger(total) && index > 0 && total >= index
       ? { kind:"awk", index, total } : null;
   }
-  if (preview.challenge) return object(preview.challenge) ? { kind:"challenge" } : null;
-  if (preview.god_tier) return object(preview.god_tier) ? { kind:"godChallenge" } : null;
+  if (preview.challenge) return challengeState(preview.challenge, "challenge");
+  if (preview.god_tier) return challengeState(preview.god_tier, "godChallenge");
   return { kind:preview.stage.tier === "god" ? "god" : "max" };
 }

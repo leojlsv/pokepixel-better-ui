@@ -34,8 +34,13 @@ Não há consulta adicional, polling ou estado persistido.
 - os meters nativos mantêm seus textos e barras; `min-width:0` nos filhos elimina a largura
   mínima intrínseca que fazia o conteúdo invadir a outra caixa; o texto pode refluir localmente;
 - o parser segue a mesma ordem do `GeneticAwakening.js`: `awk`, `challenge`, `god_tier`, terminal.
-  Somente `awk` fornece `index/total`. No teto Epic, `challenge` é um estado válido e mostra
-  `Awakening Challenge`; não se infere um `5/5`. Sem próximo ramo, a leitura é `MAX` ou `God Tier`;
+  `awk` fornece `index/total`; `challenge` e `god_tier` preservam o progresso nativo
+  `kills/kills_required` quando disponível. No teto Epic, `challenge` é um estado válido; quando o
+  contador existe, o card usa o rótulo visual compacto `Ch.` / `God Ch.` e mantém o nome completo em
+  `title`/nome acessível. Metas redondas usam sufixo compacto (`8k`, `1M`) somente na leitura visual; o
+  valor exato continua no `title`/nome acessível. Sem contador, conserva o texto completo. Não se infere
+  um `5/5`. Sem próximo ramo, a leitura
+  é `MAX` ou `God Tier`;
 - carregamento (`…`), falha de leitura (`Indisponível` no PT) e estados válidos têm apresentação
   distinta. O label permanece estável em uma região de status; apenas seu valor é atualizado;
 - `state.resynced` agora invalida e reidrata summaries abertos; as proteções de geração/cache e

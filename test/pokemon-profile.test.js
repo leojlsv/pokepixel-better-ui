@@ -152,7 +152,7 @@ test("transient Species failures are evicted so a later Profile Refresh can reco
   assert.match(visual().querySelector("img").src,/\/img\/rhydon\.png$/);
 });
 
-function installNativeCardRenderer(s, { labels = {}, nativeNote = false, awakeningAction = true } = {}) {
+function installNativeCardRenderer(s, { labels = {}, nativeNote = false, genetics = false, awakeningAction = true } = {}) {
   const { doc } = s, pokemonCard = s.dom.window.PokeIdle.PokemonCard || {};
   let calls = 0;
   const actionClicks = new Map();
@@ -194,7 +194,8 @@ function installNativeCardRenderer(s, { labels = {}, nativeNote = false, awakeni
     );
     if(nativeNote){const note=doc.createElement("small");note.className="pokemon-card__note is-mastery";note.textContent="MASTERY +10%";cells.append(note);}
     const battle = doc.createElement("section"); battle.className = "pokemon-card__section"; const battleTitle=doc.createElement("h4");battleTitle.className="pokemon-card__title";battleTitle.textContent=copy.battle;battle.append(battleTitle);
-    container.append(header,badges,meters,cells,battle);
+    const geneticsSection=doc.createElement("section");geneticsSection.className="pokemon-card__section";const geneticsTitle=doc.createElement("h4");geneticsTitle.className="pokemon-card__title";geneticsTitle.textContent="GENETICS";geneticsSection.append(geneticsTitle);
+    container.append(header,badges,meters,cells,battle);if(genetics)container.append(geneticsSection);
     if (options.actions?.length) {
       const actions=doc.createElement("div");actions.className="pokemon-card__actions";
       const definitions=[["EQUIP",""],["LOCK",""],["CHAT",""]];if(awakeningAction)definitions.push(["AWK","is-awakening"]);
@@ -647,17 +648,17 @@ test("Epic at its rarity ceiling displays the native Challenge branch instead of
   const s=setup(t);s.dom.window.PokeIdle.Localization.get=()=>"en-US";installNativeCardRenderer(s);
   const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
   const creature={...s.inventory.find(entry=>entry.id==="bag-1"),quality:"epic",quality_multiplier:1.54,hp:6449,max_hp:8876};
-  let preview={creature:{id:creature.id},stage:{tier:"epic",quality_cents:154,min_cents:140,max_cents:154,gain_cents:3},challenge:{from_tier:"epic",to_tier:"legendary",active:false}};
+  let preview={creature:{id:creature.id},stage:{tier:"epic",quality_cents:154,min_cents:140,max_cents:154,gain_cents:3},challenge:{from_tier:"epic",to_tier:"legendary",active:true,kills:1744,kills_required:8000}};
   s.dom.window.PokeIdle.Api.getAwakeningPreview=async()=>preview;
   s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
   assert.equal(card.querySelector("[data-ppbui-profile-native-rarity]").textContent,"Epic x1.54/1.54");
   assert.equal(card.querySelector("[data-ppbui-profile-native-rarity-track] > i").style.width,"100%");
   const line=card.querySelector("[data-ppbui-profile-native-awakening]");
-  assert.equal(line.textContent,"Awakening Challenge");assert.equal(line.getAttribute("aria-busy"),"false");
+  assert.equal(line.textContent,"Awakening Ch. 1,744/8k");assert.equal(line.title,"Awakening Challenge 1,744/8,000");assert.equal(line.getAttribute("aria-label"),"Awakening Challenge 1,744/8,000");assert.equal(line.getAttribute("aria-busy"),"false");
   assert.equal(card.querySelector("[data-ppbui-profile-native-rarity-awakening]").style.getPropertyValue("--ppbui-summary-quality"),"var(--quality-epic,var(--ppbui-text,#eef1df))");
-  preview={creature:{id:creature.id},stage:{tier:"mythical",quality_cents:250},god_tier:{kills_required:100}};
+  preview={creature:{id:creature.id},stage:{tier:"mythical",quality_cents:250},god_tier:{kills:25,kills_required:100}};
   s.dom.window.PokeIdle.Bus.emit("state.resynced",{});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
-  assert.equal(line.textContent,"Awakening God Tier Challenge","a final challenge is distinct from already being God Tier");
+  assert.equal(line.textContent,"Awakening God Ch. 25/100","the visible final challenge label stays compact when the counter already conveys progress");assert.equal(line.title,"Awakening God Tier Challenge 25/100");
   preview={creature:{id:creature.id},stage:{tier:"god",quality_cents:300}};
   s.dom.window.PokeIdle.Bus.emit("creature.updated",{creature_id:creature.id});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
   assert.equal(line.textContent,"Awakening God Tier");
@@ -782,9 +783,33 @@ test("native transient hover is augmented in place without inventing an interact
   assert.equal(hover.querySelector(".pokemon-tooltip__badge.is-locked").hidden,true,"read-only hover removes the redundant protected icon beside IV");
   const ivBadge=hover.querySelector("[data-ppbui-profile-native-iv]");assert.equal(ivBadge.textContent,"IV 170/186");assert.equal(ivBadge.previousElementSibling,hover.querySelector(".pokemon-tooltip__badge.is-quality"),"hover keeps IV directly beside rarity after status icons are removed");
   assert.equal(hover.querySelector("[data-ppbui-profile-native-profile]"),null,"transient native hover stays read-only because the game hides it on pointerleave");
-  assert.equal(hover.querySelector("[data-ppbui-profile-native-progress]"),null,"hover keeps the native single meters box and does not add the actionable summary");
-  assert.deepEqual(s.awakeningCalls,[],"hover never requests Awakening preview data");
+  const progress=hover.querySelector("[data-ppbui-profile-native-progress]"),summary=progress?.querySelector("[data-ppbui-profile-native-rarity-awakening]");
+  assert.ok(progress,"hover exposes the same passive progress summary as the pinned card");
+  assert.ok(summary,"hover includes the Rarity/Awakening information instead of requiring right click");
+  assert.match(summary.querySelector("[data-ppbui-profile-native-rarity]").textContent,/^Rare x/);
+  const awakening=summary.querySelector("[data-ppbui-profile-native-awakening]");assert.equal(awakening.textContent,"Awakening 3/5");assert.equal(awakening.hasAttribute("aria-live"),false,"transient hover does not create a repeated live-region announcement");
+  assert.deepEqual(s.awakeningCalls,["bag-1"],"hover may read the authoritative Awakening preview while remaining non-interactive");
   assert.equal(s.doc.querySelector("[data-ppbui-profile-hover]"),null);
+});
+
+test("native PokémonCard prioritizes Battle Stats and Genetics before Element Mastery and Current Moves", async t => {
+  const s=setup(t);installNativeCardRenderer(s,{nativeNote:true,genetics:true});const creature=s.inventory.find(entry=>entry.id==="bag-1");
+  for(const mode of ["pokemon-card--pinned","pokemon-card--hover"]){
+    const card=s.doc.createElement("aside");card.className=`pokemon-card ${mode}`;s.doc.body.append(card);
+    s.dom.window.PokeIdle.PokemonCard.render(card,creature,mode.endsWith("pinned")?{actions:[1,2,3]}:{});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+    const children=[...card.children],section=label=>[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent===label);
+    const battle=section("BATTLE STATS"),genetics=section("GENETICS"),mastery=card.querySelector(".pokemon-card__note.is-mastery")?.closest(".pokemon-card__cells"),moves=card.querySelector("[data-ppbui-profile-native-moves]");
+    assert.ok(children.indexOf(battle)<children.indexOf(genetics));
+    assert.ok(children.indexOf(genetics)<children.indexOf(mastery),`${mode} places Element Mastery after Genetics`);
+    assert.ok(children.indexOf(mastery)<children.indexOf(moves),`${mode} keeps Current Moves after Element Mastery`);
+  }
+  s.mounted.cleanup();
+  for(const card of s.doc.querySelectorAll(".pokemon-card")){
+    const children=[...card.children],battle=[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent==="BATTLE STATS"),genetics=[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent==="GENETICS"),highlights=card.querySelector(".pokemon-card__cells");
+    assert.ok(children.indexOf(highlights)<children.indexOf(battle),"cleanup restores the native highlight position");
+    assert.ok(children.indexOf(battle)<children.indexOf(genetics));
+    assert.equal(card.querySelector("[data-ppbui-profile-native-moves]"),null);
+  }
 });
 
 test("Profile close and Escape restore contextual focus, with the dedicated launcher as disconnected-origin fallback", async t => {

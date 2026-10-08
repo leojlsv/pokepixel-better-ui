@@ -4,6 +4,15 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **PokémonCard — paridade do hover, Awakening compacto e hierarquia intrínseca, 0.2.188 (2026-10-08):**
+  o hover passa a exibir o mesmo resumo passivo de Rarity/Awakening do card fixado sem ganhar
+  ações interativas; Challenge/God Tier Challenge usam o progresso nativo de derrotas e, quando há
+  contador, mostram rótulos compactos (`Ch.` / `God Ch.`) e metas redondas abreviadas (`8k`, `1M`),
+  preservando os valores completos em `title`/nome acessível. A ordem informacional do card passa a
+  priorizar **Battle Stats → Genetics → Element Mastery → Current Moves**, movendo apenas nós nativos
+  com restauração determinística no rerender/cleanup. **Validado e aprovado in-game pelo Product
+  Owner em 2026-10-08**, com autorização explícita para commit, push, merge e release.
+
 - **Card Mode / Loot Story — agregado persistente por sessão, candidato 0.2.178 (2026-10-05):**
   os ícones de loot deixam de depender apenas da janela pública de 32 registros do
   Hunt Analyzer. O Card Mode mantém as quantidades agregadas durante toda a Hunt ou
