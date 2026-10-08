@@ -152,7 +152,7 @@ test("transient Species failures are evicted so a later Profile Refresh can reco
   assert.match(visual().querySelector("img").src,/\/img\/rhydon\.png$/);
 });
 
-function installNativeCardRenderer(s, { labels = {}, nativeNote = false, genetics = false, awakeningAction = true } = {}) {
+function installNativeCardRenderer(s, { labels = {}, nativeNote = false, genetics = false, sharedStones = false, awakeningAction = true } = {}) {
   const { doc } = s, pokemonCard = s.dom.window.PokeIdle.PokemonCard || {};
   let calls = 0;
   const actionClicks = new Map();
@@ -163,6 +163,8 @@ function installNativeCardRenderer(s, { labels = {}, nativeNote = false, genetic
     iv:"TOTAL IV",
     rarity:"RARITY",
     battle:"BATTLE STATS",
+    genetics:"GENETICS",
+    sharedStones:"SHARED STONES",
     ...labels,
   };
   const originalRender = (container, creature, options = {}) => {
@@ -193,9 +195,10 @@ function installNativeCardRenderer(s, { labels = {}, nativeNote = false, genetic
       cell(copy.rarity, `×${qualityMultiplier.toFixed(2)} / ×${qualityBand?.max?.toFixed(2)||"—"}`, "is-rarity"),
     );
     if(nativeNote){const note=doc.createElement("small");note.className="pokemon-card__note is-mastery";note.textContent="MASTERY +10%";cells.append(note);}
-    const battle = doc.createElement("section"); battle.className = "pokemon-card__section"; const battleTitle=doc.createElement("h4");battleTitle.className="pokemon-card__title";battleTitle.textContent=copy.battle;battle.append(battleTitle);
-    const geneticsSection=doc.createElement("section");geneticsSection.className="pokemon-card__section";const geneticsTitle=doc.createElement("h4");geneticsTitle.className="pokemon-card__title";geneticsTitle.textContent="GENETICS";geneticsSection.append(geneticsTitle);
-    container.append(header,badges,meters,cells,battle);if(genetics)container.append(geneticsSection);
+    const battle = doc.createElement("div"); battle.className = "pokemon-card__section"; const battleTitle=doc.createElement("h4");battleTitle.className="pokemon-card__title";battleTitle.textContent=copy.battle;const battleRows=doc.createElement("div");battleRows.className="pokemon-card__rows";battle.append(battleTitle,battleRows);
+    const geneticsSection=doc.createElement("div");geneticsSection.className="pokemon-card__section";const geneticsTitle=doc.createElement("h4");geneticsTitle.className="pokemon-card__title";geneticsTitle.textContent=copy.genetics;const geneticsFacts=doc.createElement("div");geneticsFacts.className="pokemon-card__facts";geneticsSection.append(geneticsTitle,geneticsFacts);
+    const sharedStonesSection=doc.createElement("div");sharedStonesSection.className="pokemon-card__section pokemon-card__shared-stones";const sharedStonesTitle=doc.createElement("h4");sharedStonesTitle.className="pokemon-card__title pokemon-card__shared-stones-title";sharedStonesTitle.textContent=copy.sharedStones;const sharedStonesFacts=doc.createElement("div");sharedStonesFacts.className="pokemon-card__facts";sharedStonesSection.append(sharedStonesTitle,sharedStonesFacts);
+    container.append(header,badges,meters,cells,battle);if(genetics)container.append(geneticsSection);if(sharedStones)container.append(sharedStonesSection);
     if (options.actions?.length) {
       const actions=doc.createElement("div");actions.className="pokemon-card__actions";
       const definitions=[["EQUIP",""],["LOCK",""],["CHAT",""]];if(awakeningAction)definitions.push(["AWK","is-awakening"]);
@@ -211,6 +214,7 @@ function installNativeCardRenderer(s, { labels = {}, nativeNote = false, genetic
     : key === "pokemon_card.iv_total" ? copy.iv
     : key === "pokemon_card.rarity" ? copy.rarity
     : key === "creature_details.battle_stats" ? copy.battle
+    : key === "creature_details.genetics" ? copy.genetics
     : previousT(key);
   s.mounted.sync();
   return { originalRender, calls: () => calls, actionClicks, renderSnapshots };
@@ -793,23 +797,42 @@ test("native transient hover is augmented in place without inventing an interact
 });
 
 test("native PokémonCard prioritizes Battle Stats and Genetics before Element Mastery and Current Moves", async t => {
-  const s=setup(t);installNativeCardRenderer(s,{nativeNote:true,genetics:true});const creature=s.inventory.find(entry=>entry.id==="bag-1");
+  const s=setup(t);installNativeCardRenderer(s,{nativeNote:true,genetics:true,sharedStones:true,labels:{battle:"Atributos de batalha",genetics:"Genética",sharedStones:"Pedras compartilhadas"}});const creature=s.inventory.find(entry=>entry.id==="bag-1");
+  const rendererT=s.dom.window.PokeIdle.t;s.dom.window.PokeIdle.t=key=>key==="creature_details.battle_stats"||key==="creature_details.genetics"?key:rendererT(key);
+  const assertIntrinsicOrder=(card,message)=>{
+    const children=[...card.children],section=label=>[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent===label);
+    const battle=section("Atributos de batalha"),genetics=section("Genética"),mastery=card.querySelector(".pokemon-card__note.is-mastery")?.closest(".pokemon-card__cells"),moves=card.querySelector("[data-ppbui-profile-native-moves]"),shared=section("Pedras compartilhadas");
+    assert.ok(children.indexOf(battle)<children.indexOf(genetics),`${message} keeps Battle Stats before Genetics`);
+    assert.ok(children.indexOf(genetics)<children.indexOf(mastery),`${message} places Element Mastery after Genetics without title-translation matching`);
+    assert.ok(children.indexOf(mastery)<children.indexOf(moves),`${message} keeps Current Moves after Element Mastery`);
+    assert.ok(children.indexOf(moves)<children.indexOf(shared),`${message} keeps lower-priority Shared Stones after the intrinsic information group`);
+  };
   for(const mode of ["pokemon-card--pinned","pokemon-card--hover"]){
     const card=s.doc.createElement("aside");card.className=`pokemon-card ${mode}`;s.doc.body.append(card);
     s.dom.window.PokeIdle.PokemonCard.render(card,creature,mode.endsWith("pinned")?{actions:[1,2,3]}:{});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
-    const children=[...card.children],section=label=>[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent===label);
-    const battle=section("BATTLE STATS"),genetics=section("GENETICS"),mastery=card.querySelector(".pokemon-card__note.is-mastery")?.closest(".pokemon-card__cells"),moves=card.querySelector("[data-ppbui-profile-native-moves]");
-    assert.ok(children.indexOf(battle)<children.indexOf(genetics));
-    assert.ok(children.indexOf(genetics)<children.indexOf(mastery),`${mode} places Element Mastery after Genetics`);
-    assert.ok(children.indexOf(mastery)<children.indexOf(moves),`${mode} keeps Current Moves after Element Mastery`);
+    assertIntrinsicOrder(card,`${mode} initial render`);
+    s.dom.window.PokeIdle.PokemonCard.render(card,creature,mode.endsWith("pinned")?{actions:[1,2,3]}:{});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+    assertIntrinsicOrder(card,`${mode} repaint`);
   }
   s.mounted.cleanup();
   for(const card of s.doc.querySelectorAll(".pokemon-card")){
-    const children=[...card.children],battle=[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent==="BATTLE STATS"),genetics=[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent==="GENETICS"),highlights=card.querySelector(".pokemon-card__cells");
+    const children=[...card.children],battle=[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent==="Atributos de batalha"),genetics=[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent==="Genética"),highlights=card.querySelector(".pokemon-card__cells");
     assert.ok(children.indexOf(highlights)<children.indexOf(battle),"cleanup restores the native highlight position");
     assert.ok(children.indexOf(battle)<children.indexOf(genetics));
     assert.equal(card.querySelector("[data-ppbui-profile-native-moves]"),null);
   }
+});
+
+test("native PokémonCard structural ordering does not mistake Shared Stones for Genetics", async t => {
+  const s=setup(t);installNativeCardRenderer(s,{nativeNote:true,genetics:false,sharedStones:true,labels:{battle:"Atributos de batalha",sharedStones:"Pedras compartilhadas"}});const creature=s.inventory.find(entry=>entry.id==="bag-1");
+  s.dom.window.PokeIdle.t=key=>key;
+  const card=s.doc.createElement("aside");card.className="pokemon-card pokemon-card--pinned";s.doc.body.append(card);
+  s.dom.window.PokeIdle.PokemonCard.render(card,creature,{actions:[1,2,3]});await new Promise(resolve=>s.dom.window.setTimeout(resolve,20));
+  const children=[...card.children],section=label=>[...card.querySelectorAll(".pokemon-card__section")].find(node=>node.querySelector(":scope > .pokemon-card__title")?.textContent===label);
+  const battle=section("Atributos de batalha"),mastery=card.querySelector(".pokemon-card__note.is-mastery")?.closest(".pokemon-card__cells"),moves=card.querySelector("[data-ppbui-profile-native-moves]"),shared=section("Pedras compartilhadas");
+  assert.ok(children.indexOf(battle)<children.indexOf(mastery));
+  assert.ok(children.indexOf(mastery)<children.indexOf(moves));
+  assert.ok(children.indexOf(moves)<children.indexOf(shared),"Shared Stones facts are excluded from Genetics structural detection");
 });
 
 test("Profile close and Escape restore contextual focus, with the dedicated launcher as disconnected-origin fallback", async t => {

@@ -1210,8 +1210,13 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   }
 
   function orderNativeSecondarySections(container) {
-    const primary = nativeCardSectionByTitle(container, "creature_details.genetics", "GENETICS")
+    const sections = [...container.querySelectorAll(".pokemon-card__section")];
+    const battle = sections.find(section => section.querySelector(":scope > .pokemon-card__rows"))
       || nativeCardSectionByTitle(container, "creature_details.battle_stats", "BATTLE STATS");
+    const genetics = sections.find(section => !section.classList.contains("pokemon-card__shared-stones")
+      && section.querySelector(":scope > .pokemon-card__facts"))
+      || nativeCardSectionByTitle(container, "creature_details.genetics", "GENETICS");
+    const primary = genetics || battle;
     if (!primary) return;
     let cursor = primary;
     const mastery = container.querySelector(".pokemon-card__note.is-mastery")?.closest(".pokemon-card__cells");

@@ -4,6 +4,13 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **PokémonCard — ordem estrutural de Stats/Genetics, corretivo 0.2.189 (2026-10-08):**
+  corrige a v0.2.188 quando o texto dos títulos já renderizados e o retorno atual de localização
+  (`PokeIdle.t`) não coincidem exatamente. Battle Stats e Genetics passam a ser identificados pela
+  estrutura nativa (`.pokemon-card__rows` / `.pokemon-card__facts`, excluindo Shared Stones), com
+  texto apenas como fallback. Isso preserva a ordem aprovada **Battle Stats → Genetics → Element
+  Mastery → Current Moves** em hover e pinned, sem depender de idioma ou sincronismo de locale.
+
 - **PokémonCard — paridade do hover, Awakening compacto e hierarquia intrínseca, 0.2.188 (2026-10-08):**
   o hover passa a exibir o mesmo resumo passivo de Rarity/Awakening do card fixado sem ganhar
   ações interativas; Challenge/God Tier Challenge usam o progresso nativo de derrotas e, quando há
