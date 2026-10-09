@@ -28,6 +28,7 @@ export function mountShop(root) {
   const hadBuyViewMarker = root.hasAttribute("data-ppbui-shop-buy-view"), originalBuyViewMarker = root.getAttribute("data-ppbui-shop-buy-view");
   const quantityDeltas = [100, 500, 1000];
   const quantityStepsSelector = "[data-ppbui-shop-quantity-steps]";
+  const quantityStepGroups = new Set();
   ownClass(root, "ppbui-window", "ppbui-root", "ppbui-scroll-scope", "ppbui-marks-shop");
   ownClass(root.querySelector(":scope > .pokeidle-panel__titlebar"), "ppbui-titlebar");
   ownClass(root.querySelector(":scope > .pokeidle-panel__body"), "ppbui-shop-body");
@@ -56,9 +57,11 @@ export function mountShop(root) {
     content(searchCopy, label);
   }
   function removeQuantitySteps() {
-    root.querySelectorAll(quantityStepsSelector).forEach(node => node.remove());
+    for (const node of quantityStepGroups) node.remove();
+    quantityStepGroups.clear();
   }
   function syncQuantitySteps(npc, text) {
+    for (const node of quantityStepGroups) if (!node.isConnected || !root.contains(node)) quantityStepGroups.delete(node);
     if (npc?.shopTab !== "buy") { removeQuantitySteps(); return; }
     for (const purchase of root.querySelectorAll(config.selectors.customPurchase)) {
       const input = purchase.querySelector(config.selectors.buyQuantity);
@@ -77,6 +80,7 @@ export function mountShop(root) {
         }
         purchase.append(steps);
       }
+      quantityStepGroups.add(steps);
       const label = text.addQuantity || "Add to quantity";
       if (steps.getAttribute("aria-label") !== label) steps.setAttribute("aria-label", label);
       for (const button of steps.querySelectorAll("[data-ppbui-shop-quantity-step]")) {
@@ -102,6 +106,38 @@ export function mountShop(root) {
     input.value = String(next);
     input.dispatchEvent(new doc.defaultView.Event("input", { bubbles: true }));
   }
+  function decoratePokemonRecord(record) {
+    ownClass(record.row, "ppbui-card");
+    ownClass(record.row.querySelector(config.selectors.rarity), "ppbui-quality-badge");
+  }
+  function syncTabPresentation(tab, p) {
+    if (tab === "buy") {
+      for (const node of root.querySelectorAll(".npc-shop__list")) ownClass(node, "ppbui-scroll");
+      for (const node of root.querySelectorAll(".npc-shop__buy-card")) ownClass(node, "ppbui-card");
+      for (const node of root.querySelectorAll(".npc-shop__category,.npc-shop__purchase-button")) ownClass(node, "ppbui-button", "ppbui-button--compact");
+      for (const node of root.querySelectorAll(".npc-shop__custom-button")) ownClass(node, "ppbui-button", "ppbui-button--primary");
+      for (const node of root.querySelectorAll(".npc-shop__custom-purchase input")) ownClass(node, "ppbui-input");
+      for (const node of root.querySelectorAll(".npc-shop__item-category")) ownClass(node, "ppbui-badge");
+    } else if (tab === "sell") {
+      for (const node of root.querySelectorAll(".npc-shop__list")) ownClass(node, "ppbui-scroll");
+      for (const node of root.querySelectorAll(".npc-shop__sell-row")) ownClass(node, "ppbui-card");
+      for (const node of root.querySelectorAll(".npc-shop__sell-button")) ownClass(node, "ppbui-button", "ppbui-button--danger", "ppbui-button--action");
+      for (const node of root.querySelectorAll(".npc-shop__sell-quantity input")) ownClass(node, "ppbui-input");
+    } else if (tab === "pokemon") {
+      ownClass(p.list, "ppbui-scroll");
+      if (!(grouped && list === p.list && records.length)) {
+        for (const node of root.querySelectorAll(".npc-shop__pokemon-row")) ownClass(node, "ppbui-card");
+        for (const node of root.querySelectorAll(".npc-shop__rarity")) ownClass(node, "ppbui-quality-badge");
+      }
+      for (const node of root.querySelectorAll(".npc-shop__quality")) ownClass(node, "ppbui-button", "ppbui-button--compact");
+      for (const node of root.querySelectorAll(".npc-shop__sell-button")) ownClass(node, "ppbui-button", "ppbui-button--danger", "ppbui-button--action");
+    } else if (tab === "buyback") {
+      for (const node of root.querySelectorAll(".npc-shop__list")) ownClass(node, "ppbui-scroll");
+      for (const node of root.querySelectorAll(".npc-shop__buyback-row")) ownClass(node, "ppbui-card");
+      for (const node of root.querySelectorAll(".npc-shop__buyback-button")) ownClass(node, "ppbui-button", "ppbui-button--primary");
+    }
+    for (const node of root.querySelectorAll(".npc-shop__close")) ownClass(node, "ppbui-button", "ppbui-button--ghost");
+  }
   function restoreGroups() {
     const ownedGroups = new Set(groups.map(group => group.node));
     for (const [row, anchor] of anchors) {
@@ -112,8 +148,7 @@ export function mountShop(root) {
     for (const group of groups) group.node.remove();
     anchors = []; groups = []; records = []; list = null;
   }
-  function selectionContext(npc = shopRuntime(root)) {
-    const currentParts = parts(root);
+  function selectionContext(npc = shopRuntime(root), currentParts = parts(root)) {
     const current = visibleCreatures(npc, doc);
     if (!active || !npc || npc.shopTab !== "pokemon" || !current || currentParts.list !== list || (npc.selectedCreatures?.size > 0 && currentParts.sell?.disabled)) return null;
     return { currentById: new Map(current.map(c => [c.id, c])) };
@@ -121,12 +156,13 @@ export function mountShop(root) {
   function validSelection(group, context = selectionContext()) {
     if (!context) return false;
     const { currentById } = context;
-    return group.records.every(r => currentById.get(r.creature.id) === r.creature && r.row.isConnected && list.contains(r.row) && checkboxOf(r.row) === r.checkbox && !r.checkbox.disabled);
+    return group.records.every(r => currentById.get(r.creature.id) === r.creature && r.row.isConnected && list.contains(r.row) && r.checkbox.isConnected && r.row.contains(r.checkbox) && !r.checkbox.disabled);
   }
   function buildGroups(npc, target) {
     const found = identifyRows(target, npc);
     if (!found) return false;
     list = target; records = found;
+    for (const record of records) decoratePokemonRecord(record);
     for (const r of records) { const anchor = doc.createComment("ppbui-shop-row"); r.row.before(anchor); anchors.push([r.row, anchor]); }
     groups = groupRecords(records, npc).map((group, index) => {
       const node = make("section", "ppbui-shop-group ppbui-card"), header = make("div", "ppbui-shop-group-header"), facts = make("div", "ppbui-shop-group-facts");
@@ -153,14 +189,14 @@ export function mountShop(root) {
     });
     return true;
   }
-  function syncGroups(npc, text) {
+  function syncGroups(npc, text, currentParts) {
     const rawLocale = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "en";
     const locale = String(rawLocale || "en").replace(/_/g, "-");
     const format = value => {
       try { return Number(value).toLocaleString(locale); }
       catch { return Number(value).toLocaleString("en"); }
     };
-    const context = selectionContext(npc);
+    const context = selectionContext(npc, currentParts);
     for (const group of groups) {
       const selected = group.records.filter(r => r.checkbox.checked).length;
       group.checkbox.checked = selected === group.records.length;
@@ -191,15 +227,7 @@ export function mountShop(root) {
     ownClass(p.body, "ppbui-shop-body"); ownClass(p.search, "ppbui-input"); ownClass(p.content, "ppbui-shop-content");
     syncSearchLabel(p.search);
     for (const node of p.tabs) ownClass(node, "ppbui-button", "ppbui-shop-tab");
-    for (const node of root.querySelectorAll(".npc-shop__list")) ownClass(node, "ppbui-scroll");
-    for (const node of root.querySelectorAll(".npc-shop__buy-card,.npc-shop__sell-row,.npc-shop__pokemon-row,.npc-shop__buyback-row")) ownClass(node, "ppbui-card");
-    for (const node of root.querySelectorAll(".npc-shop__category,.npc-shop__quality,.npc-shop__purchase-button")) ownClass(node, "ppbui-button", "ppbui-button--compact");
-    for (const node of root.querySelectorAll(".npc-shop__custom-button,.npc-shop__buyback-button")) ownClass(node, "ppbui-button", "ppbui-button--primary");
-    for (const node of root.querySelectorAll(".npc-shop__sell-button")) ownClass(node, "ppbui-button", "ppbui-button--danger", "ppbui-button--action");
-    for (const node of root.querySelectorAll(".npc-shop__close")) ownClass(node, "ppbui-button", "ppbui-button--ghost");
-    for (const node of root.querySelectorAll(".npc-shop__custom-purchase input,.npc-shop__sell-quantity input")) ownClass(node, "ppbui-input");
-    for (const node of root.querySelectorAll(".npc-shop__item-category")) ownClass(node, "ppbui-badge");
-    for (const node of root.querySelectorAll(".npc-shop__rarity")) ownClass(node, "ppbui-quality-badge");
+    syncTabPresentation(tab, p);
     syncQuantitySteps(npc, text);
     const applicable = npc?.shopTab === "buy" || npc?.shopTab === "pokemon";
     if (root.dataset.ppbuiShopBuyView !== buyView) root.dataset.ppbuiShopBuyView = buyView;
@@ -226,12 +254,12 @@ export function mountShop(root) {
       if (button.getAttribute("aria-pressed") !== String(pressed)) button.setAttribute("aria-pressed", String(pressed));
       if (button.classList.contains("is-active") !== pressed) button.classList.toggle("is-active", pressed);
     });
-    if (list && (list !== p.list || !grouped || records.length !== rowsIn(list).length || records.some(r => !list.contains(r.row) || checkboxOf(r.row) !== r.checkbox) || groups.some(g => !list.contains(g.node)))) restoreGroups();
+    if (list && (list !== p.list || !grouped || records.length !== rowsIn(list).length || records.some(r => !r.row.isConnected || !list.contains(r.row) || !r.checkbox.isConnected || !r.row.contains(r.checkbox)) || groups.some(g => !g.node.isConnected || !list.contains(g.node)))) restoreGroups();
     if (summary && (summary.parentElement !== p.footer || summary.nextElementSibling !== p.sell)) { summary.remove(); summary = null; }
     if (npc?.shopTab === "pokemon" && p.footer) {
       if (!summary) { summary = make("p", "ppbui-shop-selection"); summary.setAttribute("role", "status"); p.footer.insertBefore(summary, p.sell); }
       if (grouped && p.list && !list && !buildGroups(npc, p.list)) content(summary, text.unavailable);
-      else if (list) syncGroups(npc, text);
+      else if (list) syncGroups(npc, text, p);
       else {
         const count = selectionCounts(npc, rowsIn(p.list).map(row => ({ checkbox: checkboxOf(row) })));
         content(summary, `${count.total} ${text.selected} · ${count.hidden} ${text.hidden}`);

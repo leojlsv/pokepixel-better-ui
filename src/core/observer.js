@@ -21,6 +21,8 @@ const CHAT_ROOT_SELECTOR = ".pokeidle-persistent-chat";
 const CHAT_MOUNT_SENTINEL = ".pokeidle-persistent-chat__tabs";
 const PLATFORM_HUNT_ROOT_SELECTOR = ".platform-hunt";
 const PLATFORM_SHARED_SELECTOR = ".pokeidle-buff-strip";
+const BUFF_STRIP_MOUNT_SENTINEL = ".pokeidle-buff-list,.pokeidle-event-ticker";
+const NATIVE_POKEMON_CARD_SELECTOR = ".pokemon-card--hover,.pokemon-card--pinned,.pokemon-card--sheet";
 
 function isPresentationOnlyNode(node) {
   const element = node?.nodeType === 1 ? node : node?.parentElement;
@@ -40,6 +42,11 @@ function isPlatformHuntInternalTarget(node) {
 function isTeamHudAuxiliaryInternalTarget(node) {
   const element = elementFor(node);
   return Boolean(element?.closest?.(TEAM_HUD_AUXILIARY_SELECTOR));
+}
+
+function isNativePokemonCardInternalTarget(node) {
+  const element = elementFor(node);
+  return Boolean(element?.closest?.(NATIVE_POKEMON_CARD_SELECTOR));
 }
 
 function touchesPlatformSharedSurface(record) {
@@ -71,8 +78,24 @@ function changesChatMountSentinel(record) {
   });
 }
 
+function changesBuffStripMountSentinel(record) {
+  if (record?.type !== "childList") return false;
+  const changed = [...(record.addedNodes || []), ...(record.removedNodes || [])];
+  return changed.some(node => {
+    const element = elementFor(node);
+    return Boolean(element?.matches?.(BUFF_STRIP_MOUNT_SENTINEL) || element?.querySelector?.(BUFF_STRIP_MOUNT_SENTINEL));
+  });
+}
+
 function localMutationScope(record) {
   const target = elementFor(record?.target);
+  if (target?.closest?.(PLATFORM_SHARED_SELECTOR)) {
+    // Buff values/ticker pills can churn while gameplay is active. Keep their
+    // presentation updates local, but replacing the native list/ticker changes
+    // the Buff Strip mount contract and must re-run full lifecycle discovery.
+    if (changesBuffStripMountSentinel(record)) return null;
+    return "buff-strip";
+  }
   if (target?.closest?.(TEAM_HUD_ENHANCED_SELECTOR)) {
     // Replacing/removing the native list changes the module's mount contract and
     // must still pass through the full lifecycle. Mutations inside an already
@@ -93,6 +116,13 @@ function mutationScope(record) {
   if (!record?.type) return "global";
   // Wallet projections share the HUD scope: one native render often updates both.
   if (elementFor(record.target)?.closest?.(WALLET_PRESENTATION_SELECTOR)) return "team-hud";
+  // PokemonCard is a native renderer that Better UI decorates synchronously via
+  // PokeIdle.PokemonCard.render. Its internal repaint churn does not participate
+  // in module discovery, so waking every module for those mutations only adds a
+  // second document-wide pass. Root attach/detach still targets the parent and
+  // remains lifecycle-visible. Preserve any explicitly shared surface if one is
+  // ever hosted inside a card.
+  if (isNativePokemonCardInternalTarget(record.target) && !touchesPlatformSharedSurface(record)) return null;
   if (record.type === "attributes") {
     if (isTeamHudAuxiliaryInternalTarget(record.target)) return null;
     // Better UI owns no descendants inside the Platform Hunt renderer. That

@@ -4,6 +4,58 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Performance — hiccups residuais, candidato 0.2.192 (2026-10-09):**
+  após a aprovação live de Hunt Favorites, o Product Owner ainda percebeu hiccups no jogo.
+  A investigação separou custo contínuo de custos condicionais a janelas abertas e removeu
+  dois trabalhos desnecessários com evidência local. No Backpack padrão (`Original` + `Grid`),
+  reconciles estáveis deixam de reler/sortear/renderizar todos os slots quando grid, escopo e
+  layout não mudaram; a descoberta de novos nós também troca membership quadrático por `Set`.
+  No probe determinístico de 500 slots, a mediana do estado padrão caiu de ~10,5 ms para
+  ~2,6 ms. O Buff Strip continua com attach/detach e troca estrutural observáveis globalmente,
+  mas churn interno de pills/ticker agora usa `observer:buff-strip`, evitando acordar todos os
+  módulos em gameplay. Team HUD, Chat, PokémonCard e Platform Hunt mantêm os boundaries locais
+  já existentes. Hunt Favorites permanece funcional/visual e Product Owner-aprovado; este
+  candidato não reabre esse escopo. **O candidato exato `0.2.192` foi validado e aprovado
+  in-game pelo Product Owner em 2026-10-09.**
+
+- **Hunts — Favoritos de acesso direto, candidato 0.2.191 (2026-10-09):**
+  o seletor nativo atual de Hunts ganha uma lista compacta de **Favoritos** logo abaixo
+  de Filters, compartilhada por MAP e LIST. Na LIST, cada Hunt recebe um toggle `☆/★`
+  sem substituir `Hunt` ou `Details`; o favorito persiste a identidade estável
+  `região/mundo + zoneId`, nunca o índice transitório. Ativar um favorito na região atual
+  reacquire o índice da zona e delega ao `scene.startHunt()` nativo exatamente uma vez;
+  favoritos de outra região primeiro acionam o tab nativo correspondente e só iniciam
+  quando a região e o `zoneId` salvos existem no estado autoritativo. Região indisponível
+  ou zona ausente falham fechadas, sem reutilizar índice antigo. A preferência usa
+  `ppbui:hunts-favorites:v1`, sanitiza/deduplica registros e permanece utilizável apenas
+  em sessão quando `localStorage` está indisponível. A seção possui scroll local limitado
+  para não empurrar indefinidamente a superfície de resultados e cleanup remove somente
+  os nós Better UI-owned. Após o Product Owner validar a estrutura em jogo, o visual da
+  lista foi refinado sem alterar o DOM/fluxo: cada favorito usa uma superfície única com
+  acento selecionado discreto, nome mais forte, região em chip truncável, remoção integrada
+  e estado selecionado mais legível; larguras estreitas compactam metadata sem retirar o
+  nome acessível completo. Este candidato também incorpora as correções de performance
+  `0.2.190`, já aprovadas in-game pelo Product Owner. **Hunt Favorites foi validado e
+  aprovado in-game pelo Product Owner em 2026-10-09.** O relato posterior de hiccups no
+  jogo é tratado em uma investigação de performance separada, sem reabrir este escopo.
+
+- **Performance — observer, Mark’s Shop e Cards, candidato 0.2.190 (2026-10-09):**
+  mutações internas dos cards nativos hover/pinned/sheet deixam de acordar o
+  reconciliador global do Better UI. O lifecycle do root continua observável e a
+  integração do Pokémon Profile segue pelo wrapper nativo/Bus existente. Em fixture
+  determinística, 60 frames consecutivos de repaint caem de 60 reconciliations globais
+  para 0, sem alterar o conteúdo/ordem do PokémonCard aprovado em `0.2.189`.
+  O Mark’s Shop deixa de redescobrir checkboxes já capturadas, não varre controles de
+  abas inativas e reutiliza ownership estável das linhas agrupadas; no mesmo probe JSDOM
+  de 500 Pokémon, o reconcile estável cai de ~41 ms no `0.2.189` para ~7 ms de mediana.
+  Cards passa a reutilizar uma assinatura exata do Story já sanitizado e evita discovery
+  global do Team HUD quando não há runtime; o poll protocol-1 atual (32 specials) cai de
+  ~3,2 ms para ~1,5 ms, e a compatibilidade full-session com 5.000 specials cai de ~221 ms
+  para menos de ~10 ms de mediana, preservando todas as linhas e correções intermediárias.
+  Soak sintético pós-GC mantém contagem DOM estável e não mostra crescimento material de
+  heap em Mark’s Shop 500, Cards 32 ou Cards 5.000. **Validado e aprovado in-game pelo
+  Product Owner em 2026-10-09, sem nova ocorrência observada de FPS drop/frame freeze.**
+
 - **PokémonCard — ordem estrutural de Stats/Genetics, corretivo 0.2.189 (2026-10-08):**
   corrige a v0.2.188 quando o texto dos títulos já renderizados e o retorno atual de localização
   (`PokeIdle.t`) não coincidem exatamente. Battle Stats e Genetics passam a ser identificados pela

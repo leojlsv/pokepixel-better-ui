@@ -14,7 +14,8 @@ export const selectors = {
   legacyViewport: '.hunt-world-viewport', legacyStage: '.hunt-world-stage',
   listViewport: '.hunt-list-table-shell', listStage: '.hunt-list-table',
   marker: '.hunt-map-marker[data-zone-index]', label: '.hunt-map-marker__name',
-  listRow: '.hunt-list-row', listHunt: '.hunt-list-hunt-button', listDetails: '.hunt-list-details-button',
+  listRow: '.hunt-list-row', listActionCell: '.hunt-list-action-cell', listHunt: '.hunt-list-hunt-button', listDetails: '.hunt-list-details-button', listIdentityName: '.hunt-list-identity strong',
+  favoriteToggle: '[data-ppbui-hunt-favorite-toggle]', favoriteGo: '[data-ppbui-hunt-favorite-go]', favoriteRemove: '[data-ppbui-hunt-favorite-remove]', favoriteSection: '[data-ppbui-hunt-favorites]',
 };
 
 const activeHuntZoneByWindow = new WeakMap();
@@ -68,10 +69,16 @@ const weekendDescriptions = {
   es: 'Disponible los fines de semana',
   zh: '周末开放',
 };
+const favoriteTexts = {
+  pt: {favorites:'Favoritos',favoriteEmpty:'Nenhum favorito ainda.',favoriteAdd:'Adicionar aos favoritos',favoriteRemove:'Remover dos favoritos',favoriteGo:'Ir direto para a Hunt',favoriteUnavailable:'Hunt favorita indisponível.',favoriteOpening:'Abrindo Hunt favorita…'},
+  en: {favorites:'Favorites',favoriteEmpty:'No favorites yet.',favoriteAdd:'Add to favorites',favoriteRemove:'Remove from favorites',favoriteGo:'Go directly to Hunt',favoriteUnavailable:'Favorite Hunt unavailable.',favoriteOpening:'Opening favorite Hunt…'},
+  es: {favorites:'Favoritos',favoriteEmpty:'Aún no hay favoritos.',favoriteAdd:'Añadir a favoritos',favoriteRemove:'Quitar de favoritos',favoriteGo:'Ir directo a la Hunt',favoriteUnavailable:'Hunt favorita no disponible.',favoriteOpening:'Abriendo Hunt favorita…'},
+  zh: {favorites:'收藏',favoriteEmpty:'暂无收藏。',favoriteAdd:'添加到收藏',favoriteRemove:'从收藏移除',favoriteGo:'直接前往狩猎',favoriteUnavailable:'收藏的狩猎当前不可用。',favoriteOpening:'正在打开收藏的狩猎…'},
+};
 export function huntsText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || 'pt', language=lang.split(/[-_]/)[0];
   const [name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, weekend, filtersActive, minLevel, maxLevel] = texts[language] || texts.en;
-  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, weekend, weekendDescription:weekendDescriptions[language]||weekendDescriptions.en, filtersActive, minLevel, maxLevel};
+  return {name, description, results, locate, reset, empty, choose, located, unavailable, filters, target, weekend, weekendDescription:weekendDescriptions[language]||weekendDescriptions.en, filtersActive, minLevel, maxLevel,...(favoriteTexts[language]||favoriteTexts.en)};
 }
 export const findHunts = () => document.querySelector(selectors.root);
 export function parts(root) {
@@ -163,4 +170,13 @@ export function zoneNode(root,index) {
   const details=[...root.querySelectorAll(selectors.listDetails)]
     .find(node=>node.getAttribute('aria-controls')===`hunt-list-details-${index}`);
   return details?.closest(selectors.listRow)||null;
+}
+
+export function listRowZoneIndex(row) {
+  if(!row)return -1;
+  const direct=Number(row.dataset?.zoneIndex);
+  if(Number.isInteger(direct)&&direct>=0)return direct;
+  const details=row.querySelector?.(selectors.listDetails),controls=details?.getAttribute?.('aria-controls')||'';
+  const match=controls.match(/hunt-list-details-(\d+)$/);
+  return match?Number(match[1]):-1;
 }

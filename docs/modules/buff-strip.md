@@ -10,10 +10,10 @@ Better UI moves the existing strip node next to the current toolbar under the to
 
 ## Lifecycle
 
-The module tracks the current toolbar and buff-strip nodes as its mount key. Toolbar or strip replacement causes normal central lifecycle remounting. Resize and `visualViewport.resize` update geometry without polling or a feature MutationObserver.
+The module tracks the current toolbar and buff-strip nodes as its mount key. Toolbar or strip replacement causes normal central lifecycle remounting. Internal native pill/ticker mutations use the central observer's `buff-strip` scope so only this mounted module is reconciled instead of waking document-wide discovery. Replacing `.pokeidle-buff-list` or `.pokeidle-event-ticker` remains a global lifecycle event because those nodes are part of the mount contract. Resize and `visualViewport.resize` update geometry without polling or a feature MutationObserver.
 
 Cleanup removes Better UI CSS, markers and custom properties and returns the strip to its original DOM anchor when Better UI still owns its layer placement. The game may continue updating native inline `left`, `top` and `width` values while the module is active; those values are intentionally preserved when the module is disabled.
 
 ## Validation
 
-Automated coverage verifies native-node identity, structural reparenting into the toolbar layer with exact cleanup restoration, compact one-line composition, automatic above/below docking for bottom/top toolbar positions, precedence over the native BOTTOM `!important` positioning rule, geometry updates on resize, exact preservation of current native inline geometry and mount-key replacement behavior. Final rendered behavior remains user-validated in game.
+Automated coverage verifies native-node identity, structural reparenting into the toolbar layer with exact cleanup restoration, compact one-line composition, automatic above/below docking for bottom/top toolbar positions, precedence over the native BOTTOM `!important` positioning rule, geometry updates on resize, exact preservation of current native inline geometry, mount-key replacement behavior and observer-scope isolation for ordinary internal churn. Final rendered behavior remains user-validated in game.

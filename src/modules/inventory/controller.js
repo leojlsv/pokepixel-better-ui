@@ -55,6 +55,7 @@ export function mountInventory(root, preference, walletService = null) {
   let baseline = [];
   let scope = null;
   let ranks = new Map();
+  let renderedLayout = null;
   const scroll = createInventoryScroll(root);
   const wallet = createInventoryWallet(root, walletService);
   let viewMode = "grid";
@@ -145,19 +146,26 @@ export function mountInventory(root, preference, walletService = null) {
     if (!activeCategory) { disclosure.remove(); control.sync({}); return; }
     const nextScope = JSON.stringify([next.search.value, activeCategory]);
     const sameScope = scope === nextScope;
-    scroll.begin(next, nextScope, `${viewMode}:${preference.get()}`);
+    const layout = `${viewMode}:${preference.get()}`;
+    scroll.begin(next, nextScope, layout);
     if (!sameScope) ranks = new Map();
     scope = nextScope;
     const replaced = next.grid !== parts.grid;
+    let baselineChanged = replaced;
     if (replaced) baseline = views.nativeNodes(next.grid);
     else {
-      baseline = baseline.filter(node => next.grid.contains(node));
+      const retained = baseline.filter(node => next.grid.contains(node));
+      if (retained.length !== baseline.length) baselineChanged = true;
+      baseline = retained;
+      const known = new Set(baseline);
       const children = views.nativeNodes(next.grid);
       for (let index = 0; index < children.length; index++) {
         const node = children[index];
-        if (baseline.includes(node)) continue;
-        const following = children.slice(index + 1).find(child => baseline.includes(child));
+        if (known.has(node)) continue;
+        const following = children.slice(index + 1).find(child => known.has(child));
         baseline.splice(following ? baseline.indexOf(following) : baseline.length, 0, node);
+        known.add(node);
+        baselineChanged = true;
       }
     }
     parts = next;
@@ -185,7 +193,9 @@ export function mountInventory(root, preference, walletService = null) {
     const disabled = !filtered;
     if (clear.disabled !== disabled) clear.disabled = disabled;
     if (apply.disabled !== (preference.get() === "original")) apply.disabled = preference.get() === "original";
-    const unavailable = sort();
+    const stableNativeGrid = preference.get() === "original" && viewMode === "grid" && sameScope && !baselineChanged && renderedLayout === layout;
+    const unavailable = stableNativeGrid ? 0 : sort();
+    renderedLayout = layout;
     const warning = ["price", "rarity"].includes(preference.get()) ? text.unavailableValues : text.unavailable;
     const message = [!count && filtered ? text.empty : "", unavailable ? `${unavailable} ${warning}` : "", !preference.saved() ? text.unsaved : ""].filter(Boolean).join(" ");
     content(status, message);

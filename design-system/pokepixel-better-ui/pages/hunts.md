@@ -8,6 +8,34 @@ Validation status: **candidate 0.2.166 validated and approved in-game by the Pro
 Product Owner live validation: **2026-10-04 — All green**
 Validated implementation: **candidate `0.2.166`; repository integration pending**
 
+## Hunt Favorites addendum — 2026-10-09
+
+The Product Owner requested a persistent Favorites shortcut in the current MAP/LIST
+selector, positioned directly below Filters. This is an additive current-selector
+interaction; it does not reopen the approved region hierarchy or replace native Hunt
+actions.
+
+- **AC-HUNTS-FAV-01:** LIST rows expose one compact `☆/★` favorite toggle while native
+  `Hunt` remains primary and `Details` remains secondary. The toggle has explicit
+  pressed state, keyboard focus and localized Add/Remove accessible labels.
+- **AC-HUNTS-FAV-02:** the shared MAP/LIST sidebar exposes one Favorites section below
+  refinement. Empty state is textual; populated entries show Hunt identity plus region
+  and a separate removal control.
+- **AC-HUNTS-FAV-03:** Favorites are exact Hunt identities (`world/region + zoneId`),
+  deduplicated and persistent. A saved transient row/index is never authoritative.
+- **AC-HUNTS-FAV-04:** activating a favorite delegates to native navigation and native
+  `startHunt()` exactly once. Cross-region shortcuts wait for authoritative region +
+  zone identity before starting; unavailable/missing destinations fail closed.
+- **AC-HUNTS-FAV-05:** Favorites owns a bounded local vertical scroll (shorter at narrow
+  container widths) so it cannot permanently displace the result workflow as the list
+  grows. It uses one separator rather than another nested card frame.
+- **AC-HUNTS-FAV-06:** repeated reconciliation is mutation-free after state settles;
+  MAP/LIST reconstruction reacquires row toggles without duplicates; cleanup removes
+  Better UI controls and preserves native actions/focus/lifecycle.
+
+The visible/interaction scope introduced here requires fresh Product Owner in-game
+validation even though the underlying current selector was previously approved.
+
 ## Previous native-first baseline — 2026-10-02
 
 The Product Owner explicitly judged the current PokéPixel Hunts model better than

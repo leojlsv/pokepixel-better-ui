@@ -80,6 +80,33 @@ authoritative Hunt-zone snapshot used by Cards. It delegates the native action o
 does not add a second gameplay path, and restores the exact original property on
 cleanup.
 
+## Hunt Favorites — current MAP/LIST
+
+The current selector now exposes one compact Favorites surface immediately below the
+Filters/refinement area. It is Better UI-owned but uses only native Hunt authority:
+
+- LIST rows receive one `☆/★` toggle after the native `Hunt` and `Details` actions;
+- a favorite stores the exact Hunt identity (`world/region + stable zoneId + display
+  label`), never a transient row or zone index;
+- the Favorites surface remains available in both MAP and LIST and survives native
+  MAP/LIST reconstruction without cloning native rows or markers;
+- activating a favorite in the current region reacquires its zone index from the
+  current native `_zones` and calls the already-owned `scene.startHunt()` path once;
+- cross-region activation first delegates to the matching native region tab and starts
+  only after both the target world and saved zoneId are present in authoritative state;
+- active Search/Element/Level filters do not need to be cleared because the shortcut
+  resolves against native zone state rather than the currently visible filtered row;
+- disabled/missing regions and missing zones fail closed with textual feedback, never by
+  falling back to a stale index or another Hunt;
+- persistence uses `ppbui:hunts-favorites:v1`; unavailable/corrupt browser storage falls
+  back to sanitized session memory and cannot block Hunts;
+- the list has a bounded local vertical scroll so Favorites cannot grow the discovery
+  sidebar indefinitely; the primary native Hunt action remains visually dominant.
+
+The shortcut is an explicit user action, not Hunt automation. No gameplay network/API
+request is introduced and the existing current-selector `startHunt()` wrapper continues
+to own Cards provenance and cleanup.
+
 ## Legacy map functional contract
 
 Hunts separates inspection from gameplay. Native map markers remain the source

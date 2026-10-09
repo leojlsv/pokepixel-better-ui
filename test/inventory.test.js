@@ -78,6 +78,13 @@ test('stable reconciliation produces no DOM mutations or additional listeners', 
   await new Promise(r=>window.setTimeout(r,60));let mutations=0;const probe=new window.MutationObserver(r=>mutations+=r.length);probe.observe(doc.body,{childList:true,subtree:true,attributes:true});
   for(let i=0;i<8;i++)app.reconcile();await new Promise(r=>window.setTimeout(r,60));probe.disconnect();assert.equal(mutations,0);
 });
+test('stable Original/Grid reconciliation skips per-slot inventory parsing', t=>{
+  const {app,window}=setup(t);let slotTranslations=0;
+  window.PokeIdle={Localization:{get:()=> 'pt-BR'},t(key){if(key==='inventory.slot_aria')slotTranslations++;return key;}};
+  app.start();slotTranslations=0;
+  for(let i=0;i<12;i++)app.reconcile();
+  assert.equal(slotTranslations,0,'unchanged native Original/Grid layout must not reread every slot during unrelated reconciles');
+});
 test('Backpack moves the exact native Wallet onto the Sort rail and restores it with handlers intact', t=>{
   const {app,doc}=setup(t);const root=doc.querySelector('.inventory-window--slots');
   const team=doc.createElement('div');team.className='pokeidle-team-hud';

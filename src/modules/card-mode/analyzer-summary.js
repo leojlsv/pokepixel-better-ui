@@ -167,7 +167,10 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
     || ageMs > config.analyzerSourceMaxAgeMs) return null;
   const status = ["running", "paused", "waiting"].includes(raw.status) ? raw.status : "waiting";
   const count = value => boundedNumber(value, { min: 0 });
-  return {
+  const attemptHistory = sanitizeAttemptHistory(raw.attemptHistory);
+  const specialHistory = sanitizeSpecialHistory(raw.specialHistory);
+  const lootHistory = sanitizeLootHistory(raw.lootHistory);
+  const summary = {
     appVersion: boundedText(raw.appVersion),
     leadershipActive: raw.leadershipActive === true,
     status,
@@ -216,10 +219,14 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
       ? sanitizeCurrentTarget(raw.currentTarget) : null,
     currentSessionSpecies: status === "running" && raw.activityKind === "expedition"
       ? null : sanitizeCurrentSessionSpecies(raw.currentSessionSpecies),
-    attemptHistory: sanitizeAttemptHistory(raw.attemptHistory),
-    specialHistory: sanitizeSpecialHistory(raw.specialHistory),
-    lootHistory: sanitizeLootHistory(raw.lootHistory),
+    attemptHistory,
+    specialHistory,
+    lootHistory,
   };
+  Object.defineProperty(summary, "__ppbuiStorySignature", {
+    value: JSON.stringify([attemptHistory, specialHistory]),
+  });
+  return summary;
 }
 
 export function readAnalyzerSummary(win = globalThis.window, now = undefined) {

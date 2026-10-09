@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { createCardModeCards } from "../src/modules/card-mode/cards.js";
+import { readAnalyzerSummary } from "../src/modules/card-mode/analyzer-summary.js";
 import { createBetterUI } from "../src/core/bootstrap.js";
 import { createCardModeModule } from "../src/modules/card-mode/index.js";
 
@@ -71,6 +72,50 @@ test("Story relative timestamps advance on unchanged data without replacing rows
   const mutations = observer.takeRecords();
   assert.equal(mutations.some(change => change.target === attempt.parentNode || change.target === loot.parentNode), false,
     "time refresh must not replace the Story lists");
+  observer.disconnect();
+});
+
+test("sanitized full-session Story reuses its exact signature and avoids global Team HUD discovery on stable polls", t => {
+  const win = new JSDOM("<!doctype html><html lang='en-US'><body></body></html>", {
+    url: "https://fixture.invalid", pretendToBeVisual: true,
+  }).window;
+  const now = Date.now();
+  let specialHistory = Array.from({ length:1_200 }, (_, index) => ({
+    atMs:now - 7_200_000 - index,
+    species:`Species ${index % 20}`,
+    rarity:"epic",
+    result:index % 2 ? "captured" : "fled",
+    ball:"Ultra Ball",
+    shiny:false,
+  }));
+  win.__POKEPIXEL_HUNT_ANALYZER_PUBLIC__ = {
+    protocol:1,
+    getSummary:() => ({ protocol:1,available:true,capturedAtMs:Date.now(),status:"running",attemptHistory:[],specialHistory,lootHistory:[] }),
+  };
+  const cards = createCardModeCards({ win, textOnly:true });
+  t.after(() => { cards.cleanup(); win.close(); });
+  cards.setMode("cards");
+  cards.render(readAnalyzerSummary(win));
+  const body = cards.root.querySelector("[data-card-attempt-body]");
+  const first = body.firstElementChild, middle = body.children[600], last = body.lastElementChild;
+  assert.equal(body.children.length,1_200);
+
+  const querySelector = win.document.querySelector.bind(win.document);
+  let teamHudDiscovery = 0;
+  win.document.querySelector = selector => { if (selector === ".pokeidle-team-hud") teamHudDiscovery++; return querySelector(selector); };
+  const observer = new win.MutationObserver(() => {});
+  observer.observe(body,{subtree:true,childList:true,characterData:true});
+  cards.render(readAnalyzerSummary(win));
+  assert.equal(teamHudDiscovery,0,"a stable poll without Team runtime must not scan the document for Team HUD");
+  assert.equal(observer.takeRecords().length,0,"exact sanitized history signature keeps the large Story mutation-free");
+  assert.equal(body.firstElementChild,first);assert.equal(body.children[600],middle);assert.equal(body.lastElementChild,last);
+
+  specialHistory = specialHistory.map((entry,index) => index === 600 ? {...entry,ball:"Great Ball"} : entry);
+  cards.render(readAnalyzerSummary(win));
+  assert.equal(body.firstElementChild,first,"middle corrections preserve unaffected prefix rows");
+  assert.notEqual(body.children[600],middle,"the exact signature still detects a corrected middle event");
+  assert.equal(body.lastElementChild,last,"middle corrections preserve unaffected suffix rows");
+  assert.match(body.children[600].textContent,/Great Ball/);
   observer.disconnect();
 });
 

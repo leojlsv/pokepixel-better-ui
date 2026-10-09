@@ -639,10 +639,15 @@ function activePortraitSprite(root, win) {
 }
 
 function playerSnapshot(win, state) {
-  const root = win.document.querySelector(".pokeidle-team-hud");
   const runtime = win.PokeIdle?.PersistentHud?._teamHud;
   const creatures = Array.isArray(runtime?._creatures) ? runtime._creatures : [];
   if (creatures.length === 0) return null;
+  const runtimeRoot = runtime?.el;
+  const root = runtimeRoot?.isConnected && runtimeRoot.matches?.(".pokeidle-team-hud")
+    ? runtimeRoot
+    : state.playerRoot?.isConnected
+      ? state.playerRoot
+      : win.document.querySelector(".pokeidle-team-hud");
   const visualRoot = root && runtime?.el === root ? root : null;
   const active = creatures.find((creature) => creature?.is_leader) || creatures[0];
   if (!active) return null;
@@ -966,11 +971,21 @@ function createAttemptEntry(root, attempt, filters, columns, now) {
   };
 }
 
-function renderAttempts(root, attempts, available, filters) {
+function renderAttempts(root, attempts, available, filters, sourceSignature = "") {
   const body = cardNode(root, "[data-card-attempt-body]");
   if (!body) return;
   const copy = filters.copy || COPY.en;
   const locale = filters.locale || copy.locale;
+  const sourceRenderSignature = sourceSignature ? JSON.stringify([
+    available, filters.localeKey, locale, filters.activityKind, filters.speciesSpriteRevision,
+    [...filters.attemptRarities].sort(), filters.attemptShiny, filters.attemptResult, sourceSignature,
+  ]) : "";
+  const now = Date.now();
+  const view = filters.attemptView;
+  if (sourceRenderSignature && view.sourceSignature === sourceRenderSignature) {
+    refreshRelativeTimes(view.entries, locale, now);
+    return;
+  }
   const rows = Array.isArray(attempts) ? attempts.filter(attempt => (
     attempt && typeof attempt === "object" && Number.isFinite(attempt.atMs)
     && (attempt.result === "captured" || attempt.result === "fled")
@@ -982,9 +997,8 @@ function renderAttempts(root, attempts, available, filters) {
   ));
   const signature = JSON.stringify([available, filters.localeKey, locale, filters.activityKind, filters.speciesSpriteRevision,
     [...filters.attemptRarities].sort(), filters.attemptShiny, filters.attemptResult, rows]);
-  const now = Date.now();
-  const view = filters.attemptView;
   if (body.dataset.signature === signature) {
+    view.sourceSignature = sourceRenderSignature;
     refreshRelativeTimes(view.entries, locale, now);
     return;
   }
@@ -1005,6 +1019,7 @@ function renderAttempts(root, attempts, available, filters) {
     view.entries = [];
     view.controls = controls;
     view.spriteRevision = filters.speciesSpriteRevision;
+    view.sourceSignature = sourceRenderSignature;
     body.dataset.signature = signature;
     return;
   }
@@ -1040,6 +1055,7 @@ function renderAttempts(root, attempts, available, filters) {
     }
   }
   view.spriteRevision = filters.speciesSpriteRevision;
+  view.sourceSignature = sourceRenderSignature;
   body.dataset.signature = signature;
   refreshRelativeTimes(view.entries, locale, now);
 }
@@ -1535,7 +1551,7 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
     attemptRarities: new Set(STORY_RARITIES),
     attemptShiny: "",
     attemptResult: "",
-    attemptView: { entries:[], controls:"", spriteRevision:-1 },
+    attemptView: { entries:[], controls:"", spriteRevision:-1, sourceSignature:"" },
     lootTimes: [],
     storyTab: "hunt",
     summary: null,
@@ -2072,7 +2088,7 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
       if (node) node.dataset.tone = Number.isFinite(value) ? (value > 0 ? "positive" : value < 0 ? "negative" : "") : "";
     }
     renderRarity(root, summary, state);
-    renderAttempts(root, storyAttempts(summary), Boolean(summary), state);
+    renderAttempts(root, storyAttempts(summary), Boolean(summary), state, summary?.__ppbuiStorySignature || "");
     renderLootHistory(root, summary?.lootHistory, Boolean(summary), state);
   }
 

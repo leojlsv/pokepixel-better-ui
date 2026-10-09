@@ -144,6 +144,13 @@ visualização vale enquanto o módulo está montado, inclusive durante refreshe
 não é gravada em storage. Cleanup remove wrappers, textos e estilos, mantendo
 inserções e remoções legítimas do jogo. Não há outro observer ou polling.
 
+No estado padrão **Original + Grid**, o DOM nativo já é a apresentação autoritativa.
+Depois do primeiro render estável, reconciles com a mesma busca/categoria, o mesmo
+layout e a mesma associação de nós não relêem nem reordenam todos os slots. Troca de
+grid, inserção/remoção nativa, mudança de busca/categoria, critério de ordenação ou
+visualização invalidam esse fast path e executam o caminho completo. A associação
+incremental usa membership por `Set`, evitando busca quadrática sobre a baseline.
+
 ## Semântica e limites
 
 Nome ordena as entradas disponíveis. Quantidade só reorganiza os itens entre

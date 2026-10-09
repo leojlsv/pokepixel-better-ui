@@ -1,8 +1,9 @@
-import {parts,results,markers,markerLabel,huntsText,huntScene,rememberActiveHuntZone,forgetActiveHuntZone,selectors} from './dom.js';
+import {parts,results,markers,markerLabel,huntsText,huntScene,rememberActiveHuntZone,forgetActiveHuntZone,selectors,listRowZoneIndex} from './dom.js';
 import {canLocateHunt,locateHunt} from './navigation.js';
 import {createHuntInspector} from './dossier.js';
 import {createHuntMarkerInteractions} from './interaction.js';
 import {huntsStyles} from './styles.js';
+import {createHuntFavoritesStore,huntFavoriteKey} from './favorites.js';
 
 function findTitleText(node,NodeCtor) {
   for(const child of node?.childNodes||[]){
@@ -139,7 +140,7 @@ function createCurrentListRefinement(root) {
   toggle.addEventListener('click',onToggle);
   root.addEventListener('input',onInput);root.addEventListener('change',onInput);root.addEventListener('click',onClick);
   sync();
-  return {element:toggle,sync,cleanup(){
+  return {element:toggle,afterElement:()=>advanced,sync,cleanup(){
     if(!active)return;active=false;
     toggle.removeEventListener('click',onToggle);
     root.removeEventListener('input',onInput);root.removeEventListener('change',onInput);root.removeEventListener('click',onClick);
@@ -147,11 +148,159 @@ function createCurrentListRefinement(root) {
   }};
 }
 
-function mountCurrentHunts(root) {
+function createCurrentHuntFavorites(root,refinement,store) {
+  const doc=root.ownerDocument,view=doc.defaultView;
+  const section=doc.createElement('section'),heading=doc.createElement('header'),title=doc.createElement('strong'),count=doc.createElement('span'),list=doc.createElement('div'),statusNode=doc.createElement('p');
+  section.className='ppbui-hunts-favorites';section.dataset.ppbuiHuntFavorites='';
+  heading.className='ppbui-hunts-favorites__heading';count.className='ppbui-hunts-favorites__count';
+  list.className='ppbui-hunts-favorites__list';statusNode.className='ppbui-hunts-favorites__status';statusNode.setAttribute('role','status');
+  heading.append(title,count);section.append(heading,list,statusNode);
+  let active=true,signature='',status='',pending=null,pendingTimer=0,startingKey='',delegatingRegion=false;
+
+  const selectedRegionButton=current=>[...(current.tabs?.querySelectorAll?.('button')||[])].find(button=>
+    button.classList.contains('is-active')||button.getAttribute('aria-current')==='page'||button.getAttribute('aria-selected')==='true')||null;
+  const currentRegionKey=current=>regionTabKey(selectedRegionButton(current));
+  const worldMatches=(favorite,current,scene)=>{
+    const world=String(scene?._tab??'').trim();
+    if(favorite.worldId&&world)return world===favorite.worldId;
+    return Boolean(favorite.regionKey&&currentRegionKey(current)===favorite.regionKey);
+  };
+  const favoriteForRow=(row,current)=>{
+    const scene=huntScene(root),index=listRowZoneIndex(row),zone=scene?._zones?.[index];
+    if(!scene||index<0||!zone)return null;
+    const activeTab=selectedRegionButton(current),worldId=String(scene._tab??'').trim(),regionKey=regionTabKey(activeTab)||worldId;
+    const zoneId=zone?.id===undefined||zone?.id===null?'':String(zone.id).trim();
+    let label=row.querySelector(selectors.listIdentityName)?.textContent?.trim()||'';
+    if(!label)try{label=String(scene.zoneName?.(zone)??zone?.name??zoneId).trim();}catch{}
+    if(!zoneId||(!worldId&&!regionKey)||!label)return null;
+    return {worldId,regionKey,worldLabel:activeTab?.textContent?.trim()||worldId||regionKey,zoneId,label};
+  };
+  const place=current=>{
+    const anchor=refinement.afterElement?.();
+    if(!current.toolbar||!anchor?.isConnected)return false;
+    if(section.parentElement!==current.toolbar||section.previousElementSibling!==anchor)anchor.after(section);
+    return true;
+  };
+  const updateToggle=(button,favorite,text)=>{
+    const key=huntFavoriteKey(favorite),pressed=store.has(key),label=pressed?`${text.favoriteRemove}: ${favorite.label}`:`${text.favoriteAdd}: ${favorite.label}`;
+    if(button.dataset.ppbuiHuntFavoriteKey!==key)button.dataset.ppbuiHuntFavoriteKey=key;
+    if(button.dataset.ppbuiHuntFavoriteZoneId!==favorite.zoneId)button.dataset.ppbuiHuntFavoriteZoneId=favorite.zoneId;
+    if(button.getAttribute('aria-pressed')!==String(pressed))button.setAttribute('aria-pressed',String(pressed));
+    if(button.getAttribute('aria-label')!==label)button.setAttribute('aria-label',label);
+    if(button.title!==label)button.title=label;
+    const glyph=pressed?'★':'☆';if(button.textContent!==glyph)button.textContent=glyph;
+  };
+  const decorateRows=(current,text)=>{
+    const seen=new Set();
+    if(current.mode==='current-list')for(const row of root.querySelectorAll(selectors.listRow)){
+      const favorite=favoriteForRow(row,current),cell=row.querySelector(selectors.listActionCell),existing=row.querySelector(selectors.favoriteToggle);
+      if(!favorite||!cell){existing?.remove();continue;}
+      const button=existing||doc.createElement('button');
+      if(!existing){button.type='button';button.className='pokeidle-ui-button ppbui-hunts-favorite-toggle';button.dataset.ppbuiHuntFavoriteToggle='';cell.append(button);}
+      updateToggle(button,favorite,text);seen.add(button);
+    }
+    for(const button of root.querySelectorAll(selectors.favoriteToggle))if(!seen.has(button))button.remove();
+  };
+  const render=()=>{
+    const focusedGo=doc.activeElement?.matches?.(selectors.favoriteGo)&&section.contains(doc.activeElement)?doc.activeElement.dataset.ppbuiHuntFavoriteGo:'';
+    const text=huntsText(doc),favorites=store.list(),nextSignature=JSON.stringify([text.favorites,text.favoriteEmpty,text.favoriteGo,text.favoriteRemove,favorites,status,startingKey,store.persistent()]);
+    if(signature===nextSignature)return;
+    signature=nextSignature;title.textContent=text.favorites;section.setAttribute('aria-label',text.favorites);count.textContent=String(favorites.length);list.replaceChildren();
+    if(!favorites.length){const empty=doc.createElement('p');empty.className='ppbui-hunts-favorites__empty';empty.textContent=text.favoriteEmpty;list.append(empty);}
+    else for(const favorite of favorites){
+      const key=huntFavoriteKey(favorite),row=doc.createElement('div'),go=doc.createElement('button'),remove=doc.createElement('button'),name=doc.createElement('span'),world=doc.createElement('small');
+      row.className='ppbui-hunts-favorite';go.type='button';go.className='ppbui-hunts-favorite__go';go.dataset.ppbuiHuntFavoriteGo=key;go.disabled=Boolean(startingKey);
+      name.textContent=favorite.label;world.textContent=favorite.worldLabel||favorite.regionKey||favorite.worldId;go.append(name,world);
+      go.setAttribute('aria-label',`${text.favoriteGo}: ${favorite.label} · ${world.textContent}`);go.title=`${favorite.label} · ${world.textContent}`;
+      remove.type='button';remove.className='ppbui-hunts-favorite__remove';remove.dataset.ppbuiHuntFavoriteRemove=key;remove.textContent='×';remove.disabled=Boolean(startingKey);
+      remove.setAttribute('aria-label',`${text.favoriteRemove}: ${favorite.label} · ${world.textContent}`);row.append(go,remove);list.append(row);
+    }
+    statusNode.textContent=status;statusNode.hidden=!status;section.setAttribute('aria-busy',String(Boolean(startingKey||pending)));
+    if(focusedGo)view.queueMicrotask?.(()=>{
+      if(!active||!focusedGo||(doc.activeElement&&doc.activeElement!==doc.body&&doc.activeElement!==doc.documentElement))return;
+      const same=[...section.querySelectorAll(selectors.favoriteGo)].find(button=>button.dataset.ppbuiHuntFavoriteGo===focusedGo&&!button.disabled);
+      const rowToggle=[...root.querySelectorAll(selectors.favoriteToggle)].find(button=>button.dataset.ppbuiHuntFavoriteKey===focusedGo);
+      const fallback=same||rowToggle||section.querySelector(`${selectors.favoriteGo}:not(:disabled)`)||(refinement.element?.isConnected?refinement.element:null);
+      fallback?.focus?.({preventScroll:true});
+    });
+  };
+  const clearPendingTimer=()=>{view.clearTimeout?.(pendingTimer);pendingTimer=0;};
+  const fail=()=>{clearPendingTimer();pending=null;startingKey='';status=huntsText(doc).favoriteUnavailable;};
+  const zoneIndex=(scene,favorite)=>Array.isArray(scene?._zones)?scene._zones.findIndex(zone=>String(zone?.id??'')===favorite.zoneId):-1;
+  const startFavorite=(favorite,current,{waitForZone=false}={})=>{
+    const scene=huntScene(root),index=zoneIndex(scene,favorite),key=huntFavoriteKey(favorite);
+    if(!scene||typeof scene.startHunt!=='function'||!worldMatches(favorite,current,scene)||index<0){if(!waitForZone)fail();return false;}
+    clearPendingTimer();pending=null;startingKey=key;status=huntsText(doc).favoriteOpening;scene._selectedIndex=index;render();
+    let result;
+    try{result=scene.startHunt();}
+    catch{fail();render();return false;}
+    Promise.resolve(result).then(()=>{
+      if(!active||startingKey!==key)return;startingKey='';status='';sync();
+    },()=>{if(!active||startingKey!==key)return;fail();sync();});
+    return true;
+  };
+  const regionButtonFor=(favorite,current)=>[...(current.tabs?.querySelectorAll?.('button')||[])].find(button=>{
+    const nativeWorld=String(button.dataset?.world||button.dataset?.region||'').trim();
+    return (favorite.regionKey&&regionTabKey(button)===favorite.regionKey)||(favorite.worldId&&nativeWorld===favorite.worldId);
+  })||null;
+  const activate=favorite=>{
+    if(!favorite||startingKey)return;
+    const current=parts(root),scene=huntScene(root);status='';
+    if(current.current&&worldMatches(favorite,current,scene)){startFavorite(favorite,current);render();return;}
+    const tab=current.current?regionButtonFor(favorite,current):null;
+    if(!tab||tab.disabled||tab.getAttribute('aria-disabled')==='true'){fail();render();return;}
+    pending={favorite,expiresAt:Date.now()+2500};status=huntsText(doc).favoriteOpening;clearPendingTimer();
+    pendingTimer=view.setTimeout?.(()=>{if(active&&pending?.favorite&&huntFavoriteKey(pending.favorite)===huntFavoriteKey(favorite)){fail();sync();}},2500)||0;
+    delegatingRegion=true;
+    try{tab.click();}finally{delegatingRegion=false;}
+    view.queueMicrotask?.(()=>{if(active)sync();});render();
+  };
+  const resolvePending=current=>{
+    if(!pending)return;
+    if(Date.now()>pending.expiresAt){fail();return;}
+    const scene=huntScene(root);
+    if(worldMatches(pending.favorite,current,scene))startFavorite(pending.favorite,current,{waitForZone:true});
+  };
+  const onClick=event=>{
+    if(!active||delegatingRegion)return;
+    const toggle=event.target?.closest?.(selectors.favoriteToggle),go=event.target?.closest?.(selectors.favoriteGo),remove=event.target?.closest?.(selectors.favoriteRemove);
+    if(!toggle&&!go&&!remove&&pending){clearPendingTimer();pending=null;status='';sync();return;}
+    if(toggle&&root.contains(toggle)){
+      event.preventDefault();event.stopPropagation();
+      const row=toggle.closest(selectors.listRow),current=parts(root),favorite=favoriteForRow(row,current);if(!favorite)return;
+      const key=huntFavoriteKey(favorite),wasFavorite=store.has(key);store.toggle(favorite);if(wasFavorite&&pending?.favorite&&huntFavoriteKey(pending.favorite)===key){clearPendingTimer();pending=null;}return;
+    }
+    if(remove&&section.contains(remove)){
+      event.preventDefault();event.stopPropagation();const key=remove.dataset.ppbuiHuntFavoriteRemove,restoreFocus=doc.activeElement===remove;if(pending?.favorite&&huntFavoriteKey(pending.favorite)===key){clearPendingTimer();pending=null;}store.remove(key);
+      if(restoreFocus)view.queueMicrotask?.(()=>{
+        if(!active)return;
+        const rowToggle=[...root.querySelectorAll(selectors.favoriteToggle)].find(button=>button.dataset.ppbuiHuntFavoriteKey===key),fallback=rowToggle||section.querySelector(selectors.favoriteGo)||(refinement.element?.isConnected?refinement.element:null);
+        fallback?.focus?.({preventScroll:true});
+      });
+      return;
+    }
+    if(go&&section.contains(go)){
+      event.preventDefault();event.stopPropagation();activate(store.get(go.dataset.ppbuiHuntFavoriteGo));
+    }
+  };
+  const unsubscribe=store.subscribe(()=>{if(active)sync();});
+  root.addEventListener('click',onClick);
+  function sync(){
+    if(!active)return;
+    const current=parts(root);if(!current.current)return;
+    const text=huntsText(doc);place(current);decorateRows(current,text);resolvePending(current);render();
+  }
+  return {element:section,sync,cleanup(){
+    if(!active)return;active=false;clearPendingTimer();pending=null;startingKey='';unsubscribe();root.removeEventListener('click',onClick);
+    root.querySelectorAll(selectors.favoriteToggle).forEach(button=>button.remove());section.remove();
+  }};
+}
+
+function mountCurrentHunts(root,favoritesStore) {
   const doc=root.ownerDocument,view=doc.defaultView;
   root.classList.add('ppbui-hunts-enhanced','ppbui-hunts-current');
   const style=doc.createElement('style');style.dataset.ppbuiModule='hunts';style.textContent=huntsStyles;root.append(style);
-  const refinement=createCurrentListRefinement(root);
+  const refinement=createCurrentListRefinement(root),favorites=createCurrentHuntFavorites(root,refinement,favoritesStore);
   const ownedClasses=new Map();
   const ownedAttributes=new Map();
   const regionPlacements=new Map();
@@ -217,6 +366,7 @@ function mountCurrentHunts(root) {
     if(!current.current)return null;
     if(node.matches?.('.hunt-list-world-tab'))return {kind:'region',key:regionTabKey(node)};
     if(node===refinement.element)return {kind:'filters'};
+    if(node.matches?.(selectors.favoriteToggle))return {kind:'favorite-toggle',key:node.dataset.ppbuiHuntFavoriteKey||''};
     if(node===current.search)return {kind:'search'};
     if(node===current.elements?.querySelector?.('select'))return {kind:'element'};
     if(node===current.sortField?.querySelector?.('select'))return {kind:'sort'};
@@ -245,6 +395,7 @@ function mountCurrentHunts(root) {
     if(descriptor.kind==='region')return [...(current.tabs?.querySelectorAll?.('button')||[])].find(button=>regionTabKey(button)===descriptor.key)||null;
     if(descriptor.kind==='filters')return refinement.element?.isConnected?refinement.element:null;
     if(descriptor.kind==='search')return current.search;
+    if(descriptor.kind==='favorite-toggle')return [...root.querySelectorAll(selectors.favoriteToggle)].find(button=>button.dataset.ppbuiHuntFavoriteKey===descriptor.key)||null;
     if(descriptor.kind==='element')return current.elements?.querySelector?.('select')||null;
     if(descriptor.kind==='sort')return current.sortField?.querySelector?.('select')||null;
     if(descriptor.kind==='level')return descriptor.index===0?current.minLevel:current.maxLevel;
@@ -295,7 +446,7 @@ function mountCurrentHunts(root) {
     ownClass(next.viewToggle,'ppbui-hunts-view-toggle');
     ownClass(next.presentation,'ppbui-hunts-presentation-toggle');
     decorateRegionTabs(next.tabs,huntsText(doc));
-    refinement.sync();
+    refinement.sync();favorites.sync();
     if(restoreFocus){
       const target=resolveFocus(restoreFocus);
       if(focusNode(target))lastFocused={node:target,descriptor:restoreFocus};
@@ -310,7 +461,7 @@ function mountCurrentHunts(root) {
       if(startHuntDescriptor)Object.defineProperty(scene,'startHunt',startHuntDescriptor);
       else delete scene.startHunt;
     }
-    refinement.cleanup();restoreRegionPlacements();restoreOwnedAttributes();restoreOwnedClasses();
+    favorites.cleanup();refinement.cleanup();restoreRegionPlacements();restoreOwnedAttributes();restoreOwnedClasses();
     style.remove();
     root.classList.remove('ppbui-hunts-current-list','ppbui-hunts-current-map','ppbui-hunts-current','ppbui-hunts-enhanced');
     if(restoreFocusedNode?.isConnected&&doc.activeElement!==restoreFocusedNode)focusNode(restoreFocusedNode);
@@ -645,6 +796,7 @@ function mountLegacyHunts(root) {
   }};
 }
 
-export function mountHunts(root) {
-  return parts(root).current?mountCurrentHunts(root):mountLegacyHunts(root);
+export function mountHunts(root,{favoritesStore}={}) {
+  const store=favoritesStore||createHuntFavoritesStore({storage:()=>root.ownerDocument.defaultView?.localStorage});
+  return parts(root).current?mountCurrentHunts(root,store):mountLegacyHunts(root);
 }

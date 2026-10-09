@@ -4,6 +4,7 @@ import {JSDOM} from 'jsdom';
 import {mountHunts} from '../src/modules/hunts/controller.js';
 import {activeHuntZone,forgetActiveHuntZone,parts,rememberActiveHuntZone,zoneNode} from '../src/modules/hunts/dom.js';
 import {createHuntsModule} from '../src/modules/hunts/index.js';
+import {createHuntFavoritesStore,HUNT_FAVORITES_STORAGE_KEY} from '../src/modules/hunts/favorites.js';
 import {locateHunt} from '../src/modules/hunts/navigation.js';
 import {defensiveMultipliers} from '../src/modules/hunts/type-chart.js';
 
@@ -130,7 +131,7 @@ const currentMapMarkup=()=>[
   '</div></div>',
 ].join('');
 
-function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list',legendaryEnabled=false,focusLegendaryBeforeMount=false}={}){
+function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list',legendaryEnabled=false,focusLegendaryBeforeMount=false,favorites=[]}={}){
   const nativeMarkup=mode==='map'?currentMapMarkup():currentListMarkup();
   const markup=legendaryEnabled?nativeMarkup.replace('disabled>Ilhas Lendárias','>Ilhas Lendárias'):nativeMarkup;
   const dom=new JSDOM('<div class="hunt-window"><div class="pokeidle-panel__titlebar"><span class="pokeidle-panel__title" style="font:600 14px/1.2 Arial,sans-serif !important">Hunts</span><button type="button">×</button></div><div class="pokeidle-panel__body">'+markup+'</div></div>',{url:'https://test.local',pretendToBeVisual:true});
@@ -150,13 +151,15 @@ function setupCurrentList(t,{startHunt,inheritedStartHunt=false,mode='list',lege
   const nativeStartHuntDescriptor=Object.getOwnPropertyDescriptor(scene,'startHunt');
   dom.window.SceneManager={_scene:scene,_nextScene:null};
   dom.window.PokeIdle={Localization:{get:()=> 'pt-BR'}};
+  const favoritesStore=createHuntFavoritesStore({storage:()=>dom.window.localStorage});
+  favorites.forEach(favorite=>favoritesStore.add(favorite));
   root.querySelectorAll('.hunt-list-hunt-button').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
   root.querySelectorAll('.hunt-map-marker').forEach((button,index)=>button.addEventListener('click',()=>{scene._selectedIndex=index;void scene.startHunt();}));
   const before=root.outerHTML;
   if(focusLegendaryBeforeMount)root.querySelectorAll('.hunt-list-world-tab')[2]?.focus();
-  const c=mountHunts(root);
+  const c=mountHunts(root,{favoritesStore});
   t.after(()=>{c.cleanup();dom.window.close();});
-  return {dom,doc,root,body,scene,c,before,nativeStartHunt,nativeStartHuntDescriptor,stats:()=>({starts})};
+  return {dom,doc,root,body,scene,c,before,favoritesStore,nativeStartHunt,nativeStartHuntDescriptor,stats:()=>({starts})};
 }
 
 test('current Hunt list keeps native controls while Better UI compacts discovery hierarchy',async t=>{
@@ -174,8 +177,8 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
     'hunt-list-world-tabs','hunt-presentation-toggle ppbui-hunts-view-toggle','hunt-presentation-toggle ppbui-hunts-presentation-toggle'
   ],'native region context flows directly into view and presentation navigation');
   assert.deepEqual([...s.root.querySelector('.hunt-list-toolbar').children].filter(node=>node.nodeType===1).map(node=>node.className),[
-    'hunt-list-field hunt-list-search-field','ppbui-hunts-list-utility','ppbui-hunts-list-advanced'
-  ],'Search remains persistent while utility and advanced native controls get scoped layout owners');
+    'hunt-list-field hunt-list-search-field','ppbui-hunts-list-utility','ppbui-hunts-list-advanced','ppbui-hunts-favorites'
+  ],'Search remains persistent while utility, advanced filters and Favorites get scoped layout owners');
   assert.deepEqual([...s.root.querySelector('.ppbui-hunts-list-utility').children].map(node=>node.className),[
     'ppbui-hunts-filter-toggle','hunt-list-field hunt-list-sort-field','pokeidle-ui-button hunt-list-clear'
   ],'Filters, Sort and Clear form the compact result utility row');
@@ -183,6 +186,9 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
     'hunt-list-field hunt-list-element-filter','hunt-list-field hunt-list-range-field'
   ],'Element and Level remain the original native controls inside advanced refinement');
   assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,true,'advanced filters start collapsed');
+  assert.equal(s.root.querySelector('.ppbui-hunts-favorites__heading strong').textContent,'Favoritos');
+  assert.equal(s.root.querySelector('.ppbui-hunts-favorites__empty').textContent,'Nenhum favorito ainda.');
+  assert.equal(s.root.querySelectorAll('[data-ppbui-hunt-favorite-toggle]').length,2,'LIST exposes one favorite toggle per authoritative Hunt row');
   assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true,'native region context is folded into result summary instead of occupying a standalone pre-filter row');
   const regionTabs=[...s.root.querySelectorAll('.hunt-list-world-tab')],legendary=s.root.querySelector('.ppbui-hunts-region-legendary');
   assert.deepEqual(regionTabs.map(tab=>tab.textContent),['Kanto','Johto','Hoenn','Ilhas Lendárias'],'mounted keyboard/visual order groups common Hunt regions before the special destination');
@@ -213,6 +219,10 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
   assert.match(css,/\.ppbui-hunts-current-list \.hunt-list-hunt-button \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-accent\)[^}]*color:var\(--ppbui-accent-hi\)/s,'Hunt is the primary row action');
   assert.match(css,/\.ppbui-hunts-current-list \.hunt-list-details-button \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border\)[^}]*background:transparent/s,'Details is visually secondary');
   assert.match(css,/\.ppbui-hunts-current \.hunt-list-clear \{[^}]*background:transparent[^}]*color:var\(--ppbui-text-muted\)/s,'Clear is a tertiary utility');
+  assert.match(css,/\.ppbui-hunts-favorites \{[^}]*border-top:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)/s,'Favorites is attached below refinement with one separator instead of another heavy card');
+  assert.match(css,/\.ppbui-hunts-favorites__list \{[^}]*max-height:132px;[^}]*overflow-y:auto/s,'Favorites owns a bounded local scroll instead of pushing Hunt results indefinitely');
+  assert.match(css,/\.ppbui-hunts-favorite-toggle\[aria-pressed="true"\] \{[^}]*border-color:var\(--ppbui-selected\);[^}]*color:var\(--ppbui-selected\)/s,'favorited row star exposes persistent selected state structurally');
+  assert.match(css,/@container \(max-width:360px\)[\s\S]*\.ppbui-hunts-favorites__list \{ max-height:104px; \}/,'narrow selector keeps Favorites shorter so the result workflow remains reachable');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.ppbui-hunts-current-list \.hunt-list-table-shell \{ overflow-x:auto; overscroll-behavior-x:contain; \}/,'split Hunt list gets an explicit horizontal scroll owner instead of crushing table columns');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-table \{ width:max-content; min-width:100%; \}/,'split Hunt table preserves intrinsic row geometry while still filling wider panes');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-action-cell,[\s\S]*\.hunt-list-identity \{ white-space:nowrap; \}/,'Hunt actions and Pokémon identity do not wrap into unusable stacked fragments');
@@ -242,6 +252,8 @@ test('current MAP uses the same Better UI region hierarchy and filters as LIST',
   assert.equal(s.root.querySelector('.ppbui-hunts-presentation-toggle').textContent,'Modo clássicoModo plataforma');
   assert.ok(s.root.querySelector('.ppbui-hunts-filter-toggle'));
   assert.equal(s.root.querySelector('.ppbui-hunts-list-advanced').hidden,true);
+  assert.ok(s.root.querySelector('[data-ppbui-hunt-favorites]'),'Favorites stays available in MAP');
+  assert.equal(s.root.querySelector('[data-ppbui-hunt-favorite-toggle]'),null,'MAP does not fabricate row-star controls without LIST rows');
   assert.equal(s.root.querySelector('.hunt-list-summary').contains(s.root.querySelector('.hunt-list-world-note')),true);
   assert.match(css,/\.ppbui-hunts-current-map \.hunt-region-controls \{[\s\S]*position:absolute;[\s\S]*background:var\(--ppbui-bg-0\) !important;/,'MAP-only navigation receives scoped Better UI overlay chrome');
   assert.match(css,/\.ppbui-hunts-current-map \.hunt-region-controls > button \{[\s\S]*min-width:34px;[\s\S]*min-height:34px;/,'MAP zoom/reset actions have deliberate current-selector geometry');
@@ -318,6 +330,105 @@ test('current Hunt list advanced filters preserve native controls, active state 
 
   element.selectedIndex=0;element.dispatchEvent(new s.dom.window.Event('change',{bubbles:true}));
   assert.equal(toggle.dataset.active,'false');assert.equal(toggle.getAttribute('aria-label'),'Filtros');
+});
+
+test('current Hunt favorites add and remove exact native Hunts without touching Hunt or Details actions',t=>{
+  const s=setupCurrentList(t),first=s.root.querySelector('.hunt-list-row'),hunt=first.querySelector('.hunt-list-hunt-button'),details=first.querySelector('.hunt-list-details-button'),favorite=first.querySelector('[data-ppbui-hunt-favorite-toggle]');
+  assert.equal(favorite.textContent,'☆');assert.equal(favorite.getAttribute('aria-pressed'),'false');
+  assert.match(favorite.getAttribute('aria-label'),/^Adicionar aos favoritos:/);
+  favorite.click();
+  assert.equal(s.stats().starts,0,'favoriting is selection-only and never starts gameplay');
+  assert.equal(first.querySelector('.hunt-list-hunt-button'),hunt);assert.equal(first.querySelector('.hunt-list-details-button'),details);
+  assert.equal(favorite.textContent,'★');assert.equal(favorite.getAttribute('aria-pressed'),'true');
+  const stored=JSON.parse(s.dom.window.localStorage.getItem(HUNT_FAVORITES_STORAGE_KEY));
+  assert.deepEqual(stored.items.map(item=>[item.worldId,item.zoneId,item.label]),[['kanto','pika','Pikachu Forest']]);
+  const go=s.root.querySelector('[data-ppbui-hunt-favorite-go]');
+  assert.match(go.textContent,/Pikachu Forest/);assert.match(go.textContent,/Kanto/);
+  const remove=s.root.querySelector('[data-ppbui-hunt-favorite-remove]');remove.click();
+  assert.equal(s.favoritesStore.list().length,0);assert.equal(favorite.textContent,'☆');assert.equal(favorite.getAttribute('aria-pressed'),'false');
+  assert.equal(s.root.querySelector('.ppbui-hunts-favorites__empty').textContent,'Nenhum favorito ainda.');
+});
+
+test('removing a favorite from its list restores focus to the matching LIST star when available',async t=>{
+  const s=setupCurrentList(t),star=s.root.querySelector('[data-ppbui-hunt-favorite-toggle]');star.click();
+  const remove=s.root.querySelector('[data-ppbui-hunt-favorite-remove]');remove.focus();assert.equal(s.doc.activeElement,remove);remove.click();await Promise.resolve();
+  assert.equal(s.doc.activeElement,star,'destructive local removal returns keyboard focus to the same Hunt toggle');
+  assert.equal(star.getAttribute('aria-pressed'),'false');
+});
+
+test('current Hunt favorite starts the exact native zone once even when current filters hide its row',async t=>{
+  const s=setupCurrentList(t),favorite=s.root.querySelector('[data-ppbui-hunt-favorite-toggle]');favorite.click();
+  const row=favorite.closest('.hunt-list-row');row.hidden=true;
+  const go=s.root.querySelector('[data-ppbui-hunt-favorite-go]');go.focus();assert.equal(s.doc.activeElement,go);go.click();
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(s.stats().starts,1,'explicit favorite shortcut delegates the existing native start exactly once');
+  assert.equal(s.scene._selectedIndex,0,'favorite reacquires the authoritative zone index instead of a filtered DOM index');
+  assert.equal(activeHuntZone(s.dom.window)?.zoneId,'pika','existing startHunt wrapper preserves Cards Hunt provenance');
+  assert.equal(s.doc.activeElement,favorite,'starting a focused favorite never drops keyboard focus to the document body');
+});
+
+test('cross-region favorite clicks the native region tab first and starts only after the saved zone is authoritative',async t=>{
+  const saved={worldId:'johto',regionKey:'johto',worldLabel:'Johto',zoneId:'chiko',label:'Chikorita'};
+  const s=setupCurrentList(t,{favorites:[saved]}),johto=[...s.root.querySelectorAll('.hunt-list-world-tab')].find(tab=>tab.textContent==='Johto');
+  let regionClicks=0;
+  johto.addEventListener('click',()=>{
+    regionClicks++;
+    s.scene._tab='johto';s.scene._zones=[{id:'chiko',name:'Chikorita',elements:['grass'],min:101,max:101}];
+    for(const tab of s.root.querySelectorAll('.hunt-list-world-tab'))tab.classList.toggle('is-active',tab===johto);
+  });
+  s.root.querySelector('[data-ppbui-hunt-favorite-go]').click();
+  assert.match(s.root.querySelector('.ppbui-hunts-favorites__status').textContent,/abrindo/i,'cross-region navigation announces progress immediately');
+  assert.equal(s.root.querySelector('[data-ppbui-hunt-favorites]').getAttribute('aria-busy'),'true');
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(regionClicks,1,'cross-region navigation delegates to the exact native world control once');
+  assert.equal(s.scene._tab,'johto');assert.equal(s.scene._selectedIndex,0);assert.equal(s.stats().starts,1,'Hunt starts only after the Johto zone exists in native state');
+});
+
+test('cross-region favorite never trusts selected-tab chrome ahead of authoritative scene world',async t=>{
+  const saved={worldId:'johto',regionKey:'johto',worldLabel:'Johto',zoneId:'shared-zone',label:'Target Johto'};
+  const s=setupCurrentList(t,{favorites:[saved]}),johto=[...s.root.querySelectorAll('.hunt-list-world-tab')].find(tab=>tab.textContent==='Johto');
+  s.scene._zones=[{id:'shared-zone',name:'Wrong Kanto Twin',elements:[],min:1,max:1}];
+  johto.addEventListener('click',()=>{
+    for(const tab of s.root.querySelectorAll('.hunt-list-world-tab'))tab.classList.toggle('is-active',tab===johto);
+    // Simulate host chrome moving first while the authoritative scene is still Kanto.
+  });
+  s.root.querySelector('[data-ppbui-hunt-favorite-go]').click();
+  await Promise.resolve();await Promise.resolve();
+  assert.equal(s.scene._tab,'kanto');assert.equal(s.stats().starts,0,'matching zoneId in the old world cannot be started while scene._tab disagrees');
+  assert.equal(s.scene._selectedIndex,-1);
+});
+
+test('favorite shortcut fails closed when its region is disabled or the saved zone disappeared',async t=>{
+  const legendary={worldId:'legendary',regionKey:'legendary',worldLabel:'Ilhas Lendárias',zoneId:'mew',label:'Mew'};
+  const s=setupCurrentList(t,{favorites:[legendary]});
+  s.root.querySelector('[data-ppbui-hunt-favorite-go]').click();await Promise.resolve();
+  assert.equal(s.stats().starts,0);assert.match(s.root.querySelector('.ppbui-hunts-favorites__status').textContent,/indisponível/i);
+  s.favoritesStore.remove(legendary);s.favoritesStore.add({worldId:'kanto',regionKey:'kanto',worldLabel:'Kanto',zoneId:'missing',label:'MissingNo'});
+  s.root.querySelector('[data-ppbui-hunt-favorite-go]').click();await Promise.resolve();
+  assert.equal(s.stats().starts,0,'missing zone IDs can never fall back to another native index');
+  assert.equal(s.scene._selectedIndex,-1);
+});
+
+test('Favorites surface survives MAP/LIST reconstruction and reacquires LIST stars without duplication',t=>{
+  const s=setupCurrentList(t),star=s.root.querySelector('[data-ppbui-hunt-favorite-toggle]');star.click();
+  const surface=s.root.querySelector('[data-ppbui-hunt-favorites]');
+  s.scene._selectionView='map';s.body.innerHTML=currentMapMarkup();s.c.sync();
+  assert.equal(s.root.querySelector('[data-ppbui-hunt-favorites]'),surface,'same Better UI favorites surface is rehomed over native MAP reconstruction');
+  assert.equal(surface.querySelectorAll('[data-ppbui-hunt-favorite-go]').length,1);assert.equal(s.root.querySelector('[data-ppbui-hunt-favorite-toggle]'),null);
+  s.scene._selectionView='list';s.body.innerHTML=currentListMarkup();s.c.sync();
+  assert.equal(s.root.querySelector('[data-ppbui-hunt-favorites]'),surface);
+  assert.equal(s.root.querySelectorAll('[data-ppbui-hunt-favorite-toggle]').length,2);
+  assert.equal(s.root.querySelector('[data-ppbui-hunt-favorite-toggle]').getAttribute('aria-pressed'),'true','reacquired exact Hunt restores its favorite state');
+});
+
+test('Hunt Favorites survive a fresh module mount from the versioned persistent store',t=>{
+  const s=setupCurrentList(t),star=s.root.querySelector('[data-ppbui-hunt-favorite-toggle]');star.click();
+  assert.equal(s.favoritesStore.list().length,1);s.c.cleanup();assert.equal(s.root.outerHTML,s.before);
+  const freshStore=createHuntFavoritesStore({storage:()=>s.dom.window.localStorage}),next=mountHunts(s.root,{favoritesStore:freshStore});
+  t.after(()=>next.cleanup());
+  assert.equal(freshStore.list().length,1);assert.equal(s.root.querySelectorAll('[data-ppbui-hunt-favorites]').length,1);
+  assert.equal(s.root.querySelector('[data-ppbui-hunt-favorite-toggle]').getAttribute('aria-pressed'),'true');
+  assert.match(s.root.querySelector('[data-ppbui-hunt-favorite-go]').textContent,/Pikachu Forest/);
 });
 
 test('current Hunt list stable reconciliation is mutation-free and cleanup restores exact native structure',async t=>{

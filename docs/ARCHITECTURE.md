@@ -164,9 +164,22 @@ the normal lifecycle path.
 The active Platform Hunt renderer is game-owned except for explicitly shared native
 surfaces. Once `.platform-hunt` is attached, child/attribute mutations whose target is
 inside that root are ignored by the central observer unless they touch
-`.pokeidle-buff-strip`, which Better UI deliberately enhances/reparents. The root
-lifecycle remains observable because insertion/removal records target `body`, so
-entering/leaving Platform Hunt still runs full reconciliation.
+`.pokeidle-buff-strip`, which Better UI deliberately enhances/reparents. Ordinary
+Buff Strip pill/ticker churn is routed to the narrow `buff-strip` observer scope;
+replacing the native `.pokeidle-buff-list` / `.pokeidle-event-ticker` mount sentinels
+still promotes to full lifecycle discovery. The Platform Hunt and Buff Strip root
+lifecycles remain observable because insertion/removal records target their parent,
+so entering/leaving those surfaces still runs full reconciliation.
+
+Native PokémonCard roots (`.pokemon-card--hover`, `.pokemon-card--pinned`, and
+`.pokemon-card--sheet`) follow the same high-frequency renderer boundary. Pokémon
+Profile decorates those cards synchronously through the native `PokemonCard.render`
+wrapper and refreshes asynchronous data through its native Bus bindings, so internal
+card child/observed-attribute churn is ignored by the central observer. Adding or
+removing the card root still targets its parent and remains globally observable. The
+existing shared `.pokeidle-buff-strip` surface remains exempt from this suppression,
+but its internal presentation churn uses the `buff-strip` scope rather than global
+module discovery.
 
 The native Team HUD Wallet and mobile-party button are siblings rather than descendants
 of the Team HUD root. Mobile-party internals remain ignored. Wallet internals and its
@@ -196,4 +209,6 @@ Repeated DOM mutations must not:
 - one central observer;
 - coalesce mutation bursts;
 - avoid scanning the entire document when a local root is known;
+- keep high-frequency native renderer internals out of document-wide discovery when
+  Better UI already has a direct integration contract for that renderer;
 - avoid continuous polling when DOM observation is sufficient.

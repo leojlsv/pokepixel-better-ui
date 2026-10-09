@@ -77,7 +77,7 @@ O redesign é de apresentação e fluxo visual. O cliente continua sendo a autor
 ## Verificação atual
 
 - Fixture determinística cobre as quatro abas e não executa transações reais.
-- Focused suite: **26/26 PASS**, incluindo List/Cards sem clonagem, quick-buy nativo preservado porém fora do fluxo visual, quantidade principal, rodapé único de Select All, identidade de nós/handlers, replacement repetido do Search com cleanup exato, reconciliação mutation-free, locale `pt_BR`, host reparent, stale checkbox, fail-closed, valores nativos sem piso local, Group ARIA, Sell Items, Buyback, inventário agrupado grande e rejeição sentinel-first de NPCs não-loja com 500 cards.
+- Focused suite atual: **27/27 PASS**, incluindo List/Cards sem clonagem, quick-buy nativo preservado porém fora do fluxo visual, quantidade principal, rodapé único de Select All, identidade de nós/handlers, replacement repetido do Search com cleanup exato, reconciliação mutation-free, locale `pt_BR`, host reparent, stale checkbox, fail-closed, valores nativos sem piso local, Group ARIA, Sell Items, Buyback, inventário agrupado grande, reutilização das referências nativas capturadas e rejeição sentinel-first de NPCs não-loja com 500 cards.
 - O sentinel-first continua presente no candidato `0.2.137`; a validação final da suíte/build
   do candidato está registrada em `docs/MARKS_SHOP_NPC_DISCOVERY_PERF_STATUS.md`.
 - Preview local usa Chrome headless com CSS nativo snapshottado + design system atual em 880 px e 390 px. A regressão de inventário grande também verifica que a lista mantém scroll próprio e que o corpo expandido fica limitado a `min(360px, 50vh)`. É evidência representativa, não validação no jogo.
@@ -98,6 +98,17 @@ descobrir que faltava `.npc-shop__shell`. Um probe sintético JSDOM com 500 card
 ~0,005 ms por rejeição e o teste garante zero consultas na subárvore da janela falsa.
 Esses números medem custo relativo do detector em JSDOM; não são uma medição de FPS do
 jogo. A confirmação de FPS na Hunt continua sendo evidência live do Product Owner.
+
+### Regressão de reconcile — 2026-10-09
+
+Uma segunda auditoria encontrou custo residual no próprio Mark’s Shop aberto: o sync
+estável redescobria a checkbox de cada Pokémon e varria seletores de Buy/Sell/Buyback
+mesmo na aba Pokémon. No mesmo probe sintético de 500 Pokémon usado para comparar o
+candidato, o `0.2.189` mede ~41 ms de mediana por sync; o candidato `0.2.190`, após
+reutilizar referências capturadas, restringir decoração à aba ativa e decorar rows
+agrupadas somente quando a estrutura muda, mede ~7 ms. A troca de checkbox pelo host
+continua fail-closed e coberta por regressão. Os valores são JSDOM relativos; FPS real
+continua sendo evidência exclusiva do Product Owner.
 
 ## Referências
 

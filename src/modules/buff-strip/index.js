@@ -9,6 +9,7 @@ export function createBuffStripModule(doc = globalThis.document) {
   let mounted = null;
   return {
     id: config.id,
+    observerScopes: ["buff-strip"],
     shouldMount() {
       const next = findBuffStripTarget(doc);
       if (!next) {

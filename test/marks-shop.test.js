@@ -117,6 +117,36 @@ test("large grouped Pokémon inventory stays bounded and validates visibility on
   assert.ok(s.npc.selectedCreatures.size > 0);
   assert.equal(s.npc.sales, beforeSales, "group selection remains selection-only even with a large inventory");
 });
+test("stable grouped sync reuses captured native checkbox references instead of rediscovering every row", t => {
+  const s = setup(t, "pokemon");
+  s.controller.cleanup();
+  const seed = s.npc.shopCreatures[0];
+  s.npc.shopCreatures = Array.from({ length: 240 }, (_, index) => ({
+    ...seed,
+    id: `bulk-${index}`,
+    species_id: `species-${index % 24}`,
+    species: { name: `Species ${index % 24}` },
+    species_name: `Species ${index % 24}`,
+    quality: index % 2 ? "rare" : "common",
+    level: 10 + (index % 50),
+    sell_value: 100 + index,
+  }));
+  s.render();
+  const controller = mountShop(s.root);
+  t.after(() => controller.cleanup());
+  const rows = [...s.root.querySelectorAll(".npc-shop__pokemon-row")];
+  let rowQueries = 0;
+  for (const row of rows) {
+    const querySelector = row.querySelector.bind(row);
+    row.querySelector = (...args) => { rowQueries += 1; return querySelector(...args); };
+  }
+  controller.sync();
+  assert.equal(rowQueries, 0, "stable validation should trust the captured checkbox identity and only verify ownership/connectivity");
+  const old = rows[0].querySelector('input[type="checkbox"]');
+  old.replaceWith(old.cloneNode());
+  s.root.querySelector('.ppbui-shop-group input').click();
+  assert.equal(s.npc.changes.length, 0, "replacing a checkbox still invalidates the captured row safely");
+});
 test("full overhaul claims the complete native shop shell across all four tabs without replacing controls", t => {
   for (const tab of ["buy", "sell", "pokemon", "buyback"]) {
     const s = setup(t, tab), search = s.root.querySelector('.npc-shop__search'), tabs = [...s.root.querySelectorAll('.npc-shop__tab')];

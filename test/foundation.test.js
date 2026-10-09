@@ -191,7 +191,54 @@ test("Platform Hunt keeps the shared Buff Strip observable while ignoring its pr
   browser.flush();
   browser.mutate([{ type: "childList", target: buffStrip, addedNodes: [pill], removedNodes: [] }]);
   browser.flush();
-  assert.deepEqual(scopes, ["global", "global"], "Buff Strip is shared with Better UI and must remain observable inside Platform Hunt");
+  assert.deepEqual(scopes, ["global", "buff-strip"], "Buff Strip root lifecycle stays global while internal churn remains local");
+
+  const list = fakeElement("pokeidle-buff-list", buffStrip);
+  browser.mutate([{ type: "childList", target: buffStrip, addedNodes: [list], removedNodes: [] }]);
+  browser.flush();
+  assert.deepEqual(scopes, ["global", "buff-strip", "global"], "replacing a Buff Strip mount sentinel must re-run full lifecycle discovery");
+  observer.stop();
+});
+
+test("native PokemonCard internal renderer churn stays outside global discovery while root lifecycle remains global", (t) => {
+  const browser = mockBrowser(t);
+  const scopes = [];
+  const observer = createDomObserver(scope => scopes.push(scope));
+  observer.start(document.body);
+
+  const body = fakeElement();
+  const unrelated = fakeElement("game-window", body);
+  for (const mode of ["pokemon-card--hover", "pokemon-card--pinned", "pokemon-card--sheet"]) {
+    const card = fakeElement(mode, body);
+    const section = fakeElement("pokemon-card__section", card);
+    const value = fakeElement("pokemon-card__cell-value", section);
+
+    for (let frame = 0; frame < 20; frame += 1) {
+      browser.mutate([{ type: "childList", target: section, addedNodes: [value], removedNodes: [value] }]);
+      browser.mutate([{ type: "attributes", target: card, attributeName: "hidden" }]);
+      browser.mutate([{ type: "attributes", target: value, attributeName: "aria-hidden" }]);
+      browser.flush();
+    }
+  }
+  assert.deepEqual(scopes, [], "60 consecutive native-card repaint frames must not fan out into full Better UI reconciliation");
+
+  const hover = fakeElement("pokemon-card--hover", body);
+  browser.mutate([{ type: "childList", target: body, addedNodes: [hover], removedNodes: [] }]);
+  browser.flush();
+  browser.mutate([{ type: "childList", target: body, addedNodes: [], removedNodes: [hover] }]);
+  browser.flush();
+  assert.deepEqual(scopes, ["global", "global"], "adding/removing the native card root must remain lifecycle-visible");
+
+  const pinned = fakeElement("pokemon-card--pinned", body);
+  browser.mutate([{ type: "childList", target: pinned, addedNodes: [fakeElement("pokemon-card__section", pinned)], removedNodes: [] }]);
+  browser.mutate([{ type: "childList", target: body, addedNodes: [unrelated], removedNodes: [] }]);
+  browser.flush();
+  assert.deepEqual(scopes, ["global", "global", "global"], "mixed native-card and unrelated work must still promote the unrelated mutation");
+
+  const shared = fakeElement("pokeidle-buff-strip", pinned);
+  browser.mutate([{ type: "childList", target: pinned, addedNodes: [shared], removedNodes: [] }]);
+  browser.flush();
+  assert.deepEqual(scopes, ["global", "global", "global", "global"], "an explicitly shared surface remains observable even if hosted inside a native card");
   observer.stop();
 });
 
@@ -341,6 +388,23 @@ test("Team HUD observer scope reconciles only opted-in mounted modules", (t) => 
   }, "local HUD churn must bypass document-wide shouldMount discovery");
   assert.deepEqual(hudTriggers, ["explicit", "observer:team-hud"]);
   assert.deepEqual(presetTriggers, ["explicit", "observer:team-hud"], "scoped modules receive the narrow trigger so they can avoid unrelated document discovery");
+  app.stop();
+});
+
+test("Buff Strip observer scope reconciles only opted-in mounted modules", (t) => {
+  const browser = mockBrowser(t);
+  const calls = { globalMountCheck:0, globalSync:0, buffMountCheck:0, buffSync:0 };
+  const triggers=[];
+  const app=createBetterUI({modules:[
+    {id:"global-fixture",shouldMount(){calls.globalMountCheck++;return true;},mount:()=>()=>{},reconcile(){calls.globalSync++;}},
+    {id:"buff-fixture",observerScopes:["buff-strip"],shouldMount(){calls.buffMountCheck++;return true;},mount:()=>()=>{},reconcile(trigger){calls.buffSync++;triggers.push(trigger);}},
+  ]});
+  app.start();
+  const body=fakeElement(),strip=fakeElement("pokeidle-buff-strip",body),list=fakeElement("pokeidle-buff-list",strip),pill=fakeElement("pokeidle-buff-pill",list);
+  browser.mutate([{type:"childList",target:list,addedNodes:[pill],removedNodes:[]}]);
+  browser.flush();
+  assert.deepEqual(calls,{globalMountCheck:1,globalSync:1,buffMountCheck:1,buffSync:2},"Buff Strip pill churn must bypass document-wide module discovery");
+  assert.deepEqual(triggers,["explicit","observer:buff-strip"]);
   app.stop();
 });
 
