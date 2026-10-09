@@ -4,6 +4,27 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Card Mode / release reconciliation — Loot Story persistente sem full polling oculto, candidato 0.2.193 (2026-10-09):**
+  durante a preparação do mirror público foi identificado que `public/main` ainda carregava o
+  agregado de Loot Story introduzido no `0.2.178`, requisito de produto que mantém os ícones e
+  quantidades da Hunt/Expedition atual mesmo depois que as linhas saem da janela pública de 32
+  eventos e enquanto o jogador permanece em Game. O mirror antigo preservava isso executando o
+  `readAnalyzerSummary()` completo a cada segundo também com Cards oculto, reprocessando Story
+  completo e contrariando as otimizações de performance aprovadas no `0.2.190/0.2.192`.
+  `0.2.193` reconcilia os dois contratos: em Game, o timer lê somente protocolo/freshness,
+  identidade da sessão e o `lootHistory` bounded; Attempts, `specialHistory`, target, rarity
+  aggregates e a assinatura integral do Story não são tocados. Em Cards, o caminho completo e a
+  `__ppbuiStorySignature` exata continuam autoritativos. O agregado é idempotente para snapshots
+  repetidos, duplicatas/reorder por timestamp+espécie e correções de quantidade, não limpa por
+  indisponibilidade/paused/waiting transitórios, aceita hidratação tardia de `sessionGeneration`
+  para a mesma `startedAtMs` e só reseta em uma identidade de sessão/atividade confirmadamente nova.
+  O estado de reconciliação de linhas fica limitado à janela pública atual; somente o total por item
+  permanece por sessão. Em benchmark sintético com 5.000 especiais, o caminho oculto Better UI
+  mede ~0,05 ms de mediana / <0,1 ms p95 contra ~4 ms do resumo completo. O limite estrutural do
+  contrato público permanece: mais de 32 novos eventos de loot entre dois polls ou uma indisponibilidade
+  prolongada do Analyzer podem criar lacuna que Better UI não consegue reconstruir sem uma fonte
+  cumulativa upstream. Validação live do candidato exato `0.2.193` permanece Product Owner-owned.
+
 - **Performance — hiccups residuais, candidato 0.2.192 (2026-10-09):**
   após a aprovação live de Hunt Favorites, o Product Owner ainda percebeu hiccups no jogo.
   A investigação separou custo contínuo de custos condicionais a janelas abertas e removeu

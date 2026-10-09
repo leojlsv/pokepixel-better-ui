@@ -142,6 +142,23 @@ function sanitizeLootHistory(raw, limit = 32) {
   return rows;
 }
 
+function analyzerSourceIsFresh(raw, now = Date.now()) {
+  if (!raw || typeof raw !== "object" || raw.protocol !== config.analyzerProtocol || raw.available !== true) return false;
+  const capturedAtMs = Number(raw.capturedAtMs);
+  const ageMs = Number(now) - capturedAtMs;
+  return Number.isFinite(capturedAtMs)
+    && Number.isFinite(ageMs)
+    && ageMs >= 0
+    && ageMs <= config.analyzerSourceMaxAgeMs;
+}
+
+function sanitizeSessionGeneration(value) {
+  return Number.isSafeInteger(value)
+    && value >= 0
+    && value <= ANALYZER_NUMBER_LIMIT
+    ? value : null;
+}
+
 function sanitizeRarityCounts(raw) {
   const source = raw && typeof raw === "object" ? raw : {};
   const copy = {};
@@ -158,13 +175,7 @@ function sanitizeRarityCounts(raw) {
 }
 
 function sanitizeAnalyzerSummary(raw, now = Date.now()) {
-  if (!raw || typeof raw !== "object" || raw.protocol !== config.analyzerProtocol || raw.available !== true) return null;
-  const capturedAtMs = Number(raw.capturedAtMs);
-  const ageMs = Number(now) - capturedAtMs;
-  if (!Number.isFinite(capturedAtMs)
-    || !Number.isFinite(ageMs)
-    || ageMs < 0
-    || ageMs > config.analyzerSourceMaxAgeMs) return null;
+  if (!analyzerSourceIsFresh(raw, now)) return null;
   const status = ["running", "paused", "waiting"].includes(raw.status) ? raw.status : "waiting";
   const count = value => boundedNumber(value, { min: 0 });
   const attemptHistory = sanitizeAttemptHistory(raw.attemptHistory);
@@ -174,9 +185,7 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
     appVersion: boundedText(raw.appVersion),
     leadershipActive: raw.leadershipActive === true,
     status,
-    sessionGeneration: Number.isSafeInteger(raw.sessionGeneration)
-      && raw.sessionGeneration >= 0 && raw.sessionGeneration <= ANALYZER_NUMBER_LIMIT
-      ? raw.sessionGeneration : null,
+    sessionGeneration: sanitizeSessionGeneration(raw.sessionGeneration),
     activityKind: raw.activityKind === "expedition" ? "expedition" : "hunt",
     startedAtMs: boundedSessionTimestamp(raw.startedAtMs),
     endedAtMs: boundedSessionTimestamp(raw.endedAtMs),
@@ -229,11 +238,31 @@ function sanitizeAnalyzerSummary(raw, now = Date.now()) {
   return summary;
 }
 
+function sanitizeAnalyzerLootSession(raw, now = Date.now()) {
+  if (!analyzerSourceIsFresh(raw, now)) return null;
+  return {
+    status: ["running", "paused", "waiting"].includes(raw.status) ? raw.status : "waiting",
+    sessionGeneration: sanitizeSessionGeneration(raw.sessionGeneration),
+    activityKind: raw.activityKind === "expedition" ? "expedition" : "hunt",
+    startedAtMs: boundedSessionTimestamp(raw.startedAtMs),
+    lootHistory: sanitizeLootHistory(raw.lootHistory),
+  };
+}
+
 export function readAnalyzerSummary(win = globalThis.window, now = undefined) {
   const api = win?.[config.analyzerGlobal];
   if (api?.protocol !== config.analyzerProtocol || typeof api.getSummary !== "function") return null;
   try {
     const raw = api.getSummary();
     return sanitizeAnalyzerSummary(raw, Number.isFinite(now) ? now : Date.now());
+  } catch { return null; }
+}
+
+export function readAnalyzerLootSession(win = globalThis.window, now = undefined) {
+  const api = win?.[config.analyzerGlobal];
+  if (api?.protocol !== config.analyzerProtocol || typeof api.getSummary !== "function") return null;
+  try {
+    const raw = api.getSummary();
+    return sanitizeAnalyzerLootSession(raw, Number.isFinite(now) ? now : Date.now());
   } catch { return null; }
 }

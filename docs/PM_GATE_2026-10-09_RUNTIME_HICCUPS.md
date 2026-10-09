@@ -45,3 +45,7 @@
 `PRODUCT OWNER APPROVED — exact 0.2.192 accepted for release flow`
 
 Automated verification, soak and independent Technical QA are green. Synthetic/local evidence proved less Better UI work without over-attributing host-game stutter, and the Product Owner then validated the exact `0.2.192` candidate in game and approved it. The Product Owner subsequently authorized commit, push, merge and release. This gate is therefore closed for repository/release completion.
+
+## Release reconciliation note
+
+Private repository completion for `0.2.192` was performed (`release` commit + private `main` merge) under Product Owner authorization. Before any public tag/release was created, mirror preparation exposed an older public-only `0.2.178` Loot Story session-aggregation behavior that was absent from the private candidate. Publishing the naïve public cherry-pick would both change the Product Owner-approved artifact and reintroduce full Analyzer polling in Game mode. Public publication was therefore stopped before push/tag. Candidate `0.2.193` reconciles that historical product requirement with the approved performance boundary and owns a separate exact-candidate gate.

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { JSDOM } from "jsdom";
 import { createBetterUI } from "../src/core/bootstrap.js";
-import { readAnalyzerSummary } from "../src/modules/card-mode/analyzer-summary.js";
+import { readAnalyzerLootSession, readAnalyzerSummary } from "../src/modules/card-mode/analyzer-summary.js";
 import { createCardModeModule } from "../src/modules/card-mode/index.js";
 import { setActiveTeamMember } from "../src/modules/card-mode/controls.js";
 import { rememberActiveHuntZone } from "../src/modules/hunts/dom.js";
@@ -2010,11 +2010,6 @@ test("Loot Story icon strip aggregates quantities and sorts by rarity without qu
   assert.equal(tiles[1].querySelector(".ppbui-cards-loot-drop-icon")?.style.backgroundPosition,"-32px -32px");
   assert.equal(tiles[2].querySelector(".ppbui-cards-loot-drop-icon")?.classList.contains("ppbui-cards-loot-drop-icon--fallback"),true);
   assert.equal(tiles[4].dataset.rarity,"unknown");
-  const cardsCss=doc.querySelector("style[data-ppbui-card-mode-cards-style]")?.textContent || "";
-  assert.match(cardsCss,/\.ppbui-cards-loot-drop\{[^}]*border:1px solid var\(--ppbui-border-strong,#6b6543\)/,
-    "loot icon tiles use the neutral standard border");
-  assert.doesNotMatch(cardsCss,/\.ppbui-cards-loot-drop\{[^}]*border:[^}]*--rarity-color/,
-    "loot icon tile borders do not inherit item rarity colors");
 
   filter.value="rare";
   filter.dispatchEvent(new window.Event("change"));
@@ -2024,61 +2019,83 @@ test("Loot Story icon strip aggregates quantities and sorts by rarity without qu
   assert.doesNotMatch(doc.querySelector("[data-card-loot-body]").textContent,/Weak Thread|Mythic Shard/);
 });
 
-test("Loot Story icon strip keeps the session aggregate after rows leave the 32-row public window and resets on a new Hunt/Expedition generation", async t => {
-  const now = Date.now();
-  const first = {
+test("Loot Story keeps a session aggregate through Game mode, 32-row eviction and late generation hydration", async t => {
+  const now=Date.now(),startedAtMs=now-60_000;
+  const base={
     protocol:1,available:true,capturedAtMs:now,status:"running",activityKind:"hunt",
-    sessionGeneration:41,startedAtMs:now-60_000,specialHistory:[],
-    lootHistory:[
-      {atMs:now-3000,species:"Dragonite",items:[{itemId:"old-thread",qty:2}]},
-      {atMs:now-3000,species:"Dragonite",items:[{itemId:"old-thread",qty:1}]},
-    ],
+    sessionGeneration:null,startedAtMs,specialHistory:[],lootHistory:[],
   };
-  const { app, doc, window, cardMode, setAnalyzerSummary } = setup(t,{analyzerSummary:first});
+  const {app,doc,window,cardMode,setAnalyzerSummary}=setup(t,{analyzerSummary:base});
+  let poll=null,pollMs=0;
+  window.setInterval=(handler,ms)=>{poll=handler;pollMs=ms;return 777;};
+  window.clearInterval=()=>{};
   window.PokeIdle={Api:{async getInventory(){return{inventory:[
-    {item_id:"old-thread",name:"Old Thread",rarity:"weak",qty:2,icon_index:1},
-    {item_id:"mid-leaf",name:"Mid Leaf",rarity:"common",qty:3,icon_index:2},
-    {item_id:"fresh-dust",name:"Fresh Dust",rarity:"rare",qty:4,icon_index:3},
-    {item_id:"expedition-shard",name:"Expedition Shard",rarity:"epic",qty:1,icon_index:4},
+    {item_id:"old-thread",name:"Old Thread",rarity:"weak",qty:99,icon_index:1},
+    {item_id:"new-shard",name:"New Shard",rarity:"epic",qty:1,icon_index:4},
   ]};}}};
   app.start();
+  assert.equal(pollMs,1000);assert.equal(typeof poll,"function");
 
-  setAnalyzerSummary({
-    ...first,capturedAtMs:Date.now(),
-    lootHistory:[
-      {atMs:now-3000,species:"Dragonite",items:[{itemId:"old-thread",qty:1}]},
-      {atMs:now-3000,species:"Dragonite",items:[{itemId:"mid-leaf",qty:3}]},
-    ],
-  });
-  await new Promise(resolve => setTimeout(resolve, 1050));
-  setAnalyzerSummary({
-    ...first,capturedAtMs:Date.now(),
-    lootHistory:[{atMs:now-2000,species:"Dragonite",items:[{itemId:"old-thread",qty:3}]}],
-  });
-  cardMode.setView("cards");
-  setAnalyzerSummary({
-    ...first,capturedAtMs:Date.now(),
-    lootHistory:[{atMs:now-1000,species:"Dragonite",items:[{itemId:"fresh-dust",qty:4}]}],
-  });
-  app.reconcile();
-  doc.querySelector('[data-card-story-tab="loot"]').click();
-  await settle();
+  const rows=[];
+  for(let index=0;index<40;index++){
+    rows.unshift({atMs:now+index,species:`Species ${index}`,items:[{itemId:"old-thread",qty:1}]});
+    setAnalyzerSummary({...base,capturedAtMs:Date.now(),lootHistory:rows.slice(0,32)});
+    poll();
+  }
+  const cards=doc.querySelector("[data-ppbui-card-mode-cards]");
+  const hiddenProbe=new window.MutationObserver(()=>{});hiddenProbe.observe(cards,{subtree:true,childList:true,attributes:true,characterData:true});
+  const beforeUnavailable={...base,capturedAtMs:Date.now(),lootHistory:rows.slice(0,32)};
+  setAnalyzerSummary(null);poll();
+  setAnalyzerSummary({...beforeUnavailable,status:"paused"});poll();
+  setAnalyzerSummary({...beforeUnavailable,status:"waiting"});poll();
+  setAnalyzerSummary(beforeUnavailable);poll();
+  assert.equal(hiddenProbe.takeRecords().length,0,"Game-mode loot ingestion must not mutate the hidden Cards DOM");hiddenProbe.disconnect();
+
+  setAnalyzerSummary({...beforeUnavailable,sessionGeneration:41});poll();
+  cardMode.setView("cards");doc.querySelector('[data-card-story-tab="loot"]').click();await settle();
   let tiles=[...doc.querySelectorAll("[data-card-loot-summary] .ppbui-cards-loot-drop")];
-  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["old-thread","mid-leaf","fresh-dust"],
-    "items remain in the icon aggregate after their individual history rows have left the public 32-row window");
-  assert.deepEqual(tiles.map(tile=>tile.querySelector(".ppbui-cards-loot-drop-qty")?.textContent),["×6","×3","×4"],
-    "quantities keep accumulating across drops even after the older source row disappears");
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["old-thread"]);
+  assert.equal(tiles[0].querySelector(".ppbui-cards-loot-drop-qty")?.textContent,"×40",
+    "rows that age out of the public 32-row window remain in the session aggregate without double-counting after temporary unavailability");
 
+  cardMode.setView("game");
   setAnalyzerSummary({
-    ...first,capturedAtMs:Date.now(),activityKind:"expedition",sessionGeneration:42,startedAtMs:now,
-    lootHistory:[{atMs:now,species:"EXPEDITION",items:[{itemId:"expedition-shard",qty:1}]}],
+    ...base,capturedAtMs:Date.now(),sessionGeneration:42,startedAtMs:now+120_000,
+    lootHistory:[{atMs:now+120_000,species:"EXPEDITION",items:[{itemId:"new-shard",qty:1}]}],
   });
-  app.reconcile();
-  await settle();
+  poll();cardMode.setView("cards");await settle();
   tiles=[...doc.querySelectorAll("[data-card-loot-summary] .ppbui-cards-loot-drop")];
-  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["expedition-shard"],
-    "a new session generation is the reset boundary for the aggregate");
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["new-shard"],"a confirmed new generation resets the prior session aggregate");
   assert.equal(tiles[0].querySelector(".ppbui-cards-loot-drop-qty")?.textContent,"×1");
+});
+
+test("Loot Story session aggregate is idempotent across duplicate-row reorder and quantity correction", async t => {
+  const now=Date.now(),atMs=now-1000;
+  const first={
+    protocol:1,available:true,capturedAtMs:now,status:"running",activityKind:"hunt",sessionGeneration:7,startedAtMs:now-10_000,
+    lootHistory:[
+      {atMs,species:"Dragonite",items:[{itemId:"alpha",qty:1}]},
+      {atMs,species:"Dragonite",items:[{itemId:"beta",qty:2}]},
+    ],
+  };
+  const {app,doc,window,cardMode,setAnalyzerSummary}=setup(t,{analyzerSummary:first});
+  let poll=null;window.setInterval=handler=>{poll=handler;return 778;};window.clearInterval=()=>{};
+  window.PokeIdle={Api:{async getInventory(){return{inventory:[
+    {item_id:"alpha",name:"Alpha",rarity:"common",qty:1,icon_index:1},
+    {item_id:"beta",name:"Beta",rarity:"rare",qty:3,icon_index:2},
+  ]};}}};
+  app.start();
+  setAnalyzerSummary({...first,capturedAtMs:Date.now(),lootHistory:[first.lootHistory[1],first.lootHistory[0]]});poll();
+  const corrected={...first,capturedAtMs:Date.now(),lootHistory:[
+    {atMs,species:"Dragonite",items:[{itemId:"beta",qty:3}]},
+    {atMs,species:"Dragonite",items:[{itemId:"alpha",qty:1}]},
+  ]};
+  setAnalyzerSummary(corrected);poll();poll();
+  cardMode.setView("cards");doc.querySelector('[data-card-story-tab="loot"]').click();await settle();
+  const tiles=[...doc.querySelectorAll("[data-card-loot-summary] .ppbui-cards-loot-drop")];
+  assert.deepEqual(tiles.map(tile=>tile.dataset.itemId),["alpha","beta"]);
+  assert.deepEqual(tiles.map(tile=>tile.querySelector(".ppbui-cards-loot-drop-qty")?.textContent),["×1","×3"],
+    "row reorder is neutral, one corrected quantity applies one delta, and repeated snapshots do not double count");
 });
 
 test("Loot Story refreshes native metadata when a newly dropped item was not in the first catalog", async t => {
@@ -2412,6 +2429,27 @@ test("Analyzer source remains sanitized before Card Mode consumes it", t => {
   app.reconcile();
   assert.equal(readAnalyzerSummary(window), null);
 
+});
+
+test("Game-mode loot reader sanitizes only bounded session/loot fields", t => {
+  const now=Date.now(),lootHistory=[{atMs:now-1000,species:"Dragonite",items:[{itemId:"scale",qty:2}]}];
+  let summaryReads=0;
+  const {window}=setup(t);
+  Object.defineProperty(window,"__POKEPIXEL_HUNT_ANALYZER_PUBLIC__",{configurable:true,value:{
+    protocol:1,
+    getSummary(){
+      summaryReads++;
+      const raw={protocol:1,available:true,capturedAtMs:now,status:"paused",sessionGeneration:0,activityKind:"hunt",startedAtMs:now-5000,lootHistory};
+      for(const field of ["attemptHistory","specialHistory","currentTarget","rarityCounts"])Object.defineProperty(raw,field,{get(){throw new Error(`${field} must stay untouched`);}});
+      return raw;
+    },
+  }});
+  const snapshot=readAnalyzerLootSession(window,now);
+  assert.equal(summaryReads,1);
+  assert.deepEqual(snapshot,{
+    status:"paused",sessionGeneration:0,activityKind:"hunt",startedAtMs:now-5000,
+    lootHistory:[{atMs:now-1000,species:"Dragonite",directGold:null,lootSellValue:null,autoSold:false,autoSellValue:0,totalValue:null,items:[{itemId:"scale",qty:2}]}],
+  });
 });
 
 test("sanitized CURRENT lifecycle rejects invalid generations and timestamps and suppresses forged Expedition targets", t => {

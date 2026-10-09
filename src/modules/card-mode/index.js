@@ -1,6 +1,6 @@
 import { cardModeConfig as config } from "./config.js";
 import { createCardModeCards } from "./cards.js";
-import { readAnalyzerSummary } from "./analyzer-summary.js";
+import { readAnalyzerLootSession, readAnalyzerSummary } from "./analyzer-summary.js";
 
 const moduleId = config.id;
 const modeAttribute = "data-ppbui-card-mode";
@@ -72,9 +72,8 @@ function mountCardMode(win = globalThis.window, menuBar) {
   let toggleOwnedFocus = false;
 
   const syncAnalyzer = () => {
-    const summary = readAnalyzerSummary(win);
-    if (mode === "cards") cards.render(summary);
-    else cards.ingest(summary);
+    if (mode === "cards") cards.render(readAnalyzerSummary(win));
+    else cards.ingest(readAnalyzerLootSession(win));
   };
   const clearToolbarOwnership = () => {
     if (observedToolbar && !toolbarHadMarker) observedToolbar.removeAttribute(toolbarAttribute);
