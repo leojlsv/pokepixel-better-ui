@@ -23,7 +23,8 @@ All notable project changes are recorded in this file.
   mede ~0,05 ms de mediana / <0,1 ms p95 contra ~4 ms do resumo completo. O limite estrutural do
   contrato público permanece: mais de 32 novos eventos de loot entre dois polls ou uma indisponibilidade
   prolongada do Analyzer podem criar lacuna que Better UI não consegue reconstruir sem uma fonte
-  cumulativa upstream. Validação live do candidato exato `0.2.193` permanece Product Owner-owned.
+  cumulativa upstream. **O candidato exato `0.2.193` foi validado e aprovado in-game pelo Product
+  Owner em 2026-10-09.**
 
 - **Performance — hiccups residuais, candidato 0.2.192 (2026-10-09):**
   após a aprovação live de Hunt Favorites, o Product Owner ainda percebeu hiccups no jogo.

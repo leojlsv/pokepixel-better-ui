@@ -54,10 +54,10 @@ The Analyzer public contract exposes a bounded rolling window, not a cumulative 
 - Full verification: **717/717 PASS**, audit/build/release/diff PASS; exact hash recorded above.
 - Independent Technical QA: **TECH READY** in two exact-current READ-ONLY reviews; `P0=0 P1=0 P2=0`. Reviewers independently verified that Game mode touches only the bounded loot reader/ingest path, Cards keeps the full exact Story signature fast path, session identity hydration/reset semantics are fail-closed, rolling row state remains bounded, evictions are not subtracted, and duplicate/reorder/correction handling is idempotent. One reviewer ran an independent fallback-startedAt → generation hydration + correction + eviction scenario and observed the exact expected cumulative quantity; another reran Card Mode integration **63/63 PASS**, `git diff --check` and exact SHA parity.
 - Residual `P3` only: provider-side `getSummary()` may itself eagerly build data before Better UI receives it, so the measured sub-0.1 ms hidden Better UI path cannot eliminate cost owned by the Hunt Analyzer provider. The separate upstream 32-row recoverability limit remains explicitly documented above.
-- Product Owner live validation: pending exact `0.2.193` candidate.
+- Product Owner live validation: **PASS / APPROVED — 2026-10-09**. The Product Owner tested the exact `0.2.193` candidate and explicitly replied “validado e aprovado”.
 
 ## PM decision
 
-`AUTHORIZED FOR PRODUCT OWNER LIVE VALIDATION — TECH READY`
+`PRODUCT OWNER APPROVED — exact 0.2.193 accepted for release flow`
 
-Automated verification, audit, benchmark/soak and independent Technical QA are green. The prior authorization for commit/push/merge/release remains valid, but project governance requires the new runtime artifact to pass exact-candidate live validation before private-main promotion or a public tag/release is created.
+Automated verification, audit, benchmark/soak and independent Technical QA are green, and the Product Owner validated and approved the exact `0.2.193` artifact in game. The prior authorization for commit/push/merge/release remains active. This gate is closed for private-main promotion, public mirror parity verification, tag and GitHub Release publication.
