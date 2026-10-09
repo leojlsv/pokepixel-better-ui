@@ -2452,6 +2452,45 @@ test("Game-mode loot reader sanitizes only bounded session/loot fields", t => {
   });
 });
 
+test("Game-mode loot reader prefers dedicated provider without calling poisoned full summary", t => {
+  const {window}=setup(t), now=Date.now();
+  let fullReads=0,lightReads=0;
+  window.__POKEPIXEL_HUNT_ANALYZER_PUBLIC__={protocol:1,
+    getSummary(){fullReads++;throw new Error("full reader must not run");},
+    getLootSession(){lightReads++;return {protocol:1,available:true,capturedAtMs:now,status:"running",sessionGeneration:4,activityKind:"hunt",startedAtMs:now-1000,lootHistory:[{atMs:now,species:"Pikachu",items:[{itemId:"spark",qty:3}]}]};},
+  };
+  const result=readAnalyzerLootSession(window,now);
+  assert.equal(lightReads,1);
+  assert.equal(fullReads,0);
+  assert.equal(result?.lootHistory[0].items[0].qty,3);
+});
+
+test("invalid, stale or throwing dedicated loot reader fails closed without full fallback", t => {
+  const {window}=setup(t),now=Date.now();
+  let fullReads=0;
+  const provider={protocol:1,getSummary(){fullReads++;return {protocol:1,available:true,capturedAtMs:now,lootHistory:[]};},getLootSession(){return null;}};
+  window.__POKEPIXEL_HUNT_ANALYZER_PUBLIC__=provider;
+  for(const reader of [()=>null,()=>({protocol:1,available:true,capturedAtMs:now-60_000,lootHistory:[]}),()=>{throw new Error("unavailable");}]){
+    provider.getLootSession=reader;
+    assert.equal(readAnalyzerLootSession(window,now),null);
+  }
+  assert.equal(fullReads,0);
+});
+
+test("advertised non-callable dedicated loot reader fails closed without legacy fallback", t => {
+  const {window}=setup(t),now=Date.now();let fullReads=0;
+  window.__POKEPIXEL_HUNT_ANALYZER_PUBLIC__={protocol:1,getLootSession:null,getSummary(){fullReads++;return {protocol:1,available:true,capturedAtMs:now,lootHistory:[]};}};
+  assert.equal(readAnalyzerLootSession(window,now),null);
+  assert.equal(fullReads,0);
+});
+
+test("legacy Analyzer without dedicated loot reader continues to use full provider", t => {
+  const {window}=setup(t),now=Date.now();let reads=0;
+  window.__POKEPIXEL_HUNT_ANALYZER_PUBLIC__={protocol:1,getSummary(){reads++;return {protocol:1,available:true,capturedAtMs:now,status:"paused",sessionGeneration:2,startedAtMs:now-1000,lootHistory:[]};}};
+  assert.equal(readAnalyzerLootSession(window,now)?.sessionGeneration,2);
+  assert.equal(reads,1);
+});
+
 test("sanitized CURRENT lifecycle rejects invalid generations and timestamps and suppresses forged Expedition targets", t => {
   const { window, setAnalyzerSummary } = setup(t, { analyzerSummary: {
     protocol: 1, available: true, capturedAtMs: Date.now(), status: "running",

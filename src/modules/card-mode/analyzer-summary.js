@@ -260,9 +260,12 @@ export function readAnalyzerSummary(win = globalThis.window, now = undefined) {
 
 export function readAnalyzerLootSession(win = globalThis.window, now = undefined) {
   const api = win?.[config.analyzerGlobal];
-  if (api?.protocol !== config.analyzerProtocol || typeof api.getSummary !== "function") return null;
+  if (api?.protocol !== config.analyzerProtocol) return null;
   try {
-    const raw = api.getSummary();
+    const hasDedicatedReader = "getLootSession" in Object(api);
+    const reader = hasDedicatedReader ? api.getLootSession : api.getSummary;
+    if (typeof reader !== "function") return null;
+    const raw = reader.call(api);
     return sanitizeAnalyzerLootSession(raw, Number.isFinite(now) ? now : Date.now());
   } catch { return null; }
 }

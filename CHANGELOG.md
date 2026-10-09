@@ -4,6 +4,17 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Performance — Analyzer loot-only provider, candidato 0.2.194 (2026-10-09):**
+  em Game mode, o Better UI agora prefere o novo `getLootSession()` público do Hunt Analyzer
+  quando disponível. Esse caminho lê somente identidade/freshness da sessão e Loot bounded,
+  sem ativar o leitor completo `getSummary()` nem clonar Attempt/Special/target/rarities.
+  Providers novos que anunciam `getLootSession` mas retornam dados inválidos, stale, lançam erro
+  ou expõem valor não chamável falham fechados sem cair silenciosamente no resumo pesado. O
+  fallback para `getSummary()` permanece apenas para versões legadas do Analyzer que não expõem
+  a API nova. Cards mode continua usando o resumo completo e o agregado persistente de Loot Story
+  de `0.2.193` permanece inalterado. **O candidato exato `0.2.194`, em conjunto com Hunt
+  Analyzer `1.15.6`, foi validado e aprovado in-game pelo Product Owner em 2026-10-09.**
+
 - **Card Mode / release reconciliation — Loot Story persistente sem full polling oculto, candidato 0.2.193 (2026-10-09):**
   durante a preparação do mirror público foi identificado que `public/main` ainda carregava o
   agregado de Loot Story introduzido no `0.2.178`, requisito de produto que mantém os ícones e
