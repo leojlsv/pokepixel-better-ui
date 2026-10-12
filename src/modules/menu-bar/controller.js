@@ -619,6 +619,68 @@ export function mountMenuBar({ toolbar, actions, structure }, {
     });
   };
   queueGeometryNormalization(2);
+  const nativeBuffClearanceMarker = "data-ppbui-menu-native-buff-clearance";
+  const nativeBuffClearanceProperty = "--ppbui-menu-native-buff-clearance-y";
+  let nativeBuffClearance = null;
+  const restoreNativeBuffClearance = () => {
+    const state = nativeBuffClearance;
+    nativeBuffClearance = null;
+    if (!state?.strip) return;
+    const { strip, hadStyle, offset, appliedOffset } = state;
+    const stillOwnsOffset = !appliedOffset || (
+      strip.style.getPropertyValue(nativeBuffClearanceProperty) === appliedOffset.value &&
+      strip.style.getPropertyPriority(nativeBuffClearanceProperty) === appliedOffset.priority
+    );
+    if (stillOwnsOffset) {
+      if (offset.value) strip.style.setProperty(nativeBuffClearanceProperty, offset.value, offset.priority);
+      else strip.style.removeProperty(nativeBuffClearanceProperty);
+    }
+    strip.removeAttribute(nativeBuffClearanceMarker);
+    if (!hadStyle && !strip.style.cssText) strip.removeAttribute("style");
+  };
+  const syncNativeBuffClearance = () => {
+    const strip = doc.querySelector(".pokeidle-buff-strip:not(.is-embedded):not([data-ppbui-buff-strip]):not([hidden])");
+    if (nativeBuffClearance?.strip && nativeBuffClearance.strip !== strip) restoreNativeBuffClearance();
+    if (!strip || orientation !== "horizontal" || toolbar.classList.contains("is-collapsed")) {
+      restoreNativeBuffClearance();
+      return;
+    }
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const stripRect = strip.getBoundingClientRect();
+    const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
+    if (!(toolbarRect.width > 0 && toolbarRect.height > 0 && viewportHeight > 0)) return;
+    const height = stripRect.height > 0 ? stripRect.height : 34;
+    const margin = 8, gap = 4;
+    const belowFree = Math.max(0, viewportHeight - margin - toolbarRect.bottom - gap);
+    const aboveFree = Math.max(0, toolbarRect.top - gap - margin);
+    const belowTop = toolbarRect.bottom + gap;
+    const aboveTop = toolbarRect.top - gap - height;
+    const top = belowFree >= height || belowFree >= aboveFree
+      ? clamp(belowTop, margin, viewportHeight - margin - height)
+      : clamp(aboveTop, margin, viewportHeight - margin - height);
+    if (!nativeBuffClearance) {
+      nativeBuffClearance = {
+        strip,
+        hadStyle:strip.hasAttribute("style"),
+        offset:{
+          value:strip.style.getPropertyValue(nativeBuffClearanceProperty),
+          priority:strip.style.getPropertyPriority(nativeBuffClearanceProperty),
+        },
+        appliedOffset:null,
+        appliedOffsetPx:0,
+      };
+    }
+    const baseTop = stripRect.top - (nativeBuffClearance.appliedOffsetPx || 0);
+    const nextOffsetPx = Math.round(top - baseTop);
+    const nextOffset = nextOffsetPx + "px";
+    if (!strip.hasAttribute(nativeBuffClearanceMarker)) strip.setAttribute(nativeBuffClearanceMarker, "");
+    if (strip.style.getPropertyValue(nativeBuffClearanceProperty) !== nextOffset ||
+        strip.style.getPropertyPriority(nativeBuffClearanceProperty) !== "") {
+      strip.style.setProperty(nativeBuffClearanceProperty, nextOffset);
+    }
+    nativeBuffClearance.appliedOffset = { value:nextOffset, priority:"" };
+    nativeBuffClearance.appliedOffsetPx = nextOffsetPx;
+  };
   const handle = toolbar.querySelector(selectors.handle);
   if (handle) {
     listen(handle, "pointerdown", () => { nativeGeometryTouched = true; positionGesture = true; }, true);
@@ -626,11 +688,14 @@ export function mountMenuBar({ toolbar, actions, structure }, {
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) { nativeGeometryTouched = true; positionGesture = true; }
     }, true);
     listen(handle, "keyup", event => {
-      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) persistPosition();
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+        persistPosition();
+        syncNativeBuffClearance();
+      }
     });
-    listen(win, "pointerup", persistPosition, true);
-    listen(win, "pointercancel", persistPosition, true);
-    listen(win, "blur", persistPosition);
+    listen(win, "pointerup", () => { persistPosition(); syncNativeBuffClearance(); }, true);
+    listen(win, "pointercancel", () => { persistPosition(); syncNativeBuffClearance(); }, true);
+    listen(win, "blur", () => { persistPosition(); syncNativeBuffClearance(); });
   }
   const itemOrder = groups.map(({ dropdown }) => ({
     dropdown,
@@ -676,7 +741,8 @@ export function mountMenuBar({ toolbar, actions, structure }, {
 
     const buffStrip = doc.querySelector('.pokeidle-buff-strip[data-ppbui-buff-strip]:not([hidden])');
     const buffRect = buffStrip?.getBoundingClientRect?.();
-    if (buffRect?.width > 0 && buffRect?.height > 0) {
+    const freeBuffTracker = buffStrip?.dataset.ppbuiBuffStripDock === "free";
+    if (!freeBuffTracker && buffRect?.width > 0 && buffRect?.height > 0) {
       const candidate = { left, right:left + popupWidth, top, bottom:top + popupHeight };
       if (overlaps(candidate, buffRect)) {
         const minTop = margin;
@@ -765,10 +831,12 @@ export function mountMenuBar({ toolbar, actions, structure }, {
   }
   listen(doc.defaultView, "resize", () => {
     nativeGeometryTouched = true;
+    syncNativeBuffClearance();
     for (const entry of groups) positionDropdown(entry);
   });
   listen(doc.defaultView, buffStripConfig.events.geometryChange, event => {
     if (event.detail?.toolbar && event.detail.toolbar !== toolbar) return;
+    syncNativeBuffClearance();
     const active = new Set();
     if (hoveredEntry) active.add(hoveredEntry);
     for (const entry of groups) {
@@ -786,6 +854,7 @@ export function mountMenuBar({ toolbar, actions, structure }, {
     suppressNativeToolbarPosition();
     if (!geometryClaimed) normalizeHubGeometry();
     syncCollapsed();
+    syncNativeBuffClearance();
     syncOwnedCityActions();
     for (const [button, parents] of sources) mask(button, !nativeVisible(button) || parents.some(parent => !nativeVisible(parent)));
     syncNotifications();
@@ -814,6 +883,7 @@ export function mountMenuBar({ toolbar, actions, structure }, {
   sync();
   return {
     sync,
+    syncNativeBuffClearance,
     syncParticipants,
     getCatalog: () => MENU_CATALOG.flatMap(definition => {
       if (definition.optional && (!layout || !getPlacement(layout,definition.id))) return [];
@@ -867,6 +937,7 @@ export function mountMenuBar({ toolbar, actions, structure }, {
       emitToolbarState(config.events.beforeTeardown, { reason:"cleanup" });
       for (const entry of groups) entry.rename();
       toolbarStateObserver?.disconnect();
+      restoreNativeBuffClearance();
       if (geometryFrame !== null) win?.cancelAnimationFrame?.(geometryFrame);
       clearCollapsedStyles();
       for (const node of [...masks.keys()]) mask(node, false);

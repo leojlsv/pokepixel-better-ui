@@ -73,6 +73,7 @@ export function mountControls({ toolbar, icon }, preferences, modules, menuBar, 
   };
   const rows = modules.map(module => {
     const row = create("label", "ppbui-module-row");
+    row.dataset.ppbuiModuleSetting = module.id;
     const button = create("input"); button.type = "checkbox";
     const copy = create("span", "ppbui-module-row-copy");
     const name = create("strong");

@@ -165,6 +165,7 @@ export function createMenuBarModule({ doc:providedDocument, storage } = {}) {
   const module = {
     id: menuBarConfig.id,
     runsInCardMode: true,
+    observerScopes: ["buff-strip"],
     shouldMount() {
       const next = findMenuTarget(documentOf());
       if (next) { ensureServices(); refreshProfile(); }
@@ -175,7 +176,11 @@ export function createMenuBarModule({ doc:providedDocument, storage } = {}) {
       return Boolean(next);
     },
     getMountKey: () => documentOf()?.body,
-    reconcile() {
+    reconcile(trigger) {
+      if (trigger === "observer:buff-strip") {
+        mounted?.syncNativeBuffClearance?.();
+        return;
+      }
       nativeBus?.reconcile();
       refreshProfile();
       if (pendingRebuild) rebuild();

@@ -9,7 +9,7 @@ import { createModuleControls } from "../src/modules/module-controls/index.js";
 
 const fixture = readFileSync(new URL("./fixtures/menu-bar.html", import.meta.url), "utf8");
 const key = "ppbui:modules:v1";
-function setup(t, stored, fail = false, legacyAppearance = null, wallet = null) {
+function setup(t, stored, fail = false, legacyAppearance = null, wallet = null, extraModules = []) {
   const dom = new JSDOM(fixture, { pretendToBeVisual: true, url: "https://local.test" });
   const { window } = dom;
   const previous = new Map();
@@ -19,13 +19,14 @@ function setup(t, stored, fail = false, legacyAppearance = null, wallet = null) 
   }
   if (stored) window.localStorage.setItem(key, stored);
   if (legacyAppearance) window.localStorage.setItem("ppbui:appearance:v1", legacyAppearance);
-  const options = { defaults: { "menu-bar": true }, events: window, storage: () => {
+  const moduleRows = [{ id: "menu-bar", name: text => text.name, description: text => text.description }, ...extraModules];
+  const options = { defaults: Object.fromEntries(moduleRows.map(module => [module.id, true])), events: window, storage: () => {
     if (fail) throw new Error("Storage denied");
     return window.localStorage;
   } };
   const preferences = createModulePreferences(options);
   const menuBar = createMenuBarModule();
-  const controls = createModuleControls({ preferences, modules: [{ id: "menu-bar", name: text => text.name, description: text => text.description }], wallet });
+  const controls = createModuleControls({ preferences, modules: moduleRows, wallet });
   const app = createBetterUI({ modules: [menuBar, controls], preferences });
   const doc = window.document;
   t.after(() => {
@@ -38,12 +39,32 @@ function setup(t, stored, fail = false, legacyAppearance = null, wallet = null) 
   return { app, doc, window, preferences, options,
     trigger: () => doc.querySelector('[aria-controls="ppbui-module-panel"]'),
     toggle: () => doc.querySelector('#ppbui-module-panel input[type="checkbox"]'),
+    toggleById: id => doc.querySelector(`#ppbui-module-panel [data-ppbui-module-setting="${id}"] input[type="checkbox"]`),
   };
 }
 
 test("Module Controls stays mounted while textual Cards hides the native toolbar", () => {
   const controls = createModuleControls({ preferences: {}, modules: [] });
   assert.equal(controls.runsInCardMode, true);
+});
+
+test("Buff Tracker is exposed as an explicit Better UI toggle in Interface", t => {
+  const buff = {
+    id:"buff-strip",
+    name:()=>"Buff Tracker",
+    description:()=>"Tracker de buffs",
+  };
+  const { app, doc, trigger, toggleById, preferences } = setup(t, null, false, null, null, [buff]);
+  app.start();
+  trigger().click();
+  const input = toggleById("buff-strip");
+  assert.ok(input, "Buff Tracker toggle must render in the Better UI panel");
+  assert.equal(input.checked, true);
+  assert.match(input.closest("[data-ppbui-module-setting]")?.textContent || "", /Buff Tracker/);
+  assert.equal(input.closest("details")?.dataset.ppbuiTheme, "interface");
+  input.click();
+  assert.equal(preferences.isEnabled("buff-strip"), false);
+  assert.equal(doc.querySelector('[data-ppbui-module-setting="buff-strip"] input').checked, false);
 });
 
 test("corner mode UI is removed and legacy Squared storage is retired", t => {

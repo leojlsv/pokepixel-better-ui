@@ -9,6 +9,10 @@ export default `
     display:none !important;
   }
 
+  .pokeidle-buff-strip[data-ppbui-menu-native-buff-clearance]:not(.is-embedded) {
+    margin-top:var(--ppbui-menu-native-buff-clearance-y,0px) !important;
+  }
+
   .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar] {
     padding:3px 32px !important;
     border-radius:var(--ppbui-window-radius) !important;

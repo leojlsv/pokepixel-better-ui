@@ -6,6 +6,7 @@ import { createBetterUI } from "../src/core/bootstrap.js";
 import { createMenuBarModule } from "../src/modules/menu-bar/index.js";
 import menuBarStyles from "../src/modules/menu-bar/styles.js";
 import { buffStripConfig } from "../src/modules/buff-strip/config.js";
+import { mountBuffStrip } from "../src/modules/buff-strip/controller.js";
 
 const fixture = readFileSync(new URL("./fixtures/menu-bar.html", import.meta.url), "utf8");
 
@@ -613,6 +614,209 @@ test("dropdown shrinks into the largest free region when a tall buff stack block
   assert.equal(dropdown.style.top, "254px");
   assert.equal(dropdown.style.getPropertyValue("max-height"), "438px");
   assert.equal(dropdown.style.getPropertyPriority("max-height"), "important");
+});
+
+test("free draggable buff tracker never makes a menu popup unusably small", t => {
+  const { app, doc, window, toolbar, menuBar } = setup(t);
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:800 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  app.start();
+  menuBar.setOrientation("vertical");
+  const buff = doc.createElement("div");
+  buff.className = "pokeidle-buff-strip";
+  buff.dataset.ppbuiBuffStrip = "";
+  buff.dataset.ppbuiBuffStripDock = "free";
+  buff.getBoundingClientRect = () => ({ left:90, right:390, top:8, bottom:692, width:300, height:684 });
+  doc.body.append(buff);
+  const group = toolbar.querySelector('[data-ppbui-group="player"]');
+  const trigger = group.querySelector(":scope > button");
+  const dropdown = group.querySelector(":scope > .pokeidle-top-toolbar__dropdown");
+  toolbar.getBoundingClientRect = () => ({ left:10, right:90, top:8, bottom:608, width:80, height:600 });
+  trigger.getBoundingClientRect = () => ({ left:10, right:90, top:20, bottom:76, width:80, height:56 });
+  dropdown.getBoundingClientRect = () => ({ left:0, right:282, top:0, bottom:500, width:282, height:500 });
+
+  group.dispatchEvent(new window.Event("pointerenter"));
+  assert.equal(dropdown.style.left, "90px");
+  assert.equal(dropdown.style.top, "8px");
+  assert.equal(dropdown.style.getPropertyValue("max-height"), "calc(100dvh - 96px)");
+});
+
+test("free horizontal Menu Bar keeps the original unowned buff strip visible outside its rail", t => {
+  const { app, doc, window, toolbar, menuBar } = setup(t);
+  Object.defineProperty(doc.documentElement, "clientHeight", { configurable:true, value:700 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:20, right:780, top:8, bottom:88, width:760, height:80 });
+  const buff = doc.createElement("div");
+  buff.className = "pokeidle-buff-strip";
+  buff.style.top = "62px";
+  buff.getBoundingClientRect = () => {
+    const top = Number.parseFloat(buff.style.top) || 0;
+    const offset = Number.parseFloat(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y")) || 0;
+    return { left:90, right:710, top:top + offset, bottom:top + offset + 34, width:620, height:34 };
+  };
+  doc.body.append(buff);
+
+  app.start();
+  assert.equal(buff.hasAttribute("data-ppbui-menu-native-buff-clearance"), true);
+  assert.equal(buff.style.getPropertyValue("top"), "62px", "native inline top remains owned by the game");
+  assert.equal(buff.style.getPropertyPriority("top"), "");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "30px");
+  assert.equal(buff.getBoundingClientRect().top, 92, "visual clearance still keeps the strip outside the free top menu");
+
+  buff.dataset.ppbuiBuffStrip = "";
+  app.reconcile();
+  assert.equal(buff.hasAttribute("data-ppbui-menu-native-buff-clearance"), false, "Buff Tracker owns its own geometry when enabled");
+  assert.equal(buff.style.getPropertyValue("top"), "62px", "native inline position was never replaced");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "");
+
+  delete buff.dataset.ppbuiBuffStrip;
+  menuBar.setOrientation("vertical");
+  app.reconcile();
+  assert.equal(buff.hasAttribute("data-ppbui-menu-native-buff-clearance"), false, "vertical menu does not rewrite the native horizontal strip");
+  assert.equal(buff.style.getPropertyValue("top"), "62px");
+});
+
+test("stable native buff clearance reconciliation is mutation-free and does not flicker", async t => {
+  const { app, doc, window, toolbar } = setup(t);
+  Object.defineProperty(doc.documentElement, "clientHeight", { configurable:true, value:700 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:20, right:780, top:8, bottom:88, width:760, height:80 });
+  const buff = doc.createElement("div");
+  buff.className = "pokeidle-buff-strip";
+  buff.style.top = "62px";
+  buff.getBoundingClientRect = () => {
+    const top = Number.parseFloat(buff.style.top) || 0;
+    const offset = Number.parseFloat(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y")) || 0;
+    return { left:90, right:710, top:top + offset, bottom:top + offset + 34, width:620, height:34 };
+  };
+  doc.body.append(buff);
+  app.start();
+  assert.equal(buff.style.getPropertyValue("top"), "62px");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "30px");
+  assert.equal(buff.getBoundingClientRect().top, 92);
+
+  const records = [];
+  const observer = new window.MutationObserver(batch => records.push(...batch));
+  observer.observe(buff, { attributes:true });
+  for (let i = 0; i < 12; i++) app.reconcile();
+  await Promise.resolve();
+  observer.disconnect();
+  assert.equal(records.length, 0, "stable Menu Bar reconciliation must not rewrite native buff geometry");
+});
+
+test("native one-second buff attach keeps ownership of top while Menu Bar clearance stays visual-only", t => {
+  const { app, doc, window, toolbar } = setup(t);
+  Object.defineProperty(doc.documentElement, "clientHeight", { configurable:true, value:700 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:20, right:780, top:8, bottom:88, width:760, height:80 });
+  const buff = doc.createElement("div");
+  buff.className = "pokeidle-buff-strip has-buffs";
+  buff.style.top = "88px";
+  buff.style.left = "400px";
+  buff.style.width = "620px";
+  buff.innerHTML = '<div class="pokeidle-buff-list"><div class="pokeidle-buff-pill"><span>Move Speed</span><b>×2</b><time>443:30:02</time></div></div><div class="pokeidle-event-ticker is-empty"></div>';
+  buff.getBoundingClientRect = () => {
+    const top = Number.parseFloat(buff.style.top) || 0;
+    const offset = Number.parseFloat(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y")) || 0;
+    return { left:90, right:710, top:top + offset, bottom:top + offset + 34, width:620, height:34 };
+  };
+  doc.body.append(buff);
+
+  app.start();
+  assert.equal(buff.style.top, "88px", "Better UI must not replace the native attach() top");
+  assert.equal(buff.style.getPropertyPriority("top"), "", "native top ownership must keep its original priority");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "4px");
+  assert.equal(buff.getBoundingClientRect().top, 92);
+
+  const time = buff.querySelector("time");
+  for (let second = 1; second <= 12; second++) {
+    const nativeTop = `${toolbar.getBoundingClientRect().bottom}px`;
+    if (buff.style.top !== nativeTop) buff.style.top = nativeTop;
+    time.textContent = `443:30:${String(2 - second).padStart(2, "0")}`;
+    app.reconcile();
+    assert.equal(buff.style.top, "88px", "the native 1 Hz attach writer never enters a top ownership fight");
+    assert.equal(buff.style.getPropertyPriority("top"), "");
+    assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "4px");
+    assert.equal(buff.getBoundingClientRect().top, 92);
+  }
+});
+
+test("native timer churn recalibrates visual clearance through the shared buff observer scope", async t => {
+  const { app, doc, window, toolbar } = setup(t);
+  Object.defineProperty(doc.documentElement, "clientHeight", { configurable:true, value:700 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:20, right:780, top:8, bottom:88, width:760, height:80 });
+  const buff = doc.createElement("div");
+  buff.className = "pokeidle-buff-strip has-buffs";
+  buff.style.top = "62px";
+  buff.innerHTML = '<div class="pokeidle-buff-list"><div class="pokeidle-buff-pill"><span>Move Speed</span><b>×2</b><time>443:30:02</time></div></div><div class="pokeidle-event-ticker is-empty"></div>';
+  buff.getBoundingClientRect = () => {
+    const top = Number.parseFloat(buff.style.top) || 0;
+    const offset = Number.parseFloat(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y")) || 0;
+    return { left:90, right:710, top:top + offset, bottom:top + offset + 34, width:620, height:34 };
+  };
+  doc.body.append(buff);
+
+  app.start();
+  assert.equal(buff.style.top, "62px");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "30px");
+  assert.equal(buff.getBoundingClientRect().top, 92);
+
+  // Mirrors BuffEffectsHUD.render(): attach() corrects the native top first and
+  // the same one-second render updates the countdown text immediately after it.
+  buff.style.top = toolbar.getBoundingClientRect().bottom + "px";
+  buff.querySelector("time").textContent = "443:30:01";
+  await new Promise(resolve => window.setTimeout(resolve, 70));
+
+  assert.equal(buff.style.top, "88px", "the native attach() top remains authoritative");
+  assert.equal(buff.style.getPropertyPriority("top"), "");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "4px", "the shared buff scope recalibrates presentation only");
+  assert.equal(buff.getBoundingClientRect().top, 92);
+});
+
+test("Buff Tracker takes native clearance ownership synchronously and hands it back without a frame of flicker", t => {
+  const { app, doc, window, toolbar } = setup(t);
+  Object.defineProperty(doc.documentElement, "clientWidth", { configurable:true, value:900 });
+  Object.defineProperty(doc.documentElement, "clientHeight", { configurable:true, value:700 });
+  Object.defineProperty(window, "innerWidth", { configurable:true, value:900 });
+  Object.defineProperty(window, "innerHeight", { configurable:true, value:700 });
+  toolbar.getBoundingClientRect = () => ({ left:20, right:780, top:8, bottom:88, width:760, height:80 });
+  const buff = doc.createElement("div");
+  buff.className = "pokeidle-buff-strip";
+  buff.style.top = "62px";
+  buff.innerHTML = '<div class="pokeidle-buff-list"><div class="pokeidle-buff-pill"><span>XP</span><b>×2</b><time>1:00</time></div></div><div class="pokeidle-event-ticker is-empty"></div>';
+  buff.getBoundingClientRect = () => {
+    const left = Number.parseFloat(buff.style.getPropertyValue("--ppbui-buff-strip-left")) || 100;
+    const trackerTop = Number.parseFloat(buff.style.getPropertyValue("--ppbui-buff-strip-top"));
+    const nativeTop = Number.parseFloat(buff.style.top) || 0;
+    const menuOffset = Number.parseFloat(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y")) || 0;
+    const top = Number.isFinite(trackerTop) ? trackerTop : nativeTop + menuOffset;
+    return { left, right:left + 300, top, bottom:top + 70, width:300, height:70 };
+  };
+  doc.body.append(buff);
+  app.start();
+  assert.equal(buff.style.getPropertyValue("top"), "62px");
+  assert.equal(buff.style.getPropertyPriority("top"), "");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "30px");
+  assert.equal(buff.getBoundingClientRect().top, 92);
+
+  const list = buff.querySelector(".pokeidle-buff-list");
+  const ticker = buff.querySelector(".pokeidle-event-ticker");
+  const mounted = mountBuffStrip({ strip:buff, toolbar, list, ticker });
+  assert.equal(buff.hasAttribute("data-ppbui-buff-strip"), true);
+  assert.equal(buff.hasAttribute("data-ppbui-menu-native-buff-clearance"), false);
+  assert.equal(buff.style.getPropertyValue("top"), "62px", "Menu Bar never steals the native inline top");
+  assert.equal(buff.style.getPropertyPriority("top"), "");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "", "visual-only clearance is released in the same call stack");
+  assert.equal(buff.getBoundingClientRect().top, 92);
+
+  mounted.cleanup();
+  assert.equal(buff.hasAttribute("data-ppbui-buff-strip"), false);
+  assert.equal(buff.hasAttribute("data-ppbui-menu-native-buff-clearance"), true, "native clearance returns synchronously on Tracker teardown");
+  assert.equal(buff.style.getPropertyValue("top"), "62px");
+  assert.equal(buff.style.getPropertyPriority("top"), "");
+  assert.equal(buff.style.getPropertyValue("--ppbui-menu-native-buff-clearance-y"), "30px");
+  assert.equal(buff.getBoundingClientRect().top, 92);
 });
 
 test("open dropdown repositions when buff geometry changes after opening", t => {

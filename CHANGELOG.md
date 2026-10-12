@@ -4,6 +4,25 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Buff Tracker / native buff strip - candidate 0.2.195 (2026-10-12):**
+  the existing Buff Strip module now provides a compact quest-tracker-style surface with
+  title/count, collapse, persistent free drag, Team HUD width alignment, player/event visual
+  distinction, and an explicit Better UI > Interface toggle while preserving the native nodes,
+  timers, and handlers. With Tracker disabled, Menu Bar no longer competes for native inline
+  top/bottom with the one-second BuffEffectsHUD.attach() writer. Original-strip clearance is now
+  a Better UI presentation-only offset recalibrated through the shared buff-strip observer scope.
+  A Chromium smoke held native top/priority, a stable 4 px visual gap, the same nodes/handler, and
+  zero attribute mutations across 12 synthetic native ticks. **The Product Owner validated the
+  final correction in-game on 2026-10-12 and authorized commit, push, merge, and release.**
+
+- **Trade - density, filters, and quantity, candidate 0.2.195 (2026-10-12):**
+  Trade remains non-resizable with no outer scrollbar, preserves the native Confirm/Cancel nodes,
+  and uses Backpack-density slots. Native Rarities remains the sole rarity control; Better UI More
+  Filters composes conservatively over candidate sets when individual card identity cannot be
+  proven, without guessing an instance. Item addition keeps the native quantity prompt and
+  validation while adding the approved Max affordance. **The Product Owner validated the final
+  client behavior and approved this scope for release 0.2.195.**
+
 - **Performance — Analyzer loot-only provider, candidato 0.2.194 (2026-10-09):**
   em Game mode, o Better UI agora prefere o novo `getLootSession()` público do Hunt Analyzer
   quando disponível. Esse caminho lê somente identidade/freshness da sessão e Loot bounded,
