@@ -109,6 +109,18 @@ export default `
   grid-column:span 2;
 }
 
+/* Species has Search + three selects; the creature picker has Search + two.
+   Give Search the wide track without leaving Sort orphaned on a new row. */
+.npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid {
+  grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr))!important;
+}
+.npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid[data-ppbui-geneticist-select-count="2"] {
+  grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr))!important;
+}
+.npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid > input[type="search"] {
+  grid-column:auto!important;
+}
+
 .npc-iv-window.ppbui-geneticist .ppbui-geneticist-reroll-target {
   gap:0!important;
 }
@@ -138,23 +150,42 @@ export default `
 }
 
 .npc-iv-window.ppbui-geneticist .npc-genetic__quality-filters {
-  gap:var(--ppbui-space-1)!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center;
+  gap:var(--ppbui-space-2)!important;
   grid-column:1/-1!important;
 }
 
 .npc-iv-window.ppbui-geneticist .npc-genetic__quality {
-  min-height:32px;
+  box-sizing:border-box!important;
+  display:inline-flex!important;
+  flex:0 0 auto;
+  height:var(--ppbui-control-height)!important;
+  min-height:var(--ppbui-control-height)!important;
   align-items:center;
+  gap:var(--ppbui-space-1)!important;
   padding:var(--ppbui-space-1) var(--ppbui-space-2)!important;
   border:var(--ppbui-border-width) solid var(--ppbui-border)!important;
+  border-left:3px solid var(--ppbui-geneticist-quality,var(--ppbui-border))!important;
   border-radius:var(--ppbui-radius-badge)!important;
   background:var(--ppbui-bg-2)!important;
   color:var(--ppbui-text-muted)!important;
   font:600 var(--ppbui-font-size-meta)/1 var(--ppbui-font-body)!important;
+  white-space:nowrap;
 }
+
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--weak { --ppbui-geneticist-quality:var(--quality-weak,var(--ppbui-text-muted)); }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--common { --ppbui-geneticist-quality:var(--quality-common,var(--ppbui-text-muted)); }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--uncommon { --ppbui-geneticist-quality:var(--quality-uncommon,var(--ppbui-success)); }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--rare { --ppbui-geneticist-quality:var(--quality-rare,var(--ppbui-accent-hi)); }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--epic { --ppbui-geneticist-quality:var(--quality-epic,var(--ppbui-selected)); }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--legendary { --ppbui-geneticist-quality:var(--quality-legendary,var(--ppbui-warning)); }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-quality--mythical { --ppbui-geneticist-quality:var(--quality-mythical,var(--ppbui-accent-hi)); }
 
 .npc-iv-window.ppbui-geneticist .npc-genetic__quality:has(input:checked) {
   border-color:var(--ppbui-selected)!important;
+  border-left-color:var(--ppbui-geneticist-quality,var(--ppbui-selected))!important;
   background:var(--ppbui-bg-3)!important;
   color:var(--ppbui-text)!important;
 }
@@ -376,6 +407,10 @@ export default `
 }
 
 .npc-iv-window.ppbui-geneticist .ppbui-geneticist-species-pane[hidden] { display:none!important; }
+.npc-iv-window.ppbui-geneticist .ppbui-geneticist-species-pane[inert] {
+  pointer-events:none;
+  opacity:.65;
+}
 
 .npc-iv-window.ppbui-geneticist .ppbui-geneticist-species-title {
   color:var(--ppbui-text-muted);
@@ -402,6 +437,18 @@ export default `
 .npc-extraction * {
   animation:none!important;
   transition:none!important;
+}
+
+@media (max-width:840px) {
+  .npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid {
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid[data-ppbui-geneticist-select-count="2"] {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid > input[type="search"] {
+    grid-column:1/-1!important;
+  }
 }
 
 @media (max-width:724px) {
@@ -445,11 +492,20 @@ export default `
   }
   .npc-iv-window.ppbui-geneticist .ppbui-geneticist-filter-grid,
   .npc-iv-window.ppbui-geneticist .ppbui-geneticist-reroll-target > .ppbui-geneticist-filter-grid { grid-template-columns:minmax(0,1fr)!important; }
+  .npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid,
+  .npc-iv-window.ppbui-geneticist .npc-genetic__content > .ppbui-geneticist-filter-grid[data-ppbui-geneticist-select-count="2"] { grid-template-columns:minmax(0,1fr)!important; }
   .npc-iv-window.ppbui-geneticist .ppbui-geneticist-filter-grid > input[type="search"] { grid-column:1!important; }
   .npc-iv-window.ppbui-geneticist .npc-genetic__quality-filters { grid-column:1!important; }
   .npc-iv-window.ppbui-geneticist .npc-genetic__species-list,
   .npc-iv-window.ppbui-geneticist .npc-genetic__creature-list,
   .npc-iv-window.ppbui-geneticist .ppbui-geneticist-species-pane .npc-genetic__species-list { grid-template-columns:minmax(0,1fr)!important; }
   .npc-iv-window.ppbui-geneticist .npc-genetic__extract-action { width:100%!important; min-width:0!important; }
+}
+
+@media (pointer:coarse) {
+  .npc-iv-window.ppbui-geneticist .npc-genetic__quality {
+    height:40px!important;
+    min-height:40px!important;
+  }
 }
 `;

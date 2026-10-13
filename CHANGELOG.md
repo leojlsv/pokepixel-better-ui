@@ -4,6 +4,8 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Geneticist Extract Material — 0.2.197 (2026-10-13):** after an extraction commits, reopen the selected species from refreshed native results instead of returning to the initial species grid. Reorganize species and creature filters, align seven rarity facets at 28px with native rarity colors and visible focus/selection, and avoid a blocked sidebar after unrelated update events. Product Owner approved publication on 2026-10-13.
+
 - **Card Mode Resource Tracker — estoque individual de consumíveis, candidato 0.2.196 (2026-10-13):**
   Cards passa a mostrar cada Poké Ball, Potion e Revive do inventário como item individual, com
   ícone, nome e quantidade, em vez de um total agregado por categoria. O tracker usa o mesmo

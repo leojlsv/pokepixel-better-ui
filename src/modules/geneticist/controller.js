@@ -1,5 +1,6 @@
 import css from "./styles.js";
 import { nativeText, primaryTabs, tabByLabel } from "./dom.js";
+import { createNativeBusBindings } from "../../core/native-event-bus.js";
 
 let mountOrdinal = 0;
 
@@ -20,6 +21,10 @@ export function mountGeneticist(root) {
   const ownerToken = String(++mountOrdinal);
   let active = true;
   let preserved = null;
+  let extractionIntent = null;
+  let reopenAfterExtraction = null;
+  let focusAfterExtraction = false;
+  const nativeBus = createNativeBusBindings(() => win?.PokeIdle?.Bus);
 
   const ownClass = (node, ...classes) => {
     if (!node) return;
@@ -72,7 +77,9 @@ export function mountGeneticist(root) {
   paneTitle.className = "ppbui-geneticist-species-title";
   paneTitle.textContent = geneticCopy("species", "Species");
   pane.append(paneTitle);
-  root.append(pane);
+  const nativeBody = root.querySelector(":scope > .pokeidle-panel__body");
+  if (nativeBody) nativeBody.before(pane);
+  else root.append(pane);
 
   function geneticCopy(kind, fallback) {
     const lang = win?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "en";
@@ -99,6 +106,25 @@ export function mountGeneticist(root) {
     pane.hidden = true;
     root.removeAttribute("data-ppbui-geneticist-layout");
   };
+
+  const speciesIdentity = card => ({
+    name: String(card?.querySelector(".npc-genetic__species-copy > b")?.textContent || card?.textContent || "").trim(),
+    sprite: card?.querySelector(".npc-genetic__species-sprite")?.getAttribute("src") || "",
+  });
+
+  const extractActive = () => Boolean(tabByLabel(root, nativeText(root, "npc.iv.tab_extract", "Extract"))?.classList.contains("is-active"));
+  const nativeExtractBusy = () => {
+    const content = root.querySelector(":scope > .pokeidle-panel__body .npc-genetic__content");
+    return Boolean(content?.querySelector(":scope > .npc-genetic__filters > input[type='search']")?.disabled
+      || content?.querySelector(":scope > .npc-genetic__toolbar > button")?.disabled);
+  };
+
+  nativeBus.bind("creature.updated", payload => {
+    if (!active || !extractionIntent || payload?.extracted !== true || !payload.species_id
+      || !root.isConnected || !extractActive() || !nativeExtractBusy()) return;
+    reopenAfterExtraction = extractionIntent;
+    extractionIntent = null;
+  });
 
   const markSpecies = card => {
     const list = card?.closest?.(".npc-genetic__species-list");
@@ -150,6 +176,22 @@ export function mountGeneticist(root) {
     root.dataset.ppbuiGeneticistLayout = "split";
     ownClass(list, "ppbui-scroll");
     markSpecies(card);
+  };
+
+  const resumeSpeciesAfterExtraction = list => {
+    if (!reopenAfterExtraction || nativeExtractBusy()) return false;
+    const matches = [...list.querySelectorAll(".npc-genetic__species")].filter(card => {
+      const identity = speciesIdentity(card);
+      return !card.disabled && identity.name === reopenAfterExtraction.name
+        && (!reopenAfterExtraction.sprite || identity.sprite === reopenAfterExtraction.sprite);
+    });
+    reopenAfterExtraction = null;
+    if (matches.length !== 1) return false;
+    const card = matches[0];
+    preserveSpeciesList(list, card);
+    card.click(); // Native loadExtractable performs the fresh GET and resets all previous selections.
+    focusAfterExtraction = true;
+    return true;
   };
 
   const hideMaterialsButton = materials => {
@@ -285,9 +327,15 @@ export function mountGeneticist(root) {
     body.querySelectorAll(".npc-genetic__content > .npc-genetic__filters").forEach(filters => {
       ensureFilterHead(filters);
       ownClass(filters, "ppbui-geneticist-filter-grid");
+      ownAttribute(filters, "data-ppbui-geneticist-select-count", filters.querySelectorAll(":scope > select").length);
       ownAttribute(filters, "role", "group");
       ownAttribute(filters, "aria-label", geneticCopy("filters", "Filters"));
       filters.querySelectorAll("input[type='search'], select").forEach(labelFilterControl);
+      const qualities = filters.querySelectorAll(":scope > .npc-genetic__quality-filters > .npc-genetic__quality");
+      if (qualities.length === 7) {
+        const keys = ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"];
+        qualities.forEach((label, i) => ownClass(label, `ppbui-geneticist-quality--${keys[i]}`));
+      }
     });
 
     const awakeningPicker = body.querySelector(".genetic-awk__picker");
@@ -320,29 +368,73 @@ export function mountGeneticist(root) {
   };
 
   const syncLayout = () => {
-    const extract = tabByLabel(root, nativeText(root, "npc.iv.tab_extract", "Extract"));
-    const extractActive = Boolean(extract?.classList.contains("is-active"));
-    if (!extractActive) { restorePreserved(); return; }
+    if (!extractActive()) {
+      extractionIntent = null;
+      reopenAfterExtraction = null;
+      focusAfterExtraction = false;
+      restorePreserved();
+      return;
+    }
     const speciesList = root.querySelector(":scope > .pokeidle-panel__body .npc-genetic__species-list");
     if (speciesList) {
+      if (resumeSpeciesAfterExtraction(speciesList)) return;
+      // The native POST has committed, but the subsequent refresh/Continue is still busy.
+      if (reopenAfterExtraction) return;
+      focusAfterExtraction = false;
       if (preserved?.list !== speciesList) restorePreserved();
       pane.hidden = true;
       root.removeAttribute("data-ppbui-geneticist-layout");
       return;
     }
-    const creatures = root.querySelector(":scope > .pokeidle-panel__body .npc-genetic__creature-list");
-    if (creatures && preserved?.list?.isConnected) {
+    const creatureStep = root.querySelector(":scope > .pokeidle-panel__body .npc-genetic__toolbar");
+    // A foreign/stale success event must not lock the still-active native creature picker.
+    // A committed extraction changes native step to species before reporting success.
+    if (creatureStep && reopenAfterExtraction && !nativeExtractBusy()) reopenAfterExtraction = null;
+    if (creatureStep && preserved?.list?.isConnected) {
       pane.hidden = false;
       root.dataset.ppbuiGeneticistLayout = "split";
+      if (focusAfterExtraction && !nativeExtractBusy()) {
+        focusAfterExtraction = false;
+        const search = root.querySelector(":scope > .pokeidle-panel__body .npc-genetic__filters > input[type='search']:not(:disabled)");
+        if (root.contains(doc.activeElement) || doc.activeElement === doc.body) {
+          search?.focus({ preventScroll: true });
+        }
+      }
     }
   };
 
   const onClickCapture = event => {
     if (!active) return;
-    const extract = tabByLabel(root, nativeText(root, "npc.iv.tab_extract", "Extract"));
-    if (!extract?.classList.contains("is-active")) return;
+    if (event.target?.closest?.(".npc-iv__primary-tabs > .npc-shop__tab")) {
+      extractionIntent = null;
+      reopenAfterExtraction = null;
+      focusAfterExtraction = false;
+      return;
+    }
+    if (!extractActive()) return;
+    if (event.target?.closest?.(".npc-genetic__toolbar > button")) {
+      extractionIntent = null;
+      reopenAfterExtraction = null;
+      focusAfterExtraction = false;
+      return;
+    }
+    if (event.target?.closest?.(".npc-genetic__extract-action")) {
+      const selected = preserved?.list.querySelector(".ppbui-geneticist-species--active");
+      // Native permits confirming while a Load More GET is running; the native
+      // action's disabled state already protects an in-flight destructive POST.
+      if (selected) extractionIntent = speciesIdentity(selected);
+      return;
+    }
     const speciesCard = event.target?.closest?.(".npc-genetic__species");
     if (!speciesCard || !root.contains(speciesCard)) return;
+    if (pane.contains(speciesCard) && (nativeExtractBusy() || reopenAfterExtraction)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    extractionIntent = null;
+    reopenAfterExtraction = null;
+    focusAfterExtraction = false;
     const list = speciesCard.closest(".npc-genetic__species-list");
     if (list && !pane.contains(list)) preserveSpeciesList(list, speciesCard);
     else markSpecies(speciesCard);
@@ -352,9 +444,12 @@ export function mountGeneticist(root) {
 
   function sync() {
     if (!active) return;
+    nativeBus.reconcile();
     pruneDetachedOwnership();
     hideMaterials();
     syncLayout();
+    const sidebarBusy = !pane.hidden && (nativeExtractBusy() || Boolean(reopenAfterExtraction));
+    if (pane.hasAttribute("inert") !== sidebarBusy) pane.toggleAttribute("inert", sidebarBusy);
     decorateFilters();
     styleCurrent();
     skipExtractionCinematic();
@@ -367,6 +462,10 @@ export function mountGeneticist(root) {
     sync,
     cleanup() {
       active = false;
+      extractionIntent = null;
+      reopenAfterExtraction = null;
+      focusAfterExtraction = false;
+      nativeBus.cleanup();
       root.removeEventListener("click", onClickCapture, true);
       restorePreserved();
       restoreSpeciesState();

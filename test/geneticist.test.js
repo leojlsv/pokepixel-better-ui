@@ -12,6 +12,36 @@ const labels = {
   "npc.iv.tab_materials": "Genetic Materials",
 };
 
+const qualityKeys = ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"];
+
+function qualityFacets(doc) {
+  const facets = doc.createElement("div");
+  facets.className = "npc-genetic__quality-filters";
+  for (const key of qualityKeys) {
+    const label = doc.createElement("label");
+    label.className = "npc-genetic__quality";
+    const input = doc.createElement("input");
+    input.type = "checkbox";
+    input.checked = key === "epic";
+    label.append(input, doc.createTextNode(key));
+    facets.append(label);
+  }
+  return facets;
+}
+
+function nativeBus() {
+  const handlers = new Map();
+  return {
+    on(name, handler) {
+      if (!handlers.has(name)) handlers.set(name, new Set());
+      handlers.get(name).add(handler);
+    },
+    off(name, handler) { handlers.get(name)?.delete(handler); },
+    emit(name, payload) { for (const handler of [...(handlers.get(name) || [])]) handler(payload); },
+    count(name) { return handlers.get(name)?.size || 0; },
+  };
+}
+
 function primaryNav(doc, active = "extract") {
   const nav = doc.createElement("nav");
   nav.className = "npc-shop__tabs npc-iv__primary-tabs";
@@ -36,11 +66,12 @@ function speciesContent(doc) {
   const filters = doc.createElement("div");
   filters.className = "npc-genetic__filters";
   const search = doc.createElement("input"); search.type = "search";
-  const select = doc.createElement("select"); select.add(new doc.defaultView.Option("All", ""));
-  const quality = doc.createElement("label"); quality.className = "npc-genetic__quality";
-  const qualityInput = doc.createElement("input"); qualityInput.type = "checkbox"; qualityInput.checked = true;
-  quality.append(qualityInput, doc.createTextNode("Rare"));
-  filters.append(search, select, quality);
+  filters.append(search);
+  for (const kind of ["Element", "Location", "Sort"]) {
+    const select = doc.createElement("select"); select.add(new doc.defaultView.Option(kind, ""));
+    filters.append(select);
+  }
+  filters.append(qualityFacets(doc));
   const list = doc.createElement("div");
   list.className = "npc-genetic__species-list";
   for (const name of ["Bulbasaur", "Charmander", "Squirtle"]) {
@@ -65,11 +96,7 @@ function creatureContent(doc, species) {
   const search = doc.createElement("input"); search.type = "search"; search.placeholder = "Search Pokémon";
   const location = doc.createElement("select"); location.add(new doc.defaultView.Option("All locations", ""));
   const sort = doc.createElement("select"); sort.add(new doc.defaultView.Option("Name", "name"));
-  const qualities = doc.createElement("div"); qualities.className = "npc-genetic__quality-filters";
-  const quality = doc.createElement("label"); quality.className = "npc-genetic__quality";
-  const qualityInput = doc.createElement("input"); qualityInput.type = "checkbox"; qualityInput.checked = true;
-  quality.append(qualityInput, doc.createTextNode("Rare")); qualities.append(quality);
-  filters.append(search, location, sort, qualities);
+  filters.append(search, location, sort, qualityFacets(doc));
   const list = doc.createElement("div"); list.className = "npc-genetic__creature-list";
   const creature = doc.createElement("button"); creature.type = "button"; creature.className = "npc-nature__pokemon npc-genetic__creature"; creature.textContent = species + " #1";
   list.append(creature);
@@ -441,4 +468,230 @@ test("repeated native rerenders prune detached ownership before cleanup", async 
   const mutations = observers.reduce((count, observer) => count + observer.takeRecords().length, 0);
   observers.forEach(observer => observer.disconnect());
   assert.equal(mutations, 0, "cleanup no longer touches detached native renders retained by old ownership maps");
+});
+
+test("successful native extraction keeps the species workspace and reloads fresh native cards only after busy clears", t => {
+  const s = setup(t);
+  const bus = nativeBus();
+  s.dom.window.PokeIdle.Bus = bus;
+  s.controller.sync();
+  assert.equal(bus.count("creature.updated"), 1);
+
+  const original = s.body.querySelector(".npc-genetic__species-list");
+  original.children[1].click();
+  s.controller.sync();
+  const chooser = s.root.querySelector("[data-ppbui-geneticist-species-pane]");
+  assert.equal(chooser.nextElementSibling, s.body,
+    "keyboard traversal follows the visual left species picker then right creature workspace");
+  const action = s.doc.createElement("button");
+  action.type = "button";
+  action.className = "npc-genetic__extract-action";
+  s.body.querySelector(".npc-genetic__content").append(action);
+  action.click();
+
+  // Native state.busy renders disabled search/back controls after an accepted confirmation.
+  s.body.querySelector(".npc-genetic__filters > input").disabled = true;
+  s.body.querySelector(".npc-genetic__toolbar > button").disabled = true;
+  s.controller.sync();
+  assert.equal(chooser.hasAttribute("inert"), true);
+  original.children[2].click();
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list").textContent, "Charmander #1",
+    "detached-from-render sidebar cannot switch species during the destructive request");
+
+  bus.emit("creature.updated", { extracted: true, species_id: "charmander" });
+  const refreshed = s.renderSpecies();
+  refreshed.content.querySelector(".npc-genetic__filters > input").disabled = true;
+  [...refreshed.list.children].forEach(card => { card.disabled = true; });
+  s.controller.sync();
+  assert.equal(s.root.dataset.ppbuiGeneticistLayout, "split", "await native refreshed species cards");
+  assert.equal(refreshed.list.parentElement, refreshed.content, "do not click/steal disabled native cards");
+
+  refreshed.content.querySelector(".npc-genetic__filters > input").disabled = false;
+  [...refreshed.list.children].forEach(card => { card.disabled = false; });
+  let nativeLoads = 0;
+  const refreshedCard = refreshed.list.children[1];
+  refreshedCard.addEventListener("click", () => { nativeLoads += 1; });
+  s.controller.sync();
+  assert.equal(nativeLoads, 1, "click current native species card exactly once");
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list")?.textContent, "Charmander #1");
+  assert.equal(refreshed.list.parentElement, chooser, "new current native list replaces stale sidebar");
+  assert.equal(original.isConnected, false, "stale metadata/listeners are retired");
+  assert.equal(refreshedCard.getAttribute("aria-pressed"), "true");
+  assert.notEqual(s.doc.activeElement, refreshedCard, "do not focus a species card while its pane is inert");
+  s.controller.sync();
+  assert.equal(chooser.hasAttribute("inert"), false);
+  assert.equal(s.doc.activeElement, s.body.querySelector(".npc-genetic__filters > input"),
+    "focus enters the refreshed native creature search only after it is enabled");
+  bus.emit("creature.updated", { extracted: true, species_id: "charmander" });
+  s.controller.sync();
+  assert.equal(nativeLoads, 1, "a repeated notification cannot repeat native navigation");
+});
+
+test("canceled and failed Extract attempts, manual Back and unrelated native events never auto-reenter", t => {
+  const s = setup(t);
+  const bus = nativeBus();
+  s.dom.window.PokeIdle.Bus = bus;
+  s.controller.sync();
+  s.body.querySelector(".npc-genetic__species-list").children[0].click();
+  s.controller.sync();
+  const action = s.doc.createElement("button");
+  action.className = "npc-genetic__extract-action";
+  s.body.querySelector(".npc-genetic__content").append(action);
+  action.click(); // confirmation canceled: native never enters busy and no extraction event fires
+  bus.emit("creature.updated", { extracted: true, species_id: "bulbasaur" });
+  s.controller.sync();
+  assert.equal(s.root.dataset.ppbuiGeneticistLayout, "split");
+  bus.emit("creature.updated", { creature: { id: "other" } });
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list")?.textContent, "Bulbasaur #1");
+  const search = s.body.querySelector(".npc-genetic__filters > input");
+  search.disabled = true; // a failed POST goes busy and then back to the current native creatures
+  s.controller.sync();
+  search.disabled = false;
+  s.controller.sync();
+  bus.emit("creature.updated", { extracted: true, species_id: "bulbasaur" });
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list")?.textContent, "Bulbasaur #1");
+
+  s.body.querySelector(".npc-genetic__toolbar > button").click(); // explicit native Back
+  s.controller.sync();
+  bus.emit("creature.updated", { extracted: true, species_id: "bulbasaur" });
+  s.controller.sync();
+  assert.equal(s.root.hasAttribute("data-ppbui-geneticist-layout"), false);
+  assert.ok(s.body.querySelector(".npc-genetic__species-list"));
+});
+
+test("Extract action during native Load More still captures confirmed commit and returns to current species", t => {
+  const s = setup(t);
+  const bus = nativeBus();
+  s.dom.window.PokeIdle.Bus = bus;
+  s.controller.sync();
+  s.body.querySelector(".npc-genetic__species-list").children[1].click();
+  s.controller.sync();
+
+  // Native geneticBusy from Load More disables Search but leaves Extract enabled.
+  s.body.querySelector(".npc-genetic__filters > input").disabled = true;
+  const action = s.doc.createElement("button");
+  action.type = "button";
+  action.className = "npc-genetic__extract-action";
+  s.body.querySelector(".npc-genetic__content").append(action);
+  action.click();
+  bus.emit("creature.updated", { extracted: true, species_id: "charmander" });
+
+  const refreshed = s.renderSpecies();
+  s.controller.sync();
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list")?.textContent, "Charmander #1",
+    "re-entry happens after the refresh despite the action being clicked during Load More");
+  assert.equal(refreshed.list.parentElement, s.root.querySelector("[data-ppbui-geneticist-species-pane]"));
+});
+
+test("foreign success during native creature loading cannot leave the sidebar inert", t => {
+  const s = setup(t);
+  const bus = nativeBus();
+  s.dom.window.PokeIdle.Bus = bus;
+  s.controller.sync();
+  s.body.querySelector(".npc-genetic__species-list").children[0].click();
+  s.controller.sync();
+  const action = s.doc.createElement("button");
+  action.className = "npc-genetic__extract-action";
+  s.body.querySelector(".npc-genetic__content").append(action);
+  action.click(); // Canceled confirmation; no native POST.
+  const search = s.body.querySelector(".npc-genetic__filters > input");
+  search.disabled = true; // Unrelated native Load More.
+  bus.emit("creature.updated", { extracted: true, species_id: "unrelated" });
+  search.disabled = false;
+  s.controller.sync();
+  assert.equal(s.root.querySelector("[data-ppbui-geneticist-species-pane]").hasAttribute("inert"), false);
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list")?.textContent, "Bulbasaur #1");
+});
+
+test("post-commit focus never steals from deliberate external keyboard navigation", t => {
+  const s = setup(t);
+  const bus = nativeBus();
+  s.dom.window.PokeIdle.Bus = bus;
+  s.controller.sync();
+  s.body.querySelector(".npc-genetic__species-list").children[0].click();
+  s.controller.sync();
+  const action = s.doc.createElement("button");
+  action.className = "npc-genetic__extract-action";
+  s.body.querySelector(".npc-genetic__content").append(action);
+  action.click();
+  s.body.querySelector(".npc-genetic__filters > input").disabled = true;
+  bus.emit("creature.updated", { extracted: true, species_id: "bulbasaur" });
+  const refreshed = s.renderSpecies();
+  const outside = s.doc.createElement("button");
+  outside.textContent = "Unrelated toolbar";
+  s.doc.body.append(outside);
+  outside.focus();
+  s.controller.sync();
+  s.controller.sync();
+  assert.equal(s.doc.activeElement, outside, "native refresh does not steal external focus");
+  assert.equal(refreshed.list.parentElement, s.root.querySelector("[data-ppbui-geneticist-species-pane]"));
+});
+
+test("extraction with the last matching species follows native species browsing without stale sidebar replay", t => {
+  const s = setup(t);
+  const bus = nativeBus();
+  s.dom.window.PokeIdle.Bus = bus;
+  s.controller.sync();
+  s.body.querySelector(".npc-genetic__species-list").children[2].click();
+  s.controller.sync();
+  const action = s.doc.createElement("button");
+  action.className = "npc-genetic__extract-action";
+  s.body.querySelector(".npc-genetic__content").append(action);
+  action.click();
+  s.body.querySelector(".npc-genetic__filters > input").disabled = true;
+  s.controller.sync();
+  bus.emit("creature.updated", { extracted: true, species_id: "squirtle" });
+
+  const refreshed = s.renderSpecies();
+  refreshed.list.children[2].remove(); // e.g. server now excludes depleted species
+  s.controller.sync();
+  assert.equal(s.root.hasAttribute("data-ppbui-geneticist-layout"), false);
+  assert.equal(s.root.querySelector("[data-ppbui-geneticist-species-pane]").hidden, true);
+  assert.equal(s.body.querySelector(".npc-genetic__creature-list"), null);
+  s.controller.sync();
+  assert.equal(s.body.querySelector(".npc-genetic__species-list"), refreshed.list);
+});
+
+test("Geneticist bus subscriptions follow native Bus identity and release old handlers on cleanup", t => {
+  const s = setup(t);
+  const first = nativeBus();
+  const second = nativeBus();
+  s.dom.window.PokeIdle.Bus = first;
+  s.controller.sync();
+  s.controller.sync();
+  assert.equal(first.count("creature.updated"), 1);
+  s.dom.window.PokeIdle.Bus = second;
+  s.controller.sync();
+  assert.equal(first.count("creature.updated"), 0);
+  assert.equal(second.count("creature.updated"), 1);
+  s.controller.cleanup();
+  assert.equal(second.count("creature.updated"), 0);
+});
+
+test("species and creature Extract filters use native stage widths and seven canonical quality colors", t => {
+  const s = setup(t);
+  const speciesFilters = s.body.querySelector(".npc-genetic__filters");
+  assert.equal(speciesFilters.dataset.ppbuiGeneticistSelectCount, "3");
+  assert.match(geneticistStyles, /grid-template-columns:minmax\(0,2fr\) repeat\(3,minmax\(0,1fr\)\)!important/);
+  assert.match(geneticistStyles, /grid-template-columns:minmax\(0,2fr\) repeat\(2,minmax\(0,1fr\)\)!important/);
+  const labels = [...speciesFilters.querySelectorAll(".npc-genetic__quality")];
+  assert.equal(labels.length, 7);
+  labels.forEach((label, i) => {
+    assert.equal(label.classList.contains("ppbui-geneticist-quality--" + qualityKeys[i]), true);
+    assert.match(geneticistStyles, new RegExp("ppbui-geneticist-quality--" + qualityKeys[i] + ".*--quality-" + qualityKeys[i]));
+  });
+  assert.match(geneticistStyles, /height:var\(--ppbui-control-height\)!important/);
+  const checked = labels[4].querySelector("input");
+  let changes = 0;
+  checked.addEventListener("change", () => { changes += 1; });
+  checked.checked = false;
+  checked.dispatchEvent(new s.dom.window.Event("change", { bubbles: true }));
+  assert.equal(changes, 1, "original checkbox handlers and semantics survive decoration");
+
+  speciesFilters.querySelector(".npc-genetic__quality").classList.remove("ppbui-geneticist-quality--weak");
+  s.body.querySelector(".npc-genetic__species-list").children[0].click();
+  s.controller.sync();
+  const creatureFilters = s.body.querySelector(".npc-genetic__filters");
+  assert.equal(creatureFilters.dataset.ppbuiGeneticistSelectCount, "2");
+  assert.equal(creatureFilters.querySelectorAll(".ppbui-geneticist-quality--epic").length, 1);
 });

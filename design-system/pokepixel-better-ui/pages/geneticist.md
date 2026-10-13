@@ -4,6 +4,40 @@ Status: **`0.2.169` validated and approved in-game by Product Owner on 2026-10-0
 Direction: **dense species picker + shared filter/discovery grammar**
 Recorded: **2026-10-04**
 
+## 2026-10-13 Extract continuity refinement — pending Product Owner validation
+
+After a successful native material-extraction commit, reopen the same species
+through its **fresh native species button** once the result/Continue sequence and
+server-backed species refresh have completed. The selected Pokémon and bulk
+selection are cleared by the native transaction; the new individual picker
+fetches new eligibility and snapshots. The sidebar must display the refreshed
+species/material facts, not the stale preserved buttons. If the species no
+longer exists in the refreshed results or its identity is ambiguous, show the
+normal native species chooser. Do not reopen after cancel, error, manual Back
+or a different primary tab.
+
+While the native extraction or species/creature fetch is busy, the persistent
+sidebar must be inert. On completion, the keyboard order follows the visible
+left species pane before the right creature pane; focus enters the refreshed
+right-hand Search only when it is enabled and only when focus has not been
+deliberately moved outside Geneticista.
+
+Extract species filters use one desktop row of Search (2 flexible shares),
+Element, Location and Sort (one share each). The individual picker uses Search
+(2 shares), Location and Sort (one share each). Below available widths,
+the Search occupies its own row before selects, then all controls stack
+without horizontal overflow.
+
+The seven native Extract rarity facets retain their checkbox semantics, order,
+and labels. Each is a 28px desktop-height chip with a compact 3px left rail
+of the corresponding native `--quality-*` color, while selected remains a
+distinct check + surface/border state and focus retains the independent cyan
+outline. Coarse-pointer targets grow to 40px. Reroll material-spending policy
+checkboxes remain separate from these extraction facets.
+
+This amendment is a candidate design contract, not a replacement for the
+previously approved `0.2.169` state; in-game validation remains pending.
+
 This page specializes `../MASTER.md` for the Geneticista window. MASTER remains the
 visual authority; this override records only module-specific hierarchy and interaction.
 
