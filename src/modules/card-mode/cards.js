@@ -14,6 +14,10 @@ const STORY_RARITY_SET = ITEM_RARITY_SET;
 const NATIVE_SPECIES_MAX_ATTEMPTS = 4;
 const PLAYER_MOVESET_MAX_ATTEMPTS = 4;
 const LOOT_CATALOG_RETRY_MS = 5_000;
+const RESOURCE_TYPES = Object.freeze(["capsule", "potion", "revive"]);
+const RESOURCE_TYPE_SET = new Set(RESOURCE_TYPES);
+const RESOURCE_REFRESH_MS = Object.freeze({ capsule:30_000, potion:60_000, revive:60_000 });
+const RESOURCE_RETRY_MS = 5_000;
 
 const COPY = Object.freeze({
   en: Object.freeze({
@@ -31,6 +35,7 @@ const COPY = Object.freeze({
     leaderAwaitHud: "POST accepted; waiting for Team HUD", leaderSyncUnavailable: "POST accepted; Team update was not delivered. Check Game or reload.", leaderSuperseded: "Another leader change occurred while the POST was pending", leaderHudUnexpected: "HUD changed to another leader",
     gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown",
     sectionNavigation: "Jump to section", navTop: "Top", navSummary: "Summary", navEconomy: "Economy", navStory: "Story", copySummary: "Copy", copySummaryPending: "Copying…", copySummarySuccess: "Summary copied", copySummaryError: "Could not copy summary", copySummaryUnavailable: "Clipboard unavailable",
+    resources: "Resources", balls: "Poké Balls", potions: "Potions", revives: "Revives", resourceCadence: "Balls ~30s · Potions/Revives ~60s", noStock: "No stock",
   }),
   pt: Object.freeze({
     locale: "pt-BR", unavailable: "Indisponível", waitingTarget: "Aguardando alvo", noAttempts: "Nenhuma tentativa registrada nesta hunt.", noAttemptsExpedition: "Nenhuma tentativa registrada nesta expedição.", noFilteredAttempts: "Nenhuma tentativa corresponde aos filtros.", analyzerUnavailable: "Dados do Hunt Analyzer indisponíveis.",
@@ -47,6 +52,7 @@ const COPY = Object.freeze({
     leaderAwaitHud: "POST aceito; aguardando Team HUD", leaderSyncUnavailable: "POST aceito; atualização não chegou ao Team. Confira Game ou recarregue.", leaderSuperseded: "Outro líder foi ativado durante a troca", leaderHudUnexpected: "HUD mudou para outro líder",
     gender: "Gender", nature: "Nature", iv: "IV", male: "Male", female: "Female", unknown: "Unknown",
     sectionNavigation: "Ir para seção", navTop: "Topo", navSummary: "Resumo", navEconomy: "Economia", navStory: "Histórico", copySummary: "Copiar", copySummaryPending: "Copiando…", copySummarySuccess: "Resumo copiado", copySummaryError: "Não foi possível copiar o resumo", copySummaryUnavailable: "Área de transferência indisponível",
+    resources: "Recursos", balls: "Poké Balls", potions: "Poções", revives: "Revives", resourceCadence: "Balls ~30s · Poções/Revives ~60s", noStock: "Sem estoque",
   }),
 });
 
@@ -305,6 +311,12 @@ function inventoryResponseItems(response) {
   return [];
 }
 
+function isInventorySnapshotResponse(response) {
+  if (response == null) return false;
+  const payload = response?.data ?? response;
+  return Array.isArray(payload) || Array.isArray(payload?.inventory) || Array.isArray(payload?.items);
+}
+
 function nativeItemRarity(win, item, itemId, name) {
   const direct = knownRarity(
     item?.rarity ?? item?.quality ?? item?.tier
@@ -331,45 +343,292 @@ function nativeItemIconIndex(item) {
   return Number.isInteger(value) && value >= 0 ? value : null;
 }
 
+function inventoryItemType(item) {
+  return String(item?.type ?? item?.category ?? item?.item?.type ?? item?.item?.category ?? "").trim().toLowerCase();
+}
+
+function inventoryItemQuantity(item) {
+  const value = Number(item?.quantity ?? item?.qty ?? item?.item?.quantity ?? item?.item?.qty);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : null;
+}
+
+function resourceItemSnapshot(item) {
+  const type = inventoryItemType(item);
+  if (!RESOURCE_TYPE_SET.has(type)) return null;
+  const itemId = String(item?.item_id ?? item?.id ?? item?.item?.id ?? "").trim();
+  const quantity = inventoryItemQuantity(item);
+  if (!itemId || quantity == null) return null;
+  const name = String(item?.name || item?.item?.name || itemId).trim() || itemId;
+  const potencyRaw = type === "capsule"
+    ? item?.catch_multiplier ?? item?.item?.catch_multiplier
+    : item?.heal_percent ?? item?.item?.heal_percent;
+  const potency = Number(potencyRaw);
+  return {
+    itemId,
+    type,
+    name,
+    quantity,
+    iconIndex:nativeItemIconIndex(item),
+    potency:Number.isFinite(potency) ? potency : null,
+  };
+}
+
+function resourceTypeCopyKey(type) {
+  return type === "capsule" ? "balls" : type === "potion" ? "potions" : "revives";
+}
+
+function markResourceDirty(state, types = RESOURCE_TYPES) {
+  for (const type of types) {
+    if (!RESOURCE_TYPE_SET.has(type)) continue;
+    state.resourceDirty.add(type);
+    state.resourceVersions.set(type, (state.resourceVersions.get(type) || 0) + 1);
+  }
+}
+
+function resourceDueTypes(state, now = Date.now()) {
+  return RESOURCE_TYPES.filter(type => state.resourceDirty.has(type) && (
+    !state.resourceLoadedTypes.has(type)
+    || now - (state.resourceLastAppliedAt.get(type) || 0) >= RESOURCE_REFRESH_MS[type]
+  ));
+}
+
+function resourceSort(a, b) {
+  const potencyA = Number.isFinite(a.potency) ? a.potency : Number.POSITIVE_INFINITY;
+  const potencyB = Number.isFinite(b.potency) ? b.potency : Number.POSITIVE_INFINITY;
+  return potencyA - potencyB
+    || a.name.localeCompare(b.name)
+    || (a.itemId < b.itemId ? -1 : a.itemId > b.itemId ? 1 : 0);
+}
+
+function applyItemIcon(node, iconIndex, fallback = "•") {
+  if (!node) return;
+  node.style.removeProperty("background-image");
+  node.style.removeProperty("background-position");
+  node.classList.toggle("ppbui-cards-item-icon--fallback", iconIndex == null);
+  if (iconIndex == null) {
+    writeText(node, fallback);
+    return;
+  }
+  writeText(node, "");
+  node.style.backgroundImage = 'url("img/system/IconSet.png?v=20260717-reference-iconset-1")';
+  node.style.backgroundPosition = `-${(iconIndex % 16) * 32}px -${Math.floor(iconIndex / 16) * 32}px`;
+}
+
+function renderResourceGroup(root, state, type) {
+  const list = root.querySelector(`[data-card-resource-list="${type}"]`);
+  if (!list) return;
+  const copy = state.copy || COPY.en;
+  const locale = state.locale || copy.locale;
+  const entries = [...state.resourceItems.values()].filter(entry => entry.type === type).sort(resourceSort);
+  const signature = JSON.stringify([
+    state.localeKey,
+    state.resourceLoadedTypes.has(type),
+    entries.map(entry => [entry.itemId, entry.name, entry.quantity, entry.iconIndex, entry.potency]),
+  ]);
+  if (list.dataset.signature === signature) return;
+  list.dataset.signature = signature;
+  list.replaceChildren();
+  if (!entries.length) {
+    const empty = root.ownerDocument.createElement("span");
+    empty.className = "ppbui-cards-resource-empty";
+    empty.textContent = state.resourceLoadedTypes.has(type) ? copy.noStock : "—";
+    list.append(empty);
+    return;
+  }
+  const fragment = root.ownerDocument.createDocumentFragment();
+  for (const entry of entries) {
+    const quantity = number(entry.quantity, 0, locale);
+    const tile = root.ownerDocument.createElement("span");
+    tile.className = "ppbui-cards-resource-item";
+    tile.dataset.cardResourceItem = entry.itemId;
+    tile.dataset.cardResourceType = type;
+    tile.setAttribute("role", "listitem");
+    tile.title = `${entry.name} · ×${quantity}`;
+    tile.setAttribute("aria-label", `${entry.name}, ×${quantity}`);
+    const icon = root.ownerDocument.createElement("span");
+    icon.className = "ppbui-cards-item-icon";
+    icon.setAttribute("aria-hidden", "true");
+    applyItemIcon(icon, entry.iconIndex);
+    const body = root.ownerDocument.createElement("span");
+    body.className = "ppbui-cards-resource-copy";
+    const name = root.ownerDocument.createElement("strong");
+    name.textContent = entry.name;
+    const qty = root.ownerDocument.createElement("small");
+    qty.dataset.cardResourceQuantity = "";
+    qty.textContent = `×${quantity}`;
+    body.append(name, qty);
+    tile.append(icon, body);
+    fragment.append(tile);
+  }
+  list.append(fragment);
+}
+
+function renderResources(root, state) {
+  const copy = state.copy || COPY.en;
+  cardNode(root, "[data-card-resources]")?.setAttribute("aria-label", copy.resources);
+  for (const type of RESOURCE_TYPES) {
+    root.querySelector(`[data-card-resource-group="${type}"]`)?.setAttribute("aria-label", copy[resourceTypeCopyKey(type)]);
+    renderResourceGroup(root, state, type);
+  }
+}
+
+function applyResourceSnapshot(root, state, response, types, appliedAt = Date.now()) {
+  const incoming = new Map();
+  for (const item of inventoryResponseItems(response)) {
+    const entry = resourceItemSnapshot(item);
+    if (entry) incoming.set(entry.itemId, entry);
+  }
+  for (const type of types) {
+    for (const [itemId, current] of state.resourceItems) {
+      if (current.type === type && !incoming.has(itemId) && current.quantity !== 0) {
+        state.resourceItems.set(itemId, { ...current, quantity:0 });
+      }
+    }
+    for (const [itemId, entry] of incoming) if (entry.type === type) state.resourceItems.set(itemId, entry);
+    state.resourceLoadedTypes.add(type);
+    state.resourceLastAppliedAt.set(type, appliedAt);
+    renderResourceGroup(root, state, type);
+  }
+}
+
+function clearResourceStock(root, state) {
+  state.resourceEpoch += 1;
+  // Detach every shared inventory consumer from the previous account/session.
+  // The underlying fetch cannot be cancelled here, so all of its consumers are
+  // also epoch-guarded before they may publish anything into the current UI.
+  state.inventoryRequest = null;
+  state.resourceRequest = null;
+  state.lootCatalogRequest = null;
+  state.resourceItems.clear();
+  state.resourceLoadedTypes.clear();
+  state.resourceLastAppliedAt.clear();
+  state.resourceNextAttemptAt = 0;
+  state.lootCatalog.clear();
+  state.lootCatalogLoaded = false;
+  state.lootCatalogCheckedAt.clear();
+  state.lootCatalogNextAttemptAt = 0;
+  state.lootCatalogRevision += 1;
+  markResourceDirty(state);
+  for (const type of RESOURCE_TYPES) {
+    const list = root.querySelector(`[data-card-resource-list="${type}"]`);
+    if (list) delete list.dataset.signature;
+  }
+  renderResources(root, state);
+}
+
+function requestInventorySnapshot(win, state) {
+  if (state.inventoryRequest) return state.inventoryRequest;
+  if (typeof win?.PokeIdle?.Api?.getInventory !== "function") return null;
+  const epoch = state.resourceEpoch;
+  const request = Promise.resolve()
+    .then(() => (
+      state.disposed || state.mode !== "cards" || epoch !== state.resourceEpoch
+        ? null : win.PokeIdle.Api.getInventory()
+    ))
+    .finally(() => {
+      if (state.inventoryRequest === request) state.inventoryRequest = null;
+    });
+  state.inventoryRequest = request;
+  return request;
+}
+
+function ingestLootCatalogSnapshot(win, state, response, required = []) {
+  if (!isInventorySnapshotResponse(response)) return false;
+  const next = new Map(state.lootCatalog);
+  let changed = false;
+  for (const item of inventoryResponseItems(response)) {
+    const itemId = String(item?.item_id ?? item?.id ?? item?.item?.id ?? "").trim();
+    if (!itemId) continue;
+    const name = String(item?.name || item?.item?.name || itemId).trim() || itemId;
+    const meta = {
+      itemId,
+      name,
+      rarity:nativeItemRarity(win, item, itemId, name),
+      iconIndex:nativeItemIconIndex(item),
+    };
+    const current = next.get(itemId);
+    if (!current || current.name !== meta.name || current.rarity !== meta.rarity || current.iconIndex !== meta.iconIndex) {
+      next.set(itemId, meta);
+      changed = true;
+    }
+  }
+  if (changed) {
+    state.lootCatalog = next;
+    state.lootCatalogRevision += 1;
+  }
+  state.lootCatalogLoaded = true;
+  const checkedAt = Date.now();
+  required.forEach(itemId => state.lootCatalogCheckedAt.set(itemId, checkedAt));
+  return changed;
+}
+
+function refreshResourceStock(win, root, state) {
+  if (state.disposed || state.mode !== "cards" || state.resourceRequest) return;
+  const now = Date.now();
+  if (now < state.resourceNextAttemptAt) return;
+  const dueTypes = resourceDueTypes(state, now);
+  if (!dueTypes.length) return;
+  const inventoryRequest = requestInventorySnapshot(win, state);
+  if (!inventoryRequest) return;
+  const epoch = state.resourceEpoch;
+  const versions = new Map(dueTypes.map(type => [type, state.resourceVersions.get(type) || 0]));
+  const resourceRequest = inventoryRequest
+    .then(response => {
+      if (state.disposed || state.mode !== "cards" || epoch !== state.resourceEpoch) return;
+      if (!isInventorySnapshotResponse(response)) {
+        state.resourceNextAttemptAt = Date.now() + RESOURCE_RETRY_MS;
+        return;
+      }
+      const appliedAt = Date.now();
+      applyResourceSnapshot(root, state, response, dueTypes, appliedAt);
+      if (ingestLootCatalogSnapshot(win, state, response)) state.rerender?.();
+      for (const type of dueTypes) {
+        if ((state.resourceVersions.get(type) || 0) === versions.get(type)) state.resourceDirty.delete(type);
+      }
+    })
+    .catch(() => {
+      if (!state.disposed && epoch === state.resourceEpoch) state.resourceNextAttemptAt = Date.now() + RESOURCE_RETRY_MS;
+    })
+    .finally(() => {
+      if (state.resourceRequest === resourceRequest) state.resourceRequest = null;
+    });
+  state.resourceRequest = resourceRequest;
+}
+
 function requestLootCatalog(win, state, requiredItemIds = []) {
   const required = [...new Set(requiredItemIds.map(itemId => String(itemId || "").trim()).filter(Boolean))];
   const now = Date.now();
+  if (now < state.lootCatalogNextAttemptAt) return;
   const needsRefresh = !state.lootCatalogLoaded || required.some(itemId => (
     !state.lootCatalog.has(itemId)
     && now - (state.lootCatalogCheckedAt.get(itemId) || 0) >= LOOT_CATALOG_RETRY_MS
   ));
-  if (!needsRefresh || state.lootCatalogRequest || typeof win?.PokeIdle?.Api?.getInventory !== "function") return;
-  state.lootCatalogRequest = Promise.resolve()
-    .then(() => state.disposed ? null : win.PokeIdle.Api.getInventory())
+  if (!needsRefresh || state.lootCatalogRequest) return;
+  const inventoryRequest = requestInventorySnapshot(win, state);
+  if (!inventoryRequest) return;
+  const epoch = state.resourceEpoch;
+  const lootCatalogRequest = inventoryRequest
     .then(response => {
-      if (state.disposed || !response) return;
-      const next = new Map(state.lootCatalog);
-      for (const item of inventoryResponseItems(response)) {
-        const itemId = String(item?.item_id ?? item?.id ?? item?.item?.id ?? "").trim();
-        if (!itemId) continue;
-        const name = String(item?.name || item?.item?.name || itemId).trim() || itemId;
-        next.set(itemId, {
-          itemId,
-          name,
-          rarity:nativeItemRarity(win, item, itemId, name),
-          iconIndex:nativeItemIconIndex(item),
-        });
+      if (state.disposed || state.mode !== "cards" || epoch !== state.resourceEpoch) return;
+      if (!isInventorySnapshotResponse(response)) {
+        const checkedAt = Date.now();
+        state.lootCatalogNextAttemptAt = checkedAt + LOOT_CATALOG_RETRY_MS;
+        required.forEach(itemId => state.lootCatalogCheckedAt.set(itemId, checkedAt));
+        return;
       }
-      state.lootCatalog = next;
-      state.lootCatalogLoaded = true;
-      const checkedAt = Date.now();
-      required.forEach(itemId => state.lootCatalogCheckedAt.set(itemId, checkedAt));
-      state.lootCatalogRevision += 1;
-      state.rerender?.();
+      state.lootCatalogNextAttemptAt = 0;
+      if (ingestLootCatalogSnapshot(win, state, response, required)) state.rerender?.();
     })
     .catch(() => {
-      if (state.disposed) return;
+      if (state.disposed || epoch !== state.resourceEpoch) return;
       const checkedAt = Date.now();
+      state.lootCatalogNextAttemptAt = checkedAt + LOOT_CATALOG_RETRY_MS;
       required.forEach(itemId => state.lootCatalogCheckedAt.set(itemId, checkedAt));
     })
     .finally(() => {
-      if (!state.disposed) state.lootCatalogRequest = null;
+      if (state.lootCatalogRequest === lootCatalogRequest) state.lootCatalogRequest = null;
     });
+  state.lootCatalogRequest = lootCatalogRequest;
 }
 
 function lootSummaryItems(rows, itemsOf, itemMeta, itemMatches) {
@@ -1214,6 +1473,23 @@ function markup(context) {
       </div>
     </nav>
     <span class="ppbui-cards-sr-only" data-card-analyzer-status role="status" aria-live="polite"></span>
+    <section class="ppbui-cards-resources" data-card-resources aria-label="${copy.resources}">
+      <div class="ppbui-cards-resources-head"><h2 data-card-copy="resources">${copy.resources}</h2><small data-card-copy="resourceCadence">${copy.resourceCadence}</small></div>
+      <div class="ppbui-cards-resource-groups">
+        <section class="ppbui-cards-resource-group ppbui-cards-resource-group--balls" data-card-resource-group="capsule" aria-label="${copy.balls}">
+          <h3><span data-card-copy="balls">${copy.balls}</span><small>30s</small></h3>
+          <div class="ppbui-cards-resource-list" role="list" data-card-resource-list="capsule"><span class="ppbui-cards-resource-empty">—</span></div>
+        </section>
+        <section class="ppbui-cards-resource-group" data-card-resource-group="potion" aria-label="${copy.potions}">
+          <h3><span data-card-copy="potions">${copy.potions}</span><small>60s</small></h3>
+          <div class="ppbui-cards-resource-list" role="list" data-card-resource-list="potion"><span class="ppbui-cards-resource-empty">—</span></div>
+        </section>
+        <section class="ppbui-cards-resource-group" data-card-resource-group="revive" aria-label="${copy.revives}">
+          <h3><span data-card-copy="revives">${copy.revives}</span><small>60s</small></h3>
+          <div class="ppbui-cards-resource-list" role="list" data-card-resource-list="revive"><span class="ppbui-cards-resource-empty">—</span></div>
+        </section>
+      </div>
+    </section>
     <section class="ppbui-cards-grid" data-card-aria="dashboard">
       <section class="ppbui-cards-battle" data-card-aria="battle" data-card-layout="battle">
         <div class="ppbui-cards-battle-pair">
@@ -1378,6 +1654,12 @@ function styles() {
     .ppbui-card-mode-cards[data-ppbui-text-only="true"] .ppbui-cards-element i{display:inline}
     .ppbui-card-mode-cards[data-ppbui-text-only="true"] .ppbui-cards-meter-row{grid-template-columns:minmax(0,1fr)}
     .ppbui-card-mode-cards[data-ppbui-text-only="true"] :is(.ppbui-cards-hp-meter,.ppbui-cards-exp-meter){display:none!important}
+    .ppbui-cards-resources{--section-accent:var(--ppbui-warning,#a1bf41);min-width:0;margin:0 0 8px;padding:5px 6px;border:1px solid var(--ppbui-border,#6b6543);border-top:1px solid var(--section-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}
+    .ppbui-cards-resources-head{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;margin-bottom:4px}.ppbui-cards-resources-head h2{margin:0}.ppbui-cards-resources-head>small{min-width:0;overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:600 8px/1.1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}
+    .ppbui-cards-resource-groups{display:grid;grid-template-columns:minmax(0,2fr) repeat(2,minmax(0,1fr));gap:5px;min-width:0}.ppbui-cards-resource-group{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:5px;min-width:0;min-height:38px;padding:3px 0;border:0;border-radius:0;background:transparent}.ppbui-cards-resource-group h3{display:grid;gap:1px;min-width:58px;margin:0;color:var(--ppbui-text-muted,#c3d5c7);font-size:8px}.ppbui-cards-resource-group h3>small{color:var(--ppbui-text-subtle,#c3d5c7);font:600 7px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:0;text-transform:none}
+    .ppbui-cards-resource-list{display:flex;align-items:stretch;gap:4px;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-color:var(--ppbui-scrollbar-thumb,#6b6543) transparent;scrollbar-width:thin}.ppbui-cards-resource-empty{display:grid;min-height:32px;place-items:center;color:var(--ppbui-text-subtle,#c3d5c7);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}
+    .ppbui-cards-resource-item{display:grid;grid-template-columns:32px minmax(62px,auto);align-items:center;gap:4px;min-width:100px;height:34px;padding:1px 5px 1px 1px;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-item-icon{display:block;width:32px;height:32px;flex:0 0 32px;background-repeat:no-repeat;image-rendering:pixelated}.ppbui-cards-item-icon--fallback{display:grid;place-items:center;background:none!important;color:var(--ppbui-text-subtle,#c3d5c7);font:800 14px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-resource-copy{display:grid;min-width:0;gap:2px}.ppbui-cards-resource-copy>strong{min-width:0;overflow:hidden;color:var(--ppbui-text,#ebecdc);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-resource-copy>small{color:var(--ppbui-selected,#e3c054);font:800 9px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums;white-space:nowrap}
+    @media(max-width:899px){.ppbui-cards-resource-groups{grid-template-columns:minmax(0,1fr)}.ppbui-cards-resource-group{grid-template-columns:74px minmax(0,1fr)}}
     .ppbui-card-mode-cards [data-rarity="weak"]{--rarity-color:var(--quality-weak,#878573)}.ppbui-card-mode-cards [data-rarity="common"]{--rarity-color:var(--quality-common,#c3d5c7)}.ppbui-card-mode-cards [data-rarity="uncommon"]{--rarity-color:var(--quality-uncommon,#55a058)}.ppbui-card-mode-cards [data-rarity="rare"]{--rarity-color:var(--quality-rare,#2485a6)}.ppbui-card-mode-cards [data-rarity="epic"]{--rarity-color:var(--quality-epic,#e3c054)}.ppbui-card-mode-cards [data-rarity="legendary"]{--rarity-color:var(--quality-legendary,#e6928a)}.ppbui-card-mode-cards [data-rarity="mythical"]{--rarity-color:var(--quality-mythical,#54bad2)}.ppbui-card-mode-cards [data-rarity="unknown"]{--rarity-color:var(--ppbui-border-strong,#6b6543)}
     .ppbui-cards-battle{height:158px;max-height:164px;margin:0;grid-column:1/-1}.ppbui-cards-battle-pair{display:grid;grid-template-columns:minmax(126px,.58fr) minmax(0,1fr) minmax(0,1fr);align-items:stretch;gap:5px;height:100%;min-height:0}.ppbui-cards-team-switch{display:grid;grid-template-rows:18px minmax(0,1fr);min-width:0;padding:4px;border:1px solid var(--ppbui-accent-hi,#54bad2);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-team-switch-head{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;color:var(--ppbui-accent-hi,#54bad2);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:.04em;text-transform:uppercase}.ppbui-cards-team-switch-head>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-team-switch-head>small{min-width:0;overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:700 7px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);letter-spacing:0;text-overflow:ellipsis;text-transform:none;white-space:nowrap}.ppbui-cards-team-switch-head>small[data-tone="success"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-team-switch-head>small[data-tone="error"]{color:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-team-switch-head>small[data-tone="busy"]{color:var(--ppbui-selected,#e3c054)}.ppbui-cards-team-list{display:grid;grid-template-rows:repeat(6,minmax(0,1fr));gap:2px;min-height:0}.ppbui-cards-team-member{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px;min-width:0;min-height:0;padding:1px 4px;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85));color:var(--ppbui-text,#ebecdc);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-align:left}.ppbui-cards-team-member>strong{min-width:0;overflow:hidden;font:800 9px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-team-member>span{color:var(--ppbui-text-muted,#c3d5c7);font:700 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);white-space:nowrap}.ppbui-cards-team-member[aria-pressed="true"]{border-color:var(--ppbui-accent-hi,#54bad2);background:color-mix(in srgb,var(--ppbui-accent-hi,#54bad2) 12%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-team-member:not(:disabled):hover{border-color:var(--ppbui-accent-hi,#54bad2);background:var(--ppbui-bg-2,rgba(35,44,46,.96));cursor:pointer}.ppbui-cards-team-member:focus-visible{outline:2px solid var(--ppbui-focus,#54bad2);outline-offset:1px}.ppbui-cards-team-member:disabled{cursor:default;opacity:.52}.ppbui-cards-team-member--empty{color:var(--ppbui-text-subtle,#c3d5c7);opacity:.42}.ppbui-cards-combat-card{--combat-accent:var(--ppbui-border-strong,#6b6543);display:grid;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:8px;min-width:0;padding:7px 8px;border:1px solid var(--combat-accent);border-bottom-width:1px;border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-combat-card--player{--combat-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-combat-card--target{--combat-accent:var(--rarity-color,var(--ppbui-border-strong,#6b6543))}.ppbui-cards-combat-card--target[data-shiny="true"]{border-top-color:var(--ppbui-accent-hi,#54bad2);border-right-color:var(--ppbui-accent-hi,#54bad2);background:var(--ppbui-bg-2,rgba(35,44,46,.96))}.ppbui-cards-combat-art{display:grid;width:70px;height:70px;place-items:center;overflow:hidden;border:1px solid var(--combat-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-combat-art img{max-width:66px;max-height:66px;image-rendering:pixelated}.ppbui-cards-combat-art span{padding:3px;color:var(--ppbui-text-subtle,#c3d5c7);font:800 8px/1.1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);text-align:center}.ppbui-cards-combat-copy{min-width:0}.ppbui-cards-combat-card small{display:block;margin-bottom:2px;color:var(--combat-accent);font-size:8px;font-weight:800;letter-spacing:.09em}.ppbui-cards-combat-card strong{display:block;overflow:hidden;color:var(--ppbui-text,#ebecdc);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-combat-card>div:last-child>span{display:block;margin-top:2px;overflow:hidden;color:var(--ppbui-text-muted,#c3d5c7);font:600 10px/1.2 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-combat-kicker{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden}.ppbui-cards-combat-kicker>small{margin:0;flex:0 0 auto}.ppbui-cards-rarity-badge,.ppbui-cards-shiny-badge{display:inline-grid!important;place-items:center;min-height:16px;padding:1px 4px;border-radius:var(--ppbui-radius-badge,4px);font:900 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)!important;letter-spacing:.07em;white-space:nowrap}.ppbui-cards-rarity-badge{border:1px solid var(--rarity-color,var(--ppbui-border-strong,#6b6543));background:color-mix(in srgb,var(--rarity-color,var(--ppbui-border-strong,#6b6543)) 14%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--rarity-color,var(--ppbui-text-muted,#c3d5c7))!important}.ppbui-cards-shiny-badge{border:1px solid var(--ppbui-accent-hi,#54bad2);background:color-mix(in srgb,var(--ppbui-accent-hi,#54bad2) 18%,var(--ppbui-bg-0,rgba(22,29,32,.85)));color:var(--ppbui-selected,#e3c054)!important}.ppbui-cards-rarity-badge[hidden],.ppbui-cards-shiny-badge[hidden]{display:none!important}.ppbui-cards-elements{display:flex;align-items:center;gap:4px;min-width:0;margin-top:3px;overflow:hidden}.ppbui-cards-elements[hidden]{display:none!important}.ppbui-cards-element{display:flex;align-items:center;gap:2px;min-width:0}.ppbui-cards-element .ppbui-element-icon{flex:0 0 auto}.ppbui-cards-element i{overflow:hidden;color:var(--ppbui-text-subtle,#c3d5c7);font:700 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif);font-style:normal;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-moves{display:flex;align-items:center;gap:3px;min-height:19px;margin-top:3px}.ppbui-cards-moves[hidden]{display:none!important}.ppbui-cards-move{display:grid;width:19px;height:19px;place-items:center;overflow:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-move img{width:17px;height:17px;object-fit:contain;image-rendering:pixelated}.ppbui-cards-meter-stack{display:grid;gap:2px;margin-top:3px}.ppbui-cards-meter-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;gap:4px;min-width:0}.ppbui-cards-meter-row[hidden]{display:none!important}.ppbui-cards-meter-row>span{display:flex!important;justify-content:flex-start;gap:3px;margin:0!important;color:var(--ppbui-text-subtle,#c3d5c7)!important;font:700 8px/1 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif)!important;white-space:nowrap}.ppbui-cards-meter-row>span b{color:var(--combat-accent);font:800 8px/1 var(--ppbui-font-body,"Inter","Segoe UI",Arial,sans-serif)}.ppbui-cards-meter-row>span i{max-width:105px;overflow:hidden;font-style:normal;text-overflow:ellipsis;white-space:nowrap}.ppbui-cards-hp-meter,.ppbui-cards-exp-meter{width:100%;height:4px;overflow:hidden;border:1px solid var(--ppbui-border,#6b6543);border-radius:var(--ppbui-radius-badge,4px);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-hp-meter>i,.ppbui-cards-exp-meter>i{display:block;width:0;height:100%}.ppbui-cards-hp-meter>i{background:var(--ppbui-success,#55a058)}.ppbui-cards-hp-meter[data-state="low"]>i{background:var(--ppbui-danger-hi,#e6928a)}.ppbui-cards-exp-meter>i{background:var(--ppbui-accent-hi,#54bad2)}
     .ppbui-cards-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}.ppbui-cards-card{--section-accent:var(--ppbui-border-strong,#6b6543);min-width:0;height:100%;padding:10px;border:1px solid var(--ppbui-border,#6b6543);border-top:1px solid var(--section-accent);border-radius:var(--ppbui-radius,5px);background:var(--ppbui-bg-1,rgba(22,29,32,.92))}.ppbui-cards-card--summary{--section-accent:var(--ppbui-accent-hi,#54bad2)}.ppbui-cards-card--rarity{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-card--capture{--section-accent:var(--ppbui-success,#55a058)}.ppbui-cards-history{--section-accent:var(--ppbui-info,#2485a6);display:flex;min-height:0;flex-direction:column;grid-column:1/-1}.ppbui-cards-economy{--section-accent:var(--ppbui-selected,#e3c054);grid-column:1/-1}.ppbui-cards-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px}.ppbui-cards-stat-grid>div{min-width:0;padding:7px 8px;border-left:1px solid color-mix(in srgb,var(--section-accent,var(--group-accent,#878573)) 68%,transparent);background:var(--ppbui-bg-0,rgba(22,29,32,.85))}.ppbui-cards-stat-grid span{display:block;color:var(--ppbui-text-subtle,#c3d5c7);font-size:10px;font-weight:650}.ppbui-cards-stat-grid strong{display:block;margin-top:3px;color:var(--ppbui-text,#ebecdc);font:800 14px/1.15 var(--ppbui-font-data,"Inter","Segoe UI",Arial,sans-serif);font-variant-numeric:tabular-nums}.ppbui-cards-stat-grid strong[data-tone="positive"]{color:var(--ppbui-success-text,#69a66f)}.ppbui-cards-stat-grid strong[data-tone="negative"]{color:var(--ppbui-danger-hi,#e6928a)}
@@ -1502,6 +1784,8 @@ function styles() {
       .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-moves{min-height:23px;margin-top:2px}
       .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-move{width:23px;height:23px}
       .ppbui-cards-grid>[data-card-layout="battle"] .ppbui-cards-move img{width:21px;height:21px}
+      .ppbui-card-mode-cards[data-ppbui-text-only="true"] .ppbui-cards-resources{height:72px;overflow:hidden}
+      .ppbui-card-mode-cards[data-ppbui-text-only="true"] .ppbui-cards-grid{height:calc(100% - 80px)}
     }
   `;
 }
@@ -1548,7 +1832,17 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
     lootCatalogLoaded: false,
     lootCatalogRequest: null,
     lootCatalogCheckedAt: new Map(),
+    lootCatalogNextAttemptAt: 0,
     lootCatalogRevision: 0,
+    inventoryRequest: null,
+    resourceItems: new Map(),
+    resourceDirty: new Set(RESOURCE_TYPES),
+    resourceVersions: new Map(RESOURCE_TYPES.map(type => [type, 0])),
+    resourceLoadedTypes: new Set(),
+    resourceLastAppliedAt: new Map(),
+    resourceRequest: null,
+    resourceNextAttemptAt: 0,
+    resourceEpoch: 0,
     lootRarity: "",
     lootSessionIdentity: null,
     lootSessionRows: new Map(),
@@ -1632,6 +1926,7 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
   for (const name of ["team.updated", "combat.leader_changed", "state.resynced"]) {
     bindBus(name, data => {
       if (state.disposed) return;
+      if (name === "state.resynced") markResourceDirty(state);
       const action = state.activeLeaderAction;
       const leaderId = String(data?.leader_id ?? data?.creature_id ?? "").trim();
       if (action && leaderId && leaderId !== action.previous && leaderId !== action.target) action.superseded = true;
@@ -1643,6 +1938,7 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
   for (const event of ["ws.disconnected", "hunt.stopped", "auth.accountChangedInAnotherWindow", "auth.loggedOut", "auth.sessionExpired", "auth.characterMissing"]) {
     bindBus(event, () => {
       if (state.activeLeaderAction) state.activeLeaderAction.superseded = true;
+      if (event.startsWith("auth.")) clearResourceStock(root, state);
     });
   }
   bindBus("huntsim.lifecycle", data => {
@@ -1651,9 +1947,15 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
   });
   for (const name of ["loot.received", "level.up"]) {
     bindBus(name, () => {
+      if (name === "loot.received") markResourceDirty(state);
       if (!state.disposed && state.mode === "cards") renderActivePlayerCard();
     });
   }
+  for (const name of ["capture.success", "capture.failed"]) {
+    bindBus(name, () => { if (!state.disposed) markResourceDirty(state, ["capsule"]); });
+  }
+  bindBus("combat.team_revived", () => { if (!state.disposed) markResourceDirty(state, ["revive"]); });
+  bindBus("inventory.updated", () => { if (!state.disposed) markResourceDirty(state); });
   for (const name of ["xp_share.confirmed", "creature.updated", "creatures.updated"]) {
     bindBus(name, () => {
       if (!state.disposed && state.mode === "cards") renderActivePlayerCard();
@@ -2017,6 +2319,7 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
       state.copy = context.copy;
       state.rarityLabels = context.rarity;
       applyStaticLocale(root, context);
+      renderResources(root, state);
       syncRarityFilterAll();
       setControlStatus(root, "copy-summary", "");
     }
@@ -2114,6 +2417,11 @@ export function createCardModeCards({ win, textOnly = false, combatArt = !textOn
     root,
     ingest(summary) {
       if (!state.disposed) syncLootSessionAggregate(summary, state);
+    },
+    syncResources() {
+      if (state.disposed) return;
+      reconcileNativeBus();
+      refreshResourceStock(win, root, state);
     },
     render,
     setMode,

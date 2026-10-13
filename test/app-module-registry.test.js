@@ -29,7 +29,8 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.equal(controls.find(control => control.id === "buff-strip")?.name(), "Buff Tracker");
   assert.ok(moduleControlsConfig.groups.find(group => group.id === "interface")?.modules.includes("buff-strip"));
   assert.equal(defaults["disable-pokemon-hover"], false);
-  assert.ok(controlIds.every(id => defaults[id] === true || id === "disable-pokemon-hover"));
+  assert.equal(defaults["buff-strip"], false, "Buff Tracker must be opt-in by default");
+  assert.ok(controlIds.every(id => defaults[id] === true || ["disable-pokemon-hover", "buff-strip"].includes(id)));
   assert.ok(controlIds.every(id => mountIds.includes(id)), "every setting mounts a real module");
   assert.ok(!controlIds.includes("card-mode"));
   assert.ok(!controlIds.includes("evolution-center"), "Evolution Center enhancement is an always-on native integration, not a new setting");
@@ -44,6 +45,17 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.deepEqual(modules.filter(module => module.runsInCardMode === true).map(module => module.id),
     ["pokemon-profile", "menu-bar", "card-mode", "wallet"],
     "toolbar owners stay mounted while textual Cards hides the native game surface");
+});
+
+test("persisted Buff Tracker choice overrides its new disabled default", t => {
+  const dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://fixture.invalid" });
+  t.after(() => dom.window.close());
+  const storage = dom.window.localStorage;
+  storage.setItem("ppbui:modules:v1", JSON.stringify({ "buff-strip": true }));
+  const registry = createAppModuleRegistry({ teamPresetStore: {}, teamMovesetStore: {} });
+  const preferences = createModulePreferences({ defaults: registry.defaults, storage: () => storage, events: dom.window });
+  assert.equal(registry.defaults["buff-strip"], false);
+  assert.equal(preferences.isEnabled("buff-strip"), true, "an existing explicit opt-in must survive the default change");
 });
 
 test("obsolete Custom Pokéball preference does not re-enter active defaults", t => {

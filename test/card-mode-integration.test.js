@@ -2263,7 +2263,7 @@ test("captured Cards filters and Story tabs are inert after cleanup", t => {
   assert.equal(huntPanel.hidden,before.huntHidden,"detached Story tabs cannot hide the previously selected panel after cleanup");
 });
 
-test("Card Mode no longer owns Auto Ball or Heal Potion settings", async t => {
+test("Card Mode keeps Auto Ball and Heal Potion settings external while Resource Tracker is read-only", async t => {
   const now = Date.now();
   const baseSummary = {
     protocol: 1,
@@ -2293,14 +2293,14 @@ test("Card Mode no longer owns Auto Ball or Heal Potion settings", async t => {
   assert.equal(cards.textContent.includes("Auto Ball"), false);
   assert.equal(cards.textContent.includes("Heal Potion"), false);
   assert.equal(settingsReads, 0);
-  assert.equal(inventoryReads, 0);
+  assert.equal(inventoryReads, 1, "Cards reads inventory once for the Resource Tracker without reopening Auto Ball/Heal Potion settings");
   assert.equal(updates, 0, "Cards must not own capture/heal settings writes");
 
   setAnalyzerSummary({ ...baseSummary, capturedAtMs: Date.now(), currentTarget: { ...baseSummary.currentTarget, shiny: true } });
   app.reconcile();
   await settle();
   assert.equal(settingsReads, 0);
-  assert.equal(inventoryReads, 0);
+  assert.equal(inventoryReads, 1, "ordinary Cards reconciliation must not turn Resource Tracker into inventory polling");
   assert.equal(updates, 0, "target changes must not resurrect removed Card Mode controls");
 });
 

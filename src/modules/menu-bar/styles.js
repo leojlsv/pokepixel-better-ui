@@ -11,6 +11,47 @@ export default `
 
   .pokeidle-buff-strip[data-ppbui-menu-native-buff-clearance]:not(.is-embedded) {
     margin-top:var(--ppbui-menu-native-buff-clearance-y,0px) !important;
+    border:var(--ppbui-line-width) solid var(--ppbui-menu-native-buff-border-color,var(--ppbui-line)) !important;
+    border-radius:var(--ppbui-window-radius) !important;
+    background:var(--ppbui-surface-window) !important;
+    background-image:none !important;
+    box-shadow:none !important;
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+
+  .pokeidle-buff-strip[data-ppbui-menu-native-buff-side="below"]:not(.is-embedded) {
+    border-top-width:0 !important;
+    border-radius:0 0 var(--ppbui-window-radius) var(--ppbui-window-radius) !important;
+  }
+
+  .pokeidle-buff-strip[data-ppbui-menu-native-buff-side="above"]:not(.is-embedded) {
+    border-bottom-width:0 !important;
+    border-radius:var(--ppbui-window-radius) var(--ppbui-window-radius) 0 0 !important;
+  }
+
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="below"].has-buffs:not(.is-embedded):not([hidden]))
+    .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="below"],
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="below"].has-buffs:not(.is-embedded):not([hidden]))
+    .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="below"],
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="below"]:not(.is-embedded):not([hidden]) .pokeidle-event-ticker:not(.is-empty))
+    .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="below"],
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="below"]:not(.is-embedded):not([hidden]) .pokeidle-event-ticker:not(.is-empty))
+    .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="below"] {
+    border-bottom-width:0 !important;
+    border-radius:var(--ppbui-window-radius) var(--ppbui-window-radius) 0 0 !important;
+  }
+
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="above"].has-buffs:not(.is-embedded):not([hidden]))
+    .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="above"],
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="above"].has-buffs:not(.is-embedded):not([hidden]))
+    .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="above"],
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="above"]:not(.is-embedded):not([hidden]) .pokeidle-event-ticker:not(.is-empty))
+    .pokeidle-top-toolbar[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="above"],
+  :root:has(.pokeidle-buff-strip[data-ppbui-menu-native-buff-side="above"]:not(.is-embedded):not([hidden]) .pokeidle-event-ticker:not(.is-empty))
+    .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar][data-ppbui-menu-native-buff-attachment="above"] {
+    border-top-width:0 !important;
+    border-radius:0 0 var(--ppbui-window-radius) var(--ppbui-window-radius) !important;
   }
 
   .pokeidle-top-toolbar.pokeidle-pokehub.pokeidle-island[data-ppbui-menu-bar] {

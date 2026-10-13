@@ -20,7 +20,7 @@ function setup(t, stored, fail = false, legacyAppearance = null, wallet = null, 
   if (stored) window.localStorage.setItem(key, stored);
   if (legacyAppearance) window.localStorage.setItem("ppbui:appearance:v1", legacyAppearance);
   const moduleRows = [{ id: "menu-bar", name: text => text.name, description: text => text.description }, ...extraModules];
-  const options = { defaults: Object.fromEntries(moduleRows.map(module => [module.id, true])), events: window, storage: () => {
+  const options = { defaults: Object.fromEntries(moduleRows.map(module => [module.id, module.defaultEnabled ?? true])), events: window, storage: () => {
     if (fail) throw new Error("Storage denied");
     return window.localStorage;
   } };
@@ -53,18 +53,19 @@ test("Buff Tracker is exposed as an explicit Better UI toggle in Interface", t =
     id:"buff-strip",
     name:()=>"Buff Tracker",
     description:()=>"Tracker de buffs",
+    defaultEnabled:false,
   };
   const { app, doc, trigger, toggleById, preferences } = setup(t, null, false, null, null, [buff]);
   app.start();
   trigger().click();
   const input = toggleById("buff-strip");
   assert.ok(input, "Buff Tracker toggle must render in the Better UI panel");
-  assert.equal(input.checked, true);
+  assert.equal(input.checked, false);
   assert.match(input.closest("[data-ppbui-module-setting]")?.textContent || "", /Buff Tracker/);
   assert.equal(input.closest("details")?.dataset.ppbuiTheme, "interface");
   input.click();
-  assert.equal(preferences.isEnabled("buff-strip"), false);
-  assert.equal(doc.querySelector('[data-ppbui-module-setting="buff-strip"] input').checked, false);
+  assert.equal(preferences.isEnabled("buff-strip"), true);
+  assert.equal(doc.querySelector('[data-ppbui-module-setting="buff-strip"] input').checked, true);
 });
 
 test("corner mode UI is removed and legacy Squared storage is retired", t => {

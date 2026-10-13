@@ -114,6 +114,10 @@ test("standalone userscript starts in Game and renders Analyzer data after enter
   const cardsCss = doc.querySelector("style[data-ppbui-card-mode-cards-style]").textContent;
   assert.match(cardsCss, /\.ppbui-card-mode-cards\[data-ppbui-text-only="true"\]\{[^}]*height:calc\(100vh - var\(--ppbui-card-mode-bottom-inset,0px\)\);height:calc\(100dvh - var\(--ppbui-card-mode-bottom-inset,0px\)\);min-height:0;[^}]*overflow:auto/,
     "standalone Card Mode height is bounded by the dynamic viewport and scroll stays inside Cards");
+  assert.match(cardsCss, /\.ppbui-cards-resource-group\{[^}]*border:0;[^}]*background:transparent/,
+    "resource family groups stay frameless so only individual resources carry borders");
+  assert.match(cardsCss, /\.ppbui-cards-resource-item\{[^}]*border:1px solid var\(--ppbui-border,#6b6543\)/,
+    "individual resource items keep their readable border");
   assert.equal(doc.querySelector("[data-ppbui-card-mode-dock]"), null);
   assert.equal(doc.querySelector("[data-ppbui-card-mode-switch]"), null);
   assert.equal(cards.querySelector('[data-card-analyzer-open="current"]').hidden, true,
@@ -510,6 +514,244 @@ test("standalone Card Mode polls late Analyzer availability without remounting",
 
   assert.equal(doc.querySelector("[data-ppbui-card-mode-cards]"), before);
   assert.equal(cards.querySelector('[data-card-field="seen"]').textContent, "27");
+});
+
+test("Card Mode resource tracker keeps individual stock with 30s Balls and 60s Potion/Revive refresh", async t => {
+  const { app, doc, window } = setup(t);
+  let now = 1_000_000;
+  const originalDateNow = Date.now;
+  Date.now = () => now;
+  t.after(() => { Date.now = originalDateNow; });
+
+  let analyzerPoll = null;
+  let intervals = 0;
+  window.setInterval = callback => { intervals += 1; analyzerPoll = callback; return 1; };
+  window.clearInterval = () => {};
+  const listeners = new Map();
+  const bus = {
+    on(name, handler) {
+      if (!listeners.has(name)) listeners.set(name, new Set());
+      listeners.get(name).add(handler);
+    },
+    off(name, handler) { listeners.get(name)?.delete(handler); },
+    emit(name, payload) { for (const handler of [...(listeners.get(name) || [])]) handler(payload); },
+  };
+  let inventory = [
+    { item_id:"capsule_basic", name:"Poké Ball", type:"capsule", qty:100, icon_index:34, catch_multiplier:1 },
+    { item_id:"capsule_great", name:"Great Ball", type:"capsule", qty:20, icon_index:8, catch_multiplier:2 },
+    { item_id:"potion_small", name:"Small Potion", type:"potion", qty:10, icon_index:47, heal_percent:20 },
+    { item_id:"potion_great", name:"Great Potion", type:"potion", qty:5, icon_index:44, heal_percent:35 },
+    { item_id:"revive_basic", name:"Revive", type:"revive", qty:3, icon_index:51, heal_percent:65 },
+    { item_id:"revive_max", name:"Max Revive", type:"revive", qty:1, icon_index:50, heal_percent:100 },
+    { item_id:"material", name:"Material", type:"material", qty:999, icon_index:1 },
+  ];
+  let inventoryCalls = 0;
+  window.PokeIdle = {
+    Localization:{ get:() => "pt-BR" },
+    Bus:bus,
+    Api:{
+      getInventory() {
+        inventoryCalls += 1;
+        return Promise.resolve({ data:inventory.map(item => ({ ...item })) });
+      },
+    },
+  };
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+
+  app.start();
+  assert.equal(inventoryCalls, 0, "Game mode adds no resource inventory reads");
+  assert.equal(intervals, 1, "resource refresh reuses the existing Card Mode timer");
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  await flush();
+
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
+  const resources = cards.querySelector("[data-card-resources]");
+  assert.equal(inventoryCalls, 1, "entering Cards takes one shared authoritative inventory snapshot");
+  assert.equal(resources.querySelectorAll('[data-card-resource-type="capsule"]').length, 2);
+  assert.equal(resources.querySelectorAll('[data-card-resource-type="potion"]').length, 2);
+  assert.equal(resources.querySelectorAll('[data-card-resource-type="revive"]').length, 2);
+  assert.equal(resources.querySelector('[data-card-resource-item="capsule_basic"] [data-card-resource-quantity]').textContent, "×100");
+  assert.equal(resources.querySelector('[data-card-resource-item="potion_small"] [data-card-resource-quantity]').textContent, "×10");
+
+  inventory = inventory
+    .filter(item => item.item_id !== "capsule_great")
+    .map(item => item.item_id === "capsule_basic" ? { ...item, qty:80 } : item);
+  bus.emit("capture.failed", { capsule_item_id:"capsule_basic" });
+  now += 29_999;
+  analyzerPoll();
+  await flush();
+  assert.equal(inventoryCalls, 1, "Balls do not refresh before 30 seconds");
+  now += 1;
+  analyzerPoll();
+  await flush();
+  assert.equal(inventoryCalls, 2);
+  assert.equal(resources.querySelector('[data-card-resource-item="capsule_basic"] [data-card-resource-quantity]').textContent, "×80");
+  assert.equal(resources.querySelector('[data-card-resource-item="capsule_great"] [data-card-resource-quantity]').textContent, "×0", "a depleted known Ball stays visible for refill awareness");
+
+  inventory = inventory.map(item => item.item_id === "potion_small" ? { ...item, qty:6 }
+    : item.item_id === "revive_basic" ? { ...item, qty:2 } : item);
+  bus.emit("loot.received", { auto_potion_used:"potion_small" });
+  now += 29_999;
+  analyzerPoll();
+  await flush();
+  assert.equal(inventoryCalls, 2, "Potion/Revive stock remains relaxed before 60 seconds");
+  assert.equal(resources.querySelector('[data-card-resource-item="potion_small"] [data-card-resource-quantity]').textContent, "×10");
+  now += 1;
+  analyzerPoll();
+  await flush();
+  assert.equal(inventoryCalls, 3, "one 60-second snapshot refreshes due resource families together");
+  assert.equal(resources.querySelector('[data-card-resource-item="potion_small"] [data-card-resource-quantity]').textContent, "×6");
+  assert.equal(resources.querySelector('[data-card-resource-item="revive_basic"] [data-card-resource-quantity]').textContent, "×2");
+
+  let resourceMutations = 0;
+  const observer = new window.MutationObserver(records => { resourceMutations += records.length; });
+  observer.observe(resources, { childList:true, subtree:true, characterData:true, attributes:true });
+  bus.emit("capture.failed", { capsule_item_id:"capsule_basic" });
+  now += 30_000;
+  analyzerPoll();
+  await flush();
+  await Promise.resolve();
+  observer.disconnect();
+  assert.equal(inventoryCalls, 4);
+  assert.equal(resourceMutations, 0, "unchanged relaxed snapshots do not churn the resource DOM");
+
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  bus.emit("inventory.updated", {});
+  now += 60_000;
+  analyzerPoll();
+  await flush();
+  assert.equal(inventoryCalls, 4, "Game mode performs zero resource refreshes even when stock becomes dirty");
+});
+
+test("Resource Tracker cancels queued Cards reads before they reach the API after an immediate return to Game", async t => {
+  const { app, doc, window } = setup(t);
+  let inventoryCalls = 0;
+  window.PokeIdle = {
+    Bus:{ on() {}, off() {} },
+    Api:{ getInventory() { inventoryCalls += 1; return Promise.resolve({ data:[] }); } },
+  };
+  app.start();
+  const toggle = doc.querySelector("[data-ppbui-card-mode-toggle]");
+  toggle.click();
+  toggle.click();
+  await Promise.resolve();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(toggle.dataset.ppbuiCardModeState, "game");
+  assert.equal(inventoryCalls, 0, "a Cards→Game double switch in one task must not leak its queued inventory read into Game");
+});
+
+test("Resource Tracker fences pending shared inventory responses across account changes", async t => {
+  let now = 2_000_000;
+  const originalDateNow = Date.now;
+  Date.now = () => now;
+  t.after(() => { Date.now = originalDateNow; });
+  const summary = {
+    protocol:1, available:true, capturedAtMs:now, status:"running", activityKind:"hunt", lootHistory:[],
+  };
+  const { app, doc, window, setAnalyzerSummary } = setup(t, { analyzerSummary:summary });
+  const listeners = new Map();
+  const bus = {
+    on(name, handler) {
+      if (!listeners.has(name)) listeners.set(name, new Set());
+      listeners.get(name).add(handler);
+    },
+    off(name, handler) { listeners.get(name)?.delete(handler); },
+    emit(name, payload) { for (const handler of [...(listeners.get(name) || [])]) handler(payload); },
+  };
+  const pending = [];
+  let inventoryCalls = 0;
+  window.PokeIdle = {
+    Localization:{ get:() => "pt-BR" },
+    Bus:bus,
+    Api:{
+      getInventory() {
+        inventoryCalls += 1;
+        return new Promise(resolve => pending.push(resolve));
+      },
+    },
+  };
+  const flush = async () => {
+    await Promise.resolve();
+    await new Promise(resolve => setImmediate(resolve));
+  };
+
+  app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  await Promise.resolve();
+  assert.equal(inventoryCalls, 1);
+  pending[0]({ data:[{ item_id:"capsule_initial", name:"Initial Ball", type:"capsule", qty:4, icon_index:34 }] });
+  await flush();
+
+  setAnalyzerSummary({
+    ...summary,
+    capturedAtMs:now,
+    lootHistory:[{ atMs:now - 1000, species:"Rattata", directGold:0, lootSellValue:0, items:[{ itemId:"loot-shared", qty:1 }] }],
+  });
+  app.reconcile();
+  await Promise.resolve();
+  assert.equal(inventoryCalls, 2, "missing Loot metadata starts a shared inventory request while resource stock itself is clean");
+
+  bus.emit("auth.accountChangedInAnotherWindow", {});
+  app.reconcile();
+  await Promise.resolve();
+  assert.equal(inventoryCalls, 3, "new account gets a fresh inventory request instead of reusing the old account promise");
+
+  pending[1]({ data:[
+    { item_id:"capsule_account_a", name:"ACCOUNT A BALL", type:"capsule", qty:999, icon_index:34 },
+    { item_id:"loot-shared", name:"ACCOUNT A DROP", type:"material", qty:1, icon_index:1 },
+  ] });
+  await flush();
+  const cards = doc.querySelector("[data-ppbui-card-mode-cards]");
+  assert.equal(cards.textContent.includes("ACCOUNT A BALL"), false, "late account-A stock cannot repopulate the cleared Resource Tracker");
+  assert.equal(cards.querySelector('[data-card-loot-summary] [data-item-id="loot-shared"]')?.title.includes("ACCOUNT A DROP"), false,
+    "late account-A Loot metadata cannot cross the account boundary either");
+
+  pending[2]({ data:[
+    { item_id:"capsule_account_b", name:"ACCOUNT B BALL", type:"capsule", qty:7, icon_index:8 },
+    { item_id:"loot-shared", name:"ACCOUNT B DROP", type:"material", qty:1, icon_index:2 },
+  ] });
+  await flush();
+  assert.equal(cards.querySelector('[data-card-resource-item="capsule_account_b"] [data-card-resource-quantity]').textContent, "×7");
+  assert.equal(cards.textContent.includes("ACCOUNT A BALL"), false);
+  assert.match(cards.querySelector('[data-card-loot-summary] [data-item-id="loot-shared"]')?.title || "", /ACCOUNT B DROP/);
+});
+
+test("Resource Tracker backs off when inventory resolves without an authoritative snapshot", async t => {
+  let now = 3_000_000;
+  const originalDateNow = Date.now;
+  Date.now = () => now;
+  t.after(() => { Date.now = originalDateNow; });
+  const { app, doc, window } = setup(t, { analyzerSummary:{
+    protocol:1, available:true, capturedAtMs:now, status:"running", activityKind:"hunt",
+    lootHistory:[{ atMs:now - 1000, species:"Rattata", directGold:0, lootSellValue:0, items:[{ itemId:"missing-loot", qty:1 }] }],
+  } });
+  let analyzerPoll = null;
+  window.setInterval = callback => { analyzerPoll = callback; return 1; };
+  window.clearInterval = () => {};
+  let inventoryCalls = 0;
+  window.PokeIdle = {
+    Bus:{ on() {}, off() {} },
+    Api:{ getInventory() { inventoryCalls += 1; return Promise.resolve(null); } },
+  };
+  const flush = () => new Promise(resolve => setImmediate(resolve));
+
+  app.start();
+  doc.querySelector("[data-ppbui-card-mode-toggle]").click();
+  await flush();
+  const list = doc.querySelector('[data-card-resource-list="capsule"]');
+  assert.equal(inventoryCalls, 1);
+  assert.equal(list.textContent.trim(), "—", "invalid/no-data responses remain unknown instead of becoming a fake zero balance");
+  for (let second = 1; second <= 4; second += 1) {
+    now += 1000;
+    analyzerPoll();
+    await flush();
+  }
+  assert.equal(inventoryCalls, 1, "resource and Loot Catalog consumers share the same failure backoff instead of retrying every Card tick");
+  now += 1000;
+  analyzerPoll();
+  await flush();
+  assert.equal(inventoryCalls, 2, "a bounded retry is allowed after the five-second failure backoff");
+  assert.equal(list.textContent.trim(), "—");
 });
 
 test("textual Cards suspends other Better UI modules and Game remounts them", async t => {

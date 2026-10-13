@@ -1,8 +1,8 @@
 # Buff tracker
 
-Status: **Product Owner validated in-game on 2026-10-12; release authorized.**
-Automated browser/DOM evidence remains supporting evidence only; the final acceptance authority
-was the live client.
+Status: **0.2.196 local visual/default corrective pending Product Owner in-game validation.**
+The 0.2.195 anti-flicker behavior remains the accepted baseline; automated browser/DOM evidence
+for this follow-up is supporting evidence only.
 
 Use the existing native `.pokeidle-buff-strip` as the tracker root. Keep the exact native
 `.pokeidle-buff-list`, `.pokeidle-event-ticker`, pills, timers and event handlers. Better
@@ -64,3 +64,22 @@ The final local regression models the native one-second attach() writer and coun
 A Chromium smoke held the same native root/list/ticker/pill/handler through 12 ticks with the
 native top/priority unchanged, a stable 4 px rendered gap and zero attribute mutations.
 The Product Owner then validated the original strip in-game and reported the flicker resolved.
+
+## 2026-10-12 - native strip attachment refinement
+
+When Buff Tracker is disabled and Menu Bar is horizontal, the original native strip should read as
+one attached stack with the main bar instead of a second floating window. Better UI therefore:
+
+- uses zero visual gap between the two bars;
+- keeps the native strip's own top/bottom geometry authoritative;
+- applies the shared Better UI surface/line treatment only while Menu Bar owns the native-strip
+  clearance presentation;
+- removes the border on the shared seam and keeps radius only on the outer corners;
+- flattens the matching Menu Bar corners on the attached side;
+- removes the native strip's independent shadow/backdrop blur while attached.
+
+The attachment side is derived from the existing above/below placement calculation and is restored
+on Tracker ownership, vertical Menu Bar, hidden/embedded state or cleanup.
+
+Buff Tracker itself is now **opt-in by default**. The default applies only when no persisted module
+preference exists; an existing explicit enabled/disabled choice remains authoritative.

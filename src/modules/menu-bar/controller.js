@@ -246,7 +246,10 @@ export function mountMenuBar({ toolbar, actions, structure }, {
     if (orientationBefore === null) toolbar.removeAttribute("data-ppbui-menu-orientation");
     else toolbar.setAttribute("data-ppbui-menu-orientation", orientationBefore);
   });
-  const setOrientation = value => applyOrientation(value);
+  const setOrientation = value => {
+    applyOrientation(value);
+    syncNativeBuffClearance();
+  };
   applyOrientation(layout?.orientation || orientation);
   const mask = (node, hide) => {
     if (hide && !masks.has(node)) {
@@ -621,12 +624,27 @@ export function mountMenuBar({ toolbar, actions, structure }, {
   queueGeometryNormalization(2);
   const nativeBuffClearanceMarker = "data-ppbui-menu-native-buff-clearance";
   const nativeBuffClearanceProperty = "--ppbui-menu-native-buff-clearance-y";
+  const nativeBuffBorderColorProperty = "--ppbui-menu-native-buff-border-color";
+  const nativeBuffSideAttribute = "data-ppbui-menu-native-buff-side";
+  const nativeBuffToolbarAttachmentAttribute = "data-ppbui-menu-native-buff-attachment";
+  const nativeBuffToolbarAttachmentBefore = toolbar.getAttribute(nativeBuffToolbarAttachmentAttribute);
   let nativeBuffClearance = null;
+  const setNativeBuffToolbarAttachment = side => {
+    const value = side ?? nativeBuffToolbarAttachmentBefore;
+    if (value === null) {
+      if (toolbar.hasAttribute(nativeBuffToolbarAttachmentAttribute)) toolbar.removeAttribute(nativeBuffToolbarAttachmentAttribute);
+      return;
+    }
+    if (toolbar.getAttribute(nativeBuffToolbarAttachmentAttribute) !== value) {
+      toolbar.setAttribute(nativeBuffToolbarAttachmentAttribute, value);
+    }
+  };
   const restoreNativeBuffClearance = () => {
     const state = nativeBuffClearance;
     nativeBuffClearance = null;
+    setNativeBuffToolbarAttachment(null);
     if (!state?.strip) return;
-    const { strip, hadStyle, offset, appliedOffset } = state;
+    const { strip, hadStyle, offset, appliedOffset, borderColor, appliedBorderColor, side } = state;
     const stillOwnsOffset = !appliedOffset || (
       strip.style.getPropertyValue(nativeBuffClearanceProperty) === appliedOffset.value &&
       strip.style.getPropertyPriority(nativeBuffClearanceProperty) === appliedOffset.priority
@@ -635,6 +653,16 @@ export function mountMenuBar({ toolbar, actions, structure }, {
       if (offset.value) strip.style.setProperty(nativeBuffClearanceProperty, offset.value, offset.priority);
       else strip.style.removeProperty(nativeBuffClearanceProperty);
     }
+    const stillOwnsBorderColor = !appliedBorderColor || (
+      strip.style.getPropertyValue(nativeBuffBorderColorProperty) === appliedBorderColor.value &&
+      strip.style.getPropertyPriority(nativeBuffBorderColorProperty) === appliedBorderColor.priority
+    );
+    if (stillOwnsBorderColor) {
+      if (borderColor.value) strip.style.setProperty(nativeBuffBorderColorProperty, borderColor.value, borderColor.priority);
+      else strip.style.removeProperty(nativeBuffBorderColorProperty);
+    }
+    if (side === null) strip.removeAttribute(nativeBuffSideAttribute);
+    else strip.setAttribute(nativeBuffSideAttribute, side);
     strip.removeAttribute(nativeBuffClearanceMarker);
     if (!hadStyle && !strip.style.cssText) strip.removeAttribute("style");
   };
@@ -645,17 +673,36 @@ export function mountMenuBar({ toolbar, actions, structure }, {
       restoreNativeBuffClearance();
       return;
     }
+    const nativePresentation = win?.getComputedStyle?.(strip);
+    if (nativePresentation?.display === "none" || nativePresentation?.visibility === "hidden") {
+      restoreNativeBuffClearance();
+      return;
+    }
+    const toolbarPresentation = win?.getComputedStyle?.(toolbar);
+    const menuBorderColor = [
+      toolbarPresentation?.borderLeftColor,
+      toolbarPresentation?.borderRightColor,
+      toolbarPresentation?.borderTopColor,
+      toolbarPresentation?.borderBottomColor,
+    ].find(value => value && value !== "transparent" && !/rgba\([^)]*,\s*0(?:\.0+)?\s*\)$/i.test(value)) || "var(--ppbui-line)";
     const toolbarRect = toolbar.getBoundingClientRect();
     const stripRect = strip.getBoundingClientRect();
     const viewportHeight = doc.documentElement?.clientHeight || win?.innerHeight || 0;
     if (!(toolbarRect.width > 0 && toolbarRect.height > 0 && viewportHeight > 0)) return;
     const height = stripRect.height > 0 ? stripRect.height : 34;
-    const margin = 8, gap = 4;
+    const margin = 8, gap = 0;
     const belowFree = Math.max(0, viewportHeight - margin - toolbarRect.bottom - gap);
     const aboveFree = Math.max(0, toolbarRect.top - gap - margin);
     const belowTop = toolbarRect.bottom + gap;
     const aboveTop = toolbarRect.top - gap - height;
-    const top = belowFree >= height || belowFree >= aboveFree
+    const side = belowFree >= height || belowFree >= aboveFree ? "below" : "above";
+    const edgeTolerance = 3;
+    const horizontallyAligned =
+      Math.abs(stripRect.left - toolbarRect.left) <= edgeTolerance &&
+      Math.abs(stripRect.right - toolbarRect.right) <= edgeTolerance;
+    const attachedSide =
+      (side === "below" ? belowFree : aboveFree) >= height && horizontallyAligned ? side : null;
+    const top = side === "below"
       ? clamp(belowTop, margin, viewportHeight - margin - height)
       : clamp(aboveTop, margin, viewportHeight - margin - height);
     if (!nativeBuffClearance) {
@@ -668,12 +715,31 @@ export function mountMenuBar({ toolbar, actions, structure }, {
         },
         appliedOffset:null,
         appliedOffsetPx:0,
+        borderColor:{
+          value:strip.style.getPropertyValue(nativeBuffBorderColorProperty),
+          priority:strip.style.getPropertyPriority(nativeBuffBorderColorProperty),
+        },
+        appliedBorderColor:null,
+        side:strip.getAttribute(nativeBuffSideAttribute),
       };
     }
     const baseTop = stripRect.top - (nativeBuffClearance.appliedOffsetPx || 0);
     const nextOffsetPx = Math.round(top - baseTop);
     const nextOffset = nextOffsetPx + "px";
     if (!strip.hasAttribute(nativeBuffClearanceMarker)) strip.setAttribute(nativeBuffClearanceMarker, "");
+    if (attachedSide) {
+      if (strip.getAttribute(nativeBuffSideAttribute) !== attachedSide) strip.setAttribute(nativeBuffSideAttribute, attachedSide);
+    } else if (nativeBuffClearance.side === null) {
+      if (strip.hasAttribute(nativeBuffSideAttribute)) strip.removeAttribute(nativeBuffSideAttribute);
+    } else if (strip.getAttribute(nativeBuffSideAttribute) !== nativeBuffClearance.side) {
+      strip.setAttribute(nativeBuffSideAttribute, nativeBuffClearance.side);
+    }
+    setNativeBuffToolbarAttachment(attachedSide);
+    if (strip.style.getPropertyValue(nativeBuffBorderColorProperty) !== menuBorderColor ||
+        strip.style.getPropertyPriority(nativeBuffBorderColorProperty) !== "") {
+      strip.style.setProperty(nativeBuffBorderColorProperty, menuBorderColor);
+    }
+    nativeBuffClearance.appliedBorderColor = { value:menuBorderColor, priority:"" };
     if (strip.style.getPropertyValue(nativeBuffClearanceProperty) !== nextOffset ||
         strip.style.getPropertyPriority(nativeBuffClearanceProperty) !== "") {
       strip.style.setProperty(nativeBuffClearanceProperty, nextOffset);

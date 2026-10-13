@@ -72,7 +72,10 @@ function mountCardMode(win = globalThis.window, menuBar) {
   let toggleOwnedFocus = false;
 
   const syncAnalyzer = () => {
-    if (mode === "cards") cards.render(readAnalyzerSummary(win));
+    if (mode === "cards") {
+      cards.syncResources?.();
+      cards.render(readAnalyzerSummary(win));
+    }
     else cards.ingest(readAnalyzerLootSession(win));
   };
   const clearToolbarOwnership = () => {

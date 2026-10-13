@@ -53,7 +53,7 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
     { module: huntControlsModule },
     { module: createCardModeModule({ menuBar:menuBarModule }) },
     { module: wallet },
-    toggle(createBuffStripModule(), buffStripText),
+    toggle(createBuffStripModule(), buffStripText, false),
     toggle(createInventoryModule(undefined,wallet), inventoryText),
     toggle(createStorageModule(), storageText),
     toggle(createTradePokemonModule(), () => ({

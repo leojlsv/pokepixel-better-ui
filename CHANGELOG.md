@@ -4,6 +4,27 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Card Mode Resource Tracker — estoque individual de consumíveis, candidato 0.2.196 (2026-10-13):**
+  Cards passa a mostrar cada Poké Ball, Potion e Revive do inventário como item individual, com
+  ícone, nome e quantidade, em vez de um total agregado por categoria. O tracker usa o mesmo
+  `GET /inventory` já compartilhável com o Loot Catalog, sem novo `MutationObserver` e sem novo
+  timer: apenas reaproveita o tick existente para decidir se um snapshot marcado como dirty já
+  venceu sua janela. Poké Balls têm refresh relaxado de **30 s**; Potions e Revives, **60 s**.
+  Game mode não dispara refresh de recursos. Um item já conhecido que zera continua visível como
+  `×0`, preservando a utilidade de refill, e snapshots sem mudança não geram mutação no DOM. Os
+  grupos Poké Balls/Potions/Revives ficam sem moldura própria; somente cada item mantém sua borda,
+  reduzindo ruído visual na leitura horizontal. **O Product Owner validou o Resource Tracker final
+  in-game em 2026-10-13.**
+
+- **Buff Strip visual attachment / opt-in Tracker, candidato 0.2.196 (2026-10-12):**
+  a barra nativa de buffs passa a encostar diretamente na Menu Bar horizontal, compartilhando a
+  mesma família de surface/border e mantendo radius apenas nos cantos externos. A borda da seam é
+  removida conforme a barra fica acima/abaixo do menu, sem voltar a escrever `top/bottom` nativos
+  nem reabrir o flicker de 1 segundo corrigido em `0.2.195`. O **Buff Tracker** permanece disponível
+  em Better UI > Interface, mas agora é **desativado por padrão**; escolhas já persistidas continuam
+  autoritativas e não são sobrescritas pelo novo default. **O Product Owner validou e aprovou a
+  correção visual final da Buff Bar in-game em 2026-10-13.**
+
 - **Buff Tracker / native buff strip - candidate 0.2.195 (2026-10-12):**
   the existing Buff Strip module now provides a compact quest-tracker-style surface with
   title/count, collapse, persistent free drag, Team HUD width alignment, player/event visual
