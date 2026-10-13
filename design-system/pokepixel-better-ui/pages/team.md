@@ -880,7 +880,12 @@ vertical overflow could create a real scrollbar. Exact `0.2.12` keeps the outer 
 scrollable when multiple presets exceed its height, but contains decorative overflow inside the
 noninteractive six-member preview. Its measured local `6/6` strip has zero left/right gap, equal
 tracks, no wrap and no scrollbar; independent Technical and Visual gates close at `P0-P3=0`.
-The Product Owner subsequently validated the live `0.2.12` width correction. No Team-family gate remains open.
+The Product Owner subsequently validated the live `0.2.12` width correction. On 2026-10-13 the
+Product Owner reopened only the Saved Formations vertical scrollbar width in the compact Team HUD
+because the shared 10px primitive reads too wide for that surface. The approved local geometry is
+6px in Chromium/WebKit and the browser's `thin` width in Firefox; track/thumb colors, radius,
+`max-height:220px`, real overflow behavior and the full Team/global 10px scrollbar remain unchanged.
+The Product Owner live-validated this scoped visual correction on 2026-10-13.
 
 ## Approval boundary
 
@@ -889,4 +894,7 @@ explicit Product Owner live validation. Shared Stone behavior is explicitly live
 `0.2.11`, and the Saved Team HUD `6/6` width correction is explicitly live-validated on `0.2.12`.
 The previously validated Team-family structure remains closed. Exact `0.2.22` reopens only the
 new manual Saved Team authoring capability described above; its live approval does not require
-revalidating unrelated Team/HUD/Shared Stone surfaces unless a regression is observed.
+revalidating unrelated Team/HUD/Shared Stone surfaces unless a regression is observed. The
+2026-10-13 Saved Formations scrollbar-width correction separately reopened only that compact HUD
+chrome, was subsequently live-validated by the Product Owner, and does not reopen the validated
+Team structure or Saved Team behavior.

@@ -4,6 +4,8 @@ All notable project changes are recorded in this file.
 
 ## Unreleased
 
+- **Team HUD Saved Formations scrollbar — 0.2.198 (2026-10-13):** reduce only the compact Saved Formations list's vertical scrollbar to 6px on Chromium/WebKit (`thin` on Firefox), while preserving its existing overflow behavior, shared PPBUI scrollbar chrome and the 10px scrollbar used by larger Better UI surfaces. **The Product Owner validated the corrected scrollbar in-game and authorized publication on 2026-10-13.**
+
 - **Geneticist Extract Material — 0.2.197 (2026-10-13):** after an extraction commits, reopen the selected species from refreshed native results instead of returning to the initial species grid. Reorganize species and creature filters, align seven rarity facets at 28px with native rarity colors and visible focus/selection, and avoid a blocked sidebar after unrelated update events. Product Owner approved publication on 2026-10-13.
 
 - **Card Mode Resource Tracker — estoque individual de consumíveis, candidato 0.2.196 (2026-10-13):**

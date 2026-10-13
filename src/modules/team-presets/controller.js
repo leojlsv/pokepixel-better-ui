@@ -31,16 +31,16 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-save] > input.game-window__search.ppbui-input::placeholder { color:var(--ppbui-text-subtle)!important; opacity:1; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-save] > input.game-window__search.ppbui-input:focus { border-color:var(--ppbui-accent)!important; outline:none!important; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-save] > input.game-window__search.ppbui-input:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus)!important; outline-offset:var(--ppbui-pixel-unit); }
-    [data-ppbui-team-presets-list] { display:grid; box-sizing:border-box; width:100%; min-width:0; gap:0; max-height:220px; overflow:auto; scrollbar-gutter:auto; }
-    .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list] { scrollbar-width:auto!important; scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track)!important; }
-    .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar { width:var(--ppbui-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
+    [data-ppbui-team-presets-list] { --ppbui-team-presets-scrollbar-size:6px; display:grid; box-sizing:border-box; width:100%; min-width:0; gap:0; max-height:220px; overflow:auto; scrollbar-gutter:auto; }
+    .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list] { scrollbar-width:thin!important; scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track)!important; }
+    .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar { width:var(--ppbui-team-presets-scrollbar-size)!important; height:var(--ppbui-scrollbar-size)!important; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar-track { border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; box-shadow:none!important; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar-thumb { border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-thumb)!important; background-clip:border-box!important; box-shadow:none!important; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar-thumb:hover { background:var(--ppbui-scrollbar-thumb-hover)!important; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar-corner { border-radius:var(--ppbui-radius)!important; background:var(--ppbui-scrollbar-track)!important; }
     .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list]::-webkit-scrollbar-button { display:none!important; width:0!important; height:0!important; }
     @supports selector(::-webkit-scrollbar) {
-      .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list] { scrollbar-color:auto!important; }
+      .pokeidle-team-hud [data-ppbui-team-presets] [data-ppbui-team-presets-list] { scrollbar-width:auto!important; scrollbar-color:auto!important; }
     }
     [data-ppbui-team-presets-row] { display:grid; grid-template-rows:auto auto; gap:0; min-width:0; padding:0; border:0; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border); border-radius:var(--ppbui-radius); background:var(--ppbui-bg-1); }
     [data-ppbui-team-presets-row:last-child] { border-bottom:0; }
