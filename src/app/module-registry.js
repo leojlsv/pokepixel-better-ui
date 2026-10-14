@@ -23,6 +23,7 @@ import { shopText } from "../modules/marks-shop/dom.js";
 import { createEvolutionCenterModule } from "../modules/evolution-center/index.js";
 import { createGeneticistModule } from "../modules/geneticist/index.js";
 import { geneticistText } from "../modules/geneticist/dom.js";
+import { createProfessionsHudModule } from "../modules/professions-hud/index.js";
 import { createWalletModule } from "../modules/wallet/index.js";
 
 // A toggle descriptor is the sole authority for a module's persisted default
@@ -67,6 +68,7 @@ export function createAppModuleRegistry({ teamPresetStore, teamMovesetStore } = 
     toggle(createTeamPresetsModule({ store: teamPresetStore }), teamPresetsText),
     { module: createEvolutionCenterModule() },
     toggle(createGeneticistModule(), geneticistText),
+    { module: createProfessionsHudModule() },
     toggle(createMarksShopModule(), shopText),
     toggle(createAutoHelperModule(), autoHelperText),
   ];
