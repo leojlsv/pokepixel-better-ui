@@ -278,6 +278,87 @@ test("relocated City shortcuts keep native dispatch and contextual Return remain
   assert.equal(s.menuBar.getGroupTarget("city").dropdown.firstElementChild, nativeReturn);
 });
 
+test("Card Mode retains the native Return to City action and returns to Game before its handler", async t => {
+  let nativeReturn, nativeBar, nativeCalls = 0, modeInNativeHandler = null;
+  const s = setup(t, { systems:true, hunt:true, beforeStart:({ win, doc }) => {
+    win.PokeIdle.t = key => ({
+      "hud.return_to_city_caps":"RETURN TO CITY", "hud.capture_caps":"CAPTURE", "hud.revive_caps":"REVIVE",
+    }[key] || key);
+    nativeBar = doc.createElement("div");
+    nativeBar.className = "pokeidle-map-action-bar";
+    for (const name of ["RETURN TO CITY", "CAPTURE", "REVIVE"]) {
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "pokeidle-btn pokeidle-map-action-bar__button";
+      button.textContent = name;
+      nativeBar.append(button);
+      if (name === "RETURN TO CITY") nativeReturn = button;
+    }
+    nativeReturn.addEventListener("click", () => {
+      nativeCalls++;
+      modeInNativeHandler = doc.documentElement.getAttribute("data-ppbui-card-mode");
+    });
+    doc.body.append(nativeBar);
+  } });
+  const city = s.menuBar.getGroupTarget("city");
+  const toggle = s.doc.querySelector("[data-ppbui-card-mode-toggle]");
+  assert.equal(city.dropdown.firstElementChild, nativeReturn);
+
+  toggle.click();
+  await new Promise(resolve => s.win.setTimeout(resolve, 0));
+  assert.equal(s.doc.documentElement.getAttribute("data-ppbui-card-mode"), "cards");
+  assert.equal(city.dropdown.firstElementChild, nativeReturn,
+    "switching to Cards must not unmount the contextual native Return action");
+  assert.equal(nativeReturn.dataset.ppbuiMenuContextVisible, "true");
+  assert.equal(city.trigger.querySelector(".ppbui-hunt-return-badge")?.hidden, false);
+  assert.match(city.trigger.getAttribute("aria-label"), /RETURN TO CITY/);
+
+  nativeReturn.disabled = true;
+  nativeReturn.click();
+  assert.equal(nativeCalls, 0, "a native-disabled Return cannot trigger a new gameplay action");
+  assert.equal(s.doc.documentElement.getAttribute("data-ppbui-card-mode"), "cards");
+  nativeReturn.disabled = false;
+  city.trigger.focus();
+  city.trigger.dispatchEvent(new s.win.KeyboardEvent("keydown", { key:"Home", bubbles:true }));
+  assert.equal(s.doc.activeElement, nativeReturn, "keyboard navigation reaches Return first while Cards is active");
+
+  nativeReturn.click();
+  assert.equal(nativeCalls, 1);
+  assert.equal(modeInNativeHandler, "game", "the game surface must return before native stopHunt handles the click");
+  assert.equal(nativeReturn.parentElement, city.dropdown);
+  assert.equal(s.doc.querySelectorAll("[data-ppbui-hunt-return]").length, 1);
+
+  toggle.click();
+  await new Promise(resolve => s.win.setTimeout(resolve, 0));
+  nativeReturn.focus();
+  assert.equal(s.doc.activeElement, nativeReturn);
+  nativeBar.hidden = true;
+  s.app.reconcile();
+  assert.equal(nativeReturn.dataset.ppbuiMenuContextVisible, "false",
+    "inactive native Hunt must not expose a Return action in Cards");
+  assert.equal(city.trigger.querySelector(".ppbui-hunt-return-badge")?.hidden, true);
+  assert.equal(s.doc.activeElement, city.trigger,
+    "a Return button hidden by native Hunt completion must yield focus to the City trigger");
+  assert.equal(nativeReturn.parentElement, city.dropdown, "the original native node is retained for the next Hunt");
+
+  nativeBar.hidden = false;
+  s.app.reconcile();
+  toggle.focus();
+  nativeBar.setAttribute("aria-hidden", "true");
+  s.app.reconcile();
+  assert.equal(nativeReturn.dataset.ppbuiMenuContextVisible, "false");
+  assert.equal(s.doc.activeElement, toggle, "native Hunt becoming inactive must not steal unrelated focus");
+  nativeBar.removeAttribute("aria-hidden");
+  s.app.reconcile();
+
+  s.preferences.setEnabled("menu-bar", false);
+  assert.equal(nativeReturn.parentElement, nativeBar, "disabling the Menu Bar restores the native node even in Cards");
+  nativeBar.hidden = false;
+  s.preferences.setEnabled("menu-bar", true);
+  assert.equal(s.menuBar.getGroupTarget("city").dropdown.firstElementChild, nativeReturn,
+    "re-enabling the Menu Bar in Cards re-adopts Return without duplication");
+});
+
 test("a temporarily absent action returns to its saved group with its new native node", t => {
   const s = setup(t);
   assert.equal(save(s.menuBar, move(s.menuBar.getLayoutSnapshot().layout,"native:ranking","group:player",0)).ok, true);

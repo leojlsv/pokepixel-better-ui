@@ -8,6 +8,7 @@ export function createHuntControlsModule({ menuBar = menuBarModule, doc = global
   let mounted = null;
   return {
     id: config.id,
+    runsInCardMode: true,
     shouldMount() {
       const city = menuBar?.getGroupTarget?.("city") || null;
       const next = findHuntControlsTarget(doc, city);

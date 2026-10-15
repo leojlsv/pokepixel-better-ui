@@ -57,10 +57,21 @@ export function createPokemonTools(root,{getCreatures,refresh:refreshScene,basic
     box.append(node("p","ppbui-tag-current",`${name} · ${copy.current}: ${currentTag?.name||text.untagged}`));
     if(!store)box.append(node("p","ppbui-tag-current",text.unavailable));
     const options=node("div","ppbui-tag-options");box.append(options);
-    const choose=tag=>{if(!alive || !ownerStore || service.get()!==ownerStore){closeDialog();return;}ownerStore.assign(String(c.id),tag);if(!ownerStore.persistent()){if(currentPanel)currentPanel.open=true;win.PokeIdle?.Toast?.error?.(text.unsaved);}closeDialog();if(slot.isConnected)slot.focus({preventScroll:true});};
+    const focusOwner=()=>{
+      if(!alive || !root.isConnected || service.get()!==ownerStore)return;
+      const current=slot.isConnected && root.contains(slot)?slot:[...root.querySelectorAll("[data-creature-id]")].find(node=>String(node.dataset.creatureId)===String(c.id) && String(slots.get(node)?.id)===String(c.id));
+      const grid=root.querySelector(".inventory-slot-grid[tabindex]");
+      const search=root.querySelector(".inventory-slots-toolbar input.game-window__search");
+      for(const candidate of [current,grid,search]){
+        if(!candidate?.isConnected || candidate.disabled)continue;
+        candidate.focus({preventScroll:true});
+        if(doc.activeElement===candidate)break;
+      }
+    };
+    const choose=tag=>{if(!alive || !ownerStore || service.get()!==ownerStore){closeDialog();return;}ownerStore.assign(String(c.id),tag);if(!ownerStore.persistent()){if(currentPanel)currentPanel.open=true;win.PokeIdle?.Toast?.error?.(text.unsaved);}closeDialog();focusOwner();win.queueMicrotask(()=>{if(doc.activeElement===doc.body)focusOwner();});};
     for(const tag of fixedTags){const action=button("");action.dataset.ppbuiTagChoice=tag.id;action.disabled=!store;action.setAttribute("aria-pressed",String(tag.id===current));if(tag.id===current)action.classList.add("pokeidle-btn--primary");const symbol=node("span","ppbui-tag-symbol",tag.icon);symbol.style.color=tag.color;symbol.setAttribute("aria-hidden","true");action.append(symbol,node("span","",tag.name));action.onclick=()=>choose(tag.id);options.append(action);}
     const remove=button(copy.remove);remove.classList.add("ppbui-button--danger");remove.dataset.ppbuiTagChoice="remove";remove.disabled=!store || !current;remove.onclick=()=>choose(null);box.append(remove);
-    close.onclick=()=>{closeDialog();if(slot.isConnected)slot.focus({preventScroll:true});};box.addEventListener("cancel",event=>{event.preventDefault();close.click();});
+    close.onclick=()=>{closeDialog();focusOwner();};box.addEventListener("cancel",event=>{event.preventDefault();close.click();});
     box.setAttribute("aria-label",`${copy.title}: ${name}`);doc.body.append(box);dialog=box;
     if(typeof box.showModal==="function")box.showModal();else box.setAttribute("open","");
     (options.querySelector('[aria-pressed="true"]')||options.firstElementChild||close).focus();

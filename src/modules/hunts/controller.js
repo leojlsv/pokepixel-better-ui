@@ -205,6 +205,7 @@ function createCurrentHuntFavorites(root,refinement,store) {
     const focusedGo=doc.activeElement?.matches?.(selectors.favoriteGo)&&section.contains(doc.activeElement)?doc.activeElement.dataset.ppbuiHuntFavoriteGo:'';
     const text=huntsText(doc),favorites=store.list(),nextSignature=JSON.stringify([text.favorites,text.favoriteEmpty,text.favoriteGo,text.favoriteRemove,favorites,status,startingKey,store.persistent()]);
     if(signature===nextSignature)return;
+    const previousScroll=list.scrollTop;
     signature=nextSignature;title.textContent=text.favorites;section.setAttribute('aria-label',text.favorites);count.textContent=String(favorites.length);list.replaceChildren();
     if(!favorites.length){const empty=doc.createElement('p');empty.className='ppbui-hunts-favorites__empty';empty.textContent=text.favoriteEmpty;list.append(empty);}
     else for(const favorite of favorites){
@@ -215,6 +216,7 @@ function createCurrentHuntFavorites(root,refinement,store) {
       remove.type='button';remove.className='ppbui-hunts-favorite__remove';remove.dataset.ppbuiHuntFavoriteRemove=key;remove.textContent='×';remove.disabled=Boolean(startingKey);
       remove.setAttribute('aria-label',`${text.favoriteRemove}: ${favorite.label} · ${world.textContent}`);row.append(go,remove);list.append(row);
     }
+    if(previousScroll)list.scrollTop=previousScroll;
     statusNode.textContent=status;statusNode.hidden=!status;section.setAttribute('aria-busy',String(Boolean(startingKey||pending)));
     if(focusedGo)view.queueMicrotask?.(()=>{
       if(!active||!focusedGo||(doc.activeElement&&doc.activeElement!==doc.body&&doc.activeElement!==doc.documentElement))return;
@@ -271,11 +273,17 @@ function createCurrentHuntFavorites(root,refinement,store) {
       const key=huntFavoriteKey(favorite),wasFavorite=store.has(key);store.toggle(favorite);if(wasFavorite&&pending?.favorite&&huntFavoriteKey(pending.favorite)===key){clearPendingTimer();pending=null;}return;
     }
     if(remove&&section.contains(remove)){
-      event.preventDefault();event.stopPropagation();const key=remove.dataset.ppbuiHuntFavoriteRemove,restoreFocus=doc.activeElement===remove;if(pending?.favorite&&huntFavoriteKey(pending.favorite)===key){clearPendingTimer();pending=null;}store.remove(key);
+      event.preventDefault();event.stopPropagation();const key=remove.dataset.ppbuiHuntFavoriteRemove,restoreFocus=doc.activeElement===remove;
+      const removedIndex=[...list.children].indexOf(remove.closest('.ppbui-hunts-favorite'));
+      if(pending?.favorite&&huntFavoriteKey(pending.favorite)===key){clearPendingTimer();pending=null;}store.remove(key);
       if(restoreFocus)view.queueMicrotask?.(()=>{
-        if(!active)return;
-        const rowToggle=[...root.querySelectorAll(selectors.favoriteToggle)].find(button=>button.dataset.ppbuiHuntFavoriteKey===key),fallback=rowToggle||section.querySelector(selectors.favoriteGo)||(refinement.element?.isConnected?refinement.element:null);
-        fallback?.focus?.({preventScroll:true});
+        if(!active||(doc.activeElement&&doc.activeElement!==doc.body&&doc.activeElement!==doc.documentElement))return;
+        const rowToggle=[...root.querySelectorAll(selectors.favoriteToggle)].find(button=>button.dataset.ppbuiHuntFavoriteKey===key);
+        const remaining=[...list.querySelectorAll(`${selectors.favoriteGo}:not(:disabled)`)];
+        const nearest=remaining[Math.min(Math.max(removedIndex,0),remaining.length-1)];
+        const fallback=rowToggle||nearest||(refinement.element?.isConnected?refinement.element:null);
+        if(fallback&&list.contains(fallback))fallback.focus();
+        else fallback?.focus?.({preventScroll:true});
       });
       return;
     }

@@ -62,6 +62,31 @@ The button keeps its native localized text and disabled state. Better UI supplie
 secondary-navigation presentation, the shared 2px focus treatment and a larger minimum
 target for coarse pointers.
 
+## Cards / Game integration (corrective 0.2.201)
+
+Hunt Controls continues to run while textual Card Mode is active because Menu Bar and
+its City popup remain visible. Otherwise, the Card Mode lifecycle would clean up Hunt
+Controls, return the native Return button to the now-hidden native action bar, and
+remove that contextual action from City. The exact original button stays in City
+while the native classic Hunt is active. Card Mode recognizes only this specifically
+marked contextual Return as navigation and restores Game **before** invoking the
+unchanged native `stopHunt()` click handler. Disabled and inactive state still come
+from the host; no custom Return button, duplicate listener or synthetic click is added.
+
+When a native Hunt ends while Return has keyboard focus, the now-hidden contextual
+action yields focus to the existing City trigger. Other focus targets are left
+unchanged; the module never focuses a newly manufactured navigation control.
+
+The integrated regression switches Game → Cards and asserts the original button is
+present, accessible from Home keyboard navigation and dispatched once. It also
+checks disabled Return, Cards → Game before native dispatch, inactive-Hunt masking,
+and native node restoration when Menu Bar is disabled and re-enabled while Cards is
+active. Reviewer-found regressions also cover active-to-inactive focus recovery,
+native `aria-hidden` state and no focus theft from other controls. **The Product
+Owner validated the exact 0.2.201 corrective in-game on 2026-10-15**, separately
+from the previously validated Inventory pagination 0.2.200. This approval does not
+imply commit, merge or publication.
+
 ## Validation scope
 
 `test/hunt-controls.test.js` covers exact native node/listener preservation, Capture
