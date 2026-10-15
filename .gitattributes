@@ -1,6 +1,9 @@
-# The exact 0.2.202 PO-approved userscript embeds this stylesheet with mixed
-# line endings. Text normalization alters esbuild's CSS string and bundle hash.
-# The metadata @version line is also LF-only among otherwise CRLF source lines.
-# Preserve both inputs identically on Windows and Linux release builders.
+# The userscript embeds CSS with literal line endings; Git auto-conversion changes
+# the esbuild output and its checksum. The metadata header also has mixed EOLs.
+# Preserve these exact source bytes across Windows and Linux release builders.
 src/styles/base.css -text whitespace=cr-at-eol
 userscript/metadata.txt -text whitespace=cr-at-eol
+src/styles/tokens.css -text whitespace=cr-at-eol
+src/styles/components.css -text whitespace=cr-at-eol
+src/styles/states.css -text whitespace=cr-at-eol
+src/styles/native-overrides.css -text whitespace=cr-at-eol

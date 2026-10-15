@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import {
   PROD_DOWNLOAD_URL,
   PROD_UPDATE_URL,
@@ -9,7 +10,9 @@ const packageJson = JSON.parse(await readFile(new URL("../package.json", import.
 const packageLock = JSON.parse(await readFile(new URL("../package-lock.json", import.meta.url), "utf8"));
 const metadata = await readFile(new URL("../userscript/metadata.txt", import.meta.url), "utf8");
 const updateMetadata = await readFile(new URL("../dist/pokepixel-better-ui.meta.js", import.meta.url), "utf8");
-const bundle = await readFile(new URL("../dist/pokepixel-better-ui.user.js", import.meta.url), "utf8");
+const bundleBytes = await readFile(new URL("../dist/pokepixel-better-ui.user.js", import.meta.url));
+const bundle = bundleBytes.toString("utf8");
+const releaseLock = JSON.parse(await readFile(new URL("../userscript/release-lock.json", import.meta.url), "utf8"));
 
 const expectedTag = `v${packageJson.version}`;
 const requestedTag =
@@ -24,6 +27,14 @@ if (packageLock.version !== packageJson.version || packageLock.packages?.[""]?.v
   throw new Error(
     `package-lock version mismatch: package=${packageJson.version}, lock=${packageLock.version}, root=${packageLock.packages?.[""]?.version}`,
   );
+}
+
+if (releaseLock.version !== packageJson.version || !/^[A-F0-9]{64}$/.test(releaseLock.sha256)) {
+  throw new Error("Release lock must contain the exact package version and an uppercase SHA-256 checksum");
+}
+const builtSha256 = createHash("sha256").update(bundleBytes).digest("hex").toUpperCase();
+if (builtSha256 !== releaseLock.sha256) {
+  throw new Error(`Release artifact SHA-256 mismatch: expected ${releaseLock.sha256}, got ${builtSha256}`);
 }
 
 function requireSingleVersion(source, label) {
@@ -62,3 +73,4 @@ for (const [label, pattern] of [
 }
 
 console.log(`[PPBUI] release contract OK: ${expectedTag}`);
+console.log(`[PPBUI] exact release artifact SHA-256 OK: ${builtSha256}`);

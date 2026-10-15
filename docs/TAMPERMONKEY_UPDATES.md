@@ -39,10 +39,21 @@ the same version. Production releases must also satisfy:
 5. the GitHub Release publishes the stable filenames above;
 6. the release is not Draft or Prerelease unless explicitly intended;
 7. the `.user.js.sha256` validates the published `.user.js`.
+8. `userscript/release-lock.json` declares the exact candidate SHA-256 for the
+   package version; `release:check` fails before publication if a Linux/Windows
+   checkout or bundler produces bytes different from the approved candidate.
 
 `npm run validate` builds both userscript assets. `npm run release:check --
-vX.Y.Z` verifies the version, metadata and update-channel contract before a tag
-may publish a release.
+vX.Y.Z` verifies the version, metadata, update-channel contract and exact candidate
+SHA-256 before a tag may publish a release. Any later version must update the
+release lock to the corresponding reviewed artifact; do not reuse an older hash.
+
+`v0.2.202` was briefly published with Linux-normalized CSS bytes that differed
+from the Product Owner's validated candidate. That release was withdrawn to Draft;
+its tag and checksum remain reserved for audit and must not be overwritten. The
+replacement `v0.2.203` is a version-only runtime bump with the same validated
+0.2.202 behavior; the source CSS bytes are now preserved across platforms using
+`-text` Git attributes. Publication of the replacement requires separate approval.
 
 ## Bootstrap behavior
 
