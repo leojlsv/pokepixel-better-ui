@@ -45,11 +45,34 @@
 | Criterion | Evidence / owner | State |
 | --- | --- | --- |
 | Approved 0.2.202 code not changed | Byte-for-byte comparison after the two version substitutions | `PASS` locally |
-| Linux and Windows checkout reproduce identical inputs | Git `.gitattributes` raw CSS and metadata blob checks | `pending fresh checkout` |
-| New release lock prevents wrong asset | `release:check` SHA/version verification, negative hash test | `pending` |
-| Existing functional regressions retained | Full npm tests, build, audit and metadata checks | `pending` |
+| Linux and Windows checkout preserve identical source inputs | Clean worktree of commit `c5d7136`, compare raw blobs of CSS and metadata | `PASS` local clean checkout; Linux CI still pending |
+| New release lock prevents wrong asset | `release:check` SHA/version verification plus explicit one-byte tamper test | `PASS`: tampered build rejected, untouched build accepted |
+| Existing functional regressions retained | Clean `npm ci`, full 802/802 tests, build, dependency audit, metadata/hash check, diff-check | `PASS`: 802/802, zero vulnerabilities, SHA locked |
 | Replacement v0.2.203 exact artifact accepted by PO | New version-only candidate hash + explicit Human Owner approval | `PENDING PO` |
 | Public release, correct three assets and checksum | Tag on main after approval; inspect downloaded GitHub Release assets | `NOT AUTHORIZED YET` |
+
+## Final local verification (no publication)
+
+- Local recovery commit: `c5d71367cec36506824e4d3e8e5c7fe8d330732d`;
+  the worktree remains unpublished and contains no `v0.2.203` tag.
+- New, clean checkout of that exact commit preserved raw Git blobs for
+  `base.css`, `tokens.css`, `components.css`, `states.css`,
+  `native-overrides.css` and `userscript/metadata.txt`. The 0.2.203 clean build
+  was exactly **1,698,772 bytes**, SHA-256
+  `D7E6F662C426E9328E259134EAF12369B1A6145A9C32AB509033CE21131D8C0C`.
+- Clean checkout passed **802/802 tests**, `npm audit --audit-level=high`
+  (**zero vulnerabilities**), `npm run release:check -- v0.2.203` including the
+  SHA lock, and `git diff --check`.
+- A negative integrity test appended a byte to the generated `.user.js`. The
+  release check failed with `Release artifact SHA-256 mismatch` (exit 1), and
+  subsequently passed after restoring the exact candidate. The restored
+  candidate's SHA was reconfirmed.
+- The replacement was compared with the PO-approved 0.2.202 artifact. The **only
+  two changes** in its executable userscript are version literals, `@version`
+  and `buildVersion`; code, styles and metadata URLs remain unchanged.
+- Remote inventory reconfirmed `v0.2.202` is **Draft** (not visible as latest),
+  `v0.2.199` remains the latest published release, and the `v0.2.203` tag does
+  not exist. This local recovery is not a release publication.
 
 ## Governance
 
