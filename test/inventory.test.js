@@ -602,3 +602,22 @@ test('Pokémon native sell values participate in the shared price sort and list 
     assert.equal(readSlot(nodes[0], new Map([['1', value]])).price, expected);
   }
 });
+test('Inventory does not announce empty Pokémon results while a native page or new search is pending', t=>{
+  const {app,doc,window}=setup(t);const root=doc.querySelector('.inventory-window--slots'),nativeBody=root.querySelector('.pokeidle-panel__body');
+  nativeBody.innerHTML=`${tabs('pokemon')}<div class="inventory-slots-toolbar"><input type="search" class="game-window__search"></div><div class="inventory-slot-grid"></div><p class="inventory-slots-hint">No items</p>`;
+  const scene={_panel:{body:nativeBody},_creatureCursor:'next',_creaturePageLoading:false};window.SceneManager={_scene:scene};app.start();
+  const status=doc.querySelector('[data-ppbui-inventory-status]'),nativeHint=nativeBody.querySelector(':scope > p.inventory-slots-hint');
+  assert.equal(status.hidden,true,'server still has Pokémon pages');assert.equal(nativeHint.hidden,true,'native no-items hint must also wait');
+  root.dataset.ppbuiInventoryPagingState='loading';app.reconcile();
+  assert.match(status.textContent,/Carregando mais Pokémon|Loading more Pokémon/,'pending pages use the persistent status region');
+  root.dataset.ppbuiInventoryPagingState='stopped';app.reconcile();
+  assert.match(status.textContent,/Carregamento pausado|Loading paused/,'manual fallback is announced');
+  root.removeAttribute('data-ppbui-inventory-paging-state');app.reconcile();
+  scene._creatureCursor='';root.dataset.ppbuiInventoryPokemonPending='';app.reconcile();
+  assert.equal(status.hidden,true,'search awaits its first native page');assert.equal(nativeHint.hidden,true);
+  root.removeAttribute('data-ppbui-inventory-pokemon-pending');app.reconcile();
+  assert.equal(status.hidden,false,'true empty can be announced once pagination and search settle');
+  assert.match(status.textContent,/Nenhum resultado|No results/);assert.equal(nativeHint.hidden,false);
+  scene._creatureCursor='next';app.reconcile();assert.equal(nativeHint.hidden,true);
+  app.stop();assert.equal(nativeHint.hidden,false,'cleanup restores native hint ownership');
+});

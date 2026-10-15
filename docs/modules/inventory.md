@@ -107,14 +107,29 @@ O painel avançado de Pokémon continua com margem física horizontal de 8px; se
 interno fica oculto somente no Backpack porque o botão da primeira rail passa a controlar
 esse disclosure. Trade e Storage preservam suas próprias apresentações.
 
-Na categoria Pokémon, Better UI não depende mais do lote visual do botão nativo
-**Load More Pokémons**. O adapter parte do resultado nativo, completa somente IDs já
-presentes em `scene._creatures` e pertencentes a `inventory`/`backpack`/`team`, respeita
-Search e os filtros Better UI e deduplica por ID. Se o host aplicar um segundo limite na
-renderização, os slots restantes são criados com o próprio `scene.createSlot()` e inseridos
-antes das células vazias. O controle Load More só é removido depois que a quantidade de
-slots renderizados alcança o conjunto filtrado já carregado. Pokémon de Storage não são
-incluídos e nenhuma API/requisição de carregamento adicional é feita.
+O cliente nativo agora entrega Pokémon por páginas do servidor. `scene._creatures`
+contém apenas os lotes já recebidos, e `filteredItems()`/`refresh()` renderizam
+integralmente esse conjunto. Para All/Pokémon, o Better UI avança sequencialmente
+pelo **método nativo** `scene.loadMoreCreatures()` enquanto `_creatureCursor` indicar
+outra página. O jogo continua responsável pela requisição, merge por ID, metadados,
+renderização e ações dos slots. Não há cliques sintéticos, inserções extras nem
+remoção manual do botão Load More. Outros tipos de item e Storage são preservados.
+O fluxo aguarda carregamentos de busca, pausa em categorias não-Pokémon, termina
+após 100 páginas por montagem/busca e interrompe a expansão após ausência de
+progresso do cursor. O botão nativo permanece para tentativa manual nessas situações;
+desmontar o módulo impede iniciar novas páginas, sem cancelar a requisição nativa
+que já esteja em andamento. Conclusões da montagem antiga não alteram marcadores
+nem controles da nova montagem. Ao mudar Search, o Load More com cursor antigo
+fica temporariamente inacessível. Se a primeira página da nova busca falhar, o
+controle continua oculto/desabilitado até uma nova primeira página válida; já a
+falha numa página posterior preserva o Load More como retry manual. Durante a
+expansão, o grid e o botão nativo expõem
+estado de ocupação; o status existente da Backpack comunica carregamento,
+conclusão ou pausa. Enquanto existir próxima página ou busca de Pokémon pendente,
+nem o status Better UI nem a dica nativa devem anunciar inventário vazio.
+A reconstrução dos lotes recupera o foco da busca, filtros e Pokémon por identidade;
+o editor de tags restaura o foco ao slot atual do mesmo ID, inclusive após a
+atualização assíncrona provocada pela própria tag.
 
 ## Visualizações
 
@@ -182,11 +197,42 @@ Ambos os novos critérios seguem a política de ordem estável até Re-Sort.
 Os dados são lidos por ID de `data-creature-id`, na cena cujo `_panel.body`
 corresponde à mochila. O getter nativo `PokeIdle.ReactiveWindows.cached()`
 permite localizar janelas sobrepostas; `SceneManager._scene` atende o fluxo
-de cena convencional. Nenhuma API ou método de carregamento é chamado; para eliminar o
-lote visual de Pokémon, Better UI pode reutilizar o renderer nativo `createSlot()` somente
-para criaturas que já existem em `_creatures` da própria cena.
+de cena convencional. Na versão paginada, a única chamada adicional é ao método
+`loadMoreCreatures()` da própria cena, nunca a `PokeIdle.Api` diretamente;
+`filteredItems()` e `createSlot()` continuam sendo os renderizadores nativos.
 Esses contratos internos podem mudar em uma atualização do jogo; sem uma
 correspondência segura, os critérios avançados deixam os slots no lugar.
+
+### Corretivo 2026-10-15 — Acceptance & Evidence Matrix
+
+Fonte estática de referência: `/play/js/plugins/InventoryScene.js`, `Last-Modified`
+2026-10-09, ETag `W/"6ac94fe3-10cef"`, SHA-256 bruto
+`46B251A897472895E5AAABEDBD7AA69586AF144A3342C083ABEED687DE077E35`.
+Esta evidência é do arquivo público; não constitui validação do jogo autenticado.
+
+| AC | Requisito observável | Preservar | Evidência / Gate |
+| --- | --- | --- | --- |
+| `AC-INV-PAGE-01` | Abrir All/Pokémon completa páginas disponíveis sem clicar em Load More | Cursor, ordem e sessão nativos | Fixture servidor 100/205 + **TECH READY**; candidato **user-validated** in-game pelo PO em 2026-10-15 para o corretivo de paginação |
+| `AC-INV-PAGE-02` | Nenhum Pokémon some/duplica por manipulação do DOM; seleção e filtros funcionam | `filteredItems()`, `createSlot()`, gestos nativos | IDs/ações/filtros nos testes, **TECH READY**; candidato **user-validated** in-game pelo PO para o escopo da correção |
+| `AC-INV-PAGE-03` | Mudança de busca/categoria e cleanup impedem páginas de escopo antigo | Debounce, query, owner da cena, nova montagem | Busca A→B→A, categoria e cleanup/remount simulados, **TECH READY** |
+| `AC-INV-PAGE-04` | Falha de página não causa loop; Load More mantém retry manual somente após primeira página válida | API e erros nativos; teto de 100 páginas; cursor antigo bloqueado | Cursor estacionário, falha na primeira página + troca de categoria/recovery e cap, **TECH READY**, **UX READY** |
+| `AC-INV-PAGE-05` | Foco/teclado e diálogo de tag sobrevivem a refreshes de página, e status não anuncia falso vazio | Identidade de Search/filtro/slot, acessibilidade, dica nativa | Testes de foco/caret/diálogo, status e cleanup, **UX READY**; aprovação in-game do candidato pelo PO não equivale a teste específico com leitor de tela |
+
+**Gates do candidato 0.2.200, 2026-10-15:** revisor técnico independente
+`TECH READY`; revisor independente UX/A11y `UX READY`; suite completa
+`799/799 PASS`, build e `git diff --check` PASS. Artefato local imutável para
+identificar esta entrega:
+`dist/pokepixel-better-ui-0.2.200-inventory-native-pages-candidate.user.js`
+(1.697.195 bytes, SHA-256
+`48C1EAC8C8533C5029AFEB7A7BD324A62ABFF48B1FEA9BF81F4B4F73333BCADF`).
+`VISUAL EVIDENCE INSUFFICIENT`: o reviewer independente não dispunha de render
+autenticado representativo na etapa pré-live; esse gate histórico não foi
+retroativamente convertido em `VISUAL READY`. Em **2026-10-15**, o Product Owner
+respondeu **"validado"** à entrega do arquivo exato acima, alterando o estado
+deste corretivo para **user-validated** no escopo da paginação do Inventory.
+Esta confirmação não adiciona evidência independente de leitor de tela ou de
+cenários não declarados pelo PO. **Commit, merge, push e publicação permanecem
+pendentes de autorização aplicável**, sem mudança do bundle validado.
 
 O seletor real fica no painel estável, fora do corpo recriado pelo jogo.
 Um espaço reservado antes de Re-Sort mantém seu alinhamento. Isso evita

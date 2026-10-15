@@ -3,6 +3,12 @@ export const inventoryConfig = {
   key: "ppbui:inventory-order:v1",
   rarities: ["weak", "common", "uncommon", "rare", "epic", "legendary", "mythical"],
   views: ["grid", "list", "grouped"],
+  pagingText: {
+    pt: { loading: "Carregando mais Pokémon…", complete: "Pokémon carregados.", stopped: "Carregamento pausado. Use Load More Pokémons para continuar.", error: "Falha ao atualizar os Pokémon. Tente a busca novamente." },
+    en: { loading: "Loading more Pokémon…", complete: "Pokémon loaded.", stopped: "Loading paused. Use Load More Pokémons to continue.", error: "Pokémon could not be refreshed. Try searching again." },
+    es: { loading: "Cargando más Pokémon…", complete: "Pokémon cargados.", stopped: "Carga pausada. Usa Load More Pokémons para continuar.", error: "No se pudieron actualizar los Pokémon. Intenta buscar otra vez." },
+    zh: { loading: "正在加载更多宝可梦…", complete: "宝可梦已加载。", stopped: "加载已暂停。请使用 Load More Pokémons 继续。", error: "刷新宝可梦失败。请重试搜索。" },
+  },
   viewText: {
     pt: { price: "Venda NPC (Unidade)", label: "Visualização", modes: ["Grade", "Lista", "Categorias"], other: "Outros", quantity: "Quantidade", level: "Nível", quality: "Qualidade", equipped: "Na equipe", locked: "Bloqueado" },
     en: { price: "NPC Sell Price (Per Unit)", label: "View", modes: ["Grid", "List", "Categories"], other: "Other", quantity: "Quantity", level: "Level", quality: "Quality", equipped: "In team", locked: "Locked" },

@@ -220,9 +220,9 @@ test('current Hunt list keeps native controls while Better UI compacts discovery
   assert.match(css,/\.ppbui-hunts-current-list \.hunt-list-details-button \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border\)[^}]*background:transparent/s,'Details is visually secondary');
   assert.match(css,/\.ppbui-hunts-current \.hunt-list-clear \{[^}]*background:transparent[^}]*color:var\(--ppbui-text-muted\)/s,'Clear is a tertiary utility');
   assert.match(css,/\.ppbui-hunts-favorites \{[^}]*border-top:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)/s,'Favorites is attached below refinement with one separator instead of another heavy card');
-  assert.match(css,/\.ppbui-hunts-favorites__list \{[^}]*max-height:132px;[^}]*overflow-y:auto/s,'Favorites owns a bounded local scroll instead of pushing Hunt results indefinitely');
+  assert.match(css,/\.ppbui-hunts-current \.ppbui-hunts-favorites__list \{[^}]*grid-auto-rows:max-content;[^}]*align-content:start;[^}]*max-height:calc\(var\(--ppbui-hunts-favorite-row-height\) \* 5 \+ var\(--ppbui-space-2\) \* 4\);[^}]*overflow-y:auto/s,'Favorites reserves intrinsic row heights and caps its own five-row scrollport');
   assert.match(css,/\.ppbui-hunts-favorite-toggle\[aria-pressed="true"\] \{[^}]*border-color:var\(--ppbui-selected\);[^}]*color:var\(--ppbui-selected\)/s,'favorited row star exposes persistent selected state structurally');
-  assert.match(css,/@container \(max-width:360px\)[\s\S]*\.ppbui-hunts-favorites__list \{ max-height:104px; \}/,'narrow selector keeps Favorites shorter so the result workflow remains reachable');
+  assert.match(css,/@container \(max-width:360px\)[\s\S]*\.ppbui-hunts-current \.ppbui-hunts-favorites__list \{ max-height:calc\(var\(--ppbui-hunts-favorite-row-height\) \* 3 \+ var\(--ppbui-space-2\) \* 2\); \}/,'narrow selector keeps three complete rows so Hunt results remain reachable');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.ppbui-hunts-current-list \.hunt-list-table-shell \{ overflow-x:auto; overscroll-behavior-x:contain; \}/,'split Hunt list gets an explicit horizontal scroll owner instead of crushing table columns');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-table \{ width:max-content; min-width:100%; \}/,'split Hunt table preserves intrinsic row geometry while still filling wider panes');
   assert.match(css,/@container \(max-width:780px\)[\s\S]*\.hunt-list-action-cell,[\s\S]*\.hunt-list-identity \{ white-space:nowrap; \}/,'Hunt actions and Pokémon identity do not wrap into unusable stacked fragments');
@@ -347,6 +347,54 @@ test('current Hunt favorites add and remove exact native Hunts without touching 
   const remove=s.root.querySelector('[data-ppbui-hunt-favorite-remove]');remove.click();
   assert.equal(s.favoritesStore.list().length,0);assert.equal(favorite.textContent,'☆');assert.equal(favorite.getAttribute('aria-pressed'),'false');
   assert.equal(s.root.querySelector('.ppbui-hunts-favorites__empty').textContent,'Nenhum favorito ainda.');
+});
+
+test('seven Hunt Favorites keep a bounded five-row scroll surface through MAP/LIST and rerender',async t=>{
+  const favorites=Array.from({length:7},(_,i)=>({
+    worldId:'kanto',regionKey:'kanto',worldLabel:'Kanto',zoneId:`favorite-${i}`,
+    label:`Favorite Hunt ${i+1}`,
+  }));
+  const s=setupCurrentList(t,{favorites}),section=s.root.querySelector('[data-ppbui-hunt-favorites]');
+  const list=section.querySelector('.ppbui-hunts-favorites__list');
+  const go=()=>[...list.querySelectorAll('[data-ppbui-hunt-favorite-go]')];
+  assert.equal(section.querySelector('.ppbui-hunts-favorites__count').textContent,'7');
+  assert.equal(go().length,7,'extra Favorites must remain in the list rather than disappearing from the DOM');
+  const css=s.root.querySelector('style[data-ppbui-module="hunts"]').textContent;
+  assert.match(css,/grid-auto-rows:max-content;/,'implicit grid rows must not shrink and clip their 28px actions');
+  assert.match(css,/scrollbar-gutter:stable;/,'the scrollbar has its own reserved hit/paint lane');
+  assert.match(css,/--ppbui-hunts-favorite-row-height:calc\(40px \+ 2 \* var\(--ppbui-border-width\)\)/,'coarse pointer height is reflected in the scroll viewport');
+  assert.match(css,/@media \(pointer:coarse\)[\s\S]*\.ppbui-hunts-current \.ppbui-hunts-favorite \{ grid-template-columns:minmax\(0,1fr\) 40px; \}/,'coarse pointer Remove action must not overflow the 28px default grid column');
+
+  const originalReplace=list.replaceChildren.bind(list);
+  list.replaceChildren=(...nodes)=>{originalReplace(...nodes);list.scrollTop=0;};
+  list.scrollTop=65;
+  s.favoritesStore.add({...favorites[0],label:'Updated Favorite Hunt 1'});
+  assert.equal(list.scrollTop,65,'a Favorites render preserves scroll position instead of jumping to the top');
+  assert.equal(go().length,7);
+
+  s.scene._selectionView='map';s.body.innerHTML=currentMapMarkup();s.c.sync();
+  assert.equal(section.querySelector('.ppbui-hunts-favorites__list'),list,'MAP reuse must keep the scroll owner');
+  assert.equal(list.scrollTop,65,'MAP keeps Favorites scroll position');
+  s.scene._selectionView='list';s.body.innerHTML=currentListMarkup();s.c.sync();
+  assert.equal(section.querySelector('.ppbui-hunts-favorites__list'),list,'LIST reconstruction keeps the same scroll owner');
+  assert.equal(list.scrollTop,65,'LIST keeps Favorites scroll position');
+  assert.equal(go().length,7);
+  const last=go().at(-1),total=s.favoritesStore.list().length;
+  last.click();await Promise.resolve();await Promise.resolve();
+  assert.equal(s.favoritesStore.list().length,total,'viewing a Favorite does not remove items or fabricate data');
+});
+
+test('scrolled MAP Favorites removal focuses the nearest remaining action instead of a hidden first row',async t=>{
+  const favorites=Array.from({length:7},(_,i)=>({worldId:'kanto',regionKey:'kanto',worldLabel:'Kanto',zoneId:`favorite-${i}`,label:`Favorite Hunt ${i+1}`}));
+  const s=setupCurrentList(t,{mode:'map',favorites}),list=s.root.querySelector('.ppbui-hunts-favorites__list');
+  list.scrollTop=68;
+  const lastRemove=[...list.querySelectorAll('[data-ppbui-hunt-favorite-remove]')].at(-1);
+  lastRemove.focus();assert.equal(s.doc.activeElement,lastRemove);
+  lastRemove.click();await Promise.resolve();
+  const remaining=[...list.querySelectorAll('[data-ppbui-hunt-favorite-go]')];
+  assert.equal(remaining.length,6);assert.equal(s.favoritesStore.list().length,6);
+  assert.equal(s.doc.activeElement,remaining.at(-1),'focus should remain near the removed bottom row, not jump to the first clipped Favorite');
+  assert.equal(list.scrollTop,68,'scroll owner keeps its position pending browser clamping after a removal');
 });
 
 test('removing a favorite from its list restores focus to the matching LIST star when available',async t=>{

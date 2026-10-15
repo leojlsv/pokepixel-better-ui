@@ -103,6 +103,22 @@ Filters/refinement area. It is Better UI-owned but uses only native Hunt authori
 - the list has a bounded local vertical scroll so Favorites cannot grow the discovery
   sidebar indefinitely; the primary native Hunt action remains visually dominant.
 
+**Scroll correction 0.2.202 (2026-10-15):** the Favorites list's implicit CSS Grid
+tracks must use intrinsic `max-content` row sizing. With default `auto` tracks and
+overflow-hidden favorite rows, seven entries were compressed into approximately
+15 px tracks inside a 132 px cap, leaving no actual scrollable overflow and clipping
+the 28 px native-style controls. The corrected local viewport shows up to **five
+complete rows** (three when the Hunt container is at most 360 px wide); additional
+entries stay in the same list and scroll vertically with a visible, stable scrollbar
+lane. Pointer-coarse controls keep their 40 px hit-height and an unclipped 40 px
+Remove column, while MAP/LIST share the same list and the scroll offset is
+preserved across legitimate redraws. Removing a focused favorite chooses the
+nearest surviving action when no matching native LIST star exists, without
+stealing focus deliberately moved elsewhere. The heading and favorite count
+remain outside the scroller. The exact fix is verified in offline
+Chromium. **The Product Owner validated the exact 0.2.202 candidate in-game on
+2026-10-15** for this scroll corrective. Release/history actions remain separate.
+
 The shortcut is an explicit user action, not Hunt automation. No gameplay network/API
 request is introduced and the existing current-selector `startHunt()` wrapper continues
 to own Cards provenance and cleanup.

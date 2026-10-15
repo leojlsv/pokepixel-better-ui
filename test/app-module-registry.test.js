@@ -44,8 +44,8 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.ok(controls.every(({ name, description }) => typeof name === "function" && typeof description === "function"));
   assert.ok(modules.every(module => typeof module.shouldMount === "function" && typeof module.mount === "function"));
   assert.deepEqual(modules.filter(module => module.runsInCardMode === true).map(module => module.id),
-    ["pokemon-profile", "menu-bar", "card-mode", "wallet"],
-    "toolbar owners stay mounted while textual Cards hides the native game surface");
+    ["pokemon-profile", "menu-bar", "hunt-controls", "card-mode", "wallet"],
+    "toolbar and contextual Return owners stay mounted while textual Cards hides the native game surface");
 });
 
 test("persisted Buff Tracker choice overrides its new disabled default", t => {

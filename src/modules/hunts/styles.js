@@ -994,20 +994,28 @@ export const huntsStyles = `
     font-variant-numeric:tabular-nums;
     text-align:center;
   }
-  .ppbui-hunts-favorites__list {
+  .ppbui-hunts-current .ppbui-hunts-favorites__list {
+    --ppbui-hunts-favorite-row-height:calc(var(--ppbui-control-height) + 2 * var(--ppbui-border-width));
     display:grid;
+    grid-auto-rows:max-content;
+    align-content:start;
     gap:var(--ppbui-space-2);
     min-width:0;
-    max-height:132px;
+    min-height:0;
+    max-height:calc(var(--ppbui-hunts-favorite-row-height) * 5 + var(--ppbui-space-2) * 4);
     overflow-y:auto;
     overscroll-behavior-y:contain;
     scrollbar-width:thin;
+    scrollbar-color:var(--ppbui-scrollbar-thumb) var(--ppbui-scrollbar-track);
+    scrollbar-gutter:stable;
   }
   .ppbui-hunts-favorite {
     display:grid;
     grid-template-columns:minmax(0,1fr) var(--ppbui-control-height);
     gap:0;
+    box-sizing:border-box;
     min-width:0;
+    min-height:var(--ppbui-hunts-favorite-row-height);
     overflow:hidden;
     border:var(--ppbui-border-width) solid var(--ppbui-border);
     border-radius:var(--ppbui-radius);
@@ -1303,7 +1311,7 @@ export const huntsStyles = `
     .ppbui-hunts-current .hunt-list-header { gap:var(--ppbui-space-2) !important; }
     .ppbui-hunts-current .ppbui-hunts-list-utility { grid-template-columns:auto minmax(0,1fr) auto; }
     .ppbui-hunts-current .ppbui-hunts-list-advanced { grid-template-columns:minmax(0,1fr); }
-    .ppbui-hunts-current .ppbui-hunts-favorites__list { max-height:104px; }
+    .ppbui-hunts-current .ppbui-hunts-favorites__list { max-height:calc(var(--ppbui-hunts-favorite-row-height) * 3 + var(--ppbui-space-2) * 2); }
     .ppbui-hunts-current .ppbui-hunts-favorite__go { gap:var(--ppbui-space-1); padding-inline:var(--ppbui-space-3) var(--ppbui-space-2); }
     .ppbui-hunts-current .ppbui-hunts-favorite__go > small { max-width:56px; padding-inline:var(--ppbui-space-1); font-size:8px; }
     .ppbui-hunts-current .hunt-list-world-note { margin-block:0 !important; }
@@ -1320,6 +1328,10 @@ export const huntsStyles = `
     .ppbui-hunts-finder > .hunt-world-toolbar button { grid-column:1/-1; }
   }
   @media (pointer:coarse) {
+    .ppbui-hunts-current .ppbui-hunts-favorites__list {
+      --ppbui-hunts-favorite-row-height:calc(40px + 2 * var(--ppbui-border-width));
+    }
+    .ppbui-hunts-current .ppbui-hunts-favorite { grid-template-columns:minmax(0,1fr) 40px; }
     .ppbui-hunts-enhanced .hunt-world-tabs > button,
     .ppbui-hunts-enhanced .hunt-world-zoom > button,
     .ppbui-hunts-enhanced .hunt-world-toolbar input,

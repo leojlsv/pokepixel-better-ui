@@ -1,5 +1,5 @@
 import { inventoryConfig as config } from "./config.js";
-import { categoryValue, findParts, inventoryText, locale, readCreatures, readItems, readSlot, resetCategory } from "./dom.js";
+import { categoryValue, findParts, inventoryText, locale, readCreatures, readInventoryScene, readItems, readSlot, resetCategory } from "./dom.js";
 import { mountSortControl } from "./toolbar.js";
 import { createInventoryViews, viewText } from "./views.js";
 import { createInventoryScroll } from "./scroll.js";
@@ -16,6 +16,8 @@ export function mountInventory(root, preference, walletService = null) {
     .inventory-window--slots.ppbui-window > .pokeidle-panel__body { display:grid!important; grid-template-columns:minmax(0,1fr); align-content:start; gap:0; box-sizing:border-box; padding:0!important; background:var(--ppbui-bg-0) !important; color:var(--ppbui-text) !important; font-family:var(--ppbui-font-body) !important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-toolbar] { position:sticky!important; top:0!important; z-index:4; box-sizing:border-box; width:100%; margin:0!important; padding:var(--ppbui-space-3) var(--ppbui-space-4)!important; gap:var(--ppbui-space-2)!important; border:0!important; border-bottom:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; box-shadow:none!important; }
     .inventory-window--slots.ppbui-window .inventory-category-tabs[data-ppbui-inventory-native-categories][hidden] { display:none!important; }
+    .inventory-window--slots.ppbui-window .pokeidle-panel__body > p.inventory-slots-hint[hidden] { display:none!important; }
+    .inventory-window--slots.ppbui-window .pokeidle-panel__body > button.pokeidle-ui-button[hidden] { display:none!important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] { position:sticky; top:var(--ppbui-inventory-sticky-top,calc(var(--ppbui-control-height) + (var(--ppbui-space-3) * 2))); z-index:3; box-sizing:border-box; width:100%; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-4); border:0; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong); background:var(--ppbui-bg-2); }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-tools] > .inventory-slots-toolbar { display:grid; grid-template-columns:minmax(160px,235px) auto minmax(0,1fr) max-content; align-items:center; justify-content:start; gap:var(--ppbui-space-2); margin:0!important; padding:0!important; border:0!important; background:transparent!important; }
     .inventory-window--slots.ppbui-window [data-ppbui-inventory-views] { justify-self:end; }
@@ -53,6 +55,7 @@ export function mountInventory(root, preference, walletService = null) {
   root.style.setProperty("min-width","min(520px, calc(100vw - 16px))","important");
   let parts = {};
   let baseline = [];
+  let hiddenNativeHint = null;
   let scope = null;
   let ranks = new Map();
   let renderedLayout = null;
@@ -197,7 +200,20 @@ export function mountInventory(root, preference, walletService = null) {
     const unavailable = stableNativeGrid ? 0 : sort();
     renderedLayout = layout;
     const warning = ["price", "rarity"].includes(preference.get()) ? text.unavailableValues : text.unavailable;
-    const message = [!count && filtered ? text.empty : "", unavailable ? `${unavailable} ${warning}` : "", !preference.saved() ? text.unsaved : ""].filter(Boolean).join(" ");
+    const scene=readInventoryScene(next.body);
+    const pendingPokemon=Boolean(scene?._creatureCursor || scene?._creaturePageLoading || root.hasAttribute("data-ppbui-inventory-pokemon-pending"));
+    const waitingForPokemon=["all","pokemon"].includes(activeCategory) && pendingPokemon;
+    const nativeHint=next.body?.querySelector(":scope > p.inventory-slots-hint");
+    const pagePhase=root.dataset.ppbuiInventoryPagingState;
+    const hideNativeHint=!count && (waitingForPokemon || pagePhase==="error");
+    if(hiddenNativeHint && (hiddenNativeHint.node!==nativeHint || !hideNativeHint)){
+      if(hiddenNativeHint.node.isConnected)hiddenNativeHint.node.hidden=hiddenNativeHint.wasHidden;
+      hiddenNativeHint=null;
+    }
+    if(hideNativeHint && nativeHint && !nativeHint.hidden){hiddenNativeHint={node:nativeHint,wasHidden:false};nativeHint.hidden=true;}
+    const pagingCopy=config.pagingText[locale().split(/[-_]/)[0]] || config.pagingText.en;
+    const pageStatus=["all","pokemon"].includes(activeCategory) ? (pagingCopy[pagePhase] || "") : "";
+    const message = [pageStatus, !count && filtered && !waitingForPokemon && pagePhase!=="error" ? text.empty : "", unavailable ? `${unavailable} ${warning}` : "", !preference.saved() ? text.unsaved : ""].filter(Boolean).join(" ");
     content(status, message);
     if (status.hidden !== !message) status.hidden = !message;
     control.sync(next, text.scope, text.query);
@@ -231,6 +247,8 @@ export function mountInventory(root, preference, walletService = null) {
   return {
     sync,
     cleanup() {
+      if(hiddenNativeHint?.node.isConnected)hiddenNativeHint.node.hidden=hiddenNativeHint.wasHidden;
+      hiddenNativeHint=null;
       if(minimum)root.style.setProperty("min-width",minimum,priority);else root.style.removeProperty("min-width");
       if(!hadStyle && !root.getAttribute("style"))root.removeAttribute("style");
       scroll.cleanup();

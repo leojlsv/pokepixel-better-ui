@@ -62,23 +62,92 @@ function adapt(scene){const saved=[];return {wrap(key,make){const descriptor=Obj
 export function mountInventoryPokemon(root){
   const scene=sceneFor(root);if(!scene || !["filteredItems","createSlot","refresh"].every(key=>typeof scene[key]==="function"))return null;
   const adapter=adapt(scene),tools=createPokemonTools(root,{clearControl:false,getCreatures:()=>scene._creatures||[],refresh:()=>scene.refresh()});
-  const matchesQuery=(creature,query)=>!query || [creature?.nickname,creature?.species_name,creature?.species?.name,creature?.species_id].some(value=>String(value||"").toLocaleLowerCase().includes(query));
-  const inBackpack=creature=>["inventory","backpack","team"].includes(String(creature?.location||"").toLowerCase());
-  const isLoadMorePokemon=node=>{const value=String(node?.textContent||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLowerCase();return /(?:load|show|carregar|mostrar)\s+(?:more|mais).*pokemon/.test(value);};
+  let alive=true,paging=false,reschedule=false,creatureReads=0,awaitingQueryLoad=false,invalidFirstPageCursor=false,observedQuery=String(scene._query||""),observedCategory=scene._category,failedPage="",pagesLoaded=0,epoch=0,readToken=0,focusFrame=0,blockedNativeMore=null;
+  const PAGE_LIMIT=100;
+  const setPagingPhase=phase=>{
+    if(phase){if(root.dataset.ppbuiInventoryPagingState!==phase)root.dataset.ppbuiInventoryPagingState=phase;}
+    else root.removeAttribute("data-ppbui-inventory-paging-state");
+  };
+  const releaseBlockedMore=()=>{
+    if(!blockedNativeMore)return;
+    const {node,hidden,disabled}=blockedNativeMore;blockedNativeMore=null;
+    if(node.isConnected){node.hidden=hidden;node.disabled=disabled;}
+  };
+  const syncBlockedMore=()=>{
+    const node=scene._panel?.body===root.querySelector(toolsSelectors.body)?scene._panel.body.querySelector(":scope > button.pokeidle-ui-button"):null;
+    const blocked=alive && (awaitingQueryLoad || creatureReads>0 || invalidFirstPageCursor);
+    if(blockedNativeMore && (blockedNativeMore.node!==node || !blocked))releaseBlockedMore();
+    if(!blocked || !node)return;
+    if(!blockedNativeMore)blockedNativeMore={node,hidden:node.hidden,disabled:node.disabled};
+    if(!node.hidden)node.hidden=true;
+    if(!node.disabled)node.disabled=true;
+  };
+  const pageKey=()=>`${scene._query||""}\u0000${scene._creatureCursor||""}`;
+  const canExpand=()=>alive && root.isConnected && scene._panel?.body===root.querySelector(toolsSelectors.body)
+    && ["all","pokemon"].includes(scene._category) && typeof scene.loadMoreCreatures==="function"
+    && !!scene._creatureCursor && !scene._creaturePageLoading && !scene._itemSheet
+    && !creatureReads && !awaitingQueryLoad && !invalidFirstPageCursor && failedPage!==pageKey() && pagesLoaded<PAGE_LIMIT;
+  const expandPages=()=>{
+    if(paging){reschedule=true;return;}
+    if(!canExpand())return;
+    paging=true;
+    setPagingPhase("loading");
+    void (async()=>{
+      try {
+        while(canExpand()){
+          const key=pageKey(),query=String(scene._query||""),cursor=scene._creatureCursor,requestEpoch=epoch;
+          const grid=root.querySelector(".inventory-slot-grid"),busy=grid?.getAttribute("aria-busy");
+          const button=scene._panel?.body?.querySelector(":scope > button.pokeidle-ui-button"),buttonBusy=button?.getAttribute("aria-busy");
+          const disabledButton=Boolean(button && button!==root.ownerDocument.activeElement && !button.disabled);
+          if(grid)grid.setAttribute("aria-busy","true");
+          if(button){button.setAttribute("aria-busy","true");if(disabledButton)button.disabled=true;}
+          try { await scene.loadMoreCreatures(); }
+          catch { if(alive && requestEpoch===epoch)failedPage=key;break; }
+          finally {
+            if(grid?.isConnected){if(busy===null)grid.removeAttribute("aria-busy");else grid.setAttribute("aria-busy",busy);}
+            if(button?.isConnected){if(disabledButton)button.disabled=false;if(buttonBusy===null)button.removeAttribute("aria-busy");else button.setAttribute("aria-busy",buttonBusy);}
+          }
+          if(!alive || requestEpoch!==epoch || query!==String(scene._query||""))break;
+          if(cursor===scene._creatureCursor){failedPage=key;break;}
+          pagesLoaded++;
+        }
+      } finally {
+        paging=false;
+        if(alive){
+          if(!["all","pokemon"].includes(scene._category))setPagingPhase(null);
+          else if(creatureReads || awaitingQueryLoad)setPagingPhase(null);
+          else if(!scene._creatureCursor)setPagingPhase("complete");
+          else if(failedPage===pageKey() || pagesLoaded>=PAGE_LIMIT)setPagingPhase("stopped");
+        }
+        if(reschedule){reschedule=false;expandPages();}
+      }
+    })();
+  };
+  if(typeof scene.load==="function")adapter.wrap("load",original=>async function(...args){
+    const creatures=!args[1] || Boolean(args[1]?.creatures),query=String(this._query||""),before=this._creatures;
+    const token=creatures?++readToken:0;
+    if(creatures){creatureReads++;epoch++;failedPage="";pagesLoaded=0;setPagingPhase(null);syncBlockedMore();}
+    try {return await original.apply(this,args);}
+    finally {
+      if(creatures){
+        creatureReads--;
+        if(alive && this===scene && this._panel?.body===root.querySelector(toolsSelectors.body)
+          && token===readToken && query===String(this._query||"")){
+          awaitingQueryLoad=false;root.removeAttribute("data-ppbui-inventory-pokemon-pending");epoch++;
+          if(before===this._creatures){
+            invalidFirstPageCursor=true;failedPage=pageKey();setPagingPhase("error");
+            if(alive && root.isConnected && this._panel?.body===root.querySelector(toolsSelectors.body))this.refresh();
+          } else invalidFirstPageCursor=false;
+        }
+        syncBlockedMore();expandPages();
+      }
+    }
+  });
   adapter.wrap("filteredItems",original=>function(){
     const list=original.call(this);if(this._category!=="pokemon")return list;
-    const query=String(this._query||"").trim().toLocaleLowerCase(),seen=new Set(list.filter(item=>item?._isPokemon && item.creature?.id!=null).map(item=>String(item.creature.id)));
-    const extras=(Array.isArray(this._creatures)?this._creatures:[]).filter(creature=>creature?.id!=null && !seen.has(String(creature.id)) && inBackpack(creature) && matchesQuery(creature,query)).map(creature=>({_isPokemon:true,creature}));
-    return [...list,...extras].filter(item=>!item?._isPokemon || tools.matches(item.creature));
+    return list.filter(item=>!item?._isPokemon || tools.matches(item.creature));
   });
   adapter.wrap("createSlot",original=>function(item){const slot=original.call(this,item);if(item._isPokemon)tools.decorate(slot,item.creature);return slot;});
-  const completePokemonGrid=owner=>{
-    const grid=root.querySelector(".inventory-slot-grid"),items=owner.filteredItems();if(!grid || !items.length)return;
-    let rendered=grid.querySelectorAll("button.inventory-slot:not(.is-empty)").length;
-    if(rendered<items.length){const firstEmpty=grid.querySelector(".inventory-slot.is-empty");for(const item of items.slice(rendered)){const slot=owner.createSlot(item);if(slot)grid.insertBefore(slot,firstEmpty);}}
-    rendered=grid.querySelectorAll("button.inventory-slot:not(.is-empty)").length;
-    if(rendered>=items.length)for(const action of root.querySelectorAll("button"))if(!grid.contains(action) && isLoadMorePokemon(action))action.remove();
-  };
   const more=root.ownerDocument.createElement("button");more.type="button";more.className="pokeidle-btn ppbui-button";more.dataset.ppbuiInventoryMoreFilters="";
   const activeCategory=()=>categoryValue(findParts(root).category);
   const syncMore=()=>{more.textContent=tools.label();more.setAttribute("aria-expanded",String(activeCategory()==="pokemon" && tools.isOpen()));};
@@ -92,9 +161,80 @@ export function mountInventoryPokemon(root){
   };
   const toggleMore=()=>{const pokemon=activeCategory()==="pokemon",focused=root.ownerDocument.activeElement===more;tools.setOpen(pokemon?!tools.isOpen():true);syncMore();if(!pokemon)selectPokemon();if(focused && more.isConnected)more.focus({preventScroll:true});};
   more.addEventListener("click",toggleMore);
-  adapter.wrap("refresh",original=>function(...args){const body=this._panel?.body,scroll=body?.scrollTop,result=original.apply(this,args);if(this._category==="pokemon"){completePokemonGrid(this);const panel=tools.render({summary:false});panel.dataset.ppbuiInventoryPokemonFilters="";root.querySelector(toolsSelectors.toolbar)?.after(panel);if(!this.filteredItems().length){const empty=root.ownerDocument.createElement("small");empty.className="ppbui-pokemon-empty";empty.textContent=pokemonToolsText(root.ownerDocument).none;panel.append(empty);}}else tools.setOpen(false);placeMore();syncMore();if(body)body.scrollTop=scroll;return result;});
+  const doc=root.ownerDocument,win=doc.defaultView;
+  const captureFocus=()=>{
+    const node=doc.activeElement;
+    if(!node || !root.contains(node))return null;
+    const nativeMore=node.matches?.("button.pokeidle-ui-button") && node.parentElement===scene._panel?.body;
+    if(!paging && !awaitingQueryLoad && !creatureReads && root.dataset.ppbuiInventoryPagingState!=="error" && !nativeMore)return null;
+    if(node===more)return {kind:"filters"};
+    if(node.matches?.("[data-ppbui-pokemon-filter]"))return {kind:"field",key:node.dataset.ppbuiPokemonFilter};
+    if(node.matches?.("[data-ppbui-inventory-category-proxy]"))return {kind:"category"};
+    if(node.matches?.("[data-ppbui-inventory-clear]"))return {kind:"clear"};
+    if(node.matches?.(".inventory-slots-toolbar input.game-window__search"))return {kind:"search",start:node.selectionStart,end:node.selectionEnd};
+    if(node.matches?.(".inventory-category-tab[data-category]"))return {kind:"tab",key:node.dataset.category};
+    if(node.matches?.("button.inventory-slot[data-creature-id]"))return {kind:"slot",key:node.dataset.creatureId};
+    if(node.matches?.(".inventory-slot-grid"))return {kind:"grid"};
+    if(nativeMore)return {kind:"loadMore"};
+    return null;
+  };
+  const restoreFocus=focus=>{
+    if(!focus)return;
+    const attempt=(fallback=false)=>{
+      if(!alive || !root.isConnected || (doc.activeElement!==doc.body && doc.activeElement?.isConnected))return true;
+      const body=root.querySelector(toolsSelectors.body);
+      let target=null;
+      if(focus.kind==="filters")target=more;
+      else if(focus.kind==="field")target=[...root.querySelectorAll("[data-ppbui-pokemon-filter]")].find(node=>node.dataset.ppbuiPokemonFilter===focus.key);
+      else if(focus.kind==="category")target=root.querySelector("[data-ppbui-inventory-category-proxy]");
+      else if(focus.kind==="clear")target=root.querySelector("[data-ppbui-inventory-clear]");
+      else if(focus.kind==="search")target=body?.querySelector(".inventory-slots-toolbar input.game-window__search");
+      else if(focus.kind==="tab")target=[...body?.querySelectorAll(".inventory-category-tab[data-category]")||[]].find(node=>node.dataset.category===focus.key);
+      else if(focus.kind==="slot")target=[...body?.querySelectorAll("button.inventory-slot[data-creature-id]")||[]].find(node=>node.dataset.creatureId===focus.key);
+      else if(focus.kind==="loadMore")target=body?.querySelector(":scope > button.pokeidle-ui-button");
+      else if(focus.kind==="grid")target=body?.querySelector(".inventory-slot-grid");
+      const grid=body?.querySelector(".inventory-slot-grid");
+      const search=body?.querySelector(".inventory-slots-toolbar input.game-window__search");
+      const fallbacks=fallback || focus.kind==="loadMore" ? [grid?.tabIndex>=0?grid:null,search] : [];
+      for(const candidate of [target,...fallbacks]){
+        if(!candidate?.isConnected || candidate.disabled)continue;
+        candidate.focus({preventScroll:true});
+        if(doc.activeElement!==candidate)continue;
+        if(focus.kind==="search" && candidate===target && Number.isInteger(focus.start) && Number.isInteger(focus.end))candidate.setSelectionRange(focus.start,focus.end);
+        return true;
+      }
+      return false;
+    };
+    if(!attempt()){
+      if(focusFrame)win.cancelAnimationFrame?.(focusFrame);
+      focusFrame=win.requestAnimationFrame?.(()=>{
+        focusFrame=win.requestAnimationFrame?.(()=>{focusFrame=0;attempt(true);})||0;
+      })||0;
+    }
+  };
+  adapter.wrap("refresh",original=>function(...args){
+    const query=String(this._query||"");
+    if(query!==observedQuery){observedQuery=query;awaitingQueryLoad=true;root.dataset.ppbuiInventoryPokemonPending="";failedPage="";pagesLoaded=0;epoch++;setPagingPhase(null);}
+    if(this._category!==observedCategory){
+      observedCategory=this._category;epoch++;
+      if(!["all","pokemon"].includes(this._category))setPagingPhase(null);
+      else if(invalidFirstPageCursor && !awaitingQueryLoad && !creatureReads)setPagingPhase("error");
+    }
+    const focus=captureFocus();
+    const body=this._panel?.body,scroll=body?.scrollTop,result=original.apply(this,args);
+    if(this._category==="pokemon"){
+      const panel=tools.render({summary:false});panel.dataset.ppbuiInventoryPokemonFilters="";root.querySelector(toolsSelectors.toolbar)?.after(panel);
+      if(!this.filteredItems().length && !this._creatureCursor && !this._creaturePageLoading && !creatureReads && !awaitingQueryLoad && root.dataset.ppbuiInventoryPagingState!=="error"){
+        const empty=root.ownerDocument.createElement("small");empty.className="ppbui-pokemon-empty";empty.textContent=pokemonToolsText(root.ownerDocument).none;panel.append(empty);
+      }
+    }else tools.setOpen(false);
+    placeMore();syncMore();syncBlockedMore();if(body)body.scrollTop=scroll;
+    if(this._creatureCursor==="" && this._creaturePageLoading===false && !creatureReads && !awaitingQueryLoad
+      && root.dataset.ppbuiInventoryPagingState==="stopped")setPagingPhase("complete");
+    restoreFocus(focus);expandPages();return result;
+  });
   const clear=event=>{if(event.target.closest?.(toolsSelectors.clear))tools.reset();};root.addEventListener("click",clear,true);
-  scene.refresh();return {cleanup(){root.removeEventListener("click",clear,true);more.removeEventListener("click",toggleMore);more.remove();adapter.restore();tools.cleanup();if(root.isConnected)scene.refresh();}};
+  scene.refresh();return {cleanup(){alive=false;root.removeAttribute("data-ppbui-inventory-pokemon-pending");setPagingPhase(null);releaseBlockedMore();if(focusFrame)win.cancelAnimationFrame?.(focusFrame);root.removeEventListener("click",clear,true);more.removeEventListener("click",toggleMore);more.remove();adapter.restore();tools.cleanup();if(root.isConnected)scene.refresh();}};
 }
 export function mountTradePokemon(root,scene){
   // Native Trade already owns its Rarities selector. Do not render a second

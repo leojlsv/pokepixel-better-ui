@@ -78,6 +78,7 @@ export function mountHuntControls(target) {
     if (released || !actionBar.isConnected || !returnButton.isConnected || !cityDropdown.isConnected) return;
     syncRevive();
     const active = !actionBar.hidden && actionBar.getAttribute("aria-hidden") !== "true";
+    const returnHadFocus = !active && doc.activeElement === returnButton;
     const visible = String(active);
     if (returnButton.dataset.ppbuiMenuContextVisible !== visible) returnButton.dataset.ppbuiMenuContextVisible = visible;
     if (badge.hidden !== !active) badge.hidden = !active;
@@ -94,6 +95,7 @@ export function mountHuntControls(target) {
       appliedAria = combinedAria;
     } else {
       restoreTriggerAria();
+      if (returnHadFocus && cityTrigger.isConnected) cityTrigger.focus({ preventScroll:true });
     }
   };
   const restoreReturnDecoration = () => {

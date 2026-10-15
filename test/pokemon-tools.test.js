@@ -98,23 +98,162 @@ test('Trade native Rarities remains authoritative while Mais filtros keeps worki
  body.querySelector('[data-ppbui-trade-filters]').click();assert.equal(s.win.document.querySelector('[data-ppbui-pokemon-filter=rarity]'),null);const min=s.win.document.querySelector('[data-ppbui-pokemon-filter=minLevel]');min.value='50';min.dispatchEvent(new s.win.Event('change'));assert.equal(body.querySelectorAll('.trade-inventory-item.is-pokemon').length,0,'Mais filtros remains effective after native Rarities narrows the candidate set');
  native=body.querySelector('select[aria-label=Rarities]');native.value='';native.dispatchEvent(new s.win.Event('change'));body.querySelector('[data-ppbui-trade-filters]').click();const level=s.win.document.querySelector('[data-ppbui-pokemon-filter=minLevel]');level.value='';level.dispatchEvent(new s.win.Event('change'));cards=[...body.querySelectorAll('.trade-inventory-item.is-pokemon')];cards[1].click();assert.equal(added,'2','native Trade add handler survives Backpack presentation classes');const kept=cards[1];scene._finished=true;mounted.cleanup();for(const cls of ['inventory-slot','inventory-slot--pokemon','ppbui-trade-pokemon-slot'])assert.equal(kept.classList.contains(cls),false,'cleanup removes only Better UI Backpack presentation ownership');
 });
-test('inventory completes the native Pokémon batch from already-loaded Backpack creatures',t=>{
- const s=setup(t),body=s.root.firstChild,creatures=[{id:'1',species_name:'Eevee',location:'inventory'},{id:'2',species_name:'Pikachu',location:'team'},{id:'3',species_name:'Abra',location:'inventory'},{id:'4',species_name:'Boxed',location:'storage'},{id:'5',species_name:'Unknown'},{id:'6',species_name:'Contradiction',location:'storage',equipped:true}];
- const scene={_panel:{body},_creatures:creatures,_category:'pokemon',_query:'',filteredItems(){return this._creatures.slice(0,2).map(creature=>({_isPokemon:true,creature}));},createSlot(item){const slot=s.win.document.createElement('button');slot.className='inventory-slot';slot.dataset.id=item.creature.id;return slot;},refresh(){body.innerHTML='<div class="inventory-slots-toolbar"><input class="game-window__search"></div><div class="inventory-slot-grid"></div>';const items=this.filteredItems(),grid=body.querySelector('.inventory-slot-grid');for(const item of items)grid.append(this.createSlot(item));if(items.length<3){const load=s.win.document.createElement('button');load.dataset.nativeLoadMore='';load.textContent='Load More Pokémons';body.append(load);}}};
- s.win.SceneManager={_scene:scene};const mounted=mountInventoryPokemon(s.root);
- assert.deepEqual([...body.querySelectorAll('.inventory-slot')].map(node=>node.dataset.id),['1','2','3']);assert.equal(body.querySelector('[data-native-load-more]'),null);assert.equal(scene.filteredItems().some(item=>['4','5','6'].includes(item.creature?.id)),false);
-  mounted.cleanup();
+function pagedInventory(t,{size=205,pageSize=100,category='pokemon',pauseFirst=false,pauseFirstRead=false,failCursor='',gridFocus=true}={}){
+ const s=setup(t),body=s.root.firstChild,all=Array.from({length:size},(_,index)=>({id:String(index+1),species_name:`P${index+1}`,location:index%9===0?'team':'inventory',quality:index<100?'rare':'epic'}));
+ const calls=[],clicked=[],requests=[];let nativeClicks=0,releasePage,releaseRead,failureCursor=failCursor,rejectFirst=false,failFirstPage=false;
+ const pause=pauseFirst?new Promise(resolve=>releasePage=resolve):null;
+ const pauseRead=pauseFirstRead?new Promise(resolve=>releaseRead=resolve):null;
+ const selected=()=>all.filter(c=>!s.scene._query||c.species_name.toLowerCase().includes(s.scene._query));
+ const scene={_panel:{body},_creatures:[],_category:category,_query:'',_creatureCursor:'',_creaturePaged:true,
+  filteredItems(){return this._creatures.filter(c=>['inventory','team'].includes(c.location)).map(creature=>({_isPokemon:true,creature,name:creature.species_name,quantity:1}));},
+  createSlot(item){const slot=s.win.document.createElement('button');slot.className='inventory-slot inventory-slot--pokemon';slot.dataset.creatureId=item.creature.id;slot.addEventListener('click',()=>clicked.push(item.creature.id));return slot;},
+  refresh(){const doc=s.win.document,toolbar=doc.createElement('div'),search=doc.createElement('input'),grid=doc.createElement('div');toolbar.className='inventory-slots-toolbar';search.type='search';search.className='game-window__search';search.value=this._query;toolbar.append(search);grid.className='inventory-slot-grid';if(gridFocus)grid.tabIndex=0;for(const item of this.filteredItems())grid.append(this.createSlot(item));body.replaceChildren(toolbar,grid);if(this._creatureCursor && ['all','pokemon'].includes(this._category)){const more=doc.createElement('button');more.className='pokeidle-ui-button';more.dataset.nativeLoadMore='';more.textContent='Load More Pokémons';more.addEventListener('click',()=>{nativeClicks++;void this.loadMoreCreatures();});body.append(more);}},
+  async load(_showLoading=true,scope=null){if(scope && !scope.creatures)return;const query=this._query;requests.push(query);if(pauseRead)await pauseRead;else await Promise.resolve();if(query!==this._query)return;if(!failFirstPage){this._creatures=selected().slice(0,pageSize);this._creatureCursor=selected().length>pageSize?String(pageSize):'';}this.refresh();},
+  async loadMoreCreatures(){if(!this._creatureCursor||this._creaturePageLoading)return;const cursor=this._creatureCursor,query=this._query;this._creaturePageLoading=true;calls.push({cursor,query});try{if(pause && calls.length===1)await pause;else await Promise.resolve();if(rejectFirst && calls.length===1)throw new Error('stale request rejected');if(cursor===failureCursor || query!==this._query || cursor!==this._creatureCursor)return;const matched=selected(),end=Math.min(matched.length,Number(cursor)+pageSize);this._creatures=[...this._creatures,...matched.slice(Number(cursor),end)];this._creatureCursor=end<matched.length?String(end):'';}finally{this._creaturePageLoading=false;this.refresh();}},
+ };
+ s.scene=scene;s.win.SceneManager={_scene:scene};scene._creatures=all.slice(0,pageSize);scene._creatureCursor=size>pageSize?String(pageSize):'';
+ const original={filteredItems:scene.filteredItems,load:scene.load,loadMoreCreatures:scene.loadMoreCreatures,createSlot:scene.createSlot,refresh:scene.refresh};const mounted=mountInventoryPokemon(s.root);
+ return {s,scene,body,all,calls,clicked,requests,mounted,original,releasePage:()=>releasePage?.(),releaseRead:()=>releaseRead?.(),setFailureCursor:value=>failureCursor=value,failNextFirstPage:()=>failFirstPage=true,recoverFirstPage:()=>failFirstPage=false,rejectPendingPage:()=>rejectFirst=true,nativeClicks:()=>nativeClicks};
+}
+const settleInventory=async()=>{for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));};
+test('Inventory consumes all native server pages without clicking Load More or fabricating Pokémon slots',async t=>{
+ const f=pagedInventory(t);await settleInventory();
+ const nodes=[...f.body.querySelectorAll('button.inventory-slot--pokemon')];
+ assert.equal(nodes.length,205);assert.equal(new Set(nodes.map(n=>n.dataset.creatureId)).size,205);
+ assert.deepEqual(f.calls.map(c=>c.cursor),['100','200']);assert.equal(f.nativeClicks(),0);assert.equal(f.body.querySelector('[data-native-load-more]'),null);
+ nodes[0].click();assert.equal(f.clicked[0],'1','slot preserves the native click handler');f.mounted.cleanup();
+ assert.equal(f.scene.loadMoreCreatures,f.original.loadMoreCreatures,'Better UI never patches the native page loader');
+ assert.equal(f.scene.filteredItems,f.original.filteredItems);
 });
-test('inventory completion follows native species.name search shape',t=>{
- const s=setup(t),body=s.root.firstChild,creature={id:'1',species:{name:'Mr. Mime'},location:'inventory'};
- const scene={_panel:{body},_creatures:[creature],_category:'pokemon',_query:'mime',filteredItems(){return [];},createSlot(item){const slot=s.win.document.createElement('button');slot.className='inventory-slot';slot.dataset.id=item.creature.id;return slot;},refresh(){body.innerHTML='<div class="inventory-slots-toolbar"><input class="game-window__search"></div><div class="inventory-slot-grid"></div>';}};
- s.win.SceneManager={_scene:scene};const mounted=mountInventoryPokemon(s.root);assert.equal(scene.filteredItems().length,1);mounted.cleanup();
+test('Inventory auto-pagination can continue when advanced filters hide all Pokémon on the first page',async t=>{
+ const f=pagedInventory(t);const rarity=f.body.querySelector('[data-ppbui-pokemon-filter="rarity"]');rarity.value='epic';rarity.dispatchEvent(new f.s.win.Event('change'));await settleInventory();
+ assert.equal(f.calls.length,2);assert.equal(f.body.querySelectorAll('button.inventory-slot--pokemon').length,105);
+ assert.equal(f.body.querySelector('[data-native-load-more]'),null);f.mounted.cleanup();
 });
-test('inventory removes native Load More only after filling a post-filter render cap',t=>{
- const s=setup(t),body=s.root.firstChild,creatures=['1','2','3'].map(id=>({id,species_name:`P${id}`,location:'inventory'}));
- const scene={_panel:{body},_creatures:creatures,_category:'pokemon',_query:'',filteredItems(){return this._creatures.map(creature=>({_isPokemon:true,creature}));},createSlot(item){const slot=s.win.document.createElement('button');slot.className='inventory-slot';slot.dataset.id=item.creature.id;return slot;},refresh(){body.innerHTML='<div class="inventory-slots-toolbar"><input class="game-window__search"></div><div class="inventory-slot-grid"></div>';const grid=body.querySelector('.inventory-slot-grid'),items=this.filteredItems();for(const item of items.slice(0,2))grid.append(this.createSlot(item));const load=s.win.document.createElement('button');load.dataset.nativeLoadMore='';load.textContent='Load More Pokémons';body.append(load);}};
- s.win.SceneManager={_scene:scene};const mounted=mountInventoryPokemon(s.root);
- assert.deepEqual([...body.querySelectorAll('.inventory-slot')].map(node=>node.dataset.id),['1','2','3']);assert.equal(body.querySelector('[data-native-load-more]'),null);mounted.cleanup();
+test('Inventory leaves native Load More available and stops on a server page with no cursor progress',async t=>{
+ const f=pagedInventory(t,{failCursor:'100'});await settleInventory();
+ assert.equal(f.calls.length,1);assert.equal(f.body.querySelectorAll('button.inventory-slot--pokemon').length,100);
+ assert.ok(f.body.querySelector('[data-native-load-more]'));assert.equal(f.nativeClicks(),0);
+ f.setFailureCursor('');f.body.querySelector('[data-native-load-more]').click();await settleInventory();
+ assert.equal(f.nativeClicks(),1);assert.equal(f.body.querySelectorAll('button.inventory-slot--pokemon').length,205);
+ assert.equal(f.body.querySelector('[data-native-load-more]'),null);f.mounted.cleanup();
+});
+test('Inventory marks native manual retry as completed when it exhausts the final cursor',async t=>{
+ const f=pagedInventory(t,{size:150,failCursor:'100',gridFocus:false});await settleInventory();
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'stopped');
+ const before=f.body.querySelector('[data-native-load-more]');before.focus();
+ f.setFailureCursor('');before.click();await settleInventory();
+ assert.equal(f.calls.length,2);assert.equal(f.body.querySelectorAll('button.inventory-slot--pokemon').length,150);
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'complete');
+ assert.equal(f.s.win.document.activeElement,f.body.querySelector('input.game-window__search'),'unfocusable grid falls back to native Search when the last Load More button disappears');
+ f.mounted.cleanup();
+});
+test('Inventory settles failed first-page Search without retaining a false loading state or stale cursor requests',async t=>{
+ const f=pagedInventory(t,{size:5,pageSize:5}),doc=f.s.win.document;
+ f.scene._query='missing';f.scene.refresh();assert.equal(f.s.root.hasAttribute('data-ppbui-inventory-pokemon-pending'),true);
+ f.failNextFirstPage();const search=f.body.querySelector('input.game-window__search');search.focus();
+ await f.scene.load(false,{creatures:true});await settleInventory();
+ assert.equal(f.s.root.hasAttribute('data-ppbui-inventory-pokemon-pending'),false);
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'error');
+ assert.equal(f.calls.length,0);assert.equal(doc.activeElement,f.body.querySelector('input.game-window__search'),'failed first-page notification preserves Search focus');
+ f.mounted.cleanup();
+});
+test('Inventory blocks native Load More while a new Search has an old cursor and after its first page fails',async t=>{
+ const f=pagedInventory(t,{size:205,category:'healing'});
+ f.scene._query='p20';f.scene._category='pokemon';f.scene.refresh();
+ let button=f.body.querySelector('[data-native-load-more]');
+ assert.ok(button);assert.equal(button.hidden,true);assert.equal(button.disabled,true,'old cursor cannot be clicked during a new Search');
+ button.click();assert.equal(f.nativeClicks(),0);
+ f.failNextFirstPage();await f.scene.load(false,{creatures:true});await settleInventory();
+ button=f.body.querySelector('[data-native-load-more]');
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'error');
+ assert.ok(button);assert.equal(button.hidden,true);assert.equal(button.disabled,true,'failed first page must not offer the old cursor');
+ button.click();assert.equal(f.nativeClicks(),0);assert.equal(f.calls.length,0);
+ f.scene._category='healing';f.scene.refresh();
+ f.scene._category='pokemon';f.scene.refresh();
+ button=f.body.querySelector('[data-native-load-more]');
+ assert.ok(button?.hidden && button.disabled,'switching categories must not restore a cursor from a failed first-page Search');
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'error','returning to Pokémon must retain retry guidance for the failed first page');
+ f.recoverFirstPage();await f.scene.load(false,{creatures:true});await settleInventory();
+ assert.notEqual(f.s.root.dataset.ppbuiInventoryPagingState,'error');
+ assert.equal(f.s.root.hasAttribute('data-ppbui-inventory-pokemon-pending'),false);
+ assert.equal(f.body.querySelector('[data-native-load-more]'),null);
+ assert.deepEqual(f.scene._creatures.map(c=>c.id),['20','200','201','202','203','204','205']);
+ f.mounted.cleanup();
+});
+test('Inventory ignores completion of an old first-page request after cleanup and remount',async t=>{
+ const f=pagedInventory(t,{size:5,category:'healing',pauseFirstRead:true});
+ f.scene._query='p20';f.scene.refresh();f.failNextFirstPage();
+ const previousLoad=f.scene.load(false,{creatures:true});
+ f.mounted.cleanup();
+ f.scene._query='';const nextMount=mountInventoryPokemon(f.s.root);
+ f.scene._query='p20';f.scene.refresh();
+ assert.equal(f.s.root.hasAttribute('data-ppbui-inventory-pokemon-pending'),true);
+ f.releaseRead();await previousLoad;await settleInventory();
+ assert.equal(f.s.root.hasAttribute('data-ppbui-inventory-pokemon-pending'),true,'old wrapper cannot clear pending state owned by a newer mount');
+ assert.notEqual(f.s.root.dataset.ppbuiInventoryPagingState,'error','old wrapper cannot mark newer mount as failed');
+ nextMount.cleanup();
+});
+test('Inventory native manual retry retains button focus if the page still fails',async t=>{
+ const f=pagedInventory(t,{failCursor:'100'});await settleInventory();
+ const button=f.body.querySelector('[data-native-load-more]');button.focus();button.click();await settleInventory();
+ assert.equal(f.s.win.document.activeElement,f.body.querySelector('[data-native-load-more]'));
+ assert.equal(f.body.querySelector('[data-native-load-more]').disabled,false);f.mounted.cleanup();
+});
+test('Inventory suspends paging when switching tabs and resumes on Pokémon',async t=>{
+ const f=pagedInventory(t,{category:'healing'});await settleInventory();assert.equal(f.calls.length,0);
+ f.scene._category='pokemon';f.scene.refresh();await settleInventory();assert.equal(f.calls.length,2);f.mounted.cleanup();
+});
+test('Inventory waits for a new search page and ignores the preceding cursor',async t=>{
+ const f=pagedInventory(t,{pauseFirst:true});assert.equal(f.calls.length,1);
+ f.scene._query='p20';f.scene.refresh();await settleInventory();assert.equal(f.calls.length,1,'search debounce must not consume cursor from the previous query');
+ await f.scene.load(false,{creatures:true});f.releasePage();await settleInventory();
+ assert.equal(f.calls.length,1,'new query fits one page, so no follow-up is required');
+ assert.deepEqual(f.scene._creatures.map(c=>c.id),['20','200','201','202','203','204','205']);f.mounted.cleanup();
+});
+test('Inventory ignores a stale rejected page after search changes A-B-A and a new first page loads',async t=>{
+ const f=pagedInventory(t,{pauseFirst:true});assert.equal(f.calls.length,1);
+ f.scene._query='p20';f.scene.refresh();f.scene._query='';f.scene.refresh();
+ await f.scene.load(false,{creatures:true});f.rejectPendingPage();f.releasePage();await settleInventory();
+ assert.deepEqual(f.calls.map(call=>call.cursor),['100','100','200']);
+ assert.equal(f.body.querySelectorAll('button.inventory-slot--pokemon').length,205);
+ assert.equal(f.body.querySelector('[data-native-load-more]'),null);f.mounted.cleanup();
+});
+test('Inventory preserves keyboard focus and caret through automatic native page redraws',async t=>{
+ const f=pagedInventory(t,{pauseFirst:true}),doc=f.s.win.document;
+ const search=f.body.querySelector('input.game-window__search');search.focus();search.setSelectionRange(0,0);
+ assert.equal(doc.activeElement,search);f.releasePage();await settleInventory();
+ assert.equal(doc.activeElement,f.body.querySelector('input.game-window__search'));
+ assert.equal(doc.activeElement.selectionStart,0);f.mounted.cleanup();
+});
+test('Inventory preserves focused Pokémon filter through consecutive page refreshes',async t=>{
+ const f=pagedInventory(t,{pauseFirst:true}),doc=f.s.win.document;
+ const filter=f.body.querySelector('[data-ppbui-pokemon-filter="rarity"]');filter.focus();f.releasePage();await settleInventory();
+ assert.equal(doc.activeElement,f.body.querySelector('[data-ppbui-pokemon-filter="rarity"]'));
+ f.mounted.cleanup();
+});
+test('Inventory flags pending native pages as busy without overriding external focus',async t=>{
+ const f=pagedInventory(t,{pauseFirst:true}),doc=f.s.win.document;
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'loading');
+ assert.equal(f.body.querySelector('.inventory-slot-grid').getAttribute('aria-busy'),'true');
+ assert.equal(f.body.querySelector('[data-native-load-more]').disabled,true);
+ const outside=doc.createElement('button');doc.body.append(outside);outside.focus();f.releasePage();await settleInventory();
+ assert.equal(doc.activeElement,outside);assert.equal(f.body.querySelector('[data-native-load-more]'),null);
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'complete');
+ f.mounted.cleanup();
+});
+test('Inventory limits automatic page requests and retains the native button when the budget ends',async t=>{
+ const f=pagedInventory(t,{size:1,pageSize:1});let count=0;
+ f.scene.loadMoreCreatures=async function(){count++;this._creatureCursor=String(Number(this._creatureCursor)+1);this.refresh();};
+ f.scene._creatureCursor='1';f.scene.refresh();await settleInventory();
+ assert.equal(count,100);assert.ok(f.body.querySelector('[data-native-load-more]'));
+ assert.equal(f.s.root.dataset.ppbuiInventoryPagingState,'stopped');
+ f.mounted.cleanup();
+});
+test('Inventory cleanup stops future automatic pages but lets a pending native page settle',async t=>{
+ const f=pagedInventory(t,{pauseFirst:true});assert.equal(f.calls.length,1);f.mounted.cleanup();
+ f.releasePage();await settleInventory();assert.equal(f.calls.length,1);
+ assert.equal(f.scene.refresh,f.original.refresh);assert.equal(f.scene.load,f.original.load);
 });
 test('Backpack More Filters stays beside Search and switches to Pokémon before opening',t=>{
  const s=setup(t),body=s.root.firstChild,c={id:'1',species_name:'Eevee',location:'inventory'};let category='all';
@@ -165,6 +304,51 @@ test('Alt-left-click opens attribution without native mouse actions; normal clic
  s.win.document.querySelector('[data-ppbui-tag-choice=pvp]').click();assert.deepEqual(tagService(s.win).get().get().assigned['1'],['pvp']);
  slot.dispatchEvent(new s.win.MouseEvent('dblclick',{bubbles:true,button:0,detail:2}));assert.equal(doubled,0);
  slot.click();assert.equal(clicked,1);tools.cleanup();slot.click();assert.equal(clicked,2);
+});
+test('tag dialog returns focus to the current creature slot after a native Inventory redraw',t=>{
+ const s=setup(t),doc=s.win.document,c={id:'1',species_name:'Eevee',location:'inventory'};
+ const tools=createPokemonTools(s.root,{getCreatures:()=>[c],refresh(){}});
+ const createSlot=()=>{const n=doc.createElement('button');n.className='inventory-slot inventory-slot--pokemon';n.dataset.creatureId=c.id;tools.decorate(n,c);return n;};
+ let slot=createSlot();s.root.append(slot);
+ const open=()=>{slot.dispatchEvent(new s.win.MouseEvent('click',{bubbles:true,altKey:true,button:0,detail:1}));return doc.querySelector('dialog.ppbui-tag-dialog');};
+ const replace=()=>{const old=slot;slot=createSlot();old.replaceWith(slot);};
+ let dialog=open();assert.ok(dialog);replace();dialog.querySelector('button[aria-label="Close"]').click();assert.equal(doc.activeElement,slot,'Close reacquires current creature ID');
+ dialog=open();replace();dialog.querySelector('[data-ppbui-tag-choice="sell"]').click();assert.equal(doc.activeElement,slot,'Save reacquires current creature ID');
+ assert.deepEqual(tagService(s.win).get().get().assigned[c.id],['sell']);
+ dialog=open();replace();dialog.dispatchEvent(new s.win.Event('cancel',{bubbles:true,cancelable:true}));assert.equal(doc.activeElement,slot,'Escape reacquires current creature ID');
+ dialog=open();replace();s.owner('other');dialog.querySelector('button[aria-label="Close"]').click();assert.notEqual(doc.activeElement,slot,'owner switch cannot focus a foreign session slot');
+ tools.cleanup();
+});
+test('tag assignment restores focus after its own microtask refresh rebuilds the native slot',async t=>{
+ const s=setup(t),c={id:'42',species_name:'Ditto',location:'inventory'};let slot,tools;
+ const refresh=()=>{const next=s.win.document.createElement('button');next.className='inventory-slot inventory-slot--pokemon';next.dataset.creatureId=c.id;s.root.replaceChildren(next);tools.decorate(next,c);slot=next;};
+ tools=createPokemonTools(s.root,{getCreatures:()=>[c],refresh});refresh();
+ slot.dispatchEvent(new s.win.MouseEvent('click',{bubbles:true,altKey:true,button:0,detail:1}));
+ const dialog=s.win.document.querySelector('dialog.ppbui-tag-dialog');assert.ok(dialog);
+ dialog.querySelector('[data-ppbui-tag-choice="keep"]').click();
+ await Promise.resolve();await Promise.resolve();
+ assert.equal(s.win.document.activeElement,slot);assert.deepEqual(tagService(s.win).get().get().assigned[c.id],['keep']);tools.cleanup();
+});
+test('tag edit returns focus to Search when the new tag removes its Pokémon from a filtered grid',async t=>{
+ const s=setup(t),body=s.root.firstChild,c={id:'77',species_name:'Eevee',location:'inventory'};
+ body.innerHTML='<div class="inventory-slots-toolbar"><input type="search" class="game-window__search"></div><div class="inventory-slot-grid"></div>';
+ let tools;
+ const refresh=()=>{
+   const grid=body.querySelector('.inventory-slot-grid');grid.replaceChildren();
+   if(tools.matches(c)){
+     const slot=s.win.document.createElement('button');slot.className='inventory-slot inventory-slot--pokemon';
+     slot.dataset.creatureId=c.id;grid.append(slot);tools.decorate(slot,c);
+   }
+ };
+ tools=createPokemonTools(s.root,{getCreatures:()=>[c],refresh});s.root.append(tools.render());
+ const tags=s.root.querySelector('[data-ppbui-pokemon-filter="tags"]');tags.value='untagged';tags.dispatchEvent(new s.win.Event('change'));
+ const slot=body.querySelector('button.inventory-slot');assert.ok(slot);
+ slot.dispatchEvent(new s.win.MouseEvent('click',{bubbles:true,altKey:true,button:0,detail:1}));
+ s.win.document.querySelector('dialog.ppbui-tag-dialog [data-ppbui-tag-choice="keep"]').click();
+ await Promise.resolve();await Promise.resolve();
+ assert.equal(body.querySelector('button.inventory-slot'),null,'tag filter removes the modified Pokémon');
+ assert.equal(s.win.document.activeElement,body.querySelector('input.game-window__search'),'Search remains focusable when the selected Pokémon is no longer present');
+ tools.cleanup();
 });
 test('tag dialog removal, cancellation and owner changes do not assign to another account',t=>{
  const s=setup(t),tools=createPokemonTools(s.root,{getCreatures:()=>[],refresh(){}}),slot=s.win.document.createElement('button');s.root.append(slot);tools.decorate(slot,{id:'1'});
