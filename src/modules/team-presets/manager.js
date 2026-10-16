@@ -118,7 +118,19 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   const summary = doc.createElement("summary"), grid = doc.createElement("div"), status = doc.createElement("p");
   grid.dataset.ppbuiTeamPresetManagerGrid = ""; status.dataset.ppbuiTeamPresetManagerStatus = ""; status.setAttribute("aria-live", "polite");
   details.append(summary, grid, status); root.append(style);
-  let renderedPresets = null, readVisual, confirmingDelete = false, managerBusy = false, disposed = false, composer = null;
+  let renderedPresets = null, readVisual, confirmingDelete = false, managerBusy = false, disposed = false, composer = null, renderEpoch = 0;
+  let renderedOwner = store?.owner?.() ?? null;
+  const ownerUnchanged = captured => typeof store?.owner !== "function" || Boolean(captured && store.owner() === captured);
+  // Synchronous stores preserve immediate UI behavior; locked stores settle
+  // asynchronously, with a fresh lifecycle/owner check before their result is used.
+  const resolveMutation = (action, isCurrent, onResult) => {
+    const complete = result => { if (isCurrent()) onResult(result); };
+    try {
+      const result = action();
+      if (result && typeof result.then === "function") Promise.resolve(result).then(complete, () => complete(false));
+      else complete(result);
+    } catch { complete(false); }
+  };
   let guardedPanel = null, guardedBody = null, guardedClearBody = null, guardedAppendChild = null;
   let originalClearBody = null, originalAppendChild = null, panelHadOwnClearBody = false, bodyHadOwnAppendChild = false;
   const selections = new Map(), cardMessages = new Map(), collapsedPresets = new Set();
@@ -190,13 +202,27 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     if (node.textContent !== message) node.textContent = message;
     const value = error ? "true" : "false"; if (node.dataset.error !== value) node.dataset.error = value;
   }
-  async function runManagerOperation(preset, trigger, pendingLabel, task) {
+  function reportMutation(copy, preset = null, message = "") {
+    const sessionOnly = store?.isPersistent?.() === false;
+    const feedback = [message, sessionOnly ? copy.sessionOnly : ""].filter(Boolean).join(" ");
+    if (preset) setCardMessage(preset.id, feedback, sessionOnly);
+    else setStatus(feedback, sessionOnly);
+    changed();
+  }
+  async function runManagerOperation(preset, trigger, pendingLabel, task, cardIsCurrent = () => true) {
     if (managerBusy || disposed) return { ok: false, reason: managerBusy ? "busy" : "disposed" };
+    if (!cardIsCurrent()) return { ok: false, reason: "owner-changed" };
+    const capturedOwner = store?.owner?.() ?? null;
+    if (!ownerUnchanged(capturedOwner)) return { ok: false, reason: "owner-changed" };
+    const isCurrent = () => !disposed && ownerUnchanged(capturedOwner) && cardIsCurrent();
     managerBusy = true; details.setAttribute("aria-busy", "true"); trigger.setAttribute("aria-busy", "true");
     const previousLabel = trigger.textContent, disabled = new Map();
     for (const node of details.querySelectorAll("button,input")) { disabled.set(node, node.disabled); node.disabled = true; }
     trigger.textContent = pendingLabel;
-    try { return await (runExclusive ? runExclusive(task) : task()); }
+    try {
+      const result = await (runExclusive ? runExclusive(() => task(isCurrent)) : task(isCurrent));
+      return isCurrent() ? result : { ok: false, reason: disposed ? "disposed" : "owner-changed" };
+    }
     catch (error) { return { ok: false, reason: error?.message || "unexpected-error" }; }
     finally {
       managerBusy = false; details.removeAttribute("aria-busy");
@@ -206,27 +232,34 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   }
   function changed() { if (disposed) return; renderedPresets = null; onChange?.(); render(true); syncSummary(); composer?.sync(); }
 
-  async function execute(preset, trigger, task) {
+  async function execute(preset, trigger, task, cardIsCurrent) {
+    if (!cardIsCurrent()) return { ok: false, reason: "owner-changed" };
     const copy = text(); setCardMessage(preset.id, copy.applying);
-    const result = await runManagerOperation(preset, trigger, copy.applyingAction, task);
-    if (disposed) return result;
+    const result = await runManagerOperation(preset, trigger, copy.applyingAction, task, cardIsCurrent);
+    if (!cardIsCurrent()) return result;
     setCardMessage(preset.id, result?.ok ? copy.applied : errorMessage(copy, result, preset), !result?.ok);
     sync(); return result;
   }
 
-  async function confirmDelete(preset, trigger) {
-    if (confirmingDelete || disposed) return;
+  async function confirmDelete(preset, trigger, cardIsCurrent) {
+    if (confirmingDelete || !cardIsCurrent()) return;
     const copy = text(), dialog = win?.PokeIdle?.Dialog;
+    const capturedOwner = store?.owner?.() ?? null;
+    if (!ownerUnchanged(capturedOwner)) return;
     if (!dialog?.confirm) return setStatus(copy.errors["confirmation-unavailable"], true);
     confirmingDelete = true;
     try {
       const confirmed = await dialog.confirm(copy.deleteConfirm, { title: copy.remove, hint: preset.name, acceptLabel: copy.remove, danger: true });
-      if (confirmed === true && !disposed && root.isConnected && store.remove(preset.id)) changed();
+      if (confirmed === true && cardIsCurrent() && root.isConnected && ownerUnchanged(capturedOwner)) {
+        resolveMutation(() => store.remove(preset.id, preset, cardIsCurrent),
+          () => cardIsCurrent() && ownerUnchanged(capturedOwner),
+          removed => { if (removed) reportMutation(copy); else setCardMessage(preset.id, copy.updateFailed, true); });
+      }
     } catch {
       if (!disposed) setStatus(copy.errors["confirmation-unavailable"], true);
     } finally {
       confirmingDelete = false;
-      if (!disposed && trigger.isConnected) trigger.focus({ preventScroll: true });
+      if (cardIsCurrent() && trigger.isConnected) trigger.focus({ preventScroll: true });
     }
   }
 
@@ -266,8 +299,10 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   }
 
   function render(resolveSprites = false, retryMissing = false) {
-    const presets = store.list();
+    const presets = store.list(), cardOwner = store?.owner?.() ?? null;
     if (!resolveSprites && samePresets(presets)) return;
+    const epoch = ++renderEpoch;
+    const cardIsCurrent = () => !disposed && epoch === renderEpoch && ownerUnchanged(cardOwner);
     for (const id of selections.keys()) if (!presets.some(preset => preset.id === id)) selections.delete(id);
     for (const id of cardMessages.keys()) if (!presets.some(preset => String(preset.id) === id)) cardMessages.delete(id);
     for (const id of collapsedPresets) if (!presets.some(preset => String(preset.id) === id)) collapsedPresets.delete(id);
@@ -291,14 +326,17 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
       const edit = actionButton(doc, copy.editManual, `${copy.editManual}: ${preset.name}`, "ppbui-button--compact"); edit.dataset.ppbuiTeamPresetEdit = "";
       const remove = actionButton(doc, "", `${copy.remove}: ${preset.name}`, "ppbui-icon-button ppbui-team-preset-delete ppbui-button--danger");
       rename.addEventListener("change", () => {
-        if (disposed) return;
+        if (!cardIsCurrent()) return;
         const attemptedName = rename.value;
-        if (!store.rename(preset.id, attemptedName)) { rename.value = preset.name; setCardMessage(preset.id, attemptedName.trim() ? copy.renameFailed : copy.nameRequired, true); }
-        else { setCardMessage(preset.id); changed(); }
+        resolveMutation(() => store.rename(preset.id, attemptedName, preset, cardIsCurrent), cardIsCurrent, renamed => {
+          if (!renamed) { rename.value = preset.name; setCardMessage(preset.id, attemptedName.trim() ? copy.renameFailed : copy.nameRequired, true); }
+          else reportMutation(copy, preset);
+        });
       });
-      up.addEventListener("click", () => { if (disposed) return; if (store.movePreset(preset.id, -1)) changed(); }); down.addEventListener("click", () => { if (disposed) return; if (store.movePreset(preset.id, 1)) changed(); });
-      edit.addEventListener("click", () => { if (!disposed) composer?.edit?.(preset, edit); });
-      remove.addEventListener("click", () => confirmDelete(preset, remove));
+      up.addEventListener("click", () => { if (!cardIsCurrent()) return; resolveMutation(() => store.movePreset(preset.id, -1, preset, cardIsCurrent), cardIsCurrent, moved => { if (moved) reportMutation(copy, preset); }); });
+      down.addEventListener("click", () => { if (!cardIsCurrent()) return; resolveMutation(() => store.movePreset(preset.id, 1, preset, cardIsCurrent), cardIsCurrent, moved => { if (moved) reportMutation(copy, preset); }); });
+      edit.addEventListener("click", () => { if (cardIsCurrent()) composer?.edit?.(preset, edit); });
+      remove.addEventListener("click", () => confirmDelete(preset, remove, cardIsCurrent));
       if (presets.length > 1) headActions.append(up, down);
       headActions.append(edit, remove); head.append(collapse, nameField, headActions);
 
@@ -310,7 +348,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
 
       const body = doc.createElement("div"); body.dataset.ppbuiTeamPresetCardBody = ""; body.id = `ppbui-team-preset-body-${presetIndex}`; body.hidden = collapsed; collapse.setAttribute("aria-controls", body.id);
       collapse.addEventListener("click", () => {
-        if (disposed) return;
+        if (!cardIsCurrent()) return;
         const next = !collapsedPresets.has(String(preset.id));
         next ? collapsedPresets.add(String(preset.id)) : collapsedPresets.delete(String(preset.id));
         body.hidden = next; collapse.dataset.collapsed = String(next); collapse.setAttribute("aria-expanded", String(!next));
@@ -322,7 +360,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
       const left = directionButton(doc, "left", copy.moveLeft), active = actionButton(doc, copy.setActive, copy.setActive), right = directionButton(doc, "right", copy.moveRight);
       active.dataset.activeControl = "true";
       function select(id) {
-        if (disposed) return;
+        if (!cardIsCurrent()) return;
         selections.set(preset.id, id);
         const index = preset.members.findIndex(member => member.id === id), member = preset.members[index];
         const isCurrent = id === preset.activeId;
@@ -334,9 +372,9 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
         left.setAttribute("aria-label", `${left.title}: ${member.name}`); right.setAttribute("aria-label", `${right.title}: ${member.name}`); active.setAttribute("aria-label", active.title);
         [...members.children].forEach((cell, i) => cell.firstChild.setAttribute("aria-pressed", String(i === index)));
       }
-      left.addEventListener("click", () => { if (disposed) return; if (store.moveMember(preset.id, selections.get(preset.id), -1)) changed(); });
-      right.addEventListener("click", () => { if (disposed) return; if (store.moveMember(preset.id, selections.get(preset.id), 1)) changed(); });
-      active.addEventListener("click", () => { if (disposed) return; if (store.setActive(preset.id, selections.get(preset.id))) changed(); });
+      left.addEventListener("click", () => { if (!cardIsCurrent()) return; resolveMutation(() => store.moveMember(preset.id, selections.get(preset.id), -1, preset, cardIsCurrent), cardIsCurrent, moved => { if (moved) reportMutation(copy, preset); }); });
+      right.addEventListener("click", () => { if (!cardIsCurrent()) return; resolveMutation(() => store.moveMember(preset.id, selections.get(preset.id), 1, preset, cardIsCurrent), cardIsCurrent, moved => { if (moved) reportMutation(copy, preset); }); });
+      active.addEventListener("click", () => { if (!cardIsCurrent()) return; resolveMutation(() => store.setActive(preset.id, selections.get(preset.id), preset, cardIsCurrent), cardIsCurrent, updated => { if (updated) reportMutation(copy, preset); }); });
       for (let index = 0; index < 6; index += 1) {
         const member = preset.members[index]; members.append(member ? memberCell(preset, member, index, copy, select) : emptyMemberCell(index));
       }
@@ -346,15 +384,21 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
       const footActions = doc.createElement("div"); footActions.dataset.ppbuiTeamPresetCardActions = ""; footActions.className = "ppbui-action-row";
       const applyButton = actionButton(doc, copy.apply, `${copy.apply}: ${preset.name}`, "ppbui-button--primary"); applyButton.disabled = preset.orderVerified === false;
       const update = actionButton(doc, copy.update, `${copy.update}: ${preset.name}`);
-      applyButton.addEventListener("click", () => { if (!disposed) execute(preset, applyButton, () => apply(doc, preset)); });
+      applyButton.addEventListener("click", () => { if (cardIsCurrent()) execute(preset, applyButton, isCurrent => apply(doc, preset, { isCurrent }), cardIsCurrent); });
       update.addEventListener("click", async () => {
-        if (disposed) return;
+        if (!cardIsCurrent()) return;
+        const capturedOwner = store?.owner?.() ?? null;
+        if (!ownerUnchanged(capturedOwner)) return;
         setCardMessage(preset.id, copy.updating);
-        const result = await runManagerOperation(preset, update, copy.updating, () => capture(doc, hudRoot));
-        if (disposed) return;
+        const result = await runManagerOperation(preset, update, copy.updating, () => capture(doc, hudRoot), cardIsCurrent);
+        if (!cardIsCurrent() || !ownerUnchanged(capturedOwner)) return;
         if (!result?.ok) return setCardMessage(preset.id, errorMessage(copy, result, preset), true);
-        if (!store.replaceSnapshot(preset.id, result.snapshot)) return setCardMessage(preset.id, copy.updateFailed, true);
-        setCardMessage(preset.id, copy.updated); changed();
+        resolveMutation(() => store.replaceSnapshot(preset.id, result.snapshot, preset, () => cardIsCurrent() && ownerUnchanged(capturedOwner)),
+          () => cardIsCurrent() && ownerUnchanged(capturedOwner),
+          updated => {
+            if (!updated) return setCardMessage(preset.id, copy.updateFailed, true);
+            reportMutation(copy, preset, copy.updated);
+          });
       });
       footActions.append(update, applyButton); foot.append(controls, footActions);
       const cardStatus = doc.createElement("p"); cardStatus.dataset.ppbuiTeamPresetCardStatus = ""; cardStatus.setAttribute("aria-live", "polite");
@@ -363,7 +407,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
       if (preset.orderVerified === false) {
         const review = doc.createElement("p"); review.dataset.ppbuiTeamPresetReview = ""; review.textContent = copy.orderReview;
         const confirm = actionButton(doc, copy.confirmOrder, copy.confirmOrder, "ppbui-is-warning");
-        confirm.addEventListener("click", () => { if (disposed) return; if (store.confirmOrder(preset.id)) { setStatus(copy.updated); changed(); } });
+        confirm.addEventListener("click", () => { if (!cardIsCurrent()) return; resolveMutation(() => store.confirmOrder(preset.id, preset, cardIsCurrent), cardIsCurrent, confirmed => { if (confirmed) reportMutation(copy, null, copy.updated); }); });
         body.append(review); footActions.prepend(confirm);
       }
       body.prepend(members); body.append(foot, cardStatus); card.append(body); grid.append(card);
@@ -375,7 +419,17 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     if (summary.textContent !== label) summary.textContent = label;
   }
 
-  function sync() { if (disposed) return; ensureMounted(); syncNativeBodyGuard(); syncSummary(); render(); }
+  function sync() {
+    if (disposed) return;
+    const nextOwner = store?.owner?.() ?? null;
+    if (nextOwner !== renderedOwner) {
+      renderedOwner = nextOwner;
+      renderedPresets = null;
+      selections.clear();
+      cardMessages.clear();
+    }
+    ensureMounted(); syncNativeBodyGuard(); syncSummary(); render();
+  }
 
   function onToggle() { if (details.open) render(true, true); }
   details.addEventListener("toggle", onToggle);

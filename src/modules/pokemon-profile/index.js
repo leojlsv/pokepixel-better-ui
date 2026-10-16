@@ -1,6 +1,4 @@
 import { mountPokemonProfile } from "./controller.js";
-import { pokemonProfileText } from "./dom.js";
-
 export { pokemonProfileText } from "./dom.js";
 
 export function createPokemonProfileModule({ teamPresetStore, movesetStore } = {}) {

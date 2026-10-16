@@ -1,6 +1,7 @@
 import { teamPresetsConfig as config } from "./config.js";
 import { currentTeamSnapshot } from "./dom.js";
 import { createPresetRuntime } from "./runtime.js";
+import { currentStorageOwner } from "../../core/trainer-storage-scope.js";
 
 const sleep = (doc, ms) => new Promise(resolve => (doc.defaultView?.setTimeout || setTimeout)(resolve, ms));
 
@@ -54,13 +55,15 @@ async function openTeamPanel(doc) {
 
 async function nativeAction(root, method, args, check, reason) {
   const scene = actionState(root);
+  if (scene?.isBound && !scene.isBound()) return { ok: false, reason: "owner-changed" };
   if (typeof scene?.[method] !== "function") return { ok: false, reason };
   try {
     await scene[method](...args);
     // Native handlers can catch server errors themselves; verify the resulting state.
+    if (scene?.isBound && !scene.isBound()) return { ok: false, reason: "owner-changed" };
     return check(actionState(root)) ? { ok: true } : { ok: false, reason };
   } catch (error) {
-    return { ok: false, reason, detail: error?.message };
+    return { ok: false, reason: error?.message === "owner-changed" ? "owner-changed" : reason, detail: error?.message };
   }
 }
 
@@ -110,21 +113,27 @@ export async function openTeamPresetManagement(doc) {
   return opened?.root || null;
 }
 
-export async function applyTeamPreset(doc, preset) {
+export async function applyTeamPreset(doc, preset, { isCurrent = () => true } = {}) {
   const targetIds = [...new Set((preset?.members || []).map(member => String(member?.id ?? "")).filter(Boolean))];
   const targetActive = String(preset?.activeId ?? preset?.leaderId ?? targetIds[0] ?? "");
   if (!targetIds.length || targetIds.length > 6 || !targetIds.includes(targetActive)) return { ok: false, reason: "preset-invalid" };
   if (preset?.orderVerified === false) return { ok: false, reason: "order-unverified" };
+  if (!isCurrent() || !currentStorageOwner(doc?.defaultView)) return { ok: false, reason: "owner-changed" };
 
-  const runtime = createPresetRuntime(doc);
+  const runtime = createPresetRuntime(doc, { isCurrent });
   if (!runtime) return { ok: false, reason: "team-panel-unavailable" };
+  const stillBound = () => runtime.isBound();
+  const aborted = () => !stillBound() ? { ok: false, reason: "owner-changed" } : null;
   const root = { presetRuntime: runtime };
   try { await runtime.load(); }
-  catch (error) { return { ok: false, reason: "team-panel-unavailable", detail: error?.message }; }
+  catch (error) { return { ok: false, reason: error?.message === "owner-changed" ? "owner-changed" : "team-panel-unavailable", detail: error?.message }; }
+  if (aborted()) return aborted();
   const ready = await waitFor(doc, () => {
+    if (!stillBound()) return { ownerChanged: true };
     const next = actionState(root);
     return next && !next._orderBusy && sameMembers(memberIds(next), officialIds(next)) ? next : null;
   });
+  if (aborted() || ready?.ownerChanged) return { ok: false, reason: "owner-changed" };
   if (!ready) return { ok: false, reason: "action-timeout" };
   let scene = actionState(root), current = memberIds(scene);
   const maxMembers = 6;
@@ -137,6 +146,7 @@ export async function applyTeamPreset(doc, preset) {
   if (activeId(scene) !== targetActive && activeMember && !canLead(activeMember)) return { ok: false, reason: "leader-fainted", memberId: targetActive };
 
   if (current.length >= maxMembers && !current.includes(targetActive)) {
+    if (aborted()) return aborted();
     const currentActive = activeId(scene), targetSet = new Set(targetIds);
     const removable = current.find(id => id !== currentActive && !targetSet.has(id));
     if (removable) {
@@ -150,25 +160,33 @@ export async function applyTeamPreset(doc, preset) {
   }
 
   scene = actionState(root); current = memberIds(scene);
+  if (aborted()) return aborted();
   if (!current.includes(targetActive)) { const result = await addMember(doc, root, targetActive); if (!result.ok) return result; }
   scene = actionState(root);
+  if (aborted()) return aborted();
   if (activeId(scene) !== targetActive) { const result = await setActive(doc, root, targetActive); if (!result.ok) return result; }
 
   scene = actionState(root); current = memberIds(scene);
+  if (aborted()) return aborted();
   for (const id of current.filter(id => !targetIds.includes(id))) { const result = await removeMember(doc, root, id); if (!result.ok) return result; }
   scene = actionState(root); current = memberIds(scene);
+  if (aborted()) return aborted();
   for (const id of targetIds.filter(id => !current.includes(id))) {
+    if (aborted()) return aborted();
     const result = await addMember(doc, root, id); if (!result.ok) return result;
     scene = actionState(root); current = memberIds(scene);
   }
 
   scene = actionState(root); current = memberIds(scene);
+  if (aborted()) return aborted();
   if (!sameMembers(current, targetIds)) return { ok: false, reason: "final-state-mismatch" };
   const ordered = await syncBattleOrder(doc, root, targetIds); if (!ordered.ok) return ordered;
   scene = actionState(root);
+  if (aborted()) return aborted();
   if (activeId(scene) !== targetActive) { const result = await setActive(doc, root, targetActive); if (!result.ok) return result; }
 
   scene = actionState(root);
+  if (aborted()) return aborted();
   if (!sameOrder(officialIds(scene), targetIds) || activeId(scene) !== targetActive) return { ok: false, reason: "final-state-mismatch" };
   return { ok: true, memberIds: officialIds(scene), activeId: targetActive };
 }

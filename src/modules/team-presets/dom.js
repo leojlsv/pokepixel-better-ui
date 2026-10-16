@@ -52,8 +52,15 @@ const copies = {
 
 export function teamPresetsText(doc = document) {
   const locale = String(doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "en").toLowerCase();
-  const base = locale.startsWith("pt") ? copies.pt : locale.startsWith("es") ? copies.es : locale.startsWith("zh") ? copies.zh : copies.en;
-  return { ...base, errors: { ...sharedErrors, ...base.errors } };
+  const language = locale.startsWith("pt") ? "pt" : locale.startsWith("es") ? "es" : locale.startsWith("zh") ? "zh" : "en";
+  const base = copies[language];
+  const migration = {
+    pt: { importLegacy: "Importar times antigos", importLegacyConfirm: "Estes times foram salvos neste navegador sem identificação de treinador. Importe somente se forem seus. Associá-los a este treinador impedirá a importação por outra conta. Continuar?", importLegacySuccess: "Times antigos importados.", importLegacyFailed: "Não foi possível importar os times antigos.", ownerChanged: "O treinador mudou. A operação foi cancelada.", sessionOnly: "Armazenamento persistente ou bloqueio seguro entre abas indisponível. Os times valem apenas nesta sessão." },
+    en: { importLegacy: "Import old teams", importLegacyConfirm: "These teams were saved in this browser without a trainer identity. Import only if they are yours. Assigning them to this trainer prevents another account from claiming them. Continue?", importLegacySuccess: "Old teams imported.", importLegacyFailed: "Could not import old teams.", ownerChanged: "Trainer changed. Operation canceled.", sessionOnly: "Persistent storage or safe cross-tab locking is unavailable. Teams last only this session." },
+    es: { importLegacy: "Importar equipos antiguos", importLegacyConfirm: "Estos equipos no tienen identidad de entrenador. Impórtalos solo si son tuyos. ¿Continuar?", importLegacySuccess: "Equipos importados.", importLegacyFailed: "No se pudieron importar.", ownerChanged: "El entrenador cambió. Operación cancelada.", sessionOnly: "El almacenamiento persistente o el bloqueo seguro entre pestañas no está disponible. Los equipos duran solo esta sesión." },
+    zh: { importLegacy: "导入旧队伍", importLegacyConfirm: "旧队伍没有训练家身份标识。仅当它们属于当前训练家时才导入。继续吗？", importLegacySuccess: "旧队伍已导入。", importLegacyFailed: "无法导入旧队伍。", ownerChanged: "训练家已切换，操作已取消。", sessionOnly: "持久存储或跨标签页安全锁不可用；队伍只在本次会话中保留。" },
+  };
+  return { ...base, ...migration[language], errors: { ...sharedErrors, ...base.errors } };
 }
 
 export const findTeamHud = (doc = document) => doc.querySelector(config.selectors.hud);

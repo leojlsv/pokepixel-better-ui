@@ -1,4 +1,5 @@
 import { normalizeMovesetSnapshot, movesetSignature } from "./storage.js";
+import { currentStorageOwner } from "../../core/trainer-storage-scope.js";
 
 const cleanId = value => String(value ?? "").trim();
 
@@ -32,23 +33,36 @@ export async function captureTeamMoveset(win, creatureId) {
   }
 }
 
-export async function applyTeamMoveset(win, creatureId, preset) {
+export async function applyTeamMoveset(win, creatureId, preset, { isCurrent = () => true } = {}) {
   const id = cleanId(creatureId), wanted = normalizeMovesetSnapshot(preset);
   const api = win?.PokeIdle?.Api;
+  const initialOwner = currentStorageOwner(win);
+  const stillBound = () => {
+    try {
+      return isCurrent() === true && win?.PokeIdle?.Api === api
+        && Boolean(initialOwner) && currentStorageOwner(win) === initialOwner;
+    } catch { return false; }
+  };
   if (!id || !wanted) return { ok: false, reason: "preset-invalid" };
+  if (!stillBound()) return { ok: false, reason: "owner-changed" };
   if (typeof api?.getMoveset !== "function" || typeof api?.saveMoveset !== "function")
     return { ok: false, reason: "moveset-api-unavailable" };
   try {
     const before = await readNativeMoveset(win, id);
+    if (!stillBound()) return { ok: false, reason: "owner-changed" };
     const available = new Set(before.available.map(move => move.id));
     const required = Math.min(4, before.available.length);
     const moveIds = wanted.moves.map(move => move.id);
     if (!required || moveIds.length !== required || moveIds.some(moveId => !available.has(moveId)))
       return { ok: false, reason: "preset-incompatible" };
+    if (!stillBound()) return { ok: false, reason: "owner-changed" };
     await api.saveMoveset(id, { mode: "manual", move_ids: moveIds, revision: before.revision });
+    if (!stillBound()) return { ok: false, reason: "owner-changed" };
     const verified = await readNativeMoveset(win, id);
+    if (!stillBound()) return { ok: false, reason: "owner-changed" };
     if (verified.mode !== "manual" || movesetSignature(verified) !== movesetSignature(wanted))
       return { ok: false, reason: "final-state-mismatch" };
+    if (!stillBound()) return { ok: false, reason: "owner-changed" };
     win?.PokeIdle?.Bus?.emit?.("moveset.saved", verified.raw);
     return { ok: true, current: verified };
   } catch (error) {

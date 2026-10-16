@@ -53,7 +53,14 @@ from the Product Owner's validated candidate. That release was withdrawn to Draf
 its tag and checksum remain reserved for audit and must not be overwritten. The
 replacement `v0.2.203` is a version-only runtime bump with the same validated
 0.2.202 behavior; the source CSS bytes are now preserved across platforms using
-`-text` Git attributes. Publication of the replacement requires separate approval.
+`-text` Git attributes. The replacement was subsequently published on
+**2026-10-15 at 20:00 UTC** as the non-Draft, non-Prerelease GitHub Release
+[`v0.2.203`](https://github.com/leojlsv/pokepixel-better-ui/releases/tag/v0.2.203).
+Its three stable assets include a **1,698,772-byte** userscript with SHA-256
+`D7E6F662C426E9328E259134EAF12369B1A6145A9C32AB509033CE21131D8C0C`,
+matching `userscript/release-lock.json`. The incorrect `v0.2.202` release remains
+Draft. The earlier in-game approval applies to its recorded `0.2.202` artifact;
+publication of the version-bumped artifact is recorded separately.
 
 ## Bootstrap behavior
 

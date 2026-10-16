@@ -11,8 +11,8 @@ import componentsCss from "./styles/components.css";
 import statesCss from "./styles/states.css";
 import nativeOverridesCss from "./styles/native-overrides.css";
 
-const teamPresetStore = createTeamPresetStorage();
-const teamMovesetStore = createTeamMovesetStorage();
+const teamPresetStore = createTeamPresetStorage({ mutationLocks: () => window.navigator?.locks });
+const teamMovesetStore = createTeamMovesetStorage({ mutationLocks: () => window.navigator?.locks });
 const registry = createAppModuleRegistry({ teamPresetStore, teamMovesetStore });
 const preferences = createModulePreferences({ defaults: registry.defaults });
 const designSystem = createDesignSystemRuntime({

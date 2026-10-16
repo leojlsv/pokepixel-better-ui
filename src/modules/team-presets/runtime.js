@@ -1,40 +1,65 @@
+import { currentStorageOwner } from "../../core/trainer-storage-scope.js";
+
 // Same Api methods and team.updated payloads used by PokemonCardHost.toggleTeam.
-export function createPresetRuntime(doc) {
+export function createPresetRuntime(doc, { isCurrent = () => true } = {}) {
   const pi = doc.defaultView?.PokeIdle, api = pi?.Api;
   if (!api || !["getTeam", "getCreatures", "addTeamMember", "removeTeamMember", "setTeamLeader", "setTeamOrder"].every(key => typeof api[key] === "function") || typeof pi?.Bus?.emit !== "function") return null;
+  const boundOwner = currentStorageOwner(doc.defaultView);
+  const isBound = () => doc.defaultView?.PokeIdle?.Api === api
+    && Boolean(boundOwner) && currentStorageOwner(doc.defaultView) === boundOwner && isCurrent();
+  const requireBound = () => { if (!isBound()) throw new Error("owner-changed"); };
+  if (!isBound()) return null;
   const emit = (response, data) => {
+    requireBound();
+    const currentPi = doc.defaultView?.PokeIdle;
     const share = response?.xp_share;
-    const xpShare = pi.XPSharing ? pi.XPSharing.setProjection(share) : share;
-    pi.Bus.emit("team.updated", { ...data, xp_share: xpShare });
+    const xpShare = currentPi.XPSharing ? currentPi.XPSharing.setProjection(share) : share;
+    requireBound();
+    const bus = doc.defaultView?.PokeIdle?.Bus;
+    if (typeof bus?.emit !== "function") throw new Error("team-event-bus-unavailable");
+    bus.emit("team.updated", { ...data, xp_share: xpShare });
   };
   const state = {
+    isBound,
     async load() {
+      requireBound();
       const response = await api.getTeam();
+      requireBound();
       const [team, inventory] = await Promise.all([api.getCreatures("team"), api.getCreatures("inventory")]);
+      requireBound();
       state._team = response.team || response;
       state._creatures = team.data || team;
       state._available = inventory.data || inventory;
     },
     async setLeader(member) {
+      requireBound();
       const response = await api.setTeamLeader(member.id);
+      requireBound();
       emit(response, { leader_id: member.id, creature: member });
       await state.load();
     },
     async removeMember(member) {
+      requireBound();
       const response = await api.removeTeamMember(member.id);
+      requireBound();
       const creature = { ...member, location: "inventory", equipped: false };
       emit(response, { removed_id: member.id, removed_creature: creature });
       await state.load();
     },
     async equipFromInventory(member) {
+      requireBound();
       const response = await api.addTeamMember(member.id);
+      requireBound();
       const creature = { ...member, location: "team", equipped: true };
       emit(response, { added_id: member.id, added_creature: creature });
       await state.load();
     },
     async persistOrder(ids) {
+      requireBound();
       const response = await api.setTeamOrder(ids);
+      requireBound();
       await state.load();
+      requireBound();
       emit(response, { member_ids: [...state._team.member_ids] });
     },
   };

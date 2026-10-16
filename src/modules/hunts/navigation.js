@@ -14,9 +14,6 @@ function locateContext(root, marker) {
       ![x,y].every(n => Number.isFinite(n) && n >= 0 && n <= 100)) return null;
   return {scene,viewport,stage,state,layout,x,y};
 }
-export function canLocateHunt(root, marker) {
-  return Boolean(locateContext(root,marker));
-}
 export function locateHunt(root, marker) {
   const context=locateContext(root,marker);
   if(!context)return false;

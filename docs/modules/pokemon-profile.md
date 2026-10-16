@@ -369,6 +369,11 @@ modelo de persistência.
 - Participação em Saved Teams e Saved Movesets usa **exatamente `creatureId`**; species nunca
   substitui identidade de instância.
 - Profile reutiliza as instâncias canônicas dos stores de Team Presets e Team Movesets.
+- No candidato de hardening pós-v0.2.203 (ainda não publicado), os dois stores
+  usam chaves separadas por treinador. O Profile descarta o Pokémon/seleção e
+  cancela operações pendentes quando o treinador muda, sem reaproveitar um
+  moveset ou uma equipe da conta anterior. A importação dos Movesets legados é
+  explicitamente confirmada na seção correspondente, sem migração automática.
 
 ## Conteúdo
 

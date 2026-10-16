@@ -361,7 +361,7 @@ export function mountAutoHelper(root, session) {
     refreshing = true; sync();
     try {
       const response = await pi.Api.getInventory();
-      if (!alive) return;
+      if (!alive || session.isCurrentOwner?.() === false) return;
       inventory = response.inventory || response.data || response || []; stockMessage = autoHelperText(doc).refreshed; indexStock(); drawPickers(); drawBallMatrix();
     } catch { stockMessage = autoHelperText(doc).refreshError; }
     finally { refreshing = false; sync(); }
@@ -378,10 +378,28 @@ export function mountAutoHelper(root, session) {
     try {
       const [settingsResponse, inventoryResponse] = await Promise.all([pi.Api.getHuntSettings(), pi.Api.getInventory()]);
       if (!alive) return;
+      if (session.isCurrentOwner?.() === false) throw new Error("Native Auto Helper trainer changed during load");
       const settings = settingsResponse.data || settingsResponse || {}, potion = settings.auto_potion || {}, capture = settings.auto_capture || {};
       inventory = inventoryResponse.inventory || inventoryResponse.data || inventoryResponse || []; indexStock();
       choices = [potion.potion_item_id || ids(items("potion")[0] || {}) || "", potion.revive_item_id || ids(items("revive")[0] || {}) || "", capture.common_capsule_item_id || capture.capsule_item_id || "", capture.shiny_capsule_item_id || capture.capsule_item_id || ""];
       rarityAssignments = parts.rarityGrid ? {...(capture.capsule_by_quality && typeof capture.capsule_by_quality === "object" ? capture.capsule_by_quality : {})} : null;
+      if (session.resetNativeOnLoad) {
+        // A persistent native panel may still contain the previous trainer's
+        // unsaved input values; take the new trainer's server settings as truth.
+        const sell = settings.auto_sell || {}, extract = settings.auto_extract || {};
+        applyDraft([
+          { common_enabled:Boolean(capture.common_enabled), shiny_enabled:Boolean(capture.shiny_enabled),
+            species_filter:Array.isArray(capture.species_filter) ? capture.species_filter : [],
+            common_capsule_item_id:choices[2], shiny_capsule_item_id:choices[3], capsule_by_quality:rarityAssignments },
+          { enabled:Boolean(potion.enabled), auto_revive:Boolean(potion.auto_revive),
+            hp_threshold:potion.hp_threshold ?? parts.hp.options?.[0]?.value ?? 40,
+            potion_item_id:choices[0], revive_item_id:choices[1] },
+          null,
+          { enabled:Boolean(sell.enabled), qualities:Array.isArray(sell.qualities) ? sell.qualities : [] },
+          { enabled:Boolean(extract.enabled), qualities:Array.isArray(extract.qualities) ? extract.qualities : [] },
+        ]);
+        rarityDirty = false;
+      }
       const latest = session.saver.state();
       if (latest.draft && (latest.pending || beforeLoad.pending || latest.revision !== beforeLoad.revision)) applyDraft(latest.draft);
       pickers = parts.pickers.map(original => { const grid = node("div", "ppbui-auto-picker"); replace(original, grid); return {grid}; });
@@ -424,7 +442,7 @@ export function mountAutoHelper(root, session) {
         event.stopImmediatePropagation();
         if (event.target === parts.names ? type === "input" : type === "change") queue(event.target !== parts.names);
       }, true);
-      parts.body.inert = wasInert; ready = true; drawPickers(); sync();
+      parts.body.inert = wasInert; ready = true; session.resetNativeOnLoad = false; drawPickers(); sync();
       parts.body.scrollTop = session.scroll || 0;
       const target = session.focus?.kind === "input" ? nativeInputs[session.focus.index]
         : session.focus?.kind === "picker" ? pickers[session.focus.index]?.select

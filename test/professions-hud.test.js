@@ -56,6 +56,7 @@ function setup(t, { kind = "miner", workforce, confirm = true, locale = "pt" } =
   const calls = [];
   const toasts = [];
   const bus = [];
+  let trainerId = "trainer-A";
   const state = workforce || {
     max_slots: 3,
     workers: [{
@@ -88,6 +89,8 @@ function setup(t, { kind = "miner", workforce, confirm = true, locale = "pt" } =
   window.PokeIdle = {
     Localization: { get: () => locale },
     Api: api,
+    Auth: { isAuthenticated: () => Boolean(trainerId), getTrainerSummary: () => trainerId ? { id: trainerId } : null },
+    WorldPresence: { getSelfTrainerId: () => trainerId },
     Dialog: { async confirm(...args) { calls.push(["confirm", ...args]); return confirm; } },
     Toast: {
       success(message) { toasts.push(["success", message]); },
@@ -102,6 +105,7 @@ function setup(t, { kind = "miner", workforce, confirm = true, locale = "pt" } =
     dom, window, doc, root, controller, calls, toasts, bus, api, scene,
     state: () => currentState,
     setState(next) { currentState = structuredClone(next); },
+    setTrainerId(value) { trainerId = value; },
   };
 }
 
@@ -372,4 +376,169 @@ test("cleanup while confirmation is pending fences every later workforce write",
   await tick();
   assert.deepEqual(s.calls.map(([name]) => name), ["get", "confirm"]);
   assert.equal(s.bus.length, 0);
+});
+
+test("observed A→B→A during Swap confirmation cancels the old A intent permanently", async t => {
+  const s = setup(t);
+  let resolveConfirm;
+  s.window.PokeIdle.Dialog.confirm = (...args) => {
+    s.calls.push(["confirm", ...args]);
+    return new Promise(resolve => { resolveConfirm = resolve; });
+  };
+  s.root.querySelector("[data-ppbui-professions-swap]").click();
+  await waitFor(() => s.root.querySelector("[data-ppbui-professions-swap-panel]"), "initial A swap panel");
+  s.root.querySelector("[data-ppbui-professions-swap-panel] .ppbui-button--primary").click();
+  await waitFor(() => typeof resolveConfirm === "function", "A swap confirmation");
+  s.setTrainerId("trainer-B");
+  s.controller.sync();
+  s.setTrainerId("trainer-A");
+  s.controller.sync();
+  resolveConfirm(true);
+  await tick(); await tick();
+  assert.deepEqual(s.calls.map(([name]) => name), ["get", "confirm"],
+    "the previous A confirmation cannot collect/remove/assign in the new A session");
+  assert.equal(s.root.querySelector("[data-ppbui-professions-swap-panel]"), null);
+  assert.equal(s.bus.length, 0);
+});
+
+test("observed A→B→A while Collect All reads workforce stops its stale collection", async t => {
+  const s = setup(t);
+  let resolveWorkforce;
+  s.api.getMiningWorkforce = () => {
+    s.calls.push(["get"]);
+    return new Promise(resolve => { resolveWorkforce = resolve; });
+  };
+  s.root.querySelector(".ppbui-professions-collect-all").click();
+  assert.equal(typeof resolveWorkforce, "function");
+  s.setTrainerId("trainer-B"); s.controller.sync();
+  s.setTrainerId("trainer-A"); s.controller.sync();
+  resolveWorkforce({ data: structuredClone(s.state()) });
+  await tick(); await tick();
+  assert.deepEqual(s.calls.map(([name]) => name), ["get"]);
+  assert.equal(s.bus.length, 0);
+});
+
+test("a stale A Collect All button cannot collect B's rewards before owner reconciliation", async t => {
+  const s = setup(t);
+  const staleButton = s.root.querySelector(".ppbui-professions-collect-all");
+  assert.ok(staleButton);
+  s.setTrainerId("trainer-B");
+  staleButton.click();
+  await tick(); await tick();
+  assert.deepEqual(s.calls, [], "no B workforce API may be read or collected by an A-owned control");
+  assert.equal(s.bus.length, 0);
+  const nextButton = s.root.querySelector(".ppbui-professions-collect-all");
+  assert.ok(nextButton && nextButton !== staleButton,
+    "the new owner gets a new Collect All action rather than reusing the stale listener");
+});
+
+test("detached A Collect All callbacks remain inert after an observed B→A return", async t => {
+  const s = setup(t), original = s.root.querySelector(".ppbui-professions-collect-all");
+  s.setTrainerId("trainer-B"); s.controller.sync();
+  s.setTrainerId("trainer-A"); s.controller.sync();
+  original.click();
+  await tick(); await tick();
+  assert.deepEqual(s.calls, [], "a stale A callback cannot regain authority when the owner string returns to A");
+  assert.equal(s.bus.length, 0);
+});
+
+test("Collect All abandons pending workforce data when the same API switches trainer", async t => {
+  const s = setup(t), pending = { resolve:null };
+  s.api.getMiningWorkforce = () => {
+    s.calls.push(["get"]);
+    return new Promise(resolve => { pending.resolve = resolve; });
+  };
+  s.root.querySelector(".ppbui-professions-collect-all").click();
+  assert.equal(typeof pending.resolve, "function");
+  s.setTrainerId("trainer-B");
+  pending.resolve({data:structuredClone(s.state())});
+  await tick();await tick();
+  assert.deepEqual(s.calls.map(([name])=>name),["get"],"A's rewards may never be collected on B's session");
+  assert.equal(s.bus.length,0);
+});
+
+test("Collect All stops after cleanup while the initial native read is pending", async t => {
+  const s=setup(t), pending={resolve:null};
+  s.api.getMiningWorkforce=()=>{
+    s.calls.push(["get"]);
+    return new Promise(resolve=>{pending.resolve=resolve;});
+  };
+  s.root.querySelector(".ppbui-professions-collect-all").click();
+  assert.equal(typeof pending.resolve,"function");
+  s.controller.cleanup();s.setTrainerId("trainer-B");
+  pending.resolve({data:structuredClone(s.state())});
+  await tick();await tick();
+  assert.deepEqual(s.calls.map(([name])=>name),["get"]);
+  assert.equal(s.bus.length,0);
+});
+
+test("Collect All rechecks ownership after an awaited slot before collecting the next", async t => {
+  const workers=[
+    {creature_id:"worker-1",slot_index:1,rewards:{stone:2}},
+    {creature_id:"worker-2",slot_index:2,rewards:{stone:3}},
+  ];
+  const s=setup(t,{workforce:{max_slots:3,workers,candidates:[]}}), pending={resolve:null};
+  s.api.collectMiningRewards=slot=>{
+    s.calls.push(["collect",slot]);
+    if(slot===1)return new Promise(resolve=>{pending.resolve=resolve;});
+    return Promise.resolve();
+  };
+  s.root.querySelector(".ppbui-professions-collect-all").click();
+  await waitFor(()=>typeof pending.resolve==="function","first pending collection");
+  s.setTrainerId("trainer-B");pending.resolve();
+  await tick();await tick();
+  assert.deepEqual(s.calls.map(([name])=>name),["get","collect"]);
+  assert.equal(s.bus.length,0);
+});
+
+test("confirmed swap stops after an awaited collect if the trainer changes on the same API", async t => {
+  const s=setup(t),pending={resolve:null};
+  s.root.querySelector("[data-ppbui-professions-swap]").click();
+  await waitFor(()=>s.root.querySelector("[data-ppbui-professions-swap-panel]"),"swap panel");
+  s.api.collectMiningRewards=slot=>{
+    s.calls.push(["collect",slot]);
+    return new Promise(resolve=>{pending.resolve=resolve;});
+  };
+  s.root.querySelector("[data-ppbui-professions-swap-panel] .ppbui-button--primary").click();
+  await waitFor(()=>typeof pending.resolve==="function","pending collect before remove");
+  s.setTrainerId("trainer-B");pending.resolve();
+  await tick();await tick();
+  assert.deepEqual(s.calls.map(([name])=>name),["get","confirm","get","collect"]);
+  assert.equal(s.bus.length,0);
+});
+
+test("confirmed swap abandons a stale workforce read before its first write", async t => {
+  const s=setup(t),pending={resolve:null};
+  s.root.querySelector("[data-ppbui-professions-swap]").click();
+  await waitFor(()=>s.root.querySelector("[data-ppbui-professions-swap-panel]"),"swap panel");
+  s.api.getMiningWorkforce=()=>{
+    s.calls.push(["get"]);
+    return new Promise(resolve=>{pending.resolve=resolve;});
+  };
+  s.root.querySelector("[data-ppbui-professions-swap-panel] .ppbui-button--primary").click();
+  await waitFor(()=>typeof pending.resolve==="function","post-confirm read");
+  s.setTrainerId("trainer-B");pending.resolve({data:structuredClone(s.state())});
+  await tick();await tick();
+  assert.deepEqual(s.calls.map(([name])=>name),["get","confirm","get"]);
+  assert.equal(s.root.hasAttribute("inert"),false);
+  assert.equal(s.bus.length,0);
+});
+
+test("cleanup during a pending swap collect restores inert and prevents remove or assign", async t => {
+  const s=setup(t),pending={resolve:null};
+  s.root.querySelector("[data-ppbui-professions-swap]").click();
+  await waitFor(()=>s.root.querySelector("[data-ppbui-professions-swap-panel]"),"swap panel");
+  s.api.collectMiningRewards=slot=>{
+    s.calls.push(["collect",slot]);
+    return new Promise(resolve=>{pending.resolve=resolve;});
+  };
+  s.root.querySelector("[data-ppbui-professions-swap-panel] .ppbui-button--primary").click();
+  await waitFor(()=>typeof pending.resolve==="function","pending swap collect");
+  assert.equal(s.root.hasAttribute("inert"),true);
+  s.controller.cleanup();s.setTrainerId("trainer-B");
+  assert.equal(s.root.hasAttribute("inert"),false,"the disposed mount must release its native inert claim");
+  pending.resolve();await tick();await tick();
+  assert.deepEqual(s.calls.map(([name])=>name),["get","confirm","get","collect"]);
+  assert.equal(s.bus.length,0);
+  assert.equal(s.root.hasAttribute("aria-busy"),false);
 });

@@ -40,7 +40,10 @@
   a wrong version/hash and runs on both PR/`main` CI and the tag release workflow.
   No tag may publish an artifact that differs from the locked candidate.
 
-## Acceptance and gates
+## Acceptance and gates (historical pre-publication snapshot)
+
+The states below were recorded during local recovery, before the later public
+release. They are preserved as a checkpoint and are not current release status.
 
 | Criterion | Evidence / owner | State |
 | --- | --- | --- |
@@ -51,10 +54,10 @@
 | Replacement v0.2.203 exact artifact accepted by PO | New version-only candidate hash + explicit Human Owner approval | `PENDING PO` |
 | Public release, correct three assets and checksum | Tag on main after approval; inspect downloaded GitHub Release assets | `NOT AUTHORIZED YET` |
 
-## Final local verification (no publication)
+## Local verification (before publication)
 
 - Local recovery commit: `c5d71367cec36506824e4d3e8e5c7fe8d330732d`;
-  the worktree remains unpublished and contains no `v0.2.203` tag.
+  at this checkpoint the worktree was unpublished and no `v0.2.203` tag existed.
 - New, clean checkout of that exact commit preserved raw Git blobs for
   `base.css`, `tokens.css`, `components.css`, `states.css`,
   `native-overrides.css` and `userscript/metadata.txt`. The 0.2.203 clean build
@@ -70,14 +73,35 @@
 - The replacement was compared with the PO-approved 0.2.202 artifact. The **only
   two changes** in its executable userscript are version literals, `@version`
   and `buildVersion`; code, styles and metadata URLs remain unchanged.
-- Remote inventory reconfirmed `v0.2.202` is **Draft** (not visible as latest),
-  `v0.2.199` remains the latest published release, and the `v0.2.203` tag does
-  not exist. This local recovery is not a release publication.
+- At this pre-publication checkpoint, remote inventory showed `v0.2.202` as
+  **Draft** (not visible as latest), `v0.2.199` as the latest published release,
+  and no `v0.2.203` tag. The local recovery was not itself a publication.
 
-## Governance
+## Governance at the pre-publication checkpoint
 
-The prior PO approval remains valid for the exact `0.2.202` script content.
+The prior PO approval remained valid for the exact `0.2.202` script content.
 Changing the release version changes two bytes of the new candidate and creates
-a **different exact artifact**; the PO must explicitly authorize publishing
-`0.2.203` instead of the originally requested `0.2.202`. Until then, keep the
-public `v0.2.202` release Draft and do not create/push any `v0.2.203` tag.
+a **different exact artifact**. At this checkpoint, explicit PO authorization
+to publish `0.2.203` instead of the originally requested `0.2.202` was still
+required, and the instruction was to leave `v0.2.202` Draft without creating
+or pushing `v0.2.203` yet. That checkpoint was superseded by the subsequent
+public release recorded below; it does not by itself document a later PO response.
+
+## Subsequent public release — 2026-10-15
+
+- The public [`v0.2.203` GitHub Release](https://github.com/leojlsv/pokepixel-better-ui/releases/tag/v0.2.203)
+  was published at **20:00 UTC** as a non-Draft, non-Prerelease release.
+  GitHub's latest-release endpoint now identifies `v0.2.203`, replacing the
+  historical `v0.2.199` latest-release claim above.
+- Public tag `v0.2.203` resolves to commit
+  `374d3f30200eb117cd5996d55bc6730868241f80` on `public/main`.
+  The [release workflow run](https://github.com/leojlsv/pokepixel-better-ui/actions/runs/38798251413)
+  completed successfully for that commit.
+- GitHub lists all three required assets: `pokepixel-better-ui.meta.js`,
+  `pokepixel-better-ui.user.js` and `pokepixel-better-ui.user.js.sha256`.
+  The published userscript is **1,698,772 bytes**, SHA-256
+  `D7E6F662C426E9328E259134EAF12369B1A6145A9C32AB509033CE21131D8C0C`,
+  exactly matching the locally locked recovery artifact.
+- The prior `v0.2.202` release remains **Draft**. Its incorrect published bytes
+  and historical audit record were not replaced. These publication facts do not
+  assert a second in-game validation of the newly versioned `v0.2.203` artifact.

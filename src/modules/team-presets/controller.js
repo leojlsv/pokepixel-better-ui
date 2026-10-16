@@ -3,8 +3,14 @@ import { applyTeamPreset, captureTeamPresetSnapshot, openTeamPresetManagement } 
 import { canCaptureTeamPreset, teamPresetVisualReader, teamPresetsText } from "./dom.js";
 import { mountTeamPresetManager } from "./manager.js";
 import { createTeamPresetStorage } from "./storage.js";
+import { currentStorageOwner } from "../../core/trainer-storage-scope.js";
 
-export function mountTeamPresets(root, { store = createTeamPresetStorage(), apply = applyTeamPreset, capture = captureTeamPresetSnapshot } = {}) {
+export function mountTeamPresets(root, { store = createTeamPresetStorage({
+  storage: () => root.ownerDocument.defaultView.localStorage,
+  owner: () => currentStorageOwner(root.ownerDocument.defaultView),
+  locks: () => root.ownerDocument.defaultView.navigator?.locks,
+  mutationLocks: () => root.ownerDocument.defaultView.navigator?.locks,
+}), apply = applyTeamPreset, capture = captureTeamPresetSnapshot } = {}) {
   const doc = root.ownerDocument, win = doc.defaultView;
   let busy = false, disposed = false, manager = null, managerRoot = null, readVisual;
 
@@ -82,10 +88,29 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   const save = doc.createElement("button"); save.type = "button"; save.className = "pokeidle-btn ppbui-button";
   const list = doc.createElement("div"); list.dataset.ppbuiTeamPresetsList = ""; list.className = "ppbui-scroll";
   const status = doc.createElement("p"); status.dataset.ppbuiTeamPresetsStatus = ""; status.setAttribute("aria-live", "polite");
-  saveRow.append(name, save); panel.append(list, saveRow, status); toolbar.append(toggle, manage); host.append(toolbar, panel); root.append(style, host);
+  const importLegacy = doc.createElement("button"); importLegacy.type = "button"; importLegacy.className = "pokeidle-btn ppbui-button ppbui-button--secondary"; importLegacy.dataset.ppbuiTeamPresetsImportLegacy = ""; importLegacy.hidden = true;
+  saveRow.append(name, save); panel.append(list, importLegacy, saveRow, status); toolbar.append(toggle, manage); host.append(toolbar, panel); root.append(style, host);
 
   const text = () => teamPresetsText(doc);
   const setDisabled = (node, value) => { if (node && node.disabled !== value) node.disabled = value; };
+  let renderedOwner = store.owner?.() ?? null, ownerGeneration = 0, importBusy = false, savingToStorage = false;
+  const ownerUnchanged = captured => typeof store.owner !== "function" || Boolean(captured && store.owner() === captured);
+  function reconcileOwner() {
+    const currentOwner = store.owner?.() ?? null;
+    if (currentOwner === renderedOwner) return false;
+    renderedOwner = currentOwner;
+    ownerGeneration++;
+    name.value = "";
+    return true;
+  }
+  function currentUiOwner() {
+    const current = store.owner?.() ?? null;
+    if (current === renderedOwner) return true;
+    // The auth owner can change before any mutation observer/reconcile event.
+    // Never let a stale A button trigger a B native Team operation.
+    sync();
+    return false;
+  }
 
   function setStatus(message = "", error = false) {
     if (status.textContent !== message) status.textContent = message;
@@ -101,7 +126,12 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     return copy.errors[result?.reason] || result?.reason || copy.errors["final-state-mismatch"];
   }
 
-  function notifyChanged() { if (disposed) return; renderList(); manager?.sync(); syncLabels(); }
+  function notifyChanged() {
+    if (disposed) return;
+    reconcileOwner();
+    renderList(); manager?.sync(); syncLabels();
+    if (!store.isPersistent()) setStatus(text().sessionOnly, true);
+  }
 
   async function runExclusive(task) {
     if (busy || disposed) return { ok: false, reason: busy ? "busy" : "disposed" };
@@ -163,7 +193,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   function renderList() {
     readVisual = teamPresetVisualReader(root, { resolveSprites: true });
-    const copy = text(), presets = store.list(); list.replaceChildren();
+    const copy = text(), presets = store.list(), listOwner = store.owner?.() ?? null, listGeneration = ownerGeneration; list.replaceChildren();
     if (!presets.length) { const empty = doc.createElement("p"); empty.dataset.ppbuiTeamPresetsStatus = ""; empty.textContent = copy.empty; list.append(empty); return; }
     for (const preset of presets) {
       const row = doc.createElement("div"); row.dataset.ppbuiTeamPresetsRow = "";
@@ -177,9 +207,11 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
       const applyButton = doc.createElement("button"); applyButton.type = "button"; applyButton.className = "pokeidle-btn ppbui-button ppbui-button--primary"; applyButton.dataset.ppbuiTeamPresetAction = "apply"; applyButton.textContent = copy.apply; applyButton.dataset.primary = "true"; applyButton.disabled = preset.orderVerified === false;
       applyButton.title = `${copy.apply}: ${preset.name}`; applyButton.setAttribute("aria-label", applyButton.title);
       applyButton.addEventListener("click", async () => {
-        if (disposed) return;
-        setStatus(copy.applying); const result = await runExclusive(() => apply(doc, preset));
-        if (disposed) return;
+        if (disposed || !currentUiOwner() || !ownerUnchanged(listOwner)) return;
+        const isCurrent = () => !disposed && ownerUnchanged(listOwner)
+          && renderedOwner === listOwner && ownerGeneration === listGeneration;
+        setStatus(copy.applying); const result = await runExclusive(() => apply(doc, preset, { isCurrent }));
+        if (!isCurrent()) return;
         setStatus(result?.ok ? copy.applied : errorMessage(result, preset), !result?.ok);
       });
       actions.append(applyButton); head.append(title, actions);
@@ -227,6 +259,9 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   function syncLabels() {
     const copy = text(), expanded = !panel.hidden, count = store.list().length;
+    const canImport = Boolean(store.legacyCount?.());
+    if (importLegacy.hidden !== !canImport) importLegacy.hidden = !canImport;
+    if (importLegacy.textContent !== copy.importLegacy) importLegacy.textContent = copy.importLegacy;
     const toggleLabel = copy.toggle;
     if (toggleLabelNode.textContent !== toggleLabel) toggleLabelNode.textContent = toggleLabel;
     const countLabel = copy.savedCount(count);
@@ -245,9 +280,15 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
 
   function sync({ hudScoped = false } = {}) {
     if (disposed) return;
+    if (reconcileOwner()) {
+      renderList();
+      manager?.sync();
+      setStatus("");
+    }
+    const currentOwner = renderedOwner;
     syncLabels(); syncManager({ hudScoped }); syncPreviewVisuals();
     if (busy) return;
-    setDisabled(toggle, false); setDisabled(manage, false); setDisabled(name, false); setDisabled(save, !canCaptureTeamPreset(root));
+    setDisabled(toggle, false); setDisabled(manage, false); setDisabled(name, false); setDisabled(save, !canCaptureTeamPreset(root) || (typeof store.owner === "function" && !currentOwner));
     const presets = store.list(), rows = [...list.querySelectorAll("[data-ppbui-team-presets-row]")];
     rows.forEach((row, index) => {
       const applyButton = row.querySelector('[data-ppbui-team-preset-action="apply"]');
@@ -256,6 +297,7 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
   }
 
   function onToggle() {
+    if (!currentUiOwner()) return;
     setExpanded(panel.hidden); syncLabels();
     if (!panel.hidden) {
       syncPreviewVisuals({ resolveSprites: true, retryMissing: true });
@@ -263,32 +305,74 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage(), appl
     }
   }
   async function onManage() {
+    if (!currentUiOwner()) return;
+    const currentOwner = store.owner?.() ?? null, capturedGeneration = ownerGeneration;
     const teamRoot = await openTeamPresetManagement(doc);
-    if (disposed) return;
+    if (disposed || !ownerUnchanged(currentOwner) || ownerGeneration !== capturedGeneration) return;
     if (!teamRoot) return setStatus(text().errors["team-panel-unavailable"], true);
     mountManager(teamRoot); manager?.open();
   }
   async function onSave() {
+    if (savingToStorage || !currentUiOwner()) return;
     const copy = text(), presetName = name.value.trim();
     if (!presetName) return setStatus(copy.nameRequired, true);
+    const capturedOwner = store.owner?.() ?? null, capturedGeneration = ownerGeneration;
+    if (typeof store.owner === "function" && !capturedOwner) return setStatus(copy.ownerChanged, true);
+    // A pending native capture must not silently overwrite a same-named preset
+    // another tab created/edited while the read was in flight.
+    const expectedNamedPreset = store.list().find(preset => preset.name.toLocaleLowerCase() === presetName.toLocaleLowerCase()) || null;
     const captured = await runExclusive(() => capture(doc, root));
     if (disposed) return;
+    if (!ownerUnchanged(capturedOwner) || ownerGeneration !== capturedGeneration) return setStatus(copy.ownerChanged, true);
     if (!captured?.ok) return setStatus(errorMessage(captured, { members: [] }), true);
-    const result = store.upsert(presetName, captured.snapshot);
+    savingToStorage = true;
+    save.disabled = true;
+    let result = null;
+    try {
+      result = await Promise.resolve(store.upsert(
+        presetName, captured.snapshot, expectedNamedPreset,
+        () => !disposed && ownerUnchanged(capturedOwner) && renderedOwner === capturedOwner
+          && ownerGeneration === capturedGeneration,
+      ));
+    }
+    catch { /* reported as unsuccessful save below */ }
+    finally {
+      savingToStorage = false;
+      if (!disposed) sync();
+    }
+    if (disposed || !ownerUnchanged(capturedOwner) || ownerGeneration !== capturedGeneration) return;
     if (!result) return setStatus(copy.teamUnavailable, true);
     name.value = ""; setStatus(result.created ? copy.saved : copy.updated); notifyChanged();
   }
   function onStorage(event) {
-    if (![config.storageKey, config.legacyStorageKey, null].includes(event.key)) return;
+    const scoped = store.storageKey?.() || "";
+    if (![config.storageKey, config.legacyStorageKey, config.legacyClaimKey, scoped, null].includes(event.key)
+      && !(scoped && event.key?.startsWith(`${scoped}:`))) return;
     store.reload(); notifyChanged(); if (!store.isPersistent()) setStatus(text().sessionOnly, true);
   }
+  async function onImportLegacy() {
+    if (disposed || busy || importBusy || !currentUiOwner() || !store.legacyCount?.()) return;
+    const originalOwner = store.owner?.(), capturedGeneration = ownerGeneration;
+    if (!originalOwner || typeof win?.confirm !== "function" || !win.confirm(text().importLegacyConfirm)) return;
+    if (store.owner?.() !== originalOwner) return setStatus(text().ownerChanged, true);
+    importBusy = true; importLegacy.disabled = true;
+    try {
+      const imported = await store.claimLegacy?.(() => !disposed && ownerUnchanged(originalOwner)
+        && ownerGeneration === capturedGeneration);
+      if (disposed) return;
+      if (store.owner?.() !== originalOwner || ownerGeneration !== capturedGeneration)
+        return setStatus(text().ownerChanged, true);
+      setStatus(imported ? text().importLegacySuccess : text().importLegacyFailed, !imported);
+      if (imported) notifyChanged();
+    } finally { importBusy = false; importLegacy.disabled = false; }
+  }
 
-  toggle.addEventListener("click", onToggle); manage.addEventListener("click", onManage); save.addEventListener("click", onSave); win?.addEventListener("storage", onStorage);
+  toggle.addEventListener("click", onToggle); manage.addEventListener("click", onManage); save.addEventListener("click", onSave); importLegacy.addEventListener("click", onImportLegacy); win?.addEventListener("storage", onStorage);
   syncLabels(); renderList(); setExpanded(false); sync(); if (!store.isPersistent()) setStatus(text().sessionOnly, true);
 
   return { sync, cleanup() {
     disposed = true;
-    toggle.removeEventListener("click", onToggle); manage.removeEventListener("click", onManage); save.removeEventListener("click", onSave); win?.removeEventListener("storage", onStorage);
+    toggle.removeEventListener("click", onToggle); manage.removeEventListener("click", onManage); save.removeEventListener("click", onSave); importLegacy.removeEventListener("click", onImportLegacy); win?.removeEventListener("storage", onStorage);
     manager?.cleanup(); manager = null; managerRoot = null; host.remove(); style.remove();
   } };
 }

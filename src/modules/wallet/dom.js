@@ -18,13 +18,3 @@ export function readWalletAuthority(doc, owner) {
     info:team.querySelector(config.selectors.trainerInfo),
     diamondIcon:hud._walletDiamondItem?.querySelector(config.selectors.currencyIcon) || null };
 }
-
-export function walletIcon(doc) {
-  const svg = doc.createElementNS("http://www.w3.org/2000/svg", "svg");
-  for (const [key,value] of Object.entries({viewBox:"0 0 24 24",fill:"none",stroke:"currentColor","stroke-width":"1.7","stroke-linecap":"round","stroke-linejoin":"round","aria-hidden":"true"})) svg.setAttribute(key,value);
-  svg.setAttribute("class","pokeidle-top-toolbar__icon ppbui-wallet-icon");
-  const path = doc.createElementNS(svg.namespaceURI,"path");
-  path.setAttribute("d","M4 6V4h14v3M4 6h16v15H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Zm16 6h-6v5h6M16 14.5h.1");
-  svg.append(path);
-  return svg;
-}

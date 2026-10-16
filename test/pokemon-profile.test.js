@@ -49,12 +49,12 @@ function setup(t, { movesDelay, movesFailOnce = false } = {}) {
     },
   };
   dom.window.confirm = () => true;
-  dom.window.localStorage.setItem("ppbui:team-movesets:v1", JSON.stringify([
+  dom.window.localStorage.setItem("ppbui:team-movesets:v2:trainer-1", JSON.stringify([
     { id:"m1", creatureId:"bag-1", name:"Hunt", marker:1, moves:currentMoves, createdAt:1, updatedAt:1 },
     { id:"m3", creatureId:"bag-1", name:"Boss", marker:2, moves:[move("rock-slide","Rock Slide","rock"),move("drill-run","Drill Run","ground"),move("ice-fang","Ice Fang","ice"),move("protect","Protect","normal")], createdAt:2, updatedAt:2 },
     { id:"m2", creatureId:"dup", name:"Other Pikachu", marker:1, moves:[move("thunderbolt","Thunderbolt","electric")], createdAt:1, updatedAt:1 },
   ]));
-  dom.window.localStorage.setItem("ppbui:team-presets:v2", JSON.stringify([
+  dom.window.localStorage.setItem("ppbui:team-presets:v3:trainer-1", JSON.stringify([
     { id:"t1", name:"Ground Crew", activeId:"bag-1", orderVerified:true, members:[{id:"bag-1",name:"Rhydon",sprite:"/img/rhydon.png"},{id:"team-1",name:"Gengar"}], createdAt:1, updatedAt:1 },
     { id:"t2", name:"Other Pikachu", activeId:"dup", orderVerified:true, members:[{id:"dup",name:"Pikachu"}], createdAt:1, updatedAt:1 },
   ]));

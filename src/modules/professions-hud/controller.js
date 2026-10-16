@@ -1,6 +1,7 @@
 import { professionsHudConfig as config, professionsCopy } from "./config.js";
 import { findProfessionsScene, professionKind } from "./dom.js";
 import css from "./styles.js";
+import { readMenuLayoutOwner } from "../menu-bar/layout-owner.js";
 
 const RANK_PREFIX = /^#\s*[123]\s*·\s*/i;
 const EFFICIENCY = /(?:Efici[êe]ncia|Efficiency|Eficiencia)\s+([\d.,]+)%/i;
@@ -193,6 +194,32 @@ export function mountProfessionsHud(root) {
   let swapTrigger = null;
   let animationToggle = null;
   let collectAllButton = null;
+  let collectAllOwner = "", collectAllEpoch = -1;
+  let lifecycleEpoch = 0, restoreSwapState = null;
+  const currentOwner = () => readMenuLayoutOwner(win).owner;
+  let observedOwner = currentOwner();
+  const observeOwner = () => {
+    const nextOwner = currentOwner();
+    if (nextOwner !== observedOwner) {
+      observedOwner = nextOwner;
+      // A→B→A is not the same session as the first A. Revoke every prior
+      // swap/Collect All intent even if Api retains its object identity.
+      lifecycleEpoch += 1;
+      openGeneration += 1;
+      confirmationPending = false;
+      restoreSwapState?.();
+      restoreSwapState = null;
+      closeSwap(false);
+      if (active) setBusy(false);
+    }
+    return nextOwner;
+  };
+  const intentFor = (api, kind) => ({ owner: observeOwner(), api: api?.owner, kind, epoch: lifecycleEpoch });
+  const stillCurrent = intent => {
+    const nowOwner = observeOwner();
+    return Boolean(active && root.isConnected && intent?.owner && intent.epoch === lifecycleEpoch
+      && nowOwner === intent.owner && win.PokeIdle?.Api === intent.api && professionKind(root) === intent.kind);
+  };
 
   const syncStageAnimation = () => {
     const stage = root.closest(".prof-workforce")?.querySelector(".prof-work-stage.miner, .prof-work-stage.farmer");
@@ -227,37 +254,58 @@ export function mountProfessionsHud(root) {
   const syncCollectAll = () => {
     const actions = root.closest(".prof-workforce")?.querySelector(".profession-workforce");
     if (!actions) return;
+    if (collectAllButton && (collectAllOwner !== observedOwner || collectAllEpoch !== lifecycleEpoch)) {
+      collectAllButton.remove();
+      collectAllButton = null;
+    }
     if (!collectAllButton) {
+      collectAllOwner = observedOwner;
+      collectAllEpoch = lifecycleEpoch;
+      const boundOwner = collectAllOwner, boundEpoch = collectAllEpoch;
       collectAllButton = doc.createElement("button");
       collectAllButton.type = "button";
       collectAllButton.className = "pokeidle-btn ppbui-button ppbui-professions-collect-all";
       collectAllButton.textContent = "COLETAR TUDO";
-      collectAllButton.addEventListener("click", collectAll);
+      collectAllButton.addEventListener("click", () => {
+        if (currentOwner() !== boundOwner || lifecycleEpoch !== boundEpoch) {
+          // A displayed A control must not become B's collection trigger just
+          // because the host reused the same DOM and native API before sync.
+          observeOwner();
+          sync();
+          return;
+        }
+        void collectAll(boundOwner, boundEpoch);
+      });
       actions.querySelector(".profession-workforce__slots")?.before(collectAllButton);
     }
   };
 
-  const collectAll = async () => {
-    if (busy) return;
+  const collectAll = async (boundOwner, boundEpoch) => {
+    if (busy || confirmationPending || !active
+      || currentOwner() !== boundOwner || lifecycleEpoch !== boundEpoch) return;
     const kind = professionKind(root);
     const api = professionApi(win, kind);
-    if (!api) return;
+    const intent = intentFor(api, kind);
+    if (!api || intent.owner !== boundOwner || intent.epoch !== boundEpoch || !stillCurrent(intent)) return;
     setBusy(true);
     try {
       const state = unwrap(await api.get());
+      if (!stillCurrent(intent)) return;
       const workers = Array.isArray(state.workers) ? state.workers : [];
       for (const worker of workers) {
+        if (!stillCurrent(intent)) return;
         const slot = Number(worker.slot_index);
         if (!slot || productionTotal(worker.rewards) <= 0) continue;
         await api.collect(slot);
+        if (!stillCurrent(intent)) return;
       }
+      if (!stillCurrent(intent)) return;
       emitNativeInvalidation(win);
       await refreshNative(root, kind);
     } catch (error) {
-      notify(win, "error", error?.message || "Não foi possível coletar a produção.");
+      if (stillCurrent(intent)) notify(win, "error", error?.message || "Não foi possível coletar a produção.");
     } finally {
-      setBusy(false);
-      sync();
+      if (active) { setBusy(false); sync(); }
     }
   };
 
@@ -303,7 +351,7 @@ export function mountProfessionsHud(root) {
     target?.focus?.();
   };
 
-  const buildSwapPanel = (button, state, current, slot) => {
+  const buildSwapPanel = (button, state, current, slot, intent) => {
     const copy = currentCopy();
     const candidates = rankedCandidates(state);
     if (!candidates.length) {
@@ -391,6 +439,7 @@ export function mountProfessionsHud(root) {
     confirm.textContent = copy.applySwap;
     confirm.addEventListener("click", async () => {
       if (busy || confirmationPending || !active || !select.value) return;
+      if (!stillCurrent(intent)) { closeSwap(false); return; }
       const selectedId = select.value;
       const preview = candidates.find(candidate => identity(candidate) === selectedId);
       if (!preview) return;
@@ -402,18 +451,24 @@ export function mountProfessionsHud(root) {
       try {
         accepted = await confirmSwap(win, copy, current, preview, slot, previewStored);
       } catch (error) {
-        notify(win, "error", error?.message || copy.unavailable);
+        if (stillCurrent(intent)) notify(win, "error", error?.message || copy.unavailable);
         return;
       } finally {
         confirmationPending = false;
         if (confirm.isConnected && !busy) confirm.disabled = false;
       }
-      if (!accepted) return;
-      if (!active || swapPanel !== panel || !panel.isConnected || !button.isConnected || !root.isConnected) return;
+      if (!accepted) {
+        if (!stillCurrent(intent) && swapPanel === panel) closeSwap(false);
+        return;
+      }
+      if (!stillCurrent(intent) || swapPanel !== panel || !panel.isConnected || !button.isConnected) {
+        if (swapPanel === panel) closeSwap(false);
+        return;
+      }
 
       const kind = professionKind(root);
       const api = professionApi(win, kind);
-      if (!kind || !api) {
+      if (!kind || !api || !stillCurrent(intent)) {
         notify(win, "error", copy.unavailable);
         return;
       }
@@ -423,13 +478,19 @@ export function mountProfessionsHud(root) {
       const priorInert = root.hasAttribute("inert");
       root.setAttribute("aria-busy", "true");
       root.setAttribute("inert", "");
+      const restoreNativeState = () => {
+        if (!priorInert) root.removeAttribute("inert");
+        if (priorBusy === null) root.removeAttribute("aria-busy");
+        else root.setAttribute("aria-busy", priorBusy);
+      };
+      restoreSwapState = restoreNativeState;
       confirm.textContent = copy.swapping;
       let writeStarted = false;
       let refreshNeeded = false;
 
       try {
         const fresh = unwrap(await api.get());
-        if (!active || !root.isConnected || win?.PokeIdle?.Api !== api.owner) return;
+        if (!stillCurrent(intent)) return;
         refreshNeeded = true;
         const worker = (Array.isArray(fresh.workers) ? fresh.workers : []).find(entry =>
           Number(entry.slot_index) === slot && workerIdentity(entry) === workerIdentity(current)
@@ -444,28 +505,33 @@ export function mountProfessionsHud(root) {
         if (stored > 0) {
           writeStarted = true;
           await api.collect(slot);
+          if (!stillCurrent(intent)) return;
         }
+        if (!stillCurrent(intent)) return;
         writeStarted = true;
         await api.remove(slot);
+        if (!stillCurrent(intent)) return;
         try {
           await api.assign(selectedId, slot);
+          if (!stillCurrent(intent)) return;
         } catch {
           throw new Error(copy.incomplete);
         }
 
-        notify(win, "success", copy.success(displayName(worker), displayName(replacement)));
+        if (stillCurrent(intent)) notify(win, "success", copy.success(displayName(worker), displayName(replacement)));
       } catch (error) {
-        notify(win, "error", error?.message || copy.incomplete);
+        if (stillCurrent(intent)) notify(win, "error", error?.message || copy.incomplete);
       } finally {
-        if (writeStarted) emitNativeInvalidation(win);
-        if (refreshNeeded || writeStarted) {
+        if (writeStarted && stillCurrent(intent)) emitNativeInvalidation(win);
+        if ((refreshNeeded || writeStarted) && stillCurrent(intent)) {
           try { await refreshNative(root, kind); } catch {}
         }
-        if (!priorInert) root.removeAttribute("inert");
-        if (priorBusy === null) root.removeAttribute("aria-busy");
-        else root.setAttribute("aria-busy", priorBusy);
-        setBusy(false);
-        if (active) {
+        if (restoreSwapState === restoreNativeState) {
+          restoreSwapState = null;
+          restoreNativeState();
+        }
+        if (active) setBusy(false);
+        if (stillCurrent(intent)) {
           closeSwap(false);
           sync();
           if (restoreOwnedFocus) focusSlotControl(slot);
@@ -496,7 +562,8 @@ export function mountProfessionsHud(root) {
     const currentId = String(card?.dataset.creatureId || "");
     const kind = professionKind(root);
     const api = professionApi(win, kind);
-    if (!card || !slot || !currentId || !kind || !api) {
+    const intent = intentFor(api, kind);
+    if (!card || !slot || !currentId || !kind || !api || !stillCurrent(intent)) {
       notify(win, "error", copy.unavailable);
       return;
     }
@@ -508,7 +575,7 @@ export function mountProfessionsHud(root) {
       const state = unwrap(await api.get());
       if (
         generation !== openGeneration || busy || confirmationPending || !active
-        || !button.isConnected || !root.isConnected || win?.PokeIdle?.Api !== api.owner
+        || !button.isConnected || !stillCurrent(intent)
       ) return;
       const current = (Array.isArray(state.workers) ? state.workers : []).find(entry =>
         Number(entry.slot_index) === slot && workerIdentity(entry) === currentId
@@ -527,11 +594,11 @@ export function mountProfessionsHud(root) {
         notify(win, "error", copy.lockedSlot);
         return;
       }
-      buildSwapPanel(button, state, current, slot);
+      buildSwapPanel(button, state, current, slot, intent);
     } catch (error) {
-      notify(win, "error", error?.message || copy.unavailable);
+      if (stillCurrent(intent)) notify(win, "error", error?.message || copy.unavailable);
     } finally {
-      if (button.isConnected) {
+      if (button.isConnected && active) {
         button.disabled = busy || confirmationPending;
         button.textContent = originalLabel;
       }
@@ -585,6 +652,7 @@ export function mountProfessionsHud(root) {
 
   const sync = () => {
     if (!active) return;
+    observeOwner();
     const copy = currentCopy();
     hideLegacyMiningLicense(root);
     for (const select of root.querySelectorAll(config.selectors.emptySelect)) {
@@ -614,7 +682,10 @@ export function mountProfessionsHud(root) {
     sync,
     cleanup() {
       active = false;
+      lifecycleEpoch += 1;
       openGeneration += 1;
+      restoreSwapState?.();
+      restoreSwapState = null;
       closeSwap(false);
       restoreTop3();
       root.querySelectorAll("[data-ppbui-professions-swap]").forEach(button => button.remove());

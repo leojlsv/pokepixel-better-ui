@@ -5,6 +5,7 @@ import { createTeamPresetStorage } from "../team-presets/storage.js";
 import { teamPresetHudMemberVisual, teamPresetMemberSnapshot } from "../team-presets/dom.js";
 import { createElementIcon } from "../../core/element-icons.js";
 import { createNativeBusBindings } from "../../core/native-event-bus.js";
+import { currentStorageOwner } from "../../core/trainer-storage-scope.js";
 import { fixedTags, freshFilters, matchesPokemon, pokemonElements, pokemonRarities, tagService } from "../pokemon-tools/model.js";
 import { awakeningPreviewState, finite, nativeProgressSelectors, pokemonName, pokemonProfileText } from "./dom.js";
 
@@ -765,7 +766,9 @@ function moveCooldownValue(doc, move) {
 function sourceLabel(copy, creature) { return creature?.__ppbuiSource === "team" ? copy.activeTeam : copy.inBackpack; }
 
 export function mountPokemonProfile(doc = document, { teamPresetStore, movesetStore } = {}) {
-  const win = doc.defaultView, movesStore = movesetStore || createTeamMovesetStorage({ storage: () => win.localStorage }), teamsStore = teamPresetStore || createTeamPresetStorage({ storage: () => win.localStorage });
+  const win = doc.defaultView, owner = () => currentStorageOwner(win);
+  const movesStore = movesetStore || createTeamMovesetStorage({ storage: () => win.localStorage, owner, locks: () => win.navigator?.locks, mutationLocks: () => win.navigator?.locks });
+  const teamsStore = teamPresetStore || createTeamPresetStorage({ storage: () => win.localStorage, owner, locks: () => win.navigator?.locks, mutationLocks: () => win.navigator?.locks });
   const style = doc.createElement("style"); style.dataset.ppbuiModule = PROFILE_ID; style.textContent = styleText(); doc.head.append(style);
   let menu = null, menuLabel = null;
 
@@ -801,6 +804,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   body.append(picker, main); root.append(titlebar, body); doc.body.append(root);
 
   let alive = true, opened = false, owned = [], selectedId = "", source = "all", filters = freshFilters(), filterCopySignature = "", loadEpoch = 0, selectionEpoch = 0, openEpoch = 0, busy = false, profileOrigin = null, teamStoreSignature = "", configureMovesAvailable = null, dragState = null, dragPositioned = false;
+  let profileOwner = currentStorageOwner(win);
   const speciesCache = new Map(), movesCache = new Map(), detailCache = new Map(), collapseState = new Map(), choiceNodes = new Map(), awakeningPreviewCache = new Map();
   const tags = tagService(win);
   const nativeCardCreatures = new WeakMap(), nativeCardHydrationEpoch = new WeakMap(), nativeCardAwakeningEpoch = new WeakMap();
@@ -808,6 +812,30 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   let nativeCardOwner = null, nativeCardOriginalRender = null, nativeCardRenderWrapper = null, nativeCardToken = 0;
 
   const copy = () => pokemonProfileText(doc);
+  const sessionOnlyText = () => {
+    const locale=String(win?.PokeIdle?.Localization?.get?.()||doc.documentElement.lang||"en").toLowerCase();
+    if(locale.startsWith("pt"))return "Armazenamento persistente indisponível. Este moveset fica apenas nesta sessão.";
+    if(locale.startsWith("es"))return "Almacenamiento persistente no disponible. Este moveset solo estará disponible en esta sesión.";
+    if(locale.startsWith("zh"))return "持久化存储不可用。此招式组仅在当前会话有效。";
+    return "Persistent storage is unavailable. This moveset is saved for this session only.";
+  };
+  function verifyProfileOwner() {
+    const current = currentStorageOwner(win);
+    if (current !== profileOwner) {
+      profileOwner = current;
+      hide({ restoreFocus: false });
+      profileOrigin = null;
+      owned = [];
+      selectedId = "";
+      teamStoreSignature = "";
+      speciesCache.clear(); movesCache.clear(); detailCache.clear(); collapseState.clear(); choiceNodes.clear();
+      list.replaceChildren(); main.replaceChildren(); pickerState.textContent = "";
+    }
+    // Do not use an A profile while B's identity is still pending.
+    return Boolean(current) || !(win?.PokeIdle?.Auth || win?.PokeIdle?.WorldPresence?.getSelfTrainerId);
+  }
+  const boundStoreOwner = store => store?.owner?.() ?? null;
+  const ownerUnchanged = (store, captured) => typeof store?.owner !== "function" || Boolean(captured && store.owner() === captured);
   const setText = (node, value) => {
     if (!node) return;
     const next = String(value ?? "");
@@ -1002,25 +1030,78 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   }
 
   function errorText(result){const text=copy();return text.errors[result?.reason]||result?.reason||text.movesError;}
+  const profileMutationCurrent=(id,renderOwner,renderEpoch)=>alive&&verifyProfileOwner()
+    &&selectedId===id&&selectionEpoch===renderEpoch&&profileOwner===renderOwner&&ownerUnchanged(movesStore,renderOwner);
 
-  async function saveCurrent(id,input,status,trigger) {
-    if(!alive||busy)return; const text=copy(),name=input.value.trim(); if(!name){status.textContent=text.errors["name-required"];status.dataset.error="true";return;}
-    busy=true;status.textContent=text.saving;status.dataset.error="false";const result=await captureTeamMoveset(win,id);busy=false;if(!alive||selectedId!==id)return;
-    if(!result?.ok){status.textContent=errorText(result);status.dataset.error="true";return;}
-    const saved=movesStore.upsert(id,name,result.snapshot); if(!saved){status.textContent=text.errors["preset-invalid"];status.dataset.error="true";} else if(saved.duplicateLoadout){status.textContent=text.duplicate(saved.preset.name);status.dataset.error="true";} else {input.value="";status.textContent=saved.created?text.saved:text.updated;status.dataset.error="false";movesCache.set(id,Promise.resolve(result.current));}
-    const restore=parkFocused(trigger),restoreInput=trigger===input;await renderSelected(id,true);if(restore)(restoreInput?main.querySelector("[data-ppbui-profile-preset-name]"):main.querySelector("[data-ppbui-profile-save-current]"))?.focus?.({preventScroll:true});
+  async function saveCurrent(id,input,status,trigger,renderOwner,renderEpoch) {
+    const isCurrent=()=>profileMutationCurrent(id,renderOwner,renderEpoch);
+    if(busy||!isCurrent())return; const text=copy(),name=input.value.trim(); if(!name){status.textContent=text.errors["name-required"];status.dataset.error="true";return;}
+    const capturedOwner=boundStoreOwner(movesStore);
+    if(!ownerUnchanged(movesStore,capturedOwner)||capturedOwner!==renderOwner){status.textContent=text.ownerChanged;status.dataset.error="true";return;}
+    const expectedNamedPreset=movesStore.list(id).find(preset=>preset.name.toLocaleLowerCase()===name.toLocaleLowerCase())||null;
+    busy=true;status.textContent=text.saving;status.dataset.error="false";const result=await captureTeamMoveset(win,id);
+    if(!isCurrent()){busy=false;return;}
+    if(!ownerUnchanged(movesStore,capturedOwner)){busy=false;status.textContent=text.ownerChanged;status.dataset.error="true";return;}
+    if(!result?.ok){busy=false;status.textContent=errorText(result);status.dataset.error="true";return;}
+    let saved=null;
+    try{saved=await Promise.resolve(movesStore.upsert(id,name,result.snapshot,expectedNamedPreset,isCurrent));}catch{}
+    busy=false;
+    if(!isCurrent()||!ownerUnchanged(movesStore,capturedOwner))return;
+    if(!saved){status.textContent=text.errors["preset-invalid"];status.dataset.error="true";return;}
+    if(saved.duplicateLoadout){status.textContent=text.duplicate(saved.preset.name);status.dataset.error="true";return;}
+    input.value="";
+    const sessionOnly=movesStore.isPersistent?.()===false;
+    const feedback=(saved.created?text.saved:text.updated)+(sessionOnly?" "+sessionOnlyText():"");
+    status.textContent=feedback;status.dataset.error=String(sessionOnly);movesCache.set(id,Promise.resolve(result.current));
+    const restore=parkFocused(trigger),restoreInput=trigger===input;
+    await renderSelected(id,true,feedback,sessionOnly);
+    if(restore)(restoreInput?main.querySelector("[data-ppbui-profile-preset-name]"):main.querySelector("[data-ppbui-profile-save-current]"))?.focus?.({preventScroll:true});
   }
 
-  function renderSavedMoves(container,id,current,metadata=new Map()) {
+  function renderSavedMoves(container,id,current,metadata=new Map(),renderOwner=profileOwner,renderEpoch=selectionEpoch) {
     const text=copy(),presets=movesStore.list(id),currentSig=movesetSignature(current);
+    const isCurrent=()=>profileMutationCurrent(id,renderOwner,renderEpoch);
     if(!presets.length){container.append(statusNode(text.noSavedMoves));return;}
     for(const preset of presets){const active=Boolean(currentSig&&movesetSignature(preset)===currentSig),row=doc.createElement("article");row.dataset.ppbuiProfileSaved="";row.dataset.presetId=String(preset.id);row.dataset.active=String(active);
       const head=doc.createElement("div");head.dataset.ppbuiProfileSavedHead="";const token=doc.createElement("span");token.textContent=movesetBadgeLabel(preset.marker);const name=doc.createElement("strong");name.textContent=preset.name;head.append(token,name);if(active){const mark=doc.createElement("span");mark.textContent=text.active;mark.style.color="var(--ppbui-success-text)";head.append(mark);}
       const ordered=moveList(enrichedMoves(preset.moves,metadata),{compact:true,label:`${text.savedMoves}: ${preset.name}`}); const actions=doc.createElement("div");actions.dataset.ppbuiProfileSavedActions="";
       const apply=button(text.apply,"ppbui-button--primary"),update=button(text.update),remove=button(text.remove,"ppbui-button--danger");apply.dataset.ppbuiProfileSavedAction="apply";update.dataset.ppbuiProfileSavedAction="update";remove.dataset.ppbuiProfileSavedAction="remove";apply.disabled=busy||active;update.disabled=busy;remove.disabled=busy;
-      apply.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;busy=true;const result=await applyTeamMoveset(win,id,preset);busy=false;if(!alive||selectedId!==id)return;if(result?.ok)movesCache.set(id,Promise.resolve(result.current));const restore=parkFocused(apply);await renderSelected(id,true,result?.ok?text.applied:errorText(result),!result?.ok);if(restore)restoreSavedActionFocus(preset.id,"apply");});
-      update.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;busy=true;const result=await captureTeamMoveset(win,id);busy=false;if(!alive||selectedId!==id)return;if(result?.ok){movesStore.replaceSnapshot(preset.id,id,result.snapshot);movesCache.set(id,Promise.resolve(result.current));}const restore=parkFocused(update);await renderSelected(id,true,result?.ok?text.updated:errorText(result),!result?.ok);if(restore)restoreSavedActionFocus(preset.id,"update");});
-      remove.addEventListener("click",async()=>{if(!alive||busy||selectedId!==id)return;if(typeof win?.confirm!=="function"||!win.confirm(`${text.remove}: ${preset.name}?`))return;const fallback=row.nextElementSibling?.dataset?.presetId||row.previousElementSibling?.dataset?.presetId||"";const restore=parkFocused(remove);movesStore.remove(preset.id,id);await renderSelected(id,true,text.removed,false);if(restore)restoreSavedActionFocus(preset.id,"remove",fallback);});
+      apply.addEventListener("click",async()=>{if(busy||!isCurrent())return;const capturedOwner=boundStoreOwner(movesStore);if(!ownerUnchanged(movesStore,capturedOwner)||capturedOwner!==renderOwner)return;busy=true;const result=await applyTeamMoveset(win,id,preset,{isCurrent});busy=false;if(!isCurrent()||!ownerUnchanged(movesStore,capturedOwner))return;if(result?.ok)movesCache.set(id,Promise.resolve(result.current));const restore=parkFocused(apply);await renderSelected(id,true,result?.ok?text.applied:errorText(result),!result?.ok);if(restore)restoreSavedActionFocus(preset.id,"apply");});
+      update.addEventListener("click",async()=>{
+        if(busy||!isCurrent())return;
+        const capturedOwner=boundStoreOwner(movesStore);
+        if(!ownerUnchanged(movesStore,capturedOwner)||capturedOwner!==renderOwner)return;
+        busy=true;
+        const result=await captureTeamMoveset(win,id);
+        if(!isCurrent()||!ownerUnchanged(movesStore,capturedOwner)){busy=false;return;}
+        let updated=null;
+        try{if(result?.ok)updated=await Promise.resolve(movesStore.replaceSnapshot(preset.id,id,result.snapshot,preset,isCurrent));}catch{}
+        busy=false;
+        if(!isCurrent()||!ownerUnchanged(movesStore,capturedOwner))return;
+        const succeeded=Boolean(result?.ok&&updated?.ok);
+        if(succeeded)movesCache.set(id,Promise.resolve(result.current));
+        const restore=parkFocused(update);
+        const sessionOnly=succeeded&&movesStore.isPersistent?.()===false;
+        await renderSelected(id,true,succeeded?text.updated+(sessionOnly?" "+sessionOnlyText():""):(result?.ok?text.movesError:errorText(result)),!succeeded||sessionOnly);
+        if(restore)restoreSavedActionFocus(preset.id,"update");
+      });
+      remove.addEventListener("click",async()=>{
+        if(busy||!isCurrent())return;
+        const capturedOwner=boundStoreOwner(movesStore);
+        if(!ownerUnchanged(movesStore,capturedOwner)||capturedOwner!==renderOwner||typeof win?.confirm!=="function"
+          ||!win.confirm(`${text.remove}: ${preset.name}?`)||!ownerUnchanged(movesStore,capturedOwner)
+          ||!isCurrent())return;
+        const fallback=row.nextElementSibling?.dataset?.presetId||row.previousElementSibling?.dataset?.presetId||"";
+        const restore=parkFocused(remove);
+        busy=true;
+        let removed=false;
+        try{removed=await Promise.resolve(movesStore.remove(preset.id,id,preset,isCurrent));}catch{}
+        busy=false;
+        if(!isCurrent()||!ownerUnchanged(movesStore,capturedOwner))return;
+        const sessionOnly=removed&&movesStore.isPersistent?.()===false;
+        await renderSelected(id,true,removed?text.removed+(sessionOnly?" "+sessionOnlyText():""):text.movesError,!removed||sessionOnly);
+        if(restore)restoreSavedActionFocus(preset.id,"remove",fallback);
+      });
       actions.append(apply,update,remove);row.append(head,ordered,actions);container.append(row);
     }
   }
@@ -1034,13 +1115,14 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   }
 
   async function renderSelected(id, forceMoves=false, message="", messageError=false) {
-    const epoch=++selectionEpoch,text=copy(),base=owned.find(creature=>String(creature.id)===id); if(!base){main.replaceChildren(statusNode(text.none,true));return;}
+    if(!verifyProfileOwner())return;
+    const capturedOwner=profileOwner,epoch=++selectionEpoch,text=copy(),base=owned.find(creature=>String(creature.id)===id); if(!base){main.replaceChildren(statusNode(text.none,true));return;}
     main.replaceChildren(statusNode(text.movesLoading));
-    let creature=base,current=null,moveError=false; try{[creature,current]=await Promise.all([enrichCreature(base),readMoves(id,forceMoves)]);}catch{moveError=true;creature=await enrichCreature(base);} if(!alive||selectedId!==id||epoch!==selectionEpoch)return;
-    const detail=await readCardDetail(creature);if(!alive||selectedId!==id||epoch!==selectionEpoch)return;
+    let creature=base,current=null,moveError=false; try{[creature,current]=await Promise.all([enrichCreature(base),readMoves(id,forceMoves)]);}catch{moveError=true;creature=await enrichCreature(base);} if(!alive||selectedId!==id||epoch!==selectionEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return;
+    const detail=await readCardDetail(creature);if(!alive||selectedId!==id||epoch!==selectionEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return;
     if(detail?.creature&&typeof detail.creature==="object"){const fresh=detail.creature;creature={...creature,...fresh,species:{...(creature?.species||{}),...(fresh?.species||{})},__ppbuiSource:base.__ppbuiSource};}
     const ownedIndex=owned.findIndex(entry=>String(entry.id)===id);if(ownedIndex>=0&&creature!==base){const visibleBefore=[...list.children].map(node=>node.dataset.creatureId).join("\u0000");owned[ownedIndex]={...creature,__ppbuiSource:base.__ppbuiSource};creature=owned[ownedIndex];ensureChoiceNode(creature);const visibleAfter=filteredOwned().map(entry=>String(entry.id)).join("\u0000");if(visibleAfter!==visibleBefore)renderPicker({preserveFocus:true});else syncPickerSelection();}
-    const metadata=!moveError&&current?await moveMetadata(creature,current,detail):new Map();if(!alive||selectedId!==id||epoch!==selectionEpoch)return;
+    const metadata=!moveError&&current?await moveMetadata(creature,current,detail):new Map();if(!alive||selectedId!==id||epoch!==selectionEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return;
     const hero=doc.createElement("section");hero.dataset.ppbuiProfileHero="";const elementColor=primaryElementColor(doc,creature);if(elementColor)hero.style.setProperty("--ppbui-profile-element-color",elementColor);const portrait=doc.createElement("div");portrait.dataset.ppbuiProfilePortrait="";const sprite=spriteOf(doc,creature);if(sprite){const image=doc.createElement("img");image.src=sprite;image.alt="";portrait.append(image);}else portrait.textContent=pokemonName(doc,creature).slice(0,3).toUpperCase();
     const identity=doc.createElement("div");identity.dataset.ppbuiProfileIdentity="";const identityHead=doc.createElement("div");identityHead.dataset.ppbuiProfileIdentityHead="";const name=doc.createElement("h3");name.dataset.ppbuiProfileName="";name.textContent=pokemonName(doc,creature);const power=doc.createElement("span");power.dataset.ppbuiProfilePower="";const powerValue=finite(creature.power);power.textContent=powerValue!==null?`${text.power} ${powerValue.toLocaleString()}`:`${text.power} —`;identityHead.append(name,power);
     const meta=doc.createElement("div");meta.dataset.ppbuiProfileMeta="";const level=doc.createElement("span");const levelValue=finite(creature.level);level.textContent=levelValue!==null?`${text.level}${levelValue}`:"—";meta.append(level);for(const element of elementNames(creature))meta.append(elementBadge(doc,element));const origin=doc.createElement("span");origin.textContent=`${text.source}: ${sourceLabel(text,creature)}`;meta.append(origin);
@@ -1049,19 +1131,38 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     const currentSection=doc.createElement("section");currentSection.dataset.ppbuiProfileSection="";currentSection.dataset.ppbuiProfileCurrent="";const currentHeader=doc.createElement("header");const currentTitle=doc.createElement("h3");currentTitle.textContent=text.currentMoves;const currentActions=doc.createElement("div");currentActions.dataset.ppbuiProfileSectionActions="";const configure=button(text.configureMoves,"ppbui-button--primary");configure.dataset.ppbuiProfileConfigureMoves="";configure.disabled=typeof win?.PokeIdle?.MovesetConfig?.open!=="function";currentActions.append(configure);currentHeader.append(currentTitle,currentActions);currentSection.append(currentHeader);
     currentSection.tabIndex=-1; currentSection.setAttribute("aria-label",text.currentMoves);
     if(moveError){const state=statusNode(text.movesError,true),retry=button(text.retry);retry.addEventListener("click",async()=>{const keepFocus=doc.activeElement===retry;main.tabIndex=-1;if(keepFocus)main.focus({preventScroll:true});await renderSelected(id,true);if(keepFocus){const next=main.querySelector("[data-ppbui-profile-current]");next?.focus({preventScroll:true});}});currentSection.append(state,retry);}else if(!current?.moves?.length)currentSection.append(statusNode(text.noMoves));else currentSection.append(moveList(enrichedMoves(current.moves,metadata),{label:text.currentMoves,slotSettings:current.raw?.slot_settings}));
-    configure.addEventListener("click",()=>{if(!alive||selectedId!==id)return;const nativeMoveset=win?.PokeIdle?.MovesetConfig;if(typeof nativeMoveset?.open!=="function"){configure.disabled=true;return;}nativeMoveset.open.call(nativeMoveset,id);});
-    const savedSection=doc.createElement("section");savedSection.dataset.ppbuiProfileSection="";const savedHeader=doc.createElement("header");const savedTitle=doc.createElement("h3");savedTitle.textContent=text.savedMoves;const savedHeadActions=doc.createElement("div");savedHeadActions.dataset.ppbuiProfileSectionActions="";const savedToggle=button("−","ppbui-icon-button");savedToggle.dataset.ppbuiProfileCollapse="savedMoves";savedHeadActions.append(savedToggle);savedHeader.append(savedTitle,savedHeadActions);const savedBody=doc.createElement("div");savedBody.dataset.ppbuiProfileSectionBody="savedMoves";const input=doc.createElement("input");input.type="text";input.id="ppbui-profile-preset-name";input.maxLength=40;input.className="ppbui-input";input.dataset.ppbuiProfilePresetName="";input.placeholder=text.presetName;input.setAttribute("aria-label",text.presetName);const save=button(text.saveCurrent);save.dataset.ppbuiProfileSaveCurrent="";const saveRow=doc.createElement("div");saveRow.dataset.ppbuiProfileSave="";const opStatus=statusNode(message,messageError);save.addEventListener("click",()=>saveCurrent(id,input,opStatus,save));input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveCurrent(id,input,opStatus,input);}});saveRow.append(input,save);const savedList=doc.createElement("div");savedList.dataset.ppbuiProfileSavedList="";renderSavedMoves(savedList,id,current,metadata);savedBody.append(saveRow,opStatus,savedList);savedSection.append(savedHeader,savedBody);bindCollapse(savedToggle,savedBody,id,"savedMoves",text.collapseSavedMoves,text.expandSavedMoves);
+    configure.addEventListener("click",()=>{if(!alive||selectedId!==id||!verifyProfileOwner()||profileOwner!==capturedOwner)return;const nativeMoveset=win?.PokeIdle?.MovesetConfig;if(typeof nativeMoveset?.open!=="function"){configure.disabled=true;return;}nativeMoveset.open.call(nativeMoveset,id);});
+    const savedSection=doc.createElement("section");savedSection.dataset.ppbuiProfileSection="";const savedHeader=doc.createElement("header");const savedTitle=doc.createElement("h3");savedTitle.textContent=text.savedMoves;const savedHeadActions=doc.createElement("div");savedHeadActions.dataset.ppbuiProfileSectionActions="";const savedToggle=button("−","ppbui-icon-button");savedToggle.dataset.ppbuiProfileCollapse="savedMoves";savedHeadActions.append(savedToggle);savedHeader.append(savedTitle,savedHeadActions);const savedBody=doc.createElement("div");savedBody.dataset.ppbuiProfileSectionBody="savedMoves";const input=doc.createElement("input");input.type="text";input.id="ppbui-profile-preset-name";input.maxLength=40;input.className="ppbui-input";input.dataset.ppbuiProfilePresetName="";input.placeholder=text.presetName;input.setAttribute("aria-label",text.presetName);const save=button(text.saveCurrent);save.dataset.ppbuiProfileSaveCurrent="";const saveRow=doc.createElement("div");saveRow.dataset.ppbuiProfileSave="";const opStatus=statusNode(message,messageError);save.addEventListener("click",()=>saveCurrent(id,input,opStatus,save,capturedOwner,epoch));input.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();saveCurrent(id,input,opStatus,input,capturedOwner,epoch);}});saveRow.append(input,save);const savedList=doc.createElement("div");savedList.dataset.ppbuiProfileSavedList="";renderSavedMoves(savedList,id,current,metadata,capturedOwner,epoch);savedBody.append(saveRow,opStatus,savedList);savedSection.append(savedHeader,savedBody);bindCollapse(savedToggle,savedBody,id,"savedMoves",text.collapseSavedMoves,text.expandSavedMoves);
     const teamSection=doc.createElement("section");teamSection.dataset.ppbuiProfileSection="";const teamHeader=doc.createElement("header");const teamTitle=doc.createElement("h3");teamTitle.textContent=text.savedTeams;const teamHeadActions=doc.createElement("div");teamHeadActions.dataset.ppbuiProfileSectionActions="";const teamToggle=button("−","ppbui-icon-button");teamToggle.dataset.ppbuiProfileCollapse="savedTeams";teamHeadActions.append(teamToggle);teamHeader.append(teamTitle,teamHeadActions);const teamBody=doc.createElement("div");teamBody.dataset.ppbuiProfileSectionBody="savedTeams";const teamList=doc.createElement("div");teamList.dataset.ppbuiProfileTeamList="";renderTeams(teamList,id);teamBody.append(teamList);teamSection.append(teamHeader,teamBody);bindCollapse(teamToggle,teamBody,id,"savedTeams",text.collapseSavedTeams,text.expandSavedTeams);teamStoreSignature=JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)]));
     main.replaceChildren(hero,currentSection,savedSection,teamSection);
+    if(movesStore.legacyCount?.()){
+      const importButton=button(text.importLegacyMoves);
+      importButton.dataset.ppbuiProfileImportLegacyMoves="";
+      importButton.addEventListener("click",async()=>{
+        const capturedOwner=boundStoreOwner(movesStore);
+        const isCurrent=()=>alive&&verifyProfileOwner()&&opened&&selectedId===id&&selectionEpoch===epoch
+          &&profileOwner===capturedOwner&&ownerUnchanged(movesStore,capturedOwner);
+        if(!isCurrent()||typeof win?.confirm!=="function"||!win.confirm(text.importLegacyConfirm))return;
+        if(!isCurrent())return;
+        importButton.disabled=true;
+        let imported=false;
+        try{imported=(await movesStore.claimLegacy?.(isCurrent))===true;}catch{}
+        if(!isCurrent())return;
+        await renderSelected(id,false,imported?text.importLegacyImported:text.importLegacyFailed,!imported);
+      });
+      savedBody.prepend(importButton);
+    }
   }
 
   async function select(id, focusMain=false) { const clean=String(id||"").trim(); if(!clean||!owned.some(creature=>String(creature.id)===clean))return;selectedId=clean;syncPickerSelection();await renderSelected(clean);if(focusMain)main.querySelector("[data-ppbui-profile-name]")?.scrollIntoView?.({block:"nearest"}); }
 
   async function refreshOwned(preferredId=selectedId, strictPreferred=false) {
+    if(!verifyProfileOwner())return false;
+    const capturedOwner=profileOwner;
     const epoch=++loadEpoch,text=copy();selectionEpoch++;detailCache.clear();movesCache.clear();pickerState.textContent=text.loading;pickerState.dataset.error="false";refresh.disabled=true;
-    try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch)return false;owned=next;reconcileChoiceNodes();pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker();main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker();if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
-    catch{if(!alive||epoch!==loadEpoch)return;pickerState.textContent=text.loadError;pickerState.dataset.error="true";renderPicker();}
-    finally{if(alive&&epoch===loadEpoch)refresh.disabled=false;}
+    try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return false;owned=next;reconcileChoiceNodes();pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker();main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker();if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
+    catch{if(!alive||epoch!==loadEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return;pickerState.textContent=text.loadError;pickerState.dataset.error="true";renderPicker();}
+    finally{if(alive&&epoch===loadEpoch&&verifyProfileOwner()&&profileOwner===capturedOwner)refresh.disabled=false;}
   }
 
   function hideNativeCardCell(node, role) {
@@ -1601,7 +1702,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     setDraggedWindowPosition(dragState.left+(event.clientX-dragState.startX),dragState.top+(event.clientY-dragState.startY),dragState.width,dragState.height);event.preventDefault();
   }
 
-  async function open(id="", origin=null) { const epoch=++openEpoch,requested=String(id||"").trim(),activeElement=doc.activeElement;if(origin?.isConnected)profileOrigin=origin;else if(activeElement&&activeElement!==doc.body&&!root.contains(activeElement))profileOrigin=activeElement;syncCopy();root.hidden=false;opened=true;if(dragPositioned)clampMovedWindow();const loaded=await refreshOwned(requested||selectedId,Boolean(requested));if(!alive||!opened||epoch!==openEpoch)return false;const subject=main.querySelector("[data-ppbui-profile-name]");if(subject){subject.tabIndex=-1;subject.focus({preventScroll:true});}else refresh.focus({preventScroll:true});return loaded; }
+  async function open(id="", origin=null) { if(!verifyProfileOwner())return false;const epoch=++openEpoch,requested=String(id||"").trim(),activeElement=doc.activeElement;if(origin?.isConnected)profileOrigin=origin;else if(activeElement&&activeElement!==doc.body&&!root.contains(activeElement))profileOrigin=activeElement;syncCopy();root.hidden=false;opened=true;if(dragPositioned)clampMovedWindow();const loaded=await refreshOwned(requested||selectedId,Boolean(requested));if(!alive||!opened||epoch!==openEpoch||!verifyProfileOwner())return false;const subject=main.querySelector("[data-ppbui-profile-name]");if(subject){subject.tabIndex=-1;subject.focus({preventScroll:true});}else refresh.focus({preventScroll:true});return loaded; }
   function hide({ restoreFocus=true }={}){openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();root.hidden=true;opened=false;setProp(refresh,"disabled",false);if(!restoreFocus)return;const target=profileOrigin?.isConnected?profileOrigin:ensureMenu();profileOrigin=null;target?.focus?.({preventScroll:true});}
   titlebar.addEventListener("pointerdown",onTitlebarPointerDown);titlebar.addEventListener("lostpointercapture",stopWindowDrag);doc.addEventListener("pointermove",onWindowDrag,true);doc.addEventListener("pointerup",stopWindowDrag,true);doc.addEventListener("pointercancel",stopWindowDrag,true);win.addEventListener("blur",stopWindowDrag);win.addEventListener("resize",clampMovedWindow);
   close.addEventListener("click",()=>hide());refresh.addEventListener("click",()=>refreshOwned());search.addEventListener("input",renderPicker);sourceButtons.forEach((button,key)=>button.addEventListener("click",()=>{source=key;renderPicker();}));list.addEventListener("click",event=>{const choice=event.target?.closest?.("[data-ppbui-profile-choice]");if(choice?.parentElement===list)select(choice.dataset.creatureId,true);});
@@ -1615,7 +1716,21 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   bind("moveset.saved",data=>{const id=String(data?.creature_id||"");if(id){movesCache.delete(id);for(const card of doc.querySelectorAll(nativeCardSelector)){if(card.dataset.ppbuiProfileNativeCreatureId===id){const creature=nativeCardCreatures.get(card);if(creature)hydrateNativeCardMoves(card,creature,card.dataset.ppbuiProfileNativeToken);}}}if(opened&&id===selectedId)renderSelected(id);});
   bind("creature.updated",data=>refreshNativeAwakening(String(data?.creature_id||data?.creature?.id||"")));
   bind("team.updated",()=>{if(opened)refreshOwned(selectedId);});bind("state.resynced",()=>{refreshNativeAwakening();if(opened)refreshOwned(selectedId);});
+  let movesetStorageTimer = null;
+  function onMovesetStorage(event) {
+    if (!alive || (event.storageArea && event.storageArea !== win.localStorage)) return;
+    const scope = movesStore.storageKey?.();
+    if (!scope || (event.key !== null && event.key !== scope && !event.key?.startsWith(scope + ":"))) return;
+    if (movesetStorageTimer !== null) return;
+    movesetStorageTimer = win.setTimeout(() => {
+      movesetStorageTimer = null;
+      if (!alive || !verifyProfileOwner() || movesStore.storageKey?.() !== scope || movesStore.isPersistent?.() === false) return;
+      movesStore.reload?.();
+      if (opened && selectedId) renderSelected(selectedId);
+    }, 0);
+  }
+  win.addEventListener("storage", onMovesetStorage);
   const previousBridge=win.__PPBUI_POKEMON_PROFILE__;const bridge={open,refresh:()=>refreshOwned(selectedId),close:()=>hide()};win.__PPBUI_POKEMON_PROFILE__=bridge;
   nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();
-  return { sync(){nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);titlebar.removeEventListener("lostpointercapture",stopWindowDrag);doc.removeEventListener("pointermove",onWindowDrag,true);doc.removeEventListener("pointerup",stopWindowDrag,true);doc.removeEventListener("pointercancel",stopWindowDrag,true);win.removeEventListener("blur",stopWindowDrag);win.removeEventListener("resize",clampMovedWindow);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };
+  return { sync(){verifyProfileOwner();nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;openEpoch++;loadEpoch++;selectionEpoch++;if(movesetStorageTimer!==null)win.clearTimeout(movesetStorageTimer);win.removeEventListener("storage",onMovesetStorage);stopWindowDrag();unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);titlebar.removeEventListener("lostpointercapture",stopWindowDrag);doc.removeEventListener("pointermove",onWindowDrag,true);doc.removeEventListener("pointerup",stopWindowDrag,true);doc.removeEventListener("pointercancel",stopWindowDrag,true);win.removeEventListener("blur",stopWindowDrag);win.removeEventListener("resize",clampMovedWindow);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };
 }

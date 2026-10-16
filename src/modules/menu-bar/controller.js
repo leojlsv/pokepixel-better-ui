@@ -36,7 +36,6 @@ export function mountMenuBar({ toolbar, actions, structure }, {
   const geometryBefore = new Map();
   const geometryApplied = new Map();
   const orientationBefore = toolbar.getAttribute("data-ppbui-menu-orientation");
-  const byId = new Map(actions.map(button => [button.dataset.menuId, button]));
   const nativeKey = id => id === "pokemon-profile" ? "betterui:pokemon-profile" : `native:${id}`;
   const entryNodes = new Map(actions.map(button => [nativeKey(button.dataset.menuId), button]));
   const groupKey = id => `group:${id}`;

@@ -46,10 +46,17 @@ ao moveset autoritativo atual.
 
 O contrato nativo foi confirmado em MovesetConfig: getMoveset(id),
 saveMoveset(id,{mode,move_ids,revision}), evento moveset.saved e o próprio
-MovesetConfig.open. Better UI preserva/reutiliza o botão do editor nativo e persiste
-somente snapshots nomeados em ppbui:team-movesets:v1. Apply sempre lê uma revision
+MovesetConfig.open. Na versão pública 0.2.203, os snapshots eram gravados na chave
+sem treinador `ppbui:team-movesets:v1`. O candidato de correção do /code-review
+passa a gravá-los sob `ppbui:team-movesets:v2:<trainer-id>`, com entradas por
+preset e importação manual explícita dos registros antigos, sem alterar sua fonte
+original. Gravações concorrentes do mesmo treinador são serializadas sob Web
+Locks; sem suporte ao bloqueio, o fallback de edição é somente de sessão.
+Apply sempre lê uma revision
 fresca, valida disponibilidade, grava via writer nativo e revalida o estado final antes de
-marcar sucesso. Detalhes e gate estão em docs/TEAM_MOVESETS_STATUS.md.
+marcar sucesso; no candidato de correção, Apply é cancelado se a identidade
+autenticada muda entre as leituras e a gravação. Detalhes e gate estão em
+docs/TEAM_MOVESETS_STATUS.md.
 
 ## Escopo
 
@@ -59,7 +66,7 @@ marcar sucesso. Detalhes e gate estão em docs/TEAM_MOVESETS_STATUS.md.
 - Mantém o bloco nativo de ações associado ao membro selecionado, preservando os próprios botões, estados `disabled` e listeners. Configure moves, Activate/Active e `#N ← →` formam uma única linha de comandos explícita abaixo da identidade selecionada; posição oficial, Details e Remove continuam propriedade de Team. Vitals/Stats são novamente visíveis; Pokémon Profile não move nem substitui esses nós.
 - O marcador `#N` acompanha a seleção e a ordem nativa e substitui o texto longo `Position N/6`; cleanup continua restaurando o texto nativo mais recente.
 - A projeção read-only de Saved Teams por `creatureId` foi removida de Team e pertence ao Pokémon Profile dedicado. A manutenção de Saved Teams continua no fluxo canônico de Team Presets, sem criar uma segunda persistência.
-- O manager completo de Saved Teams agora possui `Criar time`: lê apenas os Pokémon da Backpack via `getCreatures("inventory")`, permite selecionar 1–6 IDs únicos, ordenar e escolher o ativo, e salva um snapshot v2 com `orderVerified:true`. Montar/salvar não executa `addTeamMember`, `removeTeamMember`, `setTeamLeader` ou `setTeamOrder`; somente o Apply já existente altera o Team real. `Salvar atual` continua disponível e o Team HUD não recebe editor de composição.
+- O manager completo de Saved Teams agora possui `Criar time`: lê os Pokémon do Team e da Backpack por `getCreatures("team")` e `getCreatures("inventory")`, deduplica IDs de instância dando precedência ao Team, permite selecionar 1–6 IDs únicos, ordenar e escolher o ativo, e salva um snapshot com `orderVerified:true`. A versão pública 0.2.203 usa armazenamento v2; o candidato de hardening usa v3 por treinador. Montar/salvar não executa `addTeamMember`, `removeTeamMember`, `setTeamLeader` ou `setTeamOrder`; somente o Apply já existente altera o Team real. `Salvar atual` continua disponível e o Team HUD não recebe editor de composição.
 - A geometria e o resize de Team voltam a seguir o contrato de gerenciamento, sem reservar espaço para o antigo dossiê 0.2.64. O experimento de largura/hierarquia editorial de 0.2.64 permanece apenas como evidência histórica em `docs/TEAM_PROFILE_STATUS.md`.
 - O seletor original para adicionar Pokémon recebe busca por nome, filtro de elemento,
   raridade e Limpar em um discovery rail PPBUI anexado. Em largura normal os quatro

@@ -184,6 +184,13 @@ merge or publication was performed or authorized by that approval.
 - Release verification must confirm the public `.user.js` bytes/hash, matching
   version metadata, successful workflow and non-draft/non-prerelease status.
 
+The subsequent `v0.2.202` Linux release artifact differed from the frozen
+Product Owner-approved hash and was moved to Draft. The corrected, version-bumped
+`v0.2.203` was published on 2026-10-15 with the locked SHA-256
+`D7E6F662C426E9328E259134EAF12369B1A6145A9C32AB509033CE21131D8C0C`.
+See `docs/PM_GATE_2026-10-15_RELEASE_RECOVERY.md` for the evidence and release
+closure; this did not change the earlier `0.2.202` live-validation scope.
+
 ## Product Owner live checklist (historical)
 
 In Hunts MAP and LIST with seven Favorites, verify five full rows on a normal

@@ -6,7 +6,6 @@ import { walletStyles } from "./styles.js";
 import { readMenuLayoutOwner } from "../menu-bar/layout-owner.js";
 import { createNativeBusBindings } from "../../core/native-event-bus.js";
 
-const setText = (node,value) => { if(node.textContent !== value)node.textContent=value; };
 const setAttr = (node,key,value) => { if(node.getAttribute(key) !== value)node.setAttribute(key,value); };
 
 export function createWalletModule({doc:providedDocument,storage} = {}) {

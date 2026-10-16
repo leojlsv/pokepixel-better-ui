@@ -231,8 +231,11 @@ retroativamente convertido em `VISUAL READY`. Em **2026-10-15**, o Product Owner
 respondeu **"validado"** à entrega do arquivo exato acima, alterando o estado
 deste corretivo para **user-validated** no escopo da paginação do Inventory.
 Esta confirmação não adiciona evidência independente de leitor de tela ou de
-cenários não declarados pelo PO. **Commit, merge, push e publicação permanecem
-pendentes de autorização aplicável**, sem mudança do bundle validado.
+cenários não declarados pelo PO. Na etapa de aceite do arquivo `0.2.200`, commit,
+merge, push e publicação ainda dependiam de autorização separada. Posteriormente,
+o corretivo foi integrado com os demais ajustes aprovados na release pública
+`v0.2.203` (2026-10-15); o artefato publicado tem versão e SHA-256 próprios e não
+substitui o hash histórico do candidato `0.2.200` registrado acima.
 
 O seletor real fica no painel estável, fora do corpo recriado pelo jogo.
 Um espaço reservado antes de Re-Sort mantém seu alinhamento. Isso evita

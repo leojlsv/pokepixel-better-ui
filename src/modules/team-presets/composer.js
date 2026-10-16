@@ -99,11 +99,22 @@ export function mountTeamPresetComposer(root, { store, onChange, setManagerStatu
   if (grid) grid.before(style, host); else root.append(style, host);
 
   let candidates = [], selected = [], selectedId = "", activeId = "", loading = false, loaded = false, disposed = false, editingId = "", returnFocus = null;
-  let editBaselineIds = new Set();
+  let editBaselineIds = new Set(), editBaseline = null;
+  let draftOwner = store?.owner?.() ?? null, loadEpoch = 0, draftEpoch = 0, saving = false;
+  const ownerUnchanged = captured => typeof store?.owner !== "function" || Boolean(captured && store.owner() === captured);
   const text = () => teamPresetsText(doc);
   const setStatus = (message = "", error = false) => { status.textContent = message; status.dataset.error = String(Boolean(error)); };
   const setText = (node, value) => { if (node.textContent !== value) node.textContent = value; };
   const setAttr = (node, key, value) => { if (node.getAttribute(key) !== value) node.setAttribute(key, value); };
+  function bindDraftOwner(current) {
+    if (current === draftOwner) return;
+    draftOwner = current;
+    draftEpoch++;
+    loadEpoch++;
+    loading = loaded = false;
+    candidates = [];
+    rebuildFilters();
+  }
 
   function syncCopy() {
     const copy = text(), panelTitle = editingId ? copy.editManualTitle : copy.manualTitle;
@@ -178,13 +189,16 @@ export function mountTeamPresetComposer(root, { store, onChange, setManagerStatu
     focusTarget?.focus({ preventScroll:true });
   }
 
-  function syncSave() { save.disabled = !name.value.trim() || !selected.length || loading; }
+  function syncSave() { save.disabled = !name.value.trim() || !selected.length || loading || saving; }
   async function load({ force = false } = {}) {
     if (loading || disposed || (loaded && !force)) return;
+    const capturedOwner = draftOwner, epoch = ++loadEpoch;
+    if (!ownerUnchanged(capturedOwner)) return;
     loading = true; refresh.disabled = true; empty.hidden = true; setStatus(text().loadingBackpack); syncSave();
     let succeeded = false;
     try {
-      const result = await loadTeamPresetBackpack(doc); if (disposed) return;
+      const result = await loadTeamPresetBackpack(doc);
+      if (disposed || epoch !== loadEpoch || !ownerUnchanged(capturedOwner)) return;
       if (!result) throw new Error("backpack-unavailable");
       const seen = new Set();
       candidates = result.filter(creature => { const id = String(creature?.id ?? "").trim(); if (!id || seen.has(id)) return false; seen.add(id); return true; });
@@ -195,10 +209,10 @@ export function mountTeamPresetComposer(root, { store, onChange, setManagerStatu
       if (!selected.some(member => member.id === selectedId)) selectedId = selected[0]?.id || "";
       loaded = true; rebuildFilters(); setStatus(previousCount > selected.length ? text().backpackSelectionUpdated : ""); renderFormation(); renderCandidates();
       succeeded = true;
-    } catch { if (!disposed) setStatus(text().backpackLoadFailed, true); }
+    } catch { if (!disposed && epoch === loadEpoch && ownerUnchanged(capturedOwner)) setStatus(text().backpackLoadFailed, true); }
     finally {
-      loading = false;
-      if (!disposed) {
+      if (epoch === loadEpoch) loading = false;
+      if (!disposed && epoch === loadEpoch && ownerUnchanged(capturedOwner)) {
         refresh.disabled = false;
         empty.hidden = !succeeded || candidatesHost.dataset.empty !== "true";
         syncSave();
@@ -207,24 +221,34 @@ export function mountTeamPresetComposer(root, { store, onChange, setManagerStatu
   }
   function reset({ preserveMode = false } = {}) {
     selected = []; selectedId = activeId = ""; name.value = ""; search.value = ""; element.value = ""; rarity.value = ""; setStatus();
-    if (!preserveMode) { editingId = ""; editBaselineIds = new Set(); }
+    if (!preserveMode) { editingId = ""; editBaselineIds = new Set(); editBaseline = null; }
     syncCopy(); renderFormation(); renderCandidates(); syncSave();
   }
   function openCreate() {
     if (disposed) return;
-    returnFocus = create; editingId = ""; editBaselineIds = new Set(); panel.hidden = false; create.hidden = true; reset({ preserveMode:true });
+    const current = store?.owner?.() ?? null;
+    if (!ownerUnchanged(current)) return;
+    bindDraftOwner(current);
+    draftEpoch++;
+    returnFocus = create; editingId = ""; editBaselineIds = new Set(); editBaseline = null; panel.hidden = false; create.hidden = true; reset({ preserveMode:true });
     if (!loaded) load(); name.focus({ preventScroll: true });
   }
   function openEdit(preset, trigger = null) {
     if (disposed) return false;
+    const current = store?.owner?.() ?? null;
+    if (!ownerUnchanged(current)) return false;
     if (!preset?.id || !Array.isArray(preset.members) || !preset.members.length) return false;
+    bindDraftOwner(current);
+    draftEpoch++;
     returnFocus = trigger; editingId = String(preset.id); editBaselineIds = new Set(preset.members.map(member => String(member.id)));
+    editBaseline = { ...preset, members: preset.members.map(member => ({ ...member })) };
     panel.hidden = false; create.hidden = true; search.value = ""; element.value = ""; rarity.value = ""; setStatus();
     selected = preset.members.slice(0, 6).map(member => ({ ...member })); activeId = selected.some(member => member.id === preset.activeId) ? preset.activeId : selected[0]?.id || ""; selectedId = selected[0]?.id || ""; name.value = preset.name || "";
     syncCopy(); renderFormation(); renderCandidates(); syncSave(); if (!loaded) load(); name.focus({ preventScroll:true }); return true;
   }
   function close() {
     if (disposed) return;
+    draftEpoch++;
     const previousEditingId = editingId, preferred = returnFocus; panel.hidden = true; create.hidden = false; returnFocus = null; reset();
     const replacement = previousEditingId ? [...root.querySelectorAll("[data-ppbui-team-preset-card]")].find(node => node.dataset.presetId === previousEditingId)?.querySelector("[data-ppbui-team-preset-edit]") : null;
     (replacement || (preferred?.isConnected ? preferred : null) || create).focus?.({ preventScroll:true });
@@ -238,17 +262,45 @@ export function mountTeamPresetComposer(root, { store, onChange, setManagerStatu
   right.addEventListener("click", () => { if (disposed) return; const index = selected.findIndex(member => member.id === selectedId); if (index >= 0 && index < selected.length - 1) { [selected[index + 1], selected[index]] = [selected[index], selected[index + 1]]; renderFormation(); } });
   setActive.addEventListener("click", () => { if (disposed) return; if (selected.some(member => member.id === selectedId)) { activeId = selectedId; renderFormation(); } });
   remove.addEventListener("click", () => { if (disposed) return; const id = selectedId; if (!id) return; selected = selected.filter(member => member.id !== id); if (activeId === id) activeId = selected[0]?.id || ""; selectedId = selected[0]?.id || ""; renderFormation(); renderCandidates(); syncSave(); });
-  save.addEventListener("click", () => {
-    if (disposed) return;
+  save.addEventListener("click", async () => {
+    if (disposed || saving) return;
+    if (!ownerUnchanged(draftOwner)) return setStatus(text().ownerChanged, true);
     const copy = text(), presetName = name.value.trim();
     if (!presetName) return setStatus(copy.nameRequired, true);
     if (!selected.length) return setStatus(copy.chooseMembers, true);
-    const snapshot = { members:selected, activeId: activeId || selected[0].id, orderVerified:true };
-    const result = editingId ? store?.updatePreset?.(editingId, presetName, snapshot) : store?.upsert?.(presetName, snapshot);
+    const snapshot = { members:selected.map(member => ({ ...member })), activeId: activeId || selected[0].id, orderVerified:true };
+    const capturedOwner = draftOwner, epoch = draftEpoch, editing = Boolean(editingId);
+    const isCurrent = () => !disposed && epoch === draftEpoch && ownerUnchanged(capturedOwner);
+    saving = true; syncSave();
+    let result = null;
+    try {
+      result = await Promise.resolve(editing
+        ? store?.updatePreset?.(editingId, presetName, snapshot, editBaseline, isCurrent)
+        : store?.upsert?.(presetName, snapshot, null, isCurrent));
+    } catch {}
+    finally { saving = false; }
+    if (!isCurrent()) return;
+    syncSave();
     if (!result) return setStatus(copy.updateFailed, true);
-    setManagerStatus?.(editingId ? copy.manualUpdated : (result.created ? copy.manualSaved : copy.updated), false); onChange?.(); close();
+    const sessionOnly = store?.isPersistent?.() === false;
+    const feedback = [editing ? copy.manualUpdated : (result.created ? copy.manualSaved : copy.updated),
+      sessionOnly ? copy.sessionOnly : ""].filter(Boolean).join(" ");
+    setManagerStatus?.(feedback, sessionOnly); onChange?.(); close();
   });
 
   syncCopy(); rebuildFilters(); renderFormation(); renderCandidates(); syncSave();
-  return { sync: syncCopy, edit: openEdit, cleanup() { disposed = true; style.remove(); host.remove(); } };
+  return {
+    sync() {
+      const current = store?.owner?.() ?? null;
+      if (current !== draftOwner) {
+        bindDraftOwner(current);
+        panel.hidden = true;
+        create.hidden = false;
+        reset();
+      }
+      syncCopy();
+    },
+    edit: openEdit,
+    cleanup() { disposed = true; loadEpoch++; style.remove(); host.remove(); },
+  };
 }

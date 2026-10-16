@@ -356,7 +356,7 @@ test("Saved Team manager keeps Team free of empty dossier projection", t => {
   assert.equal(profile.querySelector("[data-ppbui-team-profile-teams]"), null, "empty Saved Teams context belongs only to the dedicated Pokémon Profile");
 });
 
-test("manager exposes Edit and per-team collapse without mutating or losing the saved card state", t => {
+test("manager exposes Edit and per-team collapse without mutating or losing the saved card state", async t => {
   const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"></div></div>`, { pretendToBeVisual:true, url:"https://pokepixel.nietore.com/play/" });
   const root = dom.window.document.body.firstChild, saved = store(); let changeCalls = 0;
   dom.window.PokeIdle = { Localization:{ get:()=>"en" }, Api:{ async getCreatures(){ return { data:[] }; } } };
@@ -369,6 +369,7 @@ test("manager exposes Edit and per-team collapse without mutating or losing the 
   assert.ok(card.querySelector('[data-ppbui-team-preset-card-meta]'), "count/active summary remains visible when collapsed");
   manager.sync(); assert.equal(card.querySelector('[data-ppbui-team-preset-card-body]').hidden, true, "stable sync must preserve collapse state");
   const rename = card.querySelector('[data-ppbui-team-preset-name-field] input'); rename.value = "Gym renamed"; rename.dispatchEvent(new dom.window.Event("change"));
+  await Promise.resolve();
   const rerendered = root.querySelector('[data-ppbui-team-preset-card]'); assert.notEqual(rerendered, card); assert.equal(rerendered.querySelector('[data-ppbui-team-preset-card-body]').hidden, true, "a manager rerender must preserve collapse state by preset id");
   const nextCollapse = rerendered.querySelector('[data-ppbui-team-preset-collapse]'); nextCollapse.click();
   const edit = rerendered.querySelector('[data-ppbui-team-preset-edit]'); assert.equal(edit.textContent, "Edit"); edit.click();
@@ -444,18 +445,19 @@ test("manager exposes local pending/rename feedback and disables its own control
   applyButton.click(); await Promise.resolve();
   assert.equal(details.getAttribute("aria-busy"), "true"); assert.equal(applyButton.getAttribute("aria-busy"), "true"); assert.equal(applyButton.textContent, "Applying...");
   assert.equal(localStatus.textContent, "Applying team..."); assert.ok([...details.querySelectorAll("button,input")].every(node => node.disabled), "manager controls cannot accept conflicting operations while Apply is pending");
-  await release(); await Promise.resolve(); await Promise.resolve();
+  await release(); await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(details.hasAttribute("aria-busy"), false); assert.equal(applyButton.hasAttribute("aria-busy"), false); assert.equal(applyButton.textContent, "Apply"); assert.equal(localStatus.textContent, "Team applied.");
 
   saved.rename = () => false;
   const rename = card.querySelector("[data-ppbui-team-preset-name-field] input"); rename.value = ""; rename.dispatchEvent(new dom.window.Event("change"));
+  await Promise.resolve();
   assert.equal(rename.value, "Gym"); assert.equal(localStatus.textContent, "Enter a team name."); assert.equal(localStatus.dataset.error, "true");
 
   saved.replaceSnapshot = () => false;
   const updateButton = [...card.querySelectorAll("button")].find(button => button.textContent === "Update saved team");
   updateButton.click(); await Promise.resolve();
   assert.equal(updateButton.textContent, "Updating..."); assert.equal(details.getAttribute("aria-busy"), "true");
-  await release(); await Promise.resolve(); await Promise.resolve();
+  await release(); await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(details.hasAttribute("aria-busy"), false); assert.equal(updateButton.hasAttribute("aria-busy"), false); assert.equal(updateButton.textContent, "Update saved team");
   assert.equal(localStatus.textContent, "Could not update the saved team."); assert.equal(localStatus.dataset.error, "true");
 });
@@ -528,7 +530,7 @@ test("captured manager controls cannot synchronously mutate Saved Teams after cl
   assert.deepEqual(writes,[],"detached rename/order/member/active/confirmation controls cannot reach the persistent store");
 });
 
-test("preset-list ordering is available only in Team manager and updates HUD order", t => {
+test("preset-list ordering is available only in Team manager and updates HUD order", async t => {
   const { dom, root } = hudDom();
   const panel = dom.window.document.createElement("div"); panel.className = "pokeidle-team-panel"; panel.innerHTML = '<div class="pokeidle-panel__body"></div>'; dom.window.document.body.append(panel);
   const entries = [preset, { ...preset, id: "p2", name: "Second" }];
@@ -540,6 +542,7 @@ test("preset-list ordering is available only in Team manager and updates HUD ord
   assert.equal(root.querySelector("[data-move-preset]"), null);
   assert.equal(panel.querySelectorAll('[data-ppbui-team-preset-card] [data-direction="up"], [data-ppbui-team-preset-card] [data-direction="down"]').length, 4, "preset reorder controls appear only when ordering is meaningful");
   panel.querySelector('[data-ppbui-team-preset-card] [data-direction="down"]').click();
+  await new Promise(resolve => setTimeout(resolve, 0));
   assert.deepEqual([...root.querySelectorAll('[data-ppbui-team-presets-name]')].map(n => n.textContent), ['Second', 'Gym']);
   assert.deepEqual([...panel.querySelectorAll('[data-ppbui-team-preset-card-head] input')].map(n => n.value), ['Second', 'Gym']);
   assert.equal(panel.querySelector('[data-ppbui-team-preset-card] [data-direction="up"]').disabled, true);

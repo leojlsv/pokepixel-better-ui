@@ -22,6 +22,23 @@ test("flush saves debounced edits and failure preserves draft for explicit retry
   assert.equal(saver.state().phase,"error");assert.deepEqual(saver.state().draft,["names"]);
   fail=false;await saver.flush();assert.equal(calls,2);assert.equal(saver.state().pending,false);
 });
+test("saver stamps the owner when the edit occurs, even before its timer fires", async () => {
+  let owner="A";const calls=[];
+  const saver=createSettingsSaver(async (draft,editOwner)=>calls.push({draft,editOwner}),450,()=>owner);
+  saver.change(["A edit"]);owner="B";
+  await saver.flush();
+  assert.deepEqual(calls,[{draft:["A edit"],editOwner:"A"}]);
+});
+test("retired Auto Helper saver cancels its pending debounce and cannot flush it later", async () => {
+  const calls=[], saver=createSettingsSaver(async payload=>calls.push(payload),10);
+  saver.change(["old draft"]);
+  saver.retire();
+  await new Promise(resolve=>setTimeout(resolve,25));
+  await saver.flush();
+  saver.change(["post-retirement"]);
+  assert.deepEqual(calls,[]);
+  assert.equal(saver.state().pending,false);
+});
 function setup(t, settingsOverride={}, apiOverride={}, fixture={}) {
   const check = label => `<label class="auto-helper-row"><input type="checkbox"><b>${label}</b></label>`;
   const picker = '<div class="auto-capsule-grid"><button>Original picker</button></div>';
@@ -42,12 +59,14 @@ function setup(t, settingsOverride={}, apiOverride={}, fixture={}) {
   const settings={auto_potion:{hp_threshold:40},auto_capture:{capsule_by_quality:{common:'great-ball',rare:'ultra-ball'}},auto_sell:{qualities:[]},...(fixture.extract === false ? {} : {auto_extract:{qualities:[]}}),...settingsOverride};
   let inventory=[{item_id:'p',type:'potion',name:'Potion long name',qty:2},{item_id:'b',type:'capsule',name:'Poké Ball',qty:3,icon_index:164},{item_id:'great-ball',type:'capsule',name:'Great Ball',qty:2,icon_index:165},{item_id:'ultra-ball',type:'capsule',name:'Ultra Ball',qty:1,icon_index:166}];
   const handlers=new Map(), calls=[];
-  doc.defaultView.PokeIdle={ t:key=>key, Localization:{get:()=> 'en'}, Bus:{on:(key,fn)=>handlers.set(key,fn),off:key=>handlers.delete(key)}, Api:{getHuntSettings:apiOverride.getHuntSettings || (async()=>settings),getInventory:apiOverride.getInventory || (async()=>inventory)} };
+  let trainerId="trainer-A";
+  doc.defaultView.PokeIdle={ t:key=>key, Localization:{get:()=> 'en'}, Bus:{on:(key,fn)=>handlers.set(key,fn),off:key=>handlers.delete(key)}, Api:{getHuntSettings:apiOverride.getHuntSettings || (async()=>settings),getInventory:apiOverride.getInventory || (async()=>inventory)},
+    Auth:{isAuthenticated:()=>Boolean(trainerId),getTrainerSummary:()=>trainerId?{id:trainerId}:null},WorldPresence:{getSelfTrainerId:()=>trainerId} };
   const saver=createSettingsSaver(async payload=>{calls.push(payload);});
   const session={groups:{},saver};const original=root.innerHTML;
   const mounted=mountAutoHelper(root,session);
   t.after(()=>{mounted.cleanup();dom.window.close();});
-  return {dom,doc,root,mounted,session,calls,original,handlers,nativeChanges:()=>nativeChanges,setInventory:value=>inventory=value};
+  return {dom,doc,root,mounted,session,calls,original,handlers,nativeChanges:()=>nativeChanges,setInventory:value=>inventory=value,setTrainerId:value=>{trainerId=value;}};
 }
 test("Auto Helper rebinds its native inventory event to the replacement Bus", t => {
   const s=setup(t);
@@ -137,6 +156,97 @@ test("a native API swap during settings read prevents stale writes and keeps Ret
   s.root.querySelector(".ppbui-auto-save button").click();await tick();
   assert.deepEqual(writes,["new"],"Retry must send the preserved draft through the current API");
   s.root.remove();cleanup();
+});
+test("a debounced Auto Helper edit from trainer A cannot save to trainer B on the same API object", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const writes=[],api=s.dom.window.PokeIdle.Api;
+  api.updateHuntSettings=async (...payload)=>{writes.push({trainer:s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id,payload});};
+  const module=createAutoHelperModule();assert.equal(module.shouldMount(),true);
+  const cleanup=module.mount();await tick();
+  const names=s.root.querySelector('input[type=text]');names.value="pikachu";
+  names.dispatchEvent(new s.dom.window.Event("input",{bubbles:true}));
+  s.setTrainerId("trainer-B");
+  await new Promise(resolve=>setTimeout(resolve,520));
+  assert.deepEqual(writes,[],"trainer A's queued draft must not be applied to trainer B");
+  assert.equal(s.root.querySelector('.ppbui-auto-save')?.dataset.state,"error");
+  s.root.remove();cleanup();
+});
+test("Auto Helper rejects an in-flight settings read after account switch without replacing the API", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const api=s.dom.window.PokeIdle.Api, originalGet=api.getHuntSettings,pending=deferred(),writes=[];
+  const module=createAutoHelperModule();assert.equal(module.shouldMount(),true);
+  const cleanup=module.mount();await tick();
+  api.getHuntSettings=()=>pending.promise;
+  api.updateHuntSettings=async (...payload)=>{writes.push({trainer:s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id,payload});};
+  s.root.querySelector('.ppbui-auto-group input[type=checkbox]').click();
+  s.setTrainerId("trainer-B");
+  pending.resolve(await originalGet());await tick();await tick();
+  assert.deepEqual(writes,[],"a completed A read cannot authorize a B write");
+  assert.equal(s.root.querySelector('.ppbui-auto-save')?.dataset.state,"error");
+  s.root.remove();cleanup();
+});
+test("same-panel A-to-B remount drops stale drafts without leaving the new Auto Helper inert", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const writes=[],api=s.dom.window.PokeIdle.Api;
+  const originalGet=api.getHuntSettings;
+  api.getHuntSettings=async()=>s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id==="trainer-B"
+    ? {auto_capture:{species_filter:["squirtle"]},auto_potion:{hp_threshold:40},auto_sell:{qualities:[]}}
+    : originalGet();
+  api.updateHuntSettings=async(...payload)=>writes.push({trainer:s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id,payload});
+  const module=createAutoHelperModule();assert.equal(module.shouldMount(),true);
+  const originalKey=module.getMountKey(),cleanupA=module.mount();await tick();
+  const name=s.root.querySelector('input[type=text]');name.value="eevee";
+  name.dispatchEvent(new s.dom.window.Event("input",{bubbles:true}));
+  s.setTrainerId("trainer-B");assert.equal(module.shouldMount(),true);
+  assert.notEqual(module.getMountKey(),originalKey,"core must unmount the old owner's enhancement");
+  cleanupA();
+  assert.equal(Boolean(s.root.querySelector('.pokeidle-panel__body').inert),false);
+  const cleanupB=module.mount();await tick();
+  assert.equal(Boolean(s.root.querySelector('.pokeidle-panel__body').inert),false);
+  assert.equal(s.root.querySelector('input[type=text]').value,"squirtle","new trainer must see its own authoritative species filter");
+  s.root.querySelector('.ppbui-auto-group input[type=checkbox]').click();await tick();await tick();
+  assert.deepEqual(writes.map(write=>write.trainer),["trainer-B"]);
+  assert.deepEqual(writes[0].payload[0].species_filter,["squirtle"],"B's settings must not inherit A's unsaved Eevee");
+  s.root.remove();cleanupB();
+});
+
+test("observed A→B→A re-login retires the first A saver even if its settings read finishes last", async t => {
+  const s=setup(t);await tick();s.mounted.cleanup();s.root.innerHTML=s.original;
+  const previous=Object.getOwnPropertyDescriptor(globalThis,"document");
+  Object.defineProperty(globalThis,"document",{value:s.doc,configurable:true});
+  t.after(()=>{if(previous)Object.defineProperty(globalThis,"document",previous);else delete globalThis.document;});
+  const api=s.dom.window.PokeIdle.Api, pendingA=deferred(),writes=[];
+  const settingsA={auto_capture:{enabled:false,species_filter:["pikachu"]},auto_potion:{hp_threshold:40},auto_sell:{qualities:[]}};
+  const settingsB={auto_capture:{enabled:true,species_filter:["squirtle"]},auto_potion:{hp_threshold:40},auto_sell:{qualities:[]}};
+  api.getHuntSettings=async()=>s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id==="trainer-B"?settingsB:settingsA;
+  api.updateHuntSettings=async(...payload)=>writes.push({trainer:s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id,payload});
+  const module=createAutoHelperModule();
+  assert.equal(module.shouldMount(),true);
+  const cleanupA1=module.mount();await tick();
+  // Only the old A save is suspended; future mounts can hydrate normally.
+  api.getHuntSettings=()=>pendingA.promise;
+  s.root.querySelector(".ppbui-auto-group input[type=checkbox]").click();await tick();
+  api.getHuntSettings=async()=>s.dom.window.PokeIdle.Auth.getTrainerSummary()?.id==="trainer-B"?settingsB:settingsA;
+  s.setTrainerId("trainer-B");
+  assert.equal(module.shouldMount(),true);
+  cleanupA1();
+  const cleanupB=module.mount();await tick();
+  s.setTrainerId("trainer-A");
+  assert.equal(module.shouldMount(),true);
+  cleanupB();
+  const cleanupA2=module.mount();await tick();
+  pendingA.resolve(settingsA);await tick();await tick();
+  assert.deepEqual(writes,[],"a pre-switch A request cannot write after B and a new A session mounted");
+  s.root.remove();cleanupA2();
 });
 test("slow initialization never exposes native pickers or destination grids", async t => {
   const settingsPending=deferred(), inventoryPending=deferred();

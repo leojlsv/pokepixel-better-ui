@@ -73,8 +73,10 @@ After Product Owner live approval, commit/push/merge/tag/publication actions wer
 explicitly authorized on 2026-10-03.
 
 - Better UI PR `#3` merged to `main` as `fb2586b38bda457b0720bf991612adf22b6539ee`
-  after both CI jobs passed. Better UI has no project-defined tag/release publication
-  pipeline, so no ad-hoc Better UI tag or GitHub Release was invented.
+  after both CI jobs passed. At this 2026-10-03 checkpoint, Better UI did not yet
+  have a project-defined tag/release publication pipeline, so no ad-hoc Better UI
+  tag or GitHub Release was created. The pipeline was added later and is recorded
+  with the subsequent `v0.2.203` release in `docs/TAMPERMONKEY_UPDATES.md`.
 - Hunt Analyzer PR `#27` merged to `main` as
   `90c5fc002d12aafd82e4cb089bdbb9ec826d7e32`; `main` CI passed.
 - The guarded `publish/v1.15.2` workflow completed successfully, created tag and

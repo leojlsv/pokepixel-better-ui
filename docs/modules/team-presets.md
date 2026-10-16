@@ -61,9 +61,25 @@ If canonical order is not already available, `Save current` opens/reuses the nat
 
 ## Persistence and migration
 
-Current storage key: `ppbui:team-presets:v2`.
+The released `v0.2.203` uses the ownerless key `ppbui:team-presets:v2`. **In the
+unreleased /code-review hardening candidate**, data is isolated by validated trainer
+ID under `ppbui:team-presets:v3:<encoded-trainer-id>`, with individual per-preset
+entry keys and a separate order index. An unknown or conflicting Auth/Presence
+identity displays no other trainer's saved collection and cannot write to it.
+In supporting browsers each write is serialized by owner using origin-wide
+Web Locks; a stale record revision is rejected rather than silently overwriting
+another tab. If safe locking is unavailable, edits remain **session-only**
+instead of risking an unsafe shared write. Session drafts are reconciled against
+current disk records on recovery; conflicting edits are not merged silently.
 
-Version 1 (`ppbui:team-presets:v1`) is migrated automatically. Because v1 used HUD order, migrated presets are marked `orderVerified: false` and Apply is blocked until the user either:
+The old `v1`/`v2` keys have no reliable trainer identity and are **never imported
+automatically** by this candidate. The HUD offers a separate **Import old teams**
+action only if legacy data exists; the user must confirm that the teams belong
+to the currently authenticated trainer. The import requires origin-wide Web Locks,
+rejects missing lock support rather than guessing ownership, and preserves the
+original keys unchanged for recovery. Once assigned, other trainers cannot claim
+that legacy collection. Previously saved v1 presets still have
+`orderVerified: false` and Apply remains blocked until the user either:
 
 - reviews/reorders the six members and presses **Confirm order**; or
 - presses **Update saved team**, which captures the current canonical Team order.
@@ -133,7 +149,7 @@ Management actions:
 - Apply;
 - Delete.
 
-### Manual creation from Backpack
+### Manual creation from Team + Backpack
 
 The full manager also exposes **Create team** beside the Saved Teams disclosure. This is an
 additive authoring flow; it does not replace `Save current` and it is intentionally absent from
@@ -141,23 +157,27 @@ the persistent Team HUD.
 
 The composer:
 
-- reads candidates through the existing native `PokeIdle.Api.getCreatures("inventory")` source;
+- reads candidates using native `PokeIdle.Api.getCreatures("team")` and
+  `PokeIdle.Api.getCreatures("inventory")` data, de-duplicating instance IDs
+  with Team-first precedence;
 - lets the user choose **1–6 unique creature instance IDs** without invoking the native Add
   Pokémon cards;
 - keeps selected members in an explicit authored Battle order and lets the user choose the
   saved active Pokémon independently;
-- requires a Saved Team name and persists the resulting snapshot through the existing
-  `ppbui:team-presets:v2` storage as `orderVerified: true`;
+- requires a Saved Team name and persists the resulting snapshot through the
+  trainer-scoped store (`v3` in the pending /code-review candidate) as `orderVerified: true`;
 - preserves the live Team throughout authoring and saving. It never calls
   `addTeamMember`, `removeTeamMember`, `setTeamLeader` or `setTeamOrder`;
 - changes the real Team only if the user later presses the existing **Apply** action on the
   saved preset.
 
-Backpack candidates are cached for the lifetime of the mounted composer after the first
-successful load so closing/reopening the authoring panel does not create idle API traffic.
-**Refresh Backpack** is the explicit reload path. Candidate IDs are deduplicated defensively,
-filters operate only on the loaded Backpack snapshot, the list is bounded/scrollable, and empty
-Backpack versus no-filter-results states are reported separately. Rebuilding candidate/formation
+Team + Backpack candidates are cached per authenticated trainer during the lifetime of the
+mounted composer. Switching trainer invalidates the candidates, any in-flight load and
+the draft even when the same DOM remains mounted; reopening for the new owner triggers
+a fresh native read instead of reusing a previous trainer's Pokémon.
+**Refresh Pokémon** is the explicit reload path. Candidate IDs are deduplicated defensively,
+filters operate only on the loaded Team + Backpack snapshot, the list is bounded/scrollable, and empty
+collection versus no-filter-results states are reported separately. Rebuilding candidate/formation
 rows preserves keyboard focus on the corresponding logical member when possible.
 
 Apply and Update disable conflicting manager controls while pending, mark the triggering action and

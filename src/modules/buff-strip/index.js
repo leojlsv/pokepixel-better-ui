@@ -1,5 +1,5 @@
 import { buffStripConfig as config } from "./config.js";
-import { findBuffStripTarget, buffStripText } from "./dom.js";
+import { findBuffStripTarget } from "./dom.js";
 import { mountBuffStrip } from "./controller.js";
 
 export { buffStripText } from "./dom.js";

@@ -79,7 +79,14 @@ const copies = {
 
 export function pokemonProfileText(doc = document) {
   const lang = doc.defaultView?.PokeIdle?.Localization?.get?.() || doc.documentElement.lang || "pt";
-  return copies[lang.split(/[-_]/)[0]] || copies.en;
+  const code = lang.split(/[-_]/)[0], base = copies[code] || copies.en;
+  const migration = {
+    pt: { importLegacyMoves: "Importar movesets antigos", importLegacyConfirm: "Estes movesets foram salvos neste navegador sem identificação do treinador. Importe somente se forem seus. Uma única conta poderá reivindicá-los. Continuar?", importLegacyImported: "Movesets antigos importados.", importLegacyFailed: "Falha ao importar movesets antigos.", ownerChanged: "O treinador mudou. Operação cancelada." },
+    en: { importLegacyMoves: "Import old movesets", importLegacyConfirm: "These movesets were saved in this browser without a trainer identity. Import only if they are yours. Only one account can claim them. Continue?", importLegacyImported: "Old movesets imported.", importLegacyFailed: "Could not import old movesets.", ownerChanged: "Trainer changed. Operation canceled." },
+    es: { importLegacyMoves: "Importar movesets antiguos", importLegacyConfirm: "Estos movesets no tienen identidad de entrenador. Impórtalos solo si son tuyos. ¿Continuar?", importLegacyImported: "Movesets importados.", importLegacyFailed: "No se pudieron importar los movesets.", ownerChanged: "El entrenador cambió. Operación cancelada." },
+    zh: { importLegacyMoves: "导入旧招式组合", importLegacyConfirm: "旧招式组合没有训练家身份标识。仅当它们属于当前训练家时才导入。继续吗？", importLegacyImported: "旧招式组合已导入。", importLegacyFailed: "无法导入旧招式组合。", ownerChanged: "训练家已切换，操作已取消。" },
+  };
+  return { ...base, ...(migration[code] || migration.en) };
 }
 
 export const pokemonName = (doc, creature) => doc.defaultView?.PokeIdle?.DittoDisplayName?.get?.(creature)

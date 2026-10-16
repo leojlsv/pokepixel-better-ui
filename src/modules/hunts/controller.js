@@ -1,5 +1,5 @@
 import {parts,results,markers,markerLabel,huntsText,huntScene,rememberActiveHuntZone,forgetActiveHuntZone,selectors,listRowZoneIndex} from './dom.js';
-import {canLocateHunt,locateHunt} from './navigation.js';
+import {locateHunt} from './navigation.js';
 import {createHuntInspector} from './dossier.js';
 import {createHuntMarkerInteractions} from './interaction.js';
 import {huntsStyles} from './styles.js';

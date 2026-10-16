@@ -2,6 +2,8 @@ export const teamPresetsConfig = Object.freeze({
   id: "team-presets",
   storageKey: "ppbui:team-presets:v2",
   legacyStorageKey: "ppbui:team-presets:v1",
+  scopedStoragePrefix: "ppbui:team-presets:v3:",
+  legacyClaimKey: "ppbui:team-presets:v3:legacy-claim",
   actionTimeoutMs: 8000,
   selectors: {
     hud: ".pokeidle-team-hud",
