@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-16 (UTC).
 **State:** TECH READY — independent QA completed. **Product Owner in-game acceptance VALIDATED for the exact `v0.2.204` r2 candidate.**
-**Publication:** NOT AUTHORIZED. The Product Owner separately authorized a local commit and fast-forward integration on 2026-10-16 at 03:53:52 UTC; no push, release-lock update, tag or GitHub Release was authorized.
+**Publication:** Conditionally authorized by the Product Owner on 2026-10-20 at 14:39:14 UTC, specifically if the /code-review corrections were genuinely complete. Publication execution remains subject to the exact-artifact and public CI gates described below.
 
 ## Provenance and isolation
 
@@ -46,9 +46,9 @@ Earlier local intermediate artifacts are superseded. Only the exact `-r2` file a
 - Independent final integrated QA: **TECH READY**, P0=0/P1=0/P2=0 remaining in the reviewed patch. The previously reproduced Professions pre-sync stale Collect All bug was re-probed after correction and produced no native API calls.
 - Regression fixtures simulate owner transitions and native API responses; none is a claim of in-game testing.
 
-## Release gate remains closed
+## Release lock — gate prepared after conditional approval
 
-`userscript/release-lock.json` is intentionally still bound to published `0.2.203` and its approved SHA-256. Therefore `node scripts/verify-release.mjs v0.2.204` **fails as intended** on the version mismatch. Exact-artifact acceptance is now recorded below; **do not modify the release lock without distinct authorization for release preparation/publication.**
+Before the 2026-10-20 conditional authorization, `userscript/release-lock.json` intentionally remained bound to the published `0.2.203` and its checksum; `release:check` for `v0.2.204` correctly failed. In this isolated release-preparation commit, the lock is advanced to **`0.2.204` / `384DDCCD9C6537C09CD15F3D47D5C802753DFF13C5C0DAD105F412681B5AD6E4`**, matching the exact PO-approved `-r2` artifact. The prior `0.2.203` lock remains in Git history and its public release is not overwritten. Changing this JSON/documentation must not change the generated userscript bytes.
 
 ## Product Owner in-game acceptance — completed
 
@@ -69,4 +69,8 @@ The Product Owner, not an agent, owns the real PokePixel Idle/Tampermonkey valid
 
 On **2026-10-16 at 03:53:52 UTC**, in response to the explicit request to commit the corrections and integrate locally with `public/main`, while withholding push and publication, the Product Owner replied **`autorizado`**. This grants only the local commit and fast-forward preparation/integration of the approved changes. The local integration branch is to track the public lineage; the remote-tracking `public/main` ref must not be advanced locally to misrepresent the remote state. The private `main`/`origin/main` lineage and all unrelated worktrees remain untouched.
 
-**Next gate — PENDING:** separate authorization for push to the public repository, release-lock preparation/update, `v0.2.204` tag and GitHub Release. In-game validation alone did not grant any of these actions, and the subsequent Git authorization did not expand to them.
+## Conditional publication authorization — 2026-10-20
+
+The Product Owner asked **`Tudo ja foi corrigido? Apenas se sim, de fato, está aprovado`** on **2026-10-20 at 14:39:14 UTC**. This authorizes publication **only if** the identified `/code-review` findings are closed, not the unrelated active development in other worktrees. Fresh checks of the `v0.2.204 -r2` candidate confirmed **898/898** Node tests PASS; **180** JavaScript syntax checks without errors; `npm audit --audit-level=high` with **zero vulnerabilities**; unchanged clean source commit `cffcd9f`; and deterministic rebuild to the **same 1,757,884 bytes and SHA-256 on Windows and on Linux (clean committed-source `git archive`, Node 24, `npm ci`, esbuild)**. Historical independent final QA remains TECH READY with no open P0/P1/P2 in the reviewed patch.
+
+The permitted next actions are: commit this release-lock preparation, push **only the public-lineage fast-forward** to public `main`, require public `main` CI success, then create/push the `v0.2.204` tag and verify the GitHub Release's assets against the approved SHA. If a mandatory gate fails, **do not tag or publish**. Do not merge dirty root-worktree work, rewrite published tags, modify private `main` or `origin/main`, or overwrite historical `v0.2.202`/`v0.2.203` releases. The release's final remote state must be independently verified; this document records authorization and preparation, not a claim that publication already occurred.
