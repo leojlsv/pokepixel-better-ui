@@ -17,6 +17,7 @@ export const inventoryConfig = {
   },
   selectors: {
     root: ".inventory-window--slots",
+    cardModeWindow: '[data-ppbui-card-mode-window="inventory"]',
     toolbar: ".inventory-slots-toolbar",
     search: "input.game-window__search",
     categorySelect: "select.game-window__select:not([data-ppbui-order]):not([data-ppbui-inventory-category-proxy])",

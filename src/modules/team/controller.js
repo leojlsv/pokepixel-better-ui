@@ -3,13 +3,20 @@ import { createTeamPicker } from "./picker.js";
 import { decorateElementIconList, releaseElementIconLists } from "../../core/element-icons.js";
 
 const value = number => Number.isFinite(Number(number)) ? Number(number).toLocaleString() : "—";
+let statsDisclosureSequence = 0;
 function styleNode(doc) {
   const style = doc.createElement("style");
   style.dataset.ppbuiModule = "team";
   style.textContent = `
     .pokeidle-team-panel[data-ppbui-team-enhanced] { container-type:inline-size; min-width:min(340px,calc(100vw - 16px))!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-window-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text); box-shadow:var(--ppbui-shadow-raised)!important; font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced]:not([data-ppbui-team-manual-height]) { width:min(480px,calc(100vw - 16px))!important; min-height:0!important; height:auto!important; max-height:calc(100vh - 16px)!important; }
-    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body { display:block!important; overflow-y:auto!important; padding:var(--ppbui-space-2) var(--ppbui-space-4) var(--ppbui-space-4)!important; background:var(--ppbui-bg-0)!important; color:var(--ppbui-text)!important; font-family:var(--ppbui-font-body)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body { display:grid!important; grid-template-columns:minmax(0,1fr) max-content; grid-auto-rows:max-content; align-content:start; align-items:stretch; column-gap:var(--ppbui-space-2); row-gap:0; min-height:0!important; overflow-y:auto!important; padding:var(--ppbui-space-2) var(--ppbui-space-4) var(--ppbui-space-4)!important; background:var(--ppbui-bg-0)!important; color:var(--ppbui-text)!important; font-family:var(--ppbui-font-body)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > * { grid-column:1/-1; min-width:0; order:9; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-section--roster { order:0; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-section--profile { order:1; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-section--vitals { order:4; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-section--attributes { order:5; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > [data-ppbui-team-preset-manager] { order:6; }
     .pokeidle-team-panel[data-ppbui-team-enhanced]:not([data-ppbui-team-manual-height]) > .pokeidle-panel__body { flex:0 1 auto!important; max-height:calc(100vh - 56px); }
     .pokeidle-team-panel[data-ppbui-team-enhanced][data-ppbui-team-manual-height] > .pokeidle-panel__body { flex:1 1 auto!important; max-height:none; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar { min-height:var(--ppbui-control-height); border:0!important; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; color:var(--ppbui-text)!important; box-shadow:none!important; }
@@ -55,6 +62,27 @@ function styleNode(doc) {
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-meter__label { color:var(--ppbui-text-muted)!important; font:600 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-body)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-meter__value { color:var(--ppbui-text)!important; font:700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-data)!important; }
     .pokeidle-team-panel[data-ppbui-team-enhanced] .team-meter__track { height:6px!important; overflow:hidden; border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-0)!important; box-shadow:none!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > [data-ppbui-team-stats-toggle] { grid-column:1; order:2; display:flex; align-items:center; gap:var(--ppbui-space-1); box-sizing:border-box; width:100%; min-width:0; min-height:var(--ppbui-control-height); margin:var(--ppbui-space-2) 0 0; padding:var(--ppbui-space-2) var(--ppbui-space-2); border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius); background:var(--ppbui-bg-2)!important; color:var(--ppbui-text)!important; font:700 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body); cursor:pointer; text-align:left; white-space:normal; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] [data-ppbui-team-stats-toggle]::before { display:grid; place-items:center; flex:0 0 20px; box-sizing:border-box; width:20px; height:20px; border:var(--ppbui-border-width) solid var(--ppbui-border-strong); border-radius:var(--ppbui-radius); background:var(--ppbui-bg-0); color:var(--ppbui-text); font:700 18px/1 var(--ppbui-font-body); content:"+"; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] [data-ppbui-team-stats-toggle][aria-expanded="true"]::before { content:"−"; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] [data-ppbui-team-stats-toggle]:hover:not(:disabled) { background:color-mix(in srgb,var(--ppbui-bg-2) 75%,var(--ppbui-info) 25%)!important; border-color:var(--ppbui-info)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] [data-ppbui-team-stats-toggle]:active:not(:disabled) { background:var(--ppbui-bg-0)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] [data-ppbui-team-stats-toggle]:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:var(--ppbui-pixel-unit); }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions { grid-column:2; order:3; display:flex!important; align-items:stretch; justify-content:flex-end; flex-wrap:nowrap; gap:var(--ppbui-space-2)!important; box-sizing:border-box; width:auto!important; max-width:100%; min-width:0; margin:var(--ppbui-space-2) 0 0!important; padding:0!important; border:0!important; background:transparent!important; box-shadow:none!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions > button { box-sizing:border-box; flex:0 1 auto; min-width:0!important; min-height:var(--ppbui-control-height)!important; margin:0!important; padding:var(--ppbui-space-2) var(--ppbui-space-3)!important; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-2)!important; color:var(--ppbui-text)!important; font:700 var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; white-space:normal; box-shadow:none!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions > button.pokeidle-btn--danger:not(:disabled) { color:var(--ppbui-danger-text)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions > button:hover:not(:disabled) { background:color-mix(in srgb,var(--ppbui-bg-2) 75%,var(--ppbui-info) 25%)!important; border-color:var(--ppbui-info)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions > button:active:not(:disabled) { background:var(--ppbui-bg-0)!important; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions > button:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:var(--ppbui-pixel-unit); }
+    .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body:not(:has(> .team-actions)) > [data-ppbui-team-stats-toggle] { grid-column:1/-1; }
+    .pokeidle-team-panel[data-ppbui-team-enhanced][data-ppbui-team-stats-collapsed="true"] > .pokeidle-panel__body > :is(.team-section--vitals,.team-section--attributes) { display:none!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]>.pokeidle-team-panel[data-ppbui-team-enhanced]:has([data-ppbui-team-preset-manager][open]):not([data-ppbui-team-user-dragging="true"]) { top:calc(var(--ppbui-card-mode-window-top-inset,0px) + 8px)!important; max-height:calc(100dvh - var(--ppbui-card-mode-window-top-inset,0px) - var(--ppbui-card-mode-window-bottom-inset,0px) - 16px)!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]>.pokeidle-team-panel[data-ppbui-team-enhanced]:has([data-ppbui-team-preset-manager][open]) > .pokeidle-panel__body { min-height:0; max-height:none; overflow-y:auto!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]>.pokeidle-team-panel[data-ppbui-team-enhanced][data-ppbui-team-horizontal-safe="true"]:has([data-ppbui-team-preset-manager][open]):not([data-ppbui-team-user-dragging="true"]) { left:var(--ppbui-team-safe-left)!important; width:var(--ppbui-team-safe-width)!important; top:var(--ppbui-team-safe-top)!important; max-height:var(--ppbui-team-safe-height)!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]>.pokeidle-team-panel[data-ppbui-team-enhanced][data-ppbui-team-vertical-safe="true"]:has([data-ppbui-team-preset-manager][open]):not([data-ppbui-team-user-dragging="true"]) { left:var(--ppbui-team-safe-left)!important; top:var(--ppbui-team-safe-top)!important; width:var(--ppbui-team-safe-width)!important; min-width:min(220px,var(--ppbui-team-safe-width))!important; max-height:var(--ppbui-team-safe-height)!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]>.pokeidle-team-panel[data-ppbui-team-enhanced][data-ppbui-team-user-dragging="true"]:not([data-ppbui-team-user-resizing="true"]):has([data-ppbui-team-preset-manager][open]) { width:var(--ppbui-team-drag-width)!important; height:var(--ppbui-team-drag-height)!important; max-height:none!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]>.pokeidle-team-panel[data-ppbui-team-enhanced][data-ppbui-team-user-dragging="true"][data-ppbui-team-vertical-safe="true"]:has([data-ppbui-team-preset-manager][open]) { min-width:min(220px,var(--ppbui-team-drag-width))!important; }
+    html[data-ppbui-card-mode="cards"] body>[data-ppbui-card-mode-window="native-team"]:has(>.pokeidle-team-panel[data-ppbui-team-enhanced]:is([data-ppbui-team-vertical-overlap="true"],[data-ppbui-team-horizontal-overlap="true"],[data-ppbui-team-user-dragging="true"]):has([data-ppbui-team-preset-manager][open])) { z-index:2147483001!important; }
     .team-equip-picker[data-ppbui-team-picker] { container-type:inline-size; box-sizing:border-box; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text)!important; box-shadow:var(--ppbui-shadow-raised)!important; font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body)!important; }
     .team-equip-picker[data-ppbui-team-picker] > .pokeidle-panel__titlebar { min-height:var(--ppbui-control-height); border:0!important; border-bottom:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text)!important; box-shadow:none!important; }
     .team-equip-picker[data-ppbui-team-picker] > .pokeidle-panel__titlebar .pokeidle-panel__title { font:500 var(--ppbui-font-size-title)/var(--ppbui-line-height-tight) var(--ppbui-font-display)!important; letter-spacing:normal!important; }
@@ -101,6 +129,12 @@ function styleNode(doc) {
       .team-equip-picker[data-ppbui-team-picker] .ppbui-team-picker-toolbar { grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
       .team-equip-picker[data-ppbui-team-picker] .ppbui-team-picker-toolbar > button { min-width:0; width:100%; justify-self:stretch; }
     }
+    @container (max-width:359px) {
+      .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body { grid-template-columns:minmax(0,1fr); }
+      .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > [data-ppbui-team-stats-toggle] { grid-column:1/-1; }
+      .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions { grid-column:1/-1; justify-content:stretch; margin-top:var(--ppbui-space-1)!important; }
+      .pokeidle-team-panel[data-ppbui-team-enhanced] > .pokeidle-panel__body > .team-actions > button { flex:1 1 0; }
+    }
     @media (pointer:coarse) {
       .pokeidle-team-panel[data-ppbui-team-enhanced] .pokeidle-panel__titlebar button { min-width:40px; min-height:40px; }
     }
@@ -109,22 +143,396 @@ function styleNode(doc) {
 }
 
 export function mountTeam(root) {
-  const doc = root.ownerDocument, style = styleNode(doc);
+  const doc = root.ownerDocument, win = doc.defaultView, style = styleNode(doc);
   const hadRootClass = root.classList.contains("ppbui-root"), body = root.querySelector(".pokeidle-panel__body"), hadBodyScroll = body?.classList.contains("ppbui-scroll") || false;
   root.classList.add("ppbui-root"); body?.classList.add("ppbui-scroll"); root.append(style); root.dataset.ppbuiTeamEnhanced = "";
   let active = true, scene = null;
   const buttonLabels = new Map(), slotDescriptions = new Map(), ownedClasses = new Map();
   const picker = createTeamPicker(doc, () => scene);
+  let statsExpanded = false, statsToggle = null, statsFocusOwned = false;
+  const statsDisclosureId = ++statsDisclosureSequence;
+  const ownedStatsIds = new Map();
+  const safeProperties = ["--ppbui-team-safe-left","--ppbui-team-safe-width",
+    "--ppbui-team-safe-top","--ppbui-team-safe-height"];
+  const originalSafeStyle = new Map(safeProperties.map(name => [
+    name,{value:root.style.getPropertyValue(name),priority:root.style.getPropertyPriority(name)},
+  ]));
+  let pendingToolbarGeometryTask = null;
+  let pendingNativeTeamDragEnd = null, draggingNativeTeam = false,
+    preferredTeamPlacement = null, nativeTeamPointerId = null;
+  let nativeTeamDragSnapshot = null, nativeTeamPreResize = null;
+  const restorePreResize = () => {
+    if(!nativeTeamPreResize)return;
+    for(const [property,original] of nativeTeamPreResize.inline){
+      if(original.value)root.style.setProperty(property,original.value,original.priority);
+      else root.style.removeProperty(property);
+    }
+    if(nativeTeamPreResize.hadManual)
+      root.setAttribute("data-ppbui-team-manual-height",nativeTeamPreResize.manualValue);
+    else root.removeAttribute("data-ppbui-team-manual-height");
+    nativeTeamPreResize=null;
+  };
+  const originalDragWidth = {
+    value:root.style.getPropertyValue("--ppbui-team-drag-width"),
+    priority:root.style.getPropertyPriority("--ppbui-team-drag-width"),
+  };
+  const originalDragHeight = {
+    value:root.style.getPropertyValue("--ppbui-team-drag-height"),
+    priority:root.style.getPropertyPriority("--ppbui-team-drag-height"),
+  };
+  const restoreNativeDragSnapshot = () => {
+    if(!nativeTeamDragSnapshot)return;
+    for(const [property,previous] of nativeTeamDragSnapshot.before){
+      if(previous.value) root.style.setProperty(property,previous.value,previous.priority);
+      else root.style.removeProperty(property);
+    }
+  };
+  const releaseNativeDragWidth = () => {
+    if(originalDragWidth.value)
+      root.style.setProperty("--ppbui-team-drag-width",originalDragWidth.value,originalDragWidth.priority);
+    else if(root.style.getPropertyValue("--ppbui-team-drag-width"))
+      root.style.removeProperty("--ppbui-team-drag-width");
+    if(originalDragHeight.value)
+      root.style.setProperty("--ppbui-team-drag-height",originalDragHeight.value,originalDragHeight.priority);
+    else if(root.style.getPropertyValue("--ppbui-team-drag-height"))
+      root.style.removeProperty("--ppbui-team-drag-height");
+  };
+  const setSafeProperty = (name,value) => {
+    if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name,value);
+  };
+  const setSafeFlag = (name,enabled) => {
+    const next = enabled ? "true" : null;
+    if (next && root.getAttribute(name) !== next) root.setAttribute(name,next);
+    else if (!next && root.hasAttribute(name)) root.removeAttribute(name);
+  };
+  const setSafeAreaState = (state,values = {}) => {
+    for(const name of ["vertical-safe","vertical-overlap","horizontal-safe","horizontal-overlap"])
+      setSafeFlag(`data-ppbui-team-${name}`,state===name);
+    for (const name of safeProperties) {
+      if (Object.hasOwn(values,name)) {
+        setSafeProperty(name,values[name]);
+        continue;
+      }
+      const original = originalSafeStyle.get(name);
+      if (original.value) {
+        if (root.style.getPropertyValue(name) !== original.value ||
+            root.style.getPropertyPriority(name) !== original.priority)
+          root.style.setProperty(name,original.value,original.priority);
+      } else if (root.style.getPropertyValue(name)) root.style.removeProperty(name);
+    }
+  };
+  const resetSafeArea = () => setSafeAreaState(null);
+  const requestedTeamWidth = () => {
+    const dragged=Number(preferredTeamPlacement?.width);
+    if(Number.isFinite(dragged) && dragged>0)return dragged;
+    // A Team window can have been resized before Saved Teams was opened.
+    // Native manual-height is the ownership signal for its current inline
+    // dimensions; keep user width rather than restoring the default 480px.
+    if(!root.hasAttribute("data-ppbui-team-manual-height"))return null;
+    const native=Number.parseFloat(root.style.width);
+    return Number.isFinite(native) && native>0?native:null;
+  };
+  function syncSavedTeamsSafeArea() {
+    if (draggingNativeTeam) return;
+    const expanded = root.querySelector("[data-ppbui-team-preset-manager][open]");
+    if (!active || !expanded ||
+        doc.documentElement.getAttribute("data-ppbui-card-mode") !== "cards")
+      return resetSafeArea();
+    const toolbar = doc.querySelector(".pokeidle-top-toolbar");
+    if (!toolbar || toolbar.classList.contains("is-collapsed")) return resetSafeArea();
+    const vpWidth = Math.max(Number(doc.documentElement.clientWidth)||0,Number(win?.innerWidth)||0);
+    const vpHeight = Math.max(Number(doc.documentElement.clientHeight)||0,Number(win?.innerHeight)||0);
+    const rect = toolbar.getBoundingClientRect();
+    const vertical = toolbar.getAttribute("data-ppbui-menu-orientation")==="vertical" ||
+      (!toolbar.hasAttribute("data-ppbui-menu-orientation") &&
+        rect.height>rect.width*1.5);
+    if (!Number.isFinite(rect.left) || !Number.isFinite(rect.right) ||
+        !Number.isFinite(rect.top) || !Number.isFinite(rect.bottom) ||
+        rect.width<=0 || rect.height<=0) return resetSafeArea();
+    if (!vertical) {
+      const topSpace=Math.max(0,Math.floor(rect.top-16));
+      const bottomSpace=Math.max(0,Math.floor(vpHeight-rect.bottom-16));
+      const preferredTop=Number(preferredTeamPlacement?.top);
+      const chooseBottom=preferredTeamPlacement && topSpace>=160 &&
+        preferredTop>=8 && preferredTop<=rect.top-168 ? false :
+        preferredTeamPlacement && bottomSpace>=160 &&
+          preferredTop>=rect.bottom+8 && preferredTop<=vpHeight-168 ? true :
+          bottomSpace>=topSpace;
+      const best=Math.max(topSpace,bottomSpace);
+      if(best<160){
+        // A freely positioned horizontal Menu Bar can divide the viewport
+        // into two unusable fragments. Prioritize Team above it rather than
+        // silently covering native Apply/Delete below the Menu Bar.
+        return setSafeAreaState("horizontal-overlap");
+      }
+      const segmentStart=chooseBottom?Math.ceil(rect.bottom+8):8;
+      const segmentEnd=chooseBottom?vpHeight-8:Math.floor(rect.top-8);
+      const desiredTop=preferredTeamPlacement && Number.isFinite(preferredTop)
+        ? Math.min(Math.max(segmentStart,preferredTop),Math.max(segmentStart,segmentEnd-160))
+        : segmentStart;
+      const panelRect=root.getBoundingClientRect();
+      const candidateWidth=requestedTeamWidth() || Math.min(480,vpWidth-16);
+      const safeWidth=Math.max(220,Math.min(candidateWidth,vpWidth-16));
+      const candidateLeft=Number(preferredTeamPlacement?.left);
+      const nativeLeft=Number.isFinite(candidateLeft) && preferredTeamPlacement
+        ? candidateLeft : panelRect.left;
+      const safeLeft=Math.max(8,Math.min(nativeLeft,vpWidth-safeWidth-8));
+      return setSafeAreaState("horizontal-safe",{
+        "--ppbui-team-safe-top":`${Math.ceil(desiredTop)}px`,
+        "--ppbui-team-safe-height":`${Math.max(160,Math.floor(segmentEnd-desiredTop))}px`,
+        "--ppbui-team-safe-left":`${Math.ceil(safeLeft)}px`,
+        "--ppbui-team-safe-width":`${Math.floor(safeWidth)}px`,
+      });
+    }
+    const leftWidth = Math.max(0,Math.floor(rect.left-16));
+    const rightWidth = Math.max(0,Math.floor(vpWidth-rect.right-16));
+    const preferredLeft=Number(preferredTeamPlacement?.left);
+    const preferredRight=preferredTeamPlacement &&
+      rightWidth>=220 && preferredLeft>=rect.right+8;
+    const preferredLeftSide=preferredTeamPlacement &&
+      leftWidth>=220 && preferredLeft<rect.left-8;
+    const onRight = preferredRight ? true : preferredLeftSide ? false : rightWidth>=leftWidth;
+    const width = onRight ? rightWidth : leftWidth;
+    if (width<220) {
+      // No non-overlapping 220px management surface fits beside this tall
+      // toolbar. Keep Team ABOVE the menu instead of silently burying controls.
+      return setSafeAreaState("vertical-overlap");
+    }
+    const sideStart=onRight?Math.ceil(rect.right+8):8;
+    const sideEnd=onRight?vpWidth-8:Math.floor(rect.left-8);
+    const nativeWidth=requestedTeamWidth();
+    const safeWidth=Number.isFinite(nativeWidth) && nativeWidth>0
+      ? Math.max(220,Math.min(nativeWidth,width)) : Math.min(480,width);
+    const safeLeft=preferredTeamPlacement && Number.isFinite(preferredLeft)
+      ? Math.max(sideStart,Math.min(preferredLeft,sideEnd-safeWidth)) : sideStart;
+    const preferredTop=Number(preferredTeamPlacement?.top);
+    const safeTop=preferredTeamPlacement && Number.isFinite(preferredTop)
+      ? Math.max(8,Math.min(preferredTop,vpHeight-168)) : 8;
+    setSafeAreaState("vertical-safe",{
+      "--ppbui-team-safe-left":`${Math.ceil(safeLeft)}px`,
+      "--ppbui-team-safe-width":`${Math.floor(safeWidth)}px`,
+      "--ppbui-team-safe-top":`${Math.ceil(safeTop)}px`,
+      "--ppbui-team-safe-height":`${Math.max(160,Math.floor(vpHeight-safeTop-8))}px`,
+    });
+  }
+  const beginNativeTeamGeometry = (event,includeHeight = false) => {
+    if (draggingNativeTeam) return;
+    const rect=root.getBoundingClientRect();
+    if(!(rect.width>0 && rect.height>0))return;
+    // Without expanded Saved Teams there is no toolbar safe-area positioning
+    // to release. Still track the native resize so a no-op/cancel can restore
+    // the pre-pointer manual flag and its exact inline dimensions.
+    const expandedCards=Boolean(root.querySelector("[data-ppbui-team-preset-manager][open]")) &&
+      doc.documentElement.getAttribute("data-ppbui-card-mode")==="cards";
+    const properties=includeHeight
+      ? expandedCards?["top","left","width","height"]:["width","height"]
+      : ["top","left","width"];
+    const before=new Map(properties.map(property=>[
+      property,{value:root.style.getPropertyValue(property),
+        priority:root.style.getPropertyPriority(property)},
+    ]));
+    // Freeze only properties included in the reversible snapshot. When Saved
+    // Teams is closed a native resize owns width/height, not titlebar position.
+    nativeTeamDragSnapshot={before,frozen:new Map(properties.map(property=>[
+      property,`${rect[property]}px`,
+    ]))};
+    // Freeze the current on-screen rectangle before disabling the safe-area
+    // geometry. The native drag/resize handler then starts from the same place.
+    for(const [property,value] of nativeTeamDragSnapshot.frozen)
+      root.style.setProperty(property,value);
+    root.style.setProperty("--ppbui-team-drag-width",`${rect.width}px`);
+    root.style.setProperty("--ppbui-team-drag-height",`${rect.height}px`);
+    draggingNativeTeam=true;
+    nativeTeamPointerId=typeof event?.pointerId==="number"?event.pointerId:null;
+    root.dataset.ppbuiTeamUserDragging="true";
+    if(includeHeight)root.dataset.ppbuiTeamUserResizing="true";
+  };
+  const onNativeTeamDragStart = event => {
+    if (!active || !root.querySelector("[data-ppbui-team-preset-manager][open]") ||
+        doc.documentElement.getAttribute("data-ppbui-card-mode")!=="cards" ||
+        draggingNativeTeam) return;
+    const header=event.target?.closest?.(".pokeidle-panel__titlebar");
+    if (!header || !root.contains(header) ||
+        event.target?.closest?.("button,input,select,textarea,[role=button]")) return;
+    nativeTeamPreResize=null;
+    beginNativeTeamGeometry(event);
+  };
+  const onNativeTeamResizePreCapture = event => {
+    if (!active) return;
+    const handle=event.target?.closest?.(".pokeidle-resize-handle");
+    if (!handle || !root.contains(handle) || draggingNativeTeam) return;
+    nativeTeamPreResize={
+      hadManual:root.hasAttribute("data-ppbui-team-manual-height"),
+      manualValue:root.getAttribute("data-ppbui-team-manual-height") || "",
+      inline:new Map(["width","height"].map(property=>[
+        property,{value:root.style.getPropertyValue(property),
+          priority:root.style.getPropertyPriority(property)},
+      ])),
+    };
+  };
+  const onNativeTeamResizeStart = event => {
+    if (!active) return;
+    const handle=event.target?.closest?.(".pokeidle-resize-handle");
+    if (handle && root.contains(handle)) beginNativeTeamGeometry(event,true);
+  };
+  const abortNativeTeamGeometry = () => {
+    if(!draggingNativeTeam)return;
+    if(pendingNativeTeamDragEnd!==null)win.clearTimeout(pendingNativeTeamDragEnd);
+    pendingNativeTeamDragEnd=null;
+    restoreNativeDragSnapshot();nativeTeamDragSnapshot=null;
+    restorePreResize();
+    draggingNativeTeam=false;nativeTeamPointerId=null;
+    root.removeAttribute("data-ppbui-team-user-dragging");
+    root.removeAttribute("data-ppbui-team-user-resizing");
+    releaseNativeDragWidth();
+    if(active)syncSavedTeamsSafeArea();
+  };
+  const onNativeTeamDragEnd = event => {
+    if (!draggingNativeTeam) return;
+    if (nativeTeamPointerId!==null && event?.pointerId!==nativeTeamPointerId) return;
+    if(event?.type==="pointercancel")return abortNativeTeamGeometry();
+    if (pendingNativeTeamDragEnd !== null) win.clearTimeout(pendingNativeTeamDragEnd);
+    pendingNativeTeamDragEnd=win.setTimeout(()=>{
+      pendingNativeTeamDragEnd=null;
+      if (!active) return;
+      const changed=Boolean(nativeTeamDragSnapshot &&
+        [...nativeTeamDragSnapshot.frozen].some(([property,value])=>
+          root.style.getPropertyValue(property)!==value));
+      if (!changed){
+        restoreNativeDragSnapshot();
+        restorePreResize();
+      }else nativeTeamPreResize=null;
+      const rect=root.getBoundingClientRect();
+      if (changed && rect.width>0 && rect.height>0 &&
+          Number.isFinite(rect.top) && Number.isFinite(rect.left))
+        preferredTeamPlacement={top:rect.top,left:rect.left,width:rect.width,height:rect.height};
+      draggingNativeTeam=false;
+      nativeTeamPointerId=null;
+      root.removeAttribute("data-ppbui-team-user-dragging");
+      root.removeAttribute("data-ppbui-team-user-resizing");
+      releaseNativeDragWidth();
+      nativeTeamDragSnapshot=null;
+      syncSavedTeamsSafeArea();
+    },0);
+  };
+  const onSavedTeamsDisclosure = event => {
+    if (event?.target?.matches?.("[data-ppbui-team-preset-manager]") &&
+        root.contains(event.target)) syncSavedTeamsSafeArea();
+  };
+  const onSafeToolbarChange = event => {
+    if (event?.detail?.toolbar && event.detail.toolbar !== doc.querySelector(".pokeidle-top-toolbar")) return;
+    syncSavedTeamsSafeArea();
+  };
+  const onSafeToolbarInteractionEnd = event => {
+    if(draggingNativeTeam)return;
+    if (!active || !root.querySelector("[data-ppbui-team-preset-manager][open]") ||
+        doc.documentElement.getAttribute("data-ppbui-card-mode") !== "cards") return;
+    const toolbar = doc.querySelector(".pokeidle-top-toolbar");
+    if (!toolbar || toolbar.classList.contains("is-collapsed")) return;
+    if (event.type === "keyup" && !["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Enter","Escape"].includes(event.key)) return;
+    if (pendingToolbarGeometryTask !== null) win.clearTimeout(pendingToolbarGeometryTask);
+    // Native Menu Bar may commit its last dragged position on pointerup/keyup.
+    // Chrome runs capture microtasks before the original target handler, so
+    // reconcile in the next task, without another DOM MutationObserver.
+    pendingToolbarGeometryTask = win.setTimeout(() => {
+      pendingToolbarGeometryTask = null;
+      if (active) syncSavedTeamsSafeArea();
+    },0);
+  };
+  for(const type of ["ppbui:menu-collapse-change","ppbui:menu-orientation-change",
+    "ppbui:menu-layout-change","ppbui:team-presets-open-change","resize"])
+    win?.addEventListener(type,onSafeToolbarChange);
+  for(const type of ["pointerup","pointercancel","keyup"])
+    win?.addEventListener(type,onSafeToolbarInteractionEnd);
+  root.addEventListener("pointerdown",onNativeTeamResizePreCapture,true);
+  root.addEventListener("pointerdown",useManualPanelHeight,true);
+  root.addEventListener("pointerdown",onNativeTeamDragStart,true);
+  root.addEventListener("pointerdown",onNativeTeamResizeStart,true);
+  win?.addEventListener("pointerup",onNativeTeamDragEnd);
+  win?.addEventListener("pointercancel",onNativeTeamDragEnd);
+  win?.addEventListener("blur",abortNativeTeamGeometry);
+  doc.addEventListener("toggle",onSavedTeamsDisclosure,true);
+
+  const updateStatsToggle = text => {
+    if(!statsToggle)return;
+    const label=statsExpanded?text.statsHide:text.statsShow;
+    if(statsToggle.textContent!==label)statsToggle.textContent=label;
+    const collapsed = String(!statsExpanded);
+    if (root.dataset.ppbuiTeamStatsCollapsed !== collapsed)
+      root.dataset.ppbuiTeamStatsCollapsed = collapsed;
+    if(statsToggle.getAttribute("aria-expanded")!==String(statsExpanded))
+      statsToggle.setAttribute("aria-expanded",String(statsExpanded));
+  };
+  const onStatsToggle = () => {
+    statsExpanded = !statsExpanded;
+    updateStatsToggle(teamText(doc));
+  };
+  const onStatsFocus = () => { statsFocusOwned=true; };
+  const onExternalStatsFocus = event => {
+    if(event.target!==statsToggle && event.target!==doc.body)statsFocusOwned=false;
+  };
+  const onExternalStatsPointer = event => {
+    if(event.target!==statsToggle)statsFocusOwned=false;
+  };
+  doc.addEventListener("focusin",onExternalStatsFocus,true);
+  doc.addEventListener("pointerdown",onExternalStatsPointer,true);
+  function syncStatsDisclosure(parts, text) {
+    const vitals = parts.body.querySelector(":scope > .team-section--vitals");
+    const attributes = parts.body.querySelector(":scope > .team-section--attributes");
+    // Native Team refresh replaces both sections. Release owned IDs on detached
+    // generations instead of retaining their entire DOM trees until unmount.
+    for(const [section,id] of ownedStatsIds){
+      if(parts.body.contains(section))continue;
+      if(section.id===id)section.removeAttribute("id");
+      ownedStatsIds.delete(section);
+    }
+    if (!vitals && !attributes) {
+      statsToggle?.removeEventListener("click", onStatsToggle);
+      statsToggle?.removeEventListener("focusin",onStatsFocus);
+      statsToggle?.remove(); statsToggle = null;
+      statsFocusOwned=false;
+      root.removeAttribute("data-ppbui-team-stats-collapsed");
+      return;
+    }
+    let restoreFocus=false;
+    if (!statsToggle || !statsToggle.isConnected || !parts.body.contains(statsToggle)) {
+      restoreFocus=statsFocusOwned &&
+        (doc.activeElement===doc.body || doc.activeElement===doc.documentElement);
+      statsToggle?.removeEventListener("click", onStatsToggle);
+      statsToggle?.removeEventListener("focusin",onStatsFocus);
+      statsToggle = doc.createElement("button");
+      statsToggle.type = "button";
+      statsToggle.className = "ppbui-button";
+      statsToggle.dataset.ppbuiTeamStatsToggle = "";
+      statsToggle.addEventListener("click", onStatsToggle);
+      statsToggle.addEventListener("focusin",onStatsFocus);
+    }
+    const first = vitals || attributes;
+    if (statsToggle.nextElementSibling !== first) first.before(statsToggle);
+    if(restoreFocus)statsToggle.focus({preventScroll:true});
+    const sections = [vitals,attributes].filter(Boolean);
+    for (const [index,section] of sections.entries()) {
+      if (section.id) continue;
+      const id = `ppbui-team-stats-${statsDisclosureId}-${index}`;
+      if (doc.getElementById(id) && doc.getElementById(id) !== section) continue;
+      section.id = id;
+      ownedStatsIds.set(section,id);
+    }
+    const controls = sections.map(section=>section.id).filter(Boolean).join(" ");
+    if (statsToggle.getAttribute("aria-controls") !== controls)
+      statsToggle.setAttribute("aria-controls",controls);
+    updateStatsToggle(text);
+  }
 
   function useManualPanelHeight(event) {
     const handle = event.target?.closest?.(".pokeidle-resize-handle");
-    if (!handle || !root.contains(handle) || root.hasAttribute("data-ppbui-team-manual-height")) return;
+    if (!handle || !root.contains(handle) || draggingNativeTeam ||
+        root.hasAttribute("data-ppbui-team-manual-height")) return;
     const rect = root.getBoundingClientRect(), width = rect.width, height = rect.height;
     if (Number.isFinite(width) && width > 0) root.style.width = `${width}px`;
     if (Number.isFinite(height) && height > 0) root.style.height = `${height}px`;
     root.dataset.ppbuiTeamManualHeight = "";
   }
-  root.addEventListener("pointerdown", useManualPanelHeight, true);
 
   function addOwnedClasses(node, ...classes) {
     if (!node) return;
@@ -257,6 +665,8 @@ export function mountTeam(root) {
     const parts = teamParts(root), text = teamText(doc); scene = teamScene(root);
     if (!parts.body || !parts.profile || !scene) return;
     decorateControls(parts); compactButtonLabels(parts, text);
+    syncStatsDisclosure(parts, text);
+    syncSavedTeamsSafeArea();
     decorateSlots(parts, scene, text);
     const selected = scene._creatures?.find(member => String(member?.id ?? "") === String(scene._selectedId ?? ""));
     const selectedElements = (selected?.elements || selected?.species?.elements || []).map(element => String(element).toLowerCase());
@@ -269,6 +679,46 @@ export function mountTeam(root) {
   return { sync, cleanup() {
     active = false;
     root.removeEventListener("pointerdown", useManualPanelHeight, true);
+    root.removeEventListener("pointerdown",onNativeTeamResizePreCapture,true);
+    for(const type of ["ppbui:menu-collapse-change","ppbui:menu-orientation-change",
+      "ppbui:menu-layout-change","ppbui:team-presets-open-change","resize"])
+      win?.removeEventListener(type,onSafeToolbarChange);
+    for(const type of ["pointerup","pointercancel","keyup"])
+      win?.removeEventListener(type,onSafeToolbarInteractionEnd);
+    root.removeEventListener("pointerdown",onNativeTeamDragStart,true);
+    root.removeEventListener("pointerdown",onNativeTeamResizeStart,true);
+    win?.removeEventListener("pointerup",onNativeTeamDragEnd);
+    win?.removeEventListener("pointercancel",onNativeTeamDragEnd);
+    win?.removeEventListener("blur",abortNativeTeamGeometry);
+    if (pendingToolbarGeometryTask !== null) win.clearTimeout(pendingToolbarGeometryTask);
+    pendingToolbarGeometryTask = null;
+    if (pendingNativeTeamDragEnd !== null) win.clearTimeout(pendingNativeTeamDragEnd);
+    pendingNativeTeamDragEnd = null;
+    if (draggingNativeTeam) {
+      const changed=Boolean(nativeTeamDragSnapshot &&
+        [...nativeTeamDragSnapshot.frozen].some(([property,frozen])=>
+          root.style.getPropertyValue(property)!==frozen));
+      if (!changed) restoreNativeDragSnapshot();
+      else nativeTeamPreResize=null; // The native host already owns a real resize.
+    }
+    nativeTeamDragSnapshot=null;
+    restorePreResize();
+    releaseNativeDragWidth();
+    draggingNativeTeam=false;preferredTeamPlacement=null;
+    nativeTeamPointerId=null;
+    root.removeAttribute("data-ppbui-team-user-dragging");
+    root.removeAttribute("data-ppbui-team-user-resizing");
+    doc.removeEventListener("toggle",onSavedTeamsDisclosure,true);
+    resetSafeArea();
+    statsToggle?.removeEventListener("click", onStatsToggle);
+    statsToggle?.removeEventListener("focusin",onStatsFocus);
+    statsToggle?.remove(); statsToggle = null;
+    statsFocusOwned=false;
+    doc.removeEventListener("focusin",onExternalStatsFocus,true);
+    doc.removeEventListener("pointerdown",onExternalStatsPointer,true);
+    for (const [section,id] of ownedStatsIds) if (section.id === id) section.removeAttribute("id");
+    ownedStatsIds.clear();
+    root.removeAttribute("data-ppbui-team-stats-collapsed");
     root.removeAttribute("data-ppbui-team-manual-height");
     root.querySelectorAll("[data-ppbui-team-slot], [data-ppbui-team-meter], [data-ppbui-team-position], [data-ppbui-team-active], [data-ppbui-team-selected-marker], [data-ppbui-team-shared-stone-fallback], [data-ppbui-team-profile-facts]").forEach(node => node.remove());
     root.querySelectorAll(".team-slot").forEach(node => node.classList.remove("ppbui-team-fainted", "ppbui-team-selected", "ppbui-team-active", "ppbui-pokemon-card", "ppbui-pokemon-card--roster", "ppbui-pokemon-card--selected", "ppbui-pokemon-card--active", "ppbui-pokemon-card--fainted"));

@@ -1910,7 +1910,11 @@ test("hunt console renders six Pokémon + level rows left of the active card and
   ]);
   assert.equal(roster.compareDocumentPosition(doc.querySelector('[data-card-combat="player"]')) & window.Node.DOCUMENT_POSITION_FOLLOWING, window.Node.DOCUMENT_POSITION_FOLLOWING, "roster must be before the active Pokémon card");
   assert.equal(roster.querySelector('[data-card-team-member="a"]').getAttribute("aria-pressed"), "true");
-  assert.equal(roster.querySelector('[data-card-team-member="f"]').disabled, true, "fainted Pokémon remains visible but cannot become active");
+  const fainted=roster.querySelector('[data-card-team-member="f"]');
+  assert.equal(fainted.disabled,false,"fainted member remains focusable for native Details context menu");
+  assert.equal(fainted.getAttribute("aria-disabled"),"true","primary leader action stays unavailable");
+  fainted.click();
+  assert.equal(mutations,0,"fainted member's left-click cannot trigger leader mutation");
   roster.querySelector('[data-card-team-member="b"]').click();
   await settle();
   assert.equal(mutations, 1);

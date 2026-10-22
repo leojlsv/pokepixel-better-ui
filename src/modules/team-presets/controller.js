@@ -4,6 +4,7 @@ import { canCaptureTeamPreset, teamPresetVisualReader, teamPresetsText } from ".
 import { mountTeamPresetManager } from "./manager.js";
 import { createTeamPresetStorage } from "./storage.js";
 import { currentStorageOwner } from "../../core/trainer-storage-scope.js";
+import { nativeMenuAvailableInCardMode } from "../card-mode/native-menu-contracts.js";
 
 export function mountTeamPresets(root, { store = createTeamPresetStorage({
   storage: () => root.ownerDocument.defaultView.localStorage,
@@ -246,7 +247,11 @@ export function mountTeamPresets(root, { store = createTeamPresetStorage({
     // refreshes must not search the whole document for a Team window when no
     // manager exists; opening Manage mounts it explicitly in onManage().
     if (hudScoped && panel.hidden && !manager) return;
-    const nextRoot = doc.querySelector(config.selectors.teamPanel);
+    const inCards=doc.documentElement.getAttribute("data-ppbui-card-mode")==="cards";
+    const nextRoot=inCards
+      ? [...doc.querySelectorAll(config.selectors.teamPanel)]
+          .find(candidate=>nativeMenuAvailableInCardMode(candidate,"team"))
+      : doc.querySelector(config.selectors.teamPanel);
     if (!nextRoot?.isConnected) return mountManager(null);
     mountManager(nextRoot); manager?.sync();
   }

@@ -163,6 +163,16 @@ test("Team preset manager fills the Team workspace with a contiguous six-member 
   const css = root.querySelector('style[data-ppbui-module="team-presets-manager"]').textContent;
   assert.equal(root.querySelector("[data-ppbui-team-preset-manager]").classList.contains("team-section"), false, "owned Saved Teams manager must not opt back into native team-section chrome");
   assert.match(css, /\[data-ppbui-team-preset-manager\] \{[^}]*border-radius:var\(--ppbui-radius\)!important[^}]*background:var\(--ppbui-bg-1\)!important[^}]*box-shadow:none!important/s);
+  assert.match(css,/\[data-ppbui-team-preset-manager\] \{[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important/s,
+    "Saved Teams should share the Stats/action edge treatment");
+  assert.match(css,/\[data-ppbui-team-preset-manager\] > summary \{[^}]*display:flex;[^}]*align-items:center;[^}]*background:var\(--ppbui-bg-2\)!important/s,
+    "Saved Teams summary uses the same button/header surface as the action rail");
+  assert.match(css,/\[data-ppbui-team-preset-manager\] > summary::before \{[^}]*content:"▸";/s,
+    "Saved Teams keeps a coherent native details disclosure affordance");
+  assert.match(css,/\[data-ppbui-team-preset-manager\]\[open\] > summary::before/,
+    "native open state drives disclosure orientation without scripted duplication");
+  assert.match(css,/\[data-ppbui-team-preset-manager\] > summary:focus-visible \{[^}]*outline-offset:calc\(-1 \* var\(--ppbui-focus-width\)\);/s,
+    "Saved Teams focused summary draws its entire ring inside overflow-hidden details instead of clipping it");
   assert.match(css, /\.pokeidle-team-panel:has\(\[data-ppbui-team-preset-manager\]\) \{ min-width:min\(340px,calc\(100vw - 16px\)\)!important; \}/);
   assert.match(css, /\[data-ppbui-team-preset-card\] \{[^}]*width:100%[^}]*max-width:none[^}]*padding:0[^}]*border:0[^}]*border-top:var\(--ppbui-separator-width\) solid var\(--ppbui-border\)/s);
   assert.match(css, /\[data-ppbui-team-preset-manager\] \{[^}]*align-self:stretch[^}]*width:100%!important[^}]*max-width:none!important[^}]*margin:var\(--ppbui-space-2\) 0 0!important[^}]*padding:0!important/s, "Saved Teams must neutralize residual native team-section margins/padding and stretch across the available Team width");
@@ -379,7 +389,7 @@ test("manager exposes Edit and per-team collapse without mutating or losing the 
 });
 
 test("native Team body refresh keeps Saved Team controls connected with focus and caret intact", t => {
-  const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--profile"></section></div></div>`, { pretendToBeVisual:true, url:"https://pokepixel.nietore.com/play/" });
+  const dom = new JSDOM(`<div class="pokeidle-team-panel"><div class="pokeidle-panel__body"><section class="team-section team-section--profile"></section><div class="team-actions"><button>Details</button><button>Remove</button></div></div></div>`, { pretendToBeVisual:true, url:"https://pokepixel.nietore.com/play/" });
   const doc = dom.window.document, root = doc.body.firstChild, body = root.querySelector(".pokeidle-panel__body"), saved = store();
   const panel = { body, clearBody() { this.body.innerHTML = ""; } };
   dom.window.PokeIdle = {
@@ -392,6 +402,8 @@ test("native Team body refresh keeps Saved Team controls connected with focus an
   t.after(() => { manager.cleanup(); dom.window.close(); });
 
   const details = root.querySelector("[data-ppbui-team-preset-manager]"), rename = details.querySelector("[data-ppbui-team-preset-name-field] input");
+  assert.equal(body.lastElementChild,details,"Saved Teams follows native Details/Remove in DOM focus order, not just CSS order");
+  assert.equal(body.querySelector('.team-actions').nextElementSibling,details);
   rename.focus(); rename.value = "Gym draft"; rename.setSelectionRange(4, 8);
   assert.equal(doc.activeElement, rename); assert.deepEqual([rename.selectionStart, rename.selectionEnd], [4, 8]);
 
@@ -399,10 +411,14 @@ test("native Team body refresh keeps Saved Team controls connected with focus an
     panel.clearBody();
     const roster = doc.createElement("section"); roster.className = "team-section team-section--roster"; body.appendChild(roster);
     const profile = doc.createElement("section"); profile.className = "team-section team-section--profile"; body.appendChild(profile);
+    const actions = doc.createElement("div");actions.className="team-actions";
+    actions.innerHTML="<button>Details</button><button>Remove</button>";body.appendChild(actions);
   };
   nativeRefresh();
   assert.equal(details.isConnected, true, "native clearBody must preserve the owned Saved Teams island instead of detaching it");
   assert.equal(body.lastElementChild, details, "native Team children continue to render before the persistent Saved Teams manager");
+  assert.equal(body.querySelector('.team-actions').nextElementSibling,details,
+    "new native action buttons always precede the preserved Saved Teams summary in keyboard traversal");
   assert.equal(doc.activeElement, rename, "native Team refresh must not steal focus from the active Saved Team field");
   assert.equal(rename.value, "Gym draft"); assert.deepEqual([rename.selectionStart, rename.selectionEnd], [4, 8], "typing caret/selection survives native Team refresh");
 

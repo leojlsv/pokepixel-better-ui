@@ -190,7 +190,11 @@ test('Wallet reconciliation is mutation-free after ownership is established', as
 test('central observer handles replacement window and preserves latest native slots on cleanup',async t=>{
   const {app,doc,window,order}=setup(t);app.start();order('name');
   doc.querySelector('.inventory-window--slots').outerHTML=`<div class="inventory-window--slots"><div class="pokeidle-panel__body">${body()}</div></div>`;
-  await new Promise(r=>window.setTimeout(r,60));assert.equal(doc.querySelectorAll('[data-ppbui-order]').length,1);
+  // The central observer settles on requestAnimationFrame. Under the concurrent
+  // Node test runner a fixed 60ms sleep can finish before its browser-like frame.
+  for(let attempt=0;attempt<25&&!doc.querySelector('[data-ppbui-order]');attempt++)
+    await new Promise(resolve=>window.setTimeout(resolve,40));
+  assert.equal(doc.querySelectorAll('[data-ppbui-order]').length,1);
   const removed=doc.querySelector('button.inventory-slot');removed.remove();app.reconcile();app.stop();assert.equal(removed.isConnected,false);assert.equal(doc.querySelectorAll('button.inventory-slot').length,3);
 });
 

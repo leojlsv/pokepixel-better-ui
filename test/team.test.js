@@ -66,12 +66,698 @@ test("comparison is absent and repeated sync never reads comparison stats", t =>
   assert.doesNotMatch(css, /\.team-section--attributes \{[^}]*display:none!important/s, "Team returns native attributes ownership instead of hiding it for a dossier layout");
 });
 
+test("native HP/EXP and five attributes start collapsed, expand on demand and survive native refresh", t => {
+  const s=setup(t), d=s.dom.window.document;
+  const toggle=()=>s.root.querySelector("[data-ppbui-team-stats-toggle]");
+  const vitals=()=>s.root.querySelector(".team-section--vitals");
+  const attributes=()=>s.root.querySelector(".team-section--attributes");
+  const initialVitals=vitals(),initialAttributes=attributes();
+  assert.ok(toggle(),"single Team disclosure exists");
+  assert.equal(toggle().tagName,"BUTTON");
+  assert.equal(toggle().type,"button");
+  assert.equal(toggle().getAttribute("aria-expanded"),"false");
+  assert.equal(toggle().textContent,"Mostrar estatísticas");
+  assert.deepEqual(toggle().getAttribute("aria-controls")?.split(" "),[initialVitals.id,initialAttributes.id],
+    "the native stats disclosure announces both current section targets");
+  assert.equal(s.root.dataset.ppbuiTeamStatsCollapsed,"true");
+  assert.equal(toggle().nextElementSibling,initialVitals);
+  assert.equal(initialVitals.textContent,"Vitals");
+  assert.equal(initialAttributes.textContent,"Stats");
+  let originalClicks=0;
+  initialVitals.addEventListener("click",()=>originalClicks++);
+  toggle().click();
+  assert.equal(toggle().getAttribute("aria-expanded"),"true");
+  assert.equal(toggle().textContent,"Ocultar estatísticas","click must immediately announce the inverse action");
+  assert.equal(s.root.dataset.ppbuiTeamStatsCollapsed,"false");
+  assert.equal(vitals(),initialVitals);
+  assert.equal(attributes(),initialAttributes,"native nodes are never recreated to collapse");
+  const css=s.root.querySelector('style[data-ppbui-module="team"]').textContent;
+  assert.match(css,/\[data-ppbui-team-stats-collapsed="true"\][^{}]*> :is\(\.team-section--vitals,\.team-section--attributes\) \{ display:none!important;/);
+  initialVitals.dispatchEvent(new s.dom.window.Event("click",{bubbles:true}));
+  assert.equal(originalClicks,1,"collapsed nodes retain original handlers");
+  s.body.innerHTML=bodyMarkup();
+  s.controller.sync();
+  assert.equal(toggle().getAttribute("aria-expanded"),"true","expanded state survives native full refresh");
+  assert.equal(toggle().textContent,"Ocultar estatísticas");
+  assert.equal(s.root.querySelectorAll("[data-ppbui-team-stats-toggle]").length,1);
+  assert.notEqual(vitals(),initialVitals,"the original native refresh owns new stats generations");
+  assert.equal(toggle().nextElementSibling,vitals());
+  assert.deepEqual(toggle().getAttribute("aria-controls")?.split(" "),[vitals().id,attributes().id]);
+  s.controller.sync();
+  assert.equal(s.root.querySelectorAll("[data-ppbui-team-stats-toggle]").length,1);
+  toggle().focus();
+  toggle().dispatchEvent(new s.dom.window.KeyboardEvent("keydown",{key:"Enter",bubbles:true}));
+  toggle().click();
+  assert.equal(toggle().getAttribute("aria-expanded"),"false");
+  assert.equal(toggle().textContent,"Mostrar estatísticas");
+  assert.equal(s.root.dataset.ppbuiTeamStatsCollapsed,"true");
+  assert.equal(d.activeElement,toggle());
+  s.controller.cleanup();
+  assert.equal(s.root.hasAttribute("data-ppbui-team-stats-collapsed"),false);
+  assert.equal(s.root.querySelector("[data-ppbui-team-stats-toggle]"),null);
+  assert.equal(vitals().hasAttribute("id"),false);
+  assert.equal(attributes().hasAttribute("id"),false);
+  assert.equal(vitals().textContent,"Vitals");
+  assert.equal(attributes().textContent,"Stats");
+});
+
+test("Team stats disclosure is visibly an action and announces Show/Hide in every supported locale",t=>{
+  const s=setup(t),button=s.root.querySelector("[data-ppbui-team-stats-toggle]");
+  assert.ok(button.classList.contains("ppbui-button"));
+  const css=s.root.querySelector('style[data-ppbui-module="team"]').textContent;
+  assert.match(css,/\[data-ppbui-team-stats-toggle\]::before \{[^}]*content:"\+"/,
+    "closed disclosure must render an unambiguous plus action affordance");
+  assert.match(css,/\[data-ppbui-team-stats-toggle\]\[aria-expanded="true"\]::before \{ content:"−"; \}/);
+  assert.match(css,/\[data-ppbui-team-stats-toggle\]:hover:not\(:disabled\)/);
+  assert.match(css,/\[data-ppbui-team-stats-toggle\]:active:not\(:disabled\)/);
+  assert.match(css,/\[data-ppbui-team-stats-toggle\]:focus-visible/);
+  for(const [lang,show,hide] of [
+    ["pt-BR","Mostrar estatísticas","Ocultar estatísticas"],
+    ["en-US","Show stats","Hide stats"],
+    ["es-ES","Mostrar estadísticas","Ocultar estadísticas"],
+    ["zh-CN","展开属性","收起属性"],
+  ]){
+    s.dom.window.PokeIdle.Localization.get=()=>lang;
+    s.controller.sync();
+    assert.equal(button.getAttribute("aria-expanded"),"false");
+    assert.equal(button.textContent,show,`${lang}: explicit collapsed action`);
+    button.click();
+    assert.equal(button.getAttribute("aria-expanded"),"true");
+    assert.equal(button.textContent,hide,`${lang}: action updates in same click task`);
+    button.click();
+    assert.equal(button.getAttribute("aria-expanded"),"false");
+    assert.equal(button.textContent,show,`${lang}: closes in same click task`);
+  }
+});
+
+test("Team keeps genuine Details/Remove handlers while aligning their controls with Stats without a wrapper",t=>{
+  const s=setup(t),css=s.root.querySelector('style[data-ppbui-module="team"]').textContent;
+  const stats=s.root.querySelector("[data-ppbui-team-stats-toggle]");
+  const actions=s.root.querySelector(".team-actions"),[details,remove]=actions.querySelectorAll("button");
+  assert.equal(stats.parentElement,s.body,"Stats stays a direct native-body child");
+  assert.equal(actions.parentElement,s.body,"native action row is never reparented");
+  assert.match(css,/> \.pokeidle-panel__body \{[^}]*display:grid!important;[^}]*grid-template-columns:minmax\(0,1fr\) max-content;/s,
+    "a single two-column layout aligns the owned Stats button with the native action row");
+  assert.match(css,/> \[data-ppbui-team-stats-toggle\] \{[^}]*grid-column:1;[^}]*order:2;/s);
+  assert.match(css,/> \.team-actions \{[^}]*grid-column:2;[^}]*order:3;/s);
+  assert.match(css,/> \.team-section--vitals \{[^}]*order:4;/s,
+    "expanded native stats render underneath the complete command rail");
+  assert.match(css,/@container \(max-width:359px\) \{[\s\S]*\.team-actions \{ grid-column:1\/-1;[^}]*\}/,
+    "very narrow Team windows wrap controls rather than clipping or adding horizontal scroll");
+  assert.match(css,/\.team-actions > button \{[^}]*min-height:var\(--ppbui-control-height\)[^}]*border:var\(--ppbui-border-width\) solid var\(--ppbui-border-strong\)!important/s,
+    "native Details and Remove get the same control geometry as Stats");
+  let detailsCount=0,removeCount=0;
+  details.addEventListener("click",()=>detailsCount++);
+  remove.disabled=false;remove.addEventListener("click",()=>removeCount++);
+  for(let i=0;i<6;i++)s.controller.sync();
+  assert.equal(s.root.querySelector("[data-ppbui-team-stats-toggle]"),stats);
+  assert.equal(s.root.querySelector(".team-actions"),actions);
+  assert.deepEqual([...actions.querySelectorAll("button")],[details,remove]);
+  assert.equal(s.body.querySelectorAll("[data-ppbui-team-stats-toggle],.team-actions").length,2,
+    "repeat sync does not create a second command rail");
+  details.click();remove.click();assert.deepEqual([detailsCount,removeCount],[1,1]);
+  stats.click();assert.equal(stats.getAttribute("aria-expanded"),"true");
+  const newVitals=s.root.querySelector(".team-section--vitals"),newAttributes=s.root.querySelector(".team-section--attributes");
+  s.body.innerHTML=bodyMarkup();
+  const replacementActions=s.body.querySelector(".team-actions"),[newDetails,newRemove]=replacementActions.querySelectorAll("button");
+  let refreshedCount=0;newDetails.addEventListener("click",()=>refreshedCount++);
+  s.controller.sync();
+  assert.equal(replacementActions.parentElement,s.body);
+  assert.deepEqual([...replacementActions.querySelectorAll("button")],[newDetails,newRemove]);
+  assert.equal(s.root.querySelector("[data-ppbui-team-stats-toggle]").getAttribute("aria-expanded"),"true");
+  assert.notEqual(s.root.querySelector(".team-section--vitals"),newVitals);
+  assert.notEqual(s.root.querySelector(".team-section--attributes"),newAttributes);
+  newDetails.click();assert.equal(refreshedCount,1);
+  s.controller.cleanup();
+  assert.equal(replacementActions.parentElement,s.body);
+  assert.deepEqual([...replacementActions.querySelectorAll("button")],[newDetails,newRemove]);
+  assert.equal(s.root.querySelector("[data-ppbui-team-stats-toggle]"),null);
+});
+
+test("Team stats disclosure starts collapsed on a fresh remount even if the prior window was opened",t=>{
+  const s=setup(t);
+  s.root.querySelector("[data-ppbui-team-stats-toggle]").click();
+  assert.equal(s.root.dataset.ppbuiTeamStatsCollapsed,"false");
+  s.controller.cleanup();
+  const remount=mountTeam(s.root);
+  assert.equal(s.root.querySelector("[data-ppbui-team-stats-toggle]")?.getAttribute("aria-expanded"),"false");
+  assert.equal(s.root.querySelector("[data-ppbui-team-stats-toggle]")?.textContent,"Mostrar estatísticas");
+  assert.equal(s.root.dataset.ppbuiTeamStatsCollapsed,"true");
+  remount.cleanup();
+});
+
+test("Team stats refresh restores focus only when the native old disclosure had focus",t=>{
+  const s=setup(t),doc=s.dom.window.document;
+  const original=s.root.querySelector("[data-ppbui-team-stats-toggle]");
+  original.focus();assert.equal(doc.activeElement,original);
+  s.body.innerHTML=bodyMarkup();s.controller.sync();
+  const replacement=s.root.querySelector("[data-ppbui-team-stats-toggle]");
+  assert.notEqual(replacement,original);
+  assert.equal(doc.activeElement,replacement,
+    "native full refresh should not strand keyboard focus on removed Team disclosure");
+  replacement.focus();
+  s.body.innerHTML=bodyMarkup();
+  const independent=s.root.querySelector(".team-slot");
+  independent.focus();s.controller.sync();
+  assert.equal(doc.activeElement,independent,
+    "the module must never steal focus if user moved it to another native control");
+});
+
+test("repeated native Team refresh releases obsolete stats IDs without retaining detached generations",t=>{
+  const s=setup(t),doc=s.dom.window.document;
+  const prior=[];
+  for(let index=0;index<25;index++){
+    prior.push(...s.root.querySelectorAll(".team-section--vitals,.team-section--attributes"));
+    s.body.innerHTML=bodyMarkup();
+    s.controller.sync();
+    const toggle=s.root.querySelector("[data-ppbui-team-stats-toggle]");
+    assert.equal(toggle.getAttribute("aria-controls").split(" ").length,2);
+    assert.equal(new Set(toggle.getAttribute("aria-controls").split(" ")).size,2);
+    assert.equal(doc.querySelectorAll('[id^="ppbui-team-stats-"]').length,2);
+  }
+  for(const stale of prior)assert.equal(stale.hasAttribute("id"),false,
+    "old native sections never retain Better UI IDs after their generation is replaced");
+  s.controller.cleanup();
+  assert.equal(doc.querySelectorAll('[id^="ppbui-team-stats-"]').length,0);
+});
+
+test("open Saved Teams respects horizontal menu insets and fits beside vertical bar when possible",t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");
+  toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";
+  doc.body.prepend(toolbar);
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  toolbar.getBoundingClientRect=()=>({left:8,right:88,width:80,top:8,bottom:836,height:828});
+  win.dispatchEvent(new win.Event("ppbui:team-presets-open-change"));
+  assert.equal(s.root.dataset.ppbuiTeamVerticalSafe,"true");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"96px");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"286px");
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-overlap"),false);
+  const css=s.root.querySelector('style[data-ppbui-module="team"]').textContent;
+  assert.match(css,/\[data-ppbui-team-preset-manager\]\[open\]/);
+  assert.match(css,/--ppbui-card-mode-window-top-inset,0px/);
+  assert.match(css,/--ppbui-card-mode-window-bottom-inset,0px/);
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:320});
+  toolbar.getBoundingClientRect=()=>({left:8,right:188,width:180,top:8,bottom:560,height:552});
+  win.dispatchEvent(new win.CustomEvent("ppbui:menu-orientation-change",{detail:{toolbar}}));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-safe"),false);
+  assert.equal(s.root.dataset.ppbuiTeamVerticalOverlap,"true",
+    "a physically impossible narrow vertical bar must not bury Team below it");
+  toolbar.dataset.ppbuiMenuOrientation="horizontal";
+  win.dispatchEvent(new win.CustomEvent("ppbui:menu-orientation-change",{detail:{toolbar}}));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-overlap"),false);
+  manager.open=false;
+  win.dispatchEvent(new win.Event("ppbui:team-presets-open-change"));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-safe"),false);
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"");
+  s.controller.cleanup();
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-overlap"),false);
+});
+
+test("Saved Teams repositions after native Menu Bar drag or keyboard move without a DOM mutation",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  let location={left:8,right:88,width:80,top:8,bottom:836,height:828};
+  toolbar.getBoundingClientRect=()=>location;
+  s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"96px");
+  location={left:300,right:382,width:82,top:8,bottom:836,height:828};
+  win.dispatchEvent(new win.Event("pointerup",{bubbles:true}));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"8px",
+    "drag across the viewport must recompute lateral placement after the native pointerup");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"284px");
+  location={left:8,right:88,width:80,top:8,bottom:836,height:828};
+  win.dispatchEvent(new win.KeyboardEvent("keyup",{key:"ArrowLeft",bubbles:true}));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"96px",
+    "keyboard placement uses the same next-task native geometry");
+  location={left:300,right:382,width:82,top:8,bottom:836,height:828};
+  win.dispatchEvent(new win.Event("pointercancel"));
+  s.controller.cleanup();
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"",
+    "pending toolbar geometry task cannot reinstate styling after cleanup");
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-safe"),false);
+});
+
+test("open Saved Teams avoids a freely dragged horizontal Menu Bar at mid-viewport",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="horizontal";doc.body.prepend(toolbar);
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  let location={left:8,right:382,width:374,top:320,bottom:380,height:60};
+  toolbar.getBoundingClientRect=()=>location;
+  s.controller.sync();
+  assert.equal(s.root.dataset.ppbuiTeamHorizontalSafe,"true");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-top"),"388px");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-height"),"448px");
+  const observer=new win.MutationObserver(()=>{});observer.observe(s.root,{subtree:true,attributes:true,childList:true});
+  for(let i=0;i<5;i++)s.controller.sync();
+  assert.equal(observer.takeRecords().length,0,"stable toolbar safe-area reconciliation is mutation-free");
+  observer.disconnect();
+  location={left:8,right:382,width:374,top:600,bottom:660,height:60};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-top"),"8px");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-height"),"584px");
+  location={left:8,right:382,width:374,top:140,bottom:700,height:560};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.dataset.ppbuiTeamHorizontalOverlap,"true",
+    "when both viewport fragments are unusably small, Team must take priority above the menu");
+  s.controller.cleanup();
+  assert.equal(s.root.hasAttribute("data-ppbui-team-horizontal-safe"),false);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-horizontal-overlap"),false);
+});
+
+test("manual Team titlebar drag remains native while Saved Teams is open and clamps after release",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:88,width:80,top:8,bottom:836,height:828});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  const header=doc.createElement("header");header.className="pokeidle-panel__titlebar";
+  s.root.prepend(header);
+  let rect={left:160,right:380,width:220,top:150,bottom:450,height:300};
+  s.root.getBoundingClientRect=()=>rect;
+  s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"96px");
+  header.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true");
+  // Simulate native UIPanel changing its own positioning during the drag.
+  s.root.style.top="150px";s.root.style.left="161px";
+  rect={left:161,right:381,width:220,top:150,bottom:450,height:300};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"161px",
+    "native dragged position stays when it fits the safe region");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-top"),"150px",
+    "vertical safe area must not snap a valid user-dragged Y back to the top");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"220px");
+  assert.equal(s.root.style.left,"161px","original native positioning survives the Better UI safe-area calculation");
+  s.controller.cleanup();
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+});
+
+test("short vertical Menu Bar still reserves lateral space for Saved Teams instead of covering Team",t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:76,width:68,top:8,bottom:170,height:162});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:320});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:568});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  s.controller.sync();
+  assert.equal(s.root.dataset.ppbuiTeamVerticalSafe,"true");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"84px");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"228px");
+  s.controller.cleanup();
+});
+
+test("native resize handle stays effective during expanded Saved Teams and vertical safe-area constraints",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:88,width:80,top:8,bottom:836,height:828});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  let rect={left:96,right:382,width:286,top:8,bottom:508,height:500};
+  s.root.getBoundingClientRect=()=>rect;
+  s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"286px");
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),true);
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true");
+  assert.equal(s.root.dataset.ppbuiTeamUserResizing,"true");
+  s.root.style.width="250px";s.root.style.height="440px";
+  rect={left:96,right:346,width:250,top:8,bottom:448,height:440};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-resizing"),false);
+  assert.equal(s.root.style.width,"250px","native resized inline width remains authored by the host");
+  assert.equal(s.root.style.height,"440px","native resized inline height remains authored by the host");
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"250px",
+    "Better UI accepts the user's new width when it fits the lateral safe region");
+  s.controller.cleanup();
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-resizing"),false);
+});
+
+test("no-op native Team resize restores pre-pointer inline dimensions and manual-height state",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:88,width:80,top:8,bottom:836,height:828});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  s.root.getBoundingClientRect=()=>({left:96,right:382,width:286,top:8,bottom:508,height:500});
+  s.controller.sync();
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  const original={width:s.root.style.width,height:s.root.style.height,
+    manual:s.root.hasAttribute("data-ppbui-team-manual-height")};
+  assert.equal(original.manual,false);
+  const gesture=async end=>{
+    handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+    assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),true,
+      "native resize is allowed during the actual gesture");
+    win.dispatchEvent(new win.Event(end));
+    await new Promise(resolve=>win.setTimeout(resolve,12));
+    assert.equal(s.root.style.width,original.width);
+    assert.equal(s.root.style.height,original.height);
+    assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),original.manual);
+    assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+    assert.equal(s.root.dataset.ppbuiTeamVerticalSafe,"true");
+  };
+  await gesture("pointerup");
+  await gesture("pointercancel");
+  handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  s.controller.cleanup();
+  assert.equal(s.root.style.width,original.width);
+  assert.equal(s.root.style.height,original.height);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),false);
+});
+
+test("manual Team resize beyond default 480px survives when the desktop vertical Menu Bar leaves room",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:76,width:68,top:8,bottom:892,height:884});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:1280});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:900});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  let rect={left:84,right:564,width:480,top:8,bottom:708,height:700};
+  s.root.getBoundingClientRect=()=>rect;
+  s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"480px");
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  s.root.style.width="504px";s.root.style.height="720px";
+  rect={left:84,right:588,width:504,top:8,bottom:728,height:720};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"504px");
+  assert.equal(s.root.style.width,"504px","the host-authored larger width must persist");
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),true);
+  s.controller.cleanup();
+});
+
+test("Saved Teams first expansion honors Team width manually resized while presets were closed",t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:76,width:68,top:8,bottom:892,height:884});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:1280});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:900});
+  s.root.style.width="610px";
+  s.root.dataset.ppbuiTeamManualHeight="";
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"610px",
+    "opening Saved Teams later must preserve the user's previously resized Team width");
+  assert.equal(s.root.dataset.ppbuiTeamVerticalSafe,"true");
+  s.controller.cleanup();
+});
+
+test("native resize without an expanded Saved Teams manager restores true no-op, cancel, blur and cleanup snapshots",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  s.root.getBoundingClientRect=()=>({left:8,top:8,right:488,bottom:420,width:480,height:412});
+  const original={top:s.root.style.top,left:s.root.style.left,
+    width:s.root.style.width,height:s.root.style.height,
+    manual:s.root.hasAttribute("data-ppbui-team-manual-height")};
+  assert.equal(s.root.querySelector("[data-ppbui-team-preset-manager][open]"),null);
+  for(const end of ["pointerup","pointercancel","blur"]){
+    handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+    assert.equal(s.root.dataset.ppbuiTeamManualHeight,"","native resize may temporarily take manual geometry");
+    win.dispatchEvent(new win.Event(end));
+    await new Promise(resolve=>win.setTimeout(resolve,12));
+    assert.equal(s.root.style.width,original.width,`${end}: restore exact pre-pointer inline width`);
+    assert.equal(s.root.style.height,original.height,`${end}: restore exact pre-pointer inline height`);
+    assert.equal(s.root.style.top,original.top,`${end}: never write unsnapshotted native top`);
+    assert.equal(s.root.style.left,original.left,`${end}: never write unsnapshotted native left`);
+    assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),original.manual);
+    assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  }
+  handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  s.controller.cleanup();
+  assert.equal(s.root.style.width,original.width,"cleanup of active closed-manager resize restores inline width");
+  assert.equal(s.root.style.height,original.height,"cleanup of active closed-manager resize restores inline height");
+  assert.equal(s.root.style.top,original.top,"cleanup of active closed-manager resize restores native top");
+  assert.equal(s.root.style.left,original.left,"cleanup of active closed-manager resize restores native left");
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),false);
+});
+
+test("closed-manager native resize in Game preserves host top and left after no-op and cancel",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="game";
+  s.root.style.top="37px";s.root.style.left="41px";
+  s.root.getBoundingClientRect=()=>({left:41,top:37,right:521,bottom:449,width:480,height:412});
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  const original={top:s.root.style.top,left:s.root.style.left,
+    width:s.root.style.width,height:s.root.style.height,
+    manual:s.root.hasAttribute("data-ppbui-team-manual-height")};
+  for(const end of ["pointerup","pointercancel"]){
+    handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+    win.dispatchEvent(new win.Event(end));
+    await new Promise(resolve=>win.setTimeout(resolve,12));
+    for(const property of ["top","left","width","height"])
+      assert.equal(s.root.style[property],original[property],`${end}: native Game ${property} intact`);
+    assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),original.manual);
+    assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  }
+  s.controller.cleanup();
+});
+
+test("second pointer on Team titlebar cannot erase first resize no-op snapshot",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:76,width:68,top:8,bottom:892,height:884});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:1280});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:900});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  const header=doc.createElement("header");header.className="pokeidle-panel__titlebar";
+  s.root.prepend(header);
+  s.root.getBoundingClientRect=()=>({left:84,top:8,right:564,bottom:708,width:480,height:700});
+  s.controller.sync();
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  const original={top:s.root.style.top,left:s.root.style.left,
+    width:s.root.style.width,height:s.root.style.height,
+    manual:s.root.hasAttribute("data-ppbui-team-manual-height")};
+  const pointer=(type,id)=>{const event=new win.Event(type,{bubbles:true});
+    Object.defineProperty(event,"pointerId",{value:id});return event;};
+  handle.dispatchEvent(pointer("pointerdown",7));
+  assert.equal(s.root.dataset.ppbuiTeamUserResizing,"true");
+  header.dispatchEvent(pointer("pointerdown",8));
+  win.dispatchEvent(pointer("pointerup",8));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.dataset.ppbuiTeamUserResizing,"true","another pointer cannot end native resize");
+  win.dispatchEvent(pointer("pointerup",7));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  for(const property of ["top","left","width","height"])
+    assert.equal(s.root.style[property],original[property],`first pointer no-op restores native ${property}`);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),original.manual);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  s.controller.cleanup();
+});
+
+test("second resize-handle pointer cannot alter an active native Team titlebar drag",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:76,width:68,top:8,bottom:892,height:884});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:1280});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:900});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  const header=doc.createElement("header");header.className="pokeidle-panel__titlebar";
+  s.root.prepend(header);
+  s.root.getBoundingClientRect=()=>({left:84,top:8,right:564,bottom:708,width:480,height:700});
+  s.controller.sync();
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  const original={top:s.root.style.top,left:s.root.style.left,
+    width:s.root.style.width,height:s.root.style.height,
+    manual:s.root.hasAttribute("data-ppbui-team-manual-height")};
+  const pointer=(type,id)=>{const event=new win.Event(type,{bubbles:true});
+    Object.defineProperty(event,"pointerId",{value:id});return event;};
+  header.dispatchEvent(pointer("pointerdown",7));
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true");
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-resizing"),false);
+  handle.dispatchEvent(pointer("pointerdown",8));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),original.manual,
+    "second pointer handle may not prematurely take ownership of native height");
+  win.dispatchEvent(pointer("pointerup",8));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true");
+  win.dispatchEvent(pointer("pointerup",7));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  for(const property of ["top","left","width","height"])
+    assert.equal(s.root.style[property],original[property],`drag no-op restores ${property}`);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-manual-height"),original.manual);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  s.controller.cleanup();
+});
+
+test("native resize while Saved Teams is closed supersedes older expanded-manager width",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:76,width:68,top:8,bottom:892,height:884});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:1280});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:900});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  const handle=s.root.querySelector(".pokeidle-resize-handle");
+  let rect={left:84,right:564,width:480,top:8,bottom:708,height:700};
+  s.root.getBoundingClientRect=()=>rect;
+  s.controller.sync();
+  handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  s.root.style.width="504px";s.root.style.height="720px";
+  rect={left:84,right:588,width:504,top:8,bottom:728,height:720};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"504px");
+  manager.open=false;s.controller.sync();
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-safe"),false);
+  handle.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  s.root.style.width="610px";s.root.style.height="750px";
+  rect={left:84,right:694,width:610,top:8,bottom:758,height:750};
+  win.dispatchEvent(new win.Event("pointerup"));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  manager.open=true;s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"610px",
+    "reopening after later closed-manager resize must not reuse the old 504px preference");
+  assert.equal(s.root.style.width,"610px","host-authored new width persists");
+  s.controller.cleanup();
+});
+
+test("Team drag ignores a different pointer's release until its own pointer ends",async t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:88,width:80,top:8,bottom:836,height:828});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  const header=doc.createElement("header");header.className="pokeidle-panel__titlebar";
+  s.root.prepend(header);
+  let rect={left:96,right:382,width:286,top:8,bottom:808,height:800};
+  s.root.getBoundingClientRect=()=>rect;
+  s.controller.sync();
+  const pointer=(type,id)=>{
+    const event=new win.Event(type,{bubbles:true});
+    Object.defineProperty(event,"pointerId",{value:id});
+    return event;
+  };
+  header.dispatchEvent(pointer("pointerdown",7));
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true");
+  win.dispatchEvent(pointer("pointerup",8));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true",
+    "second pointer cannot terminate the first pointer's native Team gesture");
+  s.root.style.left="116px";
+  rect={left:116,right:402,width:286,top:8,bottom:808,height:800};
+  win.dispatchEvent(pointer("pointerup",7));
+  await new Promise(resolve=>win.setTimeout(resolve,12));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-left"),"96px",
+    "after native pointer finishes, an out-of-bounds Team is reclamped beside the Menu Bar");
+  s.controller.cleanup();
+});
+
+test("abandoned Team pointer gesture restores safe mode and inline geometry on window blur",t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="vertical";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:88,width:80,top:8,bottom:836,height:828});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:390});
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:844});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  const header=doc.createElement("header");header.className="pokeidle-panel__titlebar";
+  s.root.prepend(header);
+  s.root.getBoundingClientRect=()=>({left:96,right:382,width:286,top:8,bottom:808,height:800});
+  s.controller.sync();
+  const oldTop=s.root.style.top,oldLeft=s.root.style.left,oldWidth=s.root.style.width;
+  header.dispatchEvent(new win.Event("pointerdown",{bubbles:true}));
+  assert.equal(s.root.dataset.ppbuiTeamUserDragging,"true");
+  s.root.style.top="43px";s.root.style.left="133px";
+  win.dispatchEvent(new win.Event("blur"));
+  assert.equal(s.root.hasAttribute("data-ppbui-team-user-dragging"),false);
+  assert.equal(s.root.style.top,oldTop);
+  assert.equal(s.root.style.left,oldLeft);
+  assert.equal(s.root.style.width,oldWidth);
+  assert.equal(s.root.hasAttribute("data-ppbui-team-vertical-safe"),true);
+  s.controller.cleanup();
+});
+
+test("horizontal Saved Teams safe width recovers on viewport expansion without user resizing",t=>{
+  const s=setup(t),win=s.dom.window,doc=win.document;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  const toolbar=doc.createElement("nav");toolbar.className="pokeidle-top-toolbar";
+  toolbar.dataset.ppbuiMenuOrientation="horizontal";doc.body.prepend(toolbar);
+  toolbar.getBoundingClientRect=()=>({left:8,right:312,width:304,top:8,bottom:115,height:107});
+  const manager=doc.createElement("details");manager.dataset.ppbuiTeamPresetManager="";
+  manager.open=true;s.body.append(manager);
+  Object.defineProperty(win,"innerHeight",{configurable:true,value:900});
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:320});
+  s.controller.sync();
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"304px");
+  Object.defineProperty(win,"innerWidth",{configurable:true,value:1280});
+  win.dispatchEvent(new win.Event("resize"));
+  assert.equal(s.root.style.getPropertyValue("--ppbui-team-safe-width"),"480px",
+    "normal responsive width must not remain trapped at the old mobile cap");
+  s.controller.cleanup();
+});
+
 test("Team returns to its compact management width and preserves responsive command controls", t => {
   const s = setup(t), css = s.root.querySelector('style[data-ppbui-module="team"]').textContent;
   assert.match(css, /min-width:min\(340px,calc\(100vw - 16px\)\)!important/);
   assert.match(css, /width:min\(480px,calc\(100vw - 16px\)\)!important/, "Team returns to the compact management surface now that Pokémon Profile owns the dossier");
   assert.match(css, /\.pokeidle-team-panel\[data-ppbui-team-enhanced\]:not\(\[data-ppbui-team-manual-height\]\) \{[^}]*min-height:0!important[^}]*height:auto!important[^}]*max-height:calc\(100vh - 16px\)!important/s);
-  assert.match(css, /> \.pokeidle-panel__body \{[^}]*display:block!important[^}]*overflow-y:auto!important[^}]*font-family:var\(--ppbui-font-body\)!important/s);
+  assert.match(css, /> \.pokeidle-panel__body \{[^}]*display:grid!important[^}]*min-height:0!important[^}]*overflow-y:auto!important[^}]*font-family:var\(--ppbui-font-body\)!important/s,
+    "native Team body remains its own scrolling element while the action layout uses CSS Grid");
   assert.match(css, /:not\(\[data-ppbui-team-manual-height\]\) > \.pokeidle-panel__body \{ flex:0 1 auto!important; max-height:calc\(100vh - 56px\); \}/);
   assert.match(css, /\[data-ppbui-team-manual-height\] > \.pokeidle-panel__body \{ flex:1 1 auto!important; max-height:none; \}/);
   assert.equal(s.root.style.height, "680px", "Better UI must not overwrite the native panel's inline geometry; content-fit is reversible CSS ownership");

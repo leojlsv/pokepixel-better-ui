@@ -2,6 +2,12 @@ import { inventoryConfig as config } from "./config.js";
 export const locale = () => document.defaultView?.PokeIdle?.Localization?.get?.() || document.documentElement.lang || "pt";
 export const inventoryText = () => config.text[locale().split(/[-_]/)[0]] || config.text.en;
 export const findInventory = () => document.querySelector(config.selectors.root);
+export function inventoryAvailableInCardMode(root) {
+  const overlay = root?.closest(config.selectors.cardModeWindow);
+  if (!overlay || overlay.hidden || overlay.parentElement !== root.ownerDocument.body) return false;
+  try { return root.ownerDocument.defaultView?.PokeIdle?.ReactiveWindows?.active?.()?._panel?.el === root; }
+  catch { return false; }
+}
 export function findParts(root) {
   const body = root.querySelector(config.selectors.body);
   const toolbar = root.querySelector(config.selectors.toolbar);

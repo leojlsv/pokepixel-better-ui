@@ -16,7 +16,10 @@ export function teamText(doc = document) {
   const position = ({ pt: "Posição", en: "Position", es: "Posición", zh: "位置" })[lang.split(/[-_]/)[0]] || "Position";
   const level = ({ pt: "Nível", en: "Level", es: "Nivel", zh: "等级" })[lang.split(/[-_]/)[0]] || "Level";
   const state = ({ pt: "Estado", en: "State", es: "Estado", zh: "状态" })[lang.split(/[-_]/)[0]] || "State";
-  return { level, state, position, remove, removeCompact, activate, name, description, active, actions, fainted, search, element, all, rarity, clear, noResults };
+  const stats = ({ pt: "Estatísticas", en: "Stats", es: "Estadísticas", zh: "属性" })[lang.split(/[-_]/)[0]] || "Stats";
+  const statsShow = ({ pt: "Mostrar estatísticas", en: "Show stats", es: "Mostrar estadísticas", zh: "展开属性" })[lang.split(/[-_]/)[0]] || "Show stats";
+  const statsHide = ({ pt: "Ocultar estatísticas", en: "Hide stats", es: "Ocultar estadísticas", zh: "收起属性" })[lang.split(/[-_]/)[0]] || "Hide stats";
+  return { level, state, stats, statsShow, statsHide, position, remove, removeCompact, activate, name, description, active, actions, fainted, search, element, all, rarity, clear, noResults };
 }
 
 export const findTeam = () => document.querySelector(config.selectors.root);

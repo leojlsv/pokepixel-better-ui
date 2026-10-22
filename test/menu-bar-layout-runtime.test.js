@@ -270,7 +270,7 @@ test("relocated City shortcuts keep native dispatch and contextual Return remain
   const nature = s.doc.querySelector('[data-ppbui-city-action="nature"]');
   assert.equal(nature.parentElement, s.doc.querySelector(".pokeidle-top-toolbar"));
   nature.click();
-  assert.equal(s.doc.documentElement.getAttribute("data-ppbui-card-mode"), "game");
+  assert.equal(s.doc.documentElement.getAttribute("data-ppbui-card-mode"), "cards", "City Nature keeps Cards after the PO's in-game correction");
   assert.equal(npcCalls, 1);
   s.preferences.setEnabled("menu-bar", false);
   assert.equal(nativeReturn.parentElement, nativeBar);

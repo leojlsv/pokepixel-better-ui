@@ -3,7 +3,7 @@ export function hoverText(doc=document) {
   return pt ? {name:"Desativar hover dos Pokémon",description:"Oculta os detalhes ao passar o mouse. Clique direito continua disponível."} : {name:"Disable Pokémon hover",description:"Hide details on hover. Right-click remains available."};
 }
 export function createPokemonHoverModule(doc=globalThis.document) {
-  return {id:"disable-pokemon-hover",shouldMount:()=>!!doc.body,mount(){
+  return {id:"disable-pokemon-hover",runsInCardMode:true,shouldMount:()=>!!doc.body,mount(){
     const style=doc.createElement("style");style.dataset.ppbuiStyle="pokemon-hover";
     doc.body.setAttribute("data-ppbui-pokemon-hover-disabled", "");
     // The native pinned card is a separate surface and must remain visible.
