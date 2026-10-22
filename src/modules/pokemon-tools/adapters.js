@@ -1,6 +1,6 @@
 import {createTradeUI} from "./trade-ui.js";
 import {createPokemonTools,pokemonToolsText} from "./ui.js";
-import {categoryValue,findParts,isCategorySelect} from "../inventory/dom.js";
+import {categoryValue,findParts,inventoryAvailableInCardMode,isCategorySelect} from "../inventory/dom.js";
 const toolsSelectors={body:".pokeidle-panel__body",inventory:".inventory-window--slots",toolbar:".inventory-slots-toolbar",clear:"[data-ppbui-inventory-clear]",trade:".trade-session-window",tradeList:".trade-inventory-list",tradeCard:".trade-inventory-item.is-pokemon",itemCard:".trade-inventory-item",category:"[data-ppbui-trade-category]"};
 const normalized=value=>String(value||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().toLocaleLowerCase();
 const identityText=value=>normalized(value).replace(/[^\p{L}\p{N}]+/gu," ").trim();
@@ -83,7 +83,8 @@ export function mountInventoryPokemon(root){
     if(!node.disabled)node.disabled=true;
   };
   const pageKey=()=>`${scene._query||""}\u0000${scene._creatureCursor||""}`;
-  const canExpand=()=>alive && root.isConnected && scene._panel?.body===root.querySelector(toolsSelectors.body)
+  const canExpand=()=>alive && root.isConnected && (root.ownerDocument.documentElement?.getAttribute("data-ppbui-card-mode")!=="cards" || inventoryAvailableInCardMode(root))
+    && scene._panel?.body===root.querySelector(toolsSelectors.body)
     && ["all","pokemon"].includes(scene._category) && typeof scene.loadMoreCreatures==="function"
     && !!scene._creatureCursor && !scene._creaturePageLoading && !scene._itemSheet
     && !creatureReads && !awaitingQueryLoad && !invalidFirstPageCursor && failedPage!==pageKey() && pagesLoaded<PAGE_LIMIT;
@@ -234,7 +235,7 @@ export function mountInventoryPokemon(root){
     restoreFocus(focus);expandPages();return result;
   });
   const clear=event=>{if(event.target.closest?.(toolsSelectors.clear))tools.reset();};root.addEventListener("click",clear,true);
-  scene.refresh();return {cleanup(){alive=false;root.removeAttribute("data-ppbui-inventory-pokemon-pending");setPagingPhase(null);releaseBlockedMore();if(focusFrame)win.cancelAnimationFrame?.(focusFrame);root.removeEventListener("click",clear,true);more.removeEventListener("click",toggleMore);more.remove();adapter.restore();tools.cleanup();if(root.isConnected)scene.refresh();}};
+  scene.refresh();return {cleanup(){alive=false;root.removeAttribute("data-ppbui-inventory-pokemon-pending");setPagingPhase(null);releaseBlockedMore();if(focusFrame)win.cancelAnimationFrame?.(focusFrame);root.removeEventListener("click",clear,true);more.removeEventListener("click",toggleMore);more.remove();adapter.restore();tools.cleanup();if(root.isConnected && (root.ownerDocument.documentElement?.getAttribute("data-ppbui-card-mode")!=="cards" || inventoryAvailableInCardMode(root)))scene.refresh();}};
 }
 export function mountTradePokemon(root,scene){
   // Native Trade already owns its Rarities selector. Do not render a second

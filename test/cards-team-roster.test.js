@@ -79,7 +79,12 @@ test("deprecated Fast A/B does not render or subscribe reward-driven leader acti
   await settle();
   assert.deepEqual(f.calls, [], "native rewards never request gameplay changes");
   assert.equal(f.find('[data-card-team-member="a"]').getAttribute("aria-pressed"), "true");
-  assert.equal(f.find('[data-card-team-member="c"]').disabled, true, "native faint guard remains");
+  assert.equal(f.find('[data-card-team-member="c"]').disabled, false,
+    "fainted member remains tabbable for secondary native Details action");
+  assert.equal(f.find('[data-card-team-member="c"]').getAttribute("aria-disabled"),"true",
+    "fainted member's primary leader-switch action stays unavailable");
+  f.find('[data-card-team-member="c"]').click();
+  assert.deepEqual(f.calls,[], "a primary click on a fainted member must never request leader change");
 
   f.find('[data-card-team-member="b"]').click();
   await settle();

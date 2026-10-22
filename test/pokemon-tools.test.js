@@ -305,6 +305,19 @@ test('Alt-left-click opens attribution without native mouse actions; normal clic
  slot.dispatchEvent(new s.win.MouseEvent('dblclick',{bubbles:true,button:0,detail:2}));assert.equal(doubled,0);
  slot.click();assert.equal(clicked,1);tools.cleanup();slot.click();assert.equal(clicked,2);
 });
+test('Inventory tag modal is visible before focus is requested while native Cards window is active',t=>{
+ const s=setup(t),doc=s.win.document,root=s.root;
+ const overlay=doc.createElement('div');overlay.dataset.ppbuiCardModeWindow='inventory';doc.body.append(overlay);overlay.append(root);
+ doc.documentElement.dataset.ppbuiCardMode='cards';
+ s.win.PokeIdle.ReactiveWindows={active:()=>({_panel:{el:root}})};
+ const tools=createPokemonTools(root,{getCreatures:()=>[{id:'1',species_name:'Eevee'}],refresh(){}});
+ const slot=doc.createElement('button');root.append(slot);tools.decorate(slot,{id:'1',species_name:'Eevee'});
+ slot.dispatchEvent(new s.win.MouseEvent('click',{bubbles:true,altKey:true,button:0,detail:1}));
+ const dialog=doc.querySelector('dialog.ppbui-tag-dialog');
+ assert.equal(dialog?.dataset.ppbuiCardModeWindow,'inventory-dialog');
+ assert.ok(dialog?.contains(doc.activeElement),'the real dialog can own focus immediately');
+ tools.cleanup();
+});
 test('tag dialog returns focus to the current creature slot after a native Inventory redraw',t=>{
  const s=setup(t),doc=s.win.document,c={id:'1',species_name:'Eevee',location:'inventory'};
  const tools=createPokemonTools(s.root,{getCreatures:()=>[c],refresh(){}});

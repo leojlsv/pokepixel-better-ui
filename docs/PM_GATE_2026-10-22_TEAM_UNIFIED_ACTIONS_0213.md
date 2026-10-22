@@ -1,0 +1,53 @@
+# PM Gate — Team: faixa unificada de ações e Saved Teams (0.2.213)
+
+**Escopo:** último refinamento visual da janela **Team** solicitado pelo PO em 2026-10-22 após o candidato offline `0.2.212`: unificar visualmente `Show Stats`, `Details / Remove` e `Saved Teams`, preferindo `Show Stats | Details | Remove` na mesma linha. A captura **real do PO** exibe Tyranitar Lv.259 e três faixas desconectadas. A fixture Chromium **não é** captura do host autenticado (usa Starmie Lv.230); a equivalência in-game foi confirmada pelo PO para o artefato final, não pelos testes sintéticos.
+
+**Estado: USER-VALIDATED — autorização explícita para publicação do candidato integral exato `5C1CA127…`.** Pareceres independentes prévios **TECH READY**, **UX READY** e **VISUAL READY somente na fixture sintética**, P0=0/P1=0. **Em 2026-10-22T14:37:18Z o PO respondeu “Validado. All green.” e autorizou “commit, push, merge, deploy e release”.** Esta confirmação aplica-se ao hash exato abaixo, não a um rebuild com alterações funcionais. Antes da autorização, nenhum agente instalou, operou o jogo, publicou ou alterou o release-lock; a conclusão de Git/release passa a ser uma etapa separada e autorizada.
+
+## Contrato e decisões de layout
+
+| ID | Comportamento verificável | Contrato preservado | Evidência offline |
+| --- | --- | --- | --- |
+| AC-01 | `Mostrar/Ocultar estatísticas`, `Details` e `Remove` compartilham paleta, contorno, tipografia, altura e faixa visual em 1280 e 390 px. Em contêiner `<=359px`, Stats ocupa uma linha e as duas ações ficam lado a lado na seguinte, sem H-scroll ou corte de texto. | Rótulos completos nas quatro localidades PT/EN/ES/ZH; **“poderiam ficar na mesma linha”** é preferência, não autorização para clipping mobile. | `test/team.test.js`; `phase-team-0213-geometry.json` geometria de todas as faixas, 320/390/1280; PNG `team-stats-collapsed`. |
+| AC-02 | Stats começa **recolhido**, parece botão, expande HP/EXP + atributos nativos **abaixo da faixa** e recolhe sem recriar handlers/nós. | `aria-expanded`, `aria-controls` e IDs, refresh nativo, foco, hover, active, +/−. | `test/team.test.js`; Chromium `team-stats`, `team-stats-keyboard`. |
+| AC-03 | `Details`/`Remove` permanecem botões **nativos originais** em `.team-actions` diretamente dentro do `body`, com handlers nativos e estados disabled. | Sem clonar, mover para wrapper, redispatch, POST, simulação de jogo ou MutationObserver novo. | Regressão RED→GREEN `test/team.test.js`; Chromium `team-details`, `team-details-keyboard`; Card Team 0.2.212 regressão. |
+| AC-04 | Saved Teams mantém `<details><summary>` original, contador, edição, expansão, foco e caret; summary usa a mesma identidade visual e **anel de foco completo dentro da borda**, sem recorte pelo `overflow:hidden`. | `ensureMounted()` posiciona manager **depois** das ações na ordem de DOM para Tab `Stats → Details → Remove → Saved`; guard de clear/append preserva island, scroll manual e camada segura frente à Menu Bar. | `test/team-presets-ui.test.js` dois RED→GREEN (ordem e foco); CDP `team-actions-tab` com Tab real, foco visível e Enter nativo em 320/390/1280; PNG `team-actions-tab-saved-focused` em 1×; Chromium `team`, `team-vertical`, `team-manual-before-saved`, `team-reopen-manual`. |
+| AC-05 | Regressão geral em 22 destinos de Card Mode e lista Cards Team, sem interferir na classificação histórica dos 46 destinos nem perder right-click/XP Share previamente entregue. | Cards selecionado quando possível, renderer oculto, seis destinos Game-only, host nativo como autoridade. | 66/66 Card Mode + 3/3 Card Team em Chrome sintético. |
+| AC-06 | Aparência e comportamento do host real correspondem à intenção do PO na ficha de Tyranitar. | Verificação exclusiva do PO; offline não atesta UI/arte do jogo autenticado. | **PASS — PO em jogo, 2026-10-22T14:37:18Z: “Validado. All green.”** |
+
+## Fonte, versão e integridade
+
+- Worktree: `/pokepixel-better-ui/work/card-mode-window-overlays`; branch `feat/card-mode-window-overlays-205`; HEAD histórico `81816d3`. Dirty state preexistente mantido, inclusive `?? 1100`.
+- Fonte alterada nesta etapa: `src/modules/team/controller.js`, `src/modules/team-presets/manager.js`, testes de Team/Presets, runners e documentação/versão. Sem alterações nos módulos de lógica `card-mode/{cards,controls,windows,index}.js` desta etapa.
+- Candidato integral `dist/pokepixel-better-ui.user.js`, **versão 0.2.213**; SHA-256 **`5C1CA1276AEF27E3A3422AB678380DF6CC90687609E6CFC2D19094A7C3A3CD0A`**; **1.904.798 bytes**. Snapshot **`visual-evidence/po-candidate-v0.2.213-5C1CA127.user.js`**, cópia integral byte-a-byte com hash e tamanho verificados após o último fix de foco visual.
+- Após o aceite expresso do PO, `userscript/release-lock.json` é promovido de `0.2.204` para `0.2.213`, **exigindo SHA `5C1CA127…`**, sem alterar o JavaScript já validado. `src/core/observer.js` continua intacto. `git diff --check` exit 0. A versão antiga `0.2.212` e seu snapshot `visual-evidence/po-candidate-v0.2.212-C8744B2A.user.js` foram preservados (SHA `C8744B2A0FE439168DB90C2A2812385BDA147B927B83E3BFF43D9308B445A8D7`, 1.900.437 bytes). O aceite in-game de 0.2.213 decorre do novo feedback do PO, não de transferência do aceite offline antigo.
+
+## Gates executados
+
+| Gate | Resultado | Evidência |
+| --- | --- | --- |
+| RED→GREEN — Tab DOM/foco/caret | 1 teste reproduziu falha de ordem antes do patch, GREEN após correção; manager nativo permanece estável em refresh. | `visual-evidence/team-actions-0213-tab-order-{red,green}.log`; `test/team-presets-ui.test.js`. |
+| RED→GREEN — anel de foco `<summary>` | O foco ficava cortado pelo container `overflow:hidden`; teste RED comprovou offset externo, GREEN exige offset interno, CDP `:focus-visible`/largura/offset e captura 1× mostram anel ciano bem visível em 320/390/1280. A alça de resize nativa cobre apenas parte do canto inferior direito do summary recolhido em 320/390 (P3 cosmético), não as demais bordas nem o foco navegável. | `team-actions-0213-focus-ring-{red,green}.log`, `team-actions-0213-focus-ring-chromium.log`; screenshots `phase-team-0213-*-team-actions-tab-saved-focused.png`. |
+| JSDOM/Node dirigido | **107/107 PASS** antes do pequeno corretivo de Tab, depois incluído na suíte geral. | `visual-evidence/team-actions-0213-directed-green.log`. |
+| Suíte integral + build final 0.2.213 | **1.143/1.143 PASS**, 0 FAIL, build; saída integral acima. | `visual-evidence/team-actions-0213-final-validate.log`. |
+| Team Chromium sintético + Tab nativo | **51/51 PASS**, **159 PNG**, incluindo 3/3 CDP Tab + Enter e foco inset, 1280×900, 390×844, 320×568. | `visual-evidence/capture-team-0213.mjs`; `phase-team-0213-geometry.json`; `team-actions-0213-chromium.log`, bundle SHA `61727B859BCFB65C8F05DEF0B8F0801798F14A6B738BE5224E8081FE8B05F446`. |
+| Card Team (right-click/EXP) | **3/3 PASS**, **33 PNG**. | `capture-card-team-0213.mjs`; `phase-card-team-0213-geometry.json`; bundle SHA `197BDB81FCA31557037C85C5E848817795DD2FDE20B7CD0D747D7D33F8882527`. |
+| Card Mode geral | **66/66 PASS**, **132 PNG**. | `capture-phase-po-0213.mjs`; `phase-po-0213-visual-geometry.json`; bundle SHA `0471FD266633C722931F86690060CF67B0A70F79D4F345747DCACA08ED235EDF`. |
+| Integridade assets Chromium | **324/324 PNG**, nomes únicos 324, SHA/bytes/IHDR/viewport íntegros, 0 erros. | `visual-evidence/verify-team-actions-0213-assets.mjs`; `visual-evidence/card-team-0213-exact-fence-asset-integrity.log`. |
+
+**Fonte vs. fixture:** os três bundles esbuild Chromium são compilações locais dos respectivos subconjuntos e **não** têm hash igual ao userscript integral de distribuição. Capturas mostram host DOM sintético, não reconhecimento humano nem jogo autenticado. A alteração de CSS não estabelece ganho mensurável de FPS/CPU/GPU.
+
+## Pareceres independentes
+
+| Revisor | Estado | Escopo/limite |
+| --- | --- | --- |
+| TECH | **TECH READY OFFLINE — SHA `5C1CA127…`; P0=0/P1=0/P2=1**, revisor independente worker-19 (leitura exclusiva). | Verificou SHA/bytes do dist/snapshot, build final posterior à última fonte, native actions/handler, guard e limpeza, Stats e ordem CDP Tab, foco inset, 324 imagens íntegras. P2 compatibilidade: guard preserva foco em `panel.clearBody()`/`body.appendChild()` nativos conhecidos; métodos alternativos de substituição do DOM pelo host não foram provados. Break responsivo em <=359px é decisão de legibilidade, não erro. |
+| UX/A11y | **UX READY OFFLINE — SHA `5C1CA127…`; P0/P1/P2=0**, revisor independente worker-20 (leitura exclusiva). | O P1 anterior do anel externo cortado está resolvido: `summary:focus-visible` tem outline 2px/offset −2px, CDP Tab/Enter nativos em três larguras, foco e semântica preservados. |
+| VISUAL | **VISUAL READY NA FIXTURE SINTÉTICA — SHA `5C1CA127…`; P0/P1/P2=0; P3=1**, mesmo revisor render-first. | Revistos PNG 1× focado/sem foco/expandido, 1280/390/320; a alça **nativa** dourada de resize cobre aproximadamente 20px do canto inferior direito do summary quando a janela está recolhida no mobile, mas o perímetro ciano de foco segue claramente perceptível nas bordas restantes, sem bloquear teclado (P3 cosmético). A arte/host real do PO não foi visitada. |
+| PO in-game | **USER-VALIDATED — SHA `5C1CA127…`; 2026-10-22T14:37:18Z**. | Validação no próprio jogo declarada pelo PO (“Validado. All green.”). Em mensagem consecutiva autorizou commit, push, merge, deploy e release. A inspeção autenticada não foi realizada por agentes. |
+
+**Parecer PM pós-feedback:** AC-01 a AC-05 demonstrados na fixture com revisores independentes sem P0/P1; AC-06 validado no host real por declaração do PO. A quebra em duas linhas quando o contêiner tem até 359px é uma exceção responsiva deliberada (rótulos legíveis, sem clipping/H-scroll), não reversão do pedido de uniformização; a fila de foco continua Stats → Details → Remove → Saved Teams. **Candidato `5C1CA127…` habilitado a commit/integração/publicação via workflows oficiais, sem reimplementar funcionalidades nem alterar bytes aprovados.**
+
+## Roteiro de validação do PO (não executado por agentes)
+
+Roteiro originalmente entregue ao PO antes da validação: no próprio navegador autenticado, abrir **Cards → Team**, selecionar Tyranitar e conferir a faixa `+ Show stats | Details | Remove` e o grupo `Saved teams`, cores/bordas, Stats inicial recolhido, expansão HP/EXP, Tab/Enter/Space, native Details acima de Cards, Saved Teams, drag/resize, Menu Bar e viewport 390/320. Evitar execução de operações desnecessárias de gameplay. **Roteiro encerrado pelo aceite informado pelo PO em 2026-10-22; não há necessidade de repetir validação para o artefato idêntico.**

@@ -3,6 +3,7 @@ import { helperParts } from "./dom.js";
 import { mountAutoHelper } from "./controller.js";
 import { createSettingsSaver } from "./saver.js";
 import { readMenuLayoutOwner } from "../menu-bar/layout-owner.js";
+import { nativeActionPanelAvailableInCardMode } from "../card-mode/native-menu-contracts.js";
 export { autoHelperText } from "./config.js";
 export function createAutoHelperModule() {
   let root, mounted, key, mountGeneration = 0, mountKey = null, observedKey = null, observedOwner = "", sessionOwner = "";
@@ -10,6 +11,7 @@ export function createAutoHelperModule() {
   const readOwner = win => readMenuLayoutOwner(win).owner;
   return {
     id: config.id,
+    runsInCardMode: true,
     shouldMount() {
       root = document.querySelector(config.selectors.root);
       key = root?.querySelector(config.selectors.grid);
@@ -17,7 +19,9 @@ export function createAutoHelperModule() {
       if (key !== observedKey || owner !== observedOwner) {
         observedKey = key; observedOwner = owner; mountKey = { grid:key, owner };
       }
-      return Boolean(root && key && owner && (root.hasAttribute("data-ppbui-auto-helper") || helperParts(root)));
+      const inCards=document.documentElement.getAttribute("data-ppbui-card-mode")==="cards";
+      return Boolean(root && key && owner && (!inCards || nativeActionPanelAvailableInCardMode(root,"auto-helper")) &&
+        (root.hasAttribute("data-ppbui-auto-helper") || helperParts(root)));
     },
     getMountKey: () => mountKey,
     mount() {

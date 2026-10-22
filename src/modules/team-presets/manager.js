@@ -27,10 +27,16 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   const style = doc.createElement("style"); style.dataset.ppbuiModule = `${config.id}-manager`;
   style.textContent = `
     .pokeidle-team-panel:has([data-ppbui-team-preset-manager]) { min-width:min(340px,calc(100vw - 16px))!important; }
-    [data-ppbui-team-preset-manager] { grid-column:1/-1; align-self:stretch; box-sizing:border-box; width:100%!important; max-width:none!important; margin:var(--ppbui-space-2) 0 0!important; padding:0!important; overflow:hidden; border:var(--ppbui-separator-width) solid var(--ppbui-border)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text); font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body); box-shadow:none!important; }
+    [data-ppbui-team-preset-manager] { grid-column:1/-1; align-self:stretch; box-sizing:border-box; width:100%!important; max-width:none!important; margin:var(--ppbui-space-2) 0 0!important; padding:0!important; overflow:hidden; border:var(--ppbui-border-width) solid var(--ppbui-border-strong)!important; border-radius:var(--ppbui-radius)!important; background:var(--ppbui-bg-1)!important; color:var(--ppbui-text); font:var(--ppbui-font-size-body)/var(--ppbui-line-height-body) var(--ppbui-font-body); box-shadow:none!important; }
     [data-ppbui-team-preset-manager][data-empty="true"] { padding:0; }
-    [data-ppbui-team-preset-manager] > summary { min-height:var(--ppbui-control-height); padding:var(--ppbui-space-2) var(--ppbui-space-3); cursor:pointer; color:var(--ppbui-text); font-weight:700; }
-    [data-ppbui-team-preset-manager] > summary:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:var(--ppbui-pixel-unit); }
+    [data-ppbui-team-preset-manager] > summary { display:flex; align-items:center; gap:var(--ppbui-space-2); box-sizing:border-box; min-height:var(--ppbui-control-height); padding:var(--ppbui-space-2) var(--ppbui-space-3); list-style:none; cursor:pointer; border:0; background:var(--ppbui-bg-2)!important; color:var(--ppbui-text); font-weight:700; }
+    [data-ppbui-team-preset-manager] > summary::-webkit-details-marker { display:none; }
+    [data-ppbui-team-preset-manager] > summary::marker { content:""; }
+    [data-ppbui-team-preset-manager] > summary::before { display:grid; flex:0 0 20px; place-items:center; box-sizing:border-box; width:20px; height:20px; border:var(--ppbui-border-width) solid var(--ppbui-border-strong); border-radius:var(--ppbui-radius); background:var(--ppbui-bg-0); color:var(--ppbui-text); font:700 14px/1 var(--ppbui-font-body); content:"▸"; }
+    [data-ppbui-team-preset-manager][open] > summary::before { content:"▾"; }
+    [data-ppbui-team-preset-manager] > summary:hover { background:color-mix(in srgb,var(--ppbui-bg-2) 75%,var(--ppbui-info) 25%)!important; }
+    [data-ppbui-team-preset-manager] > summary:active { background:var(--ppbui-bg-0)!important; }
+    [data-ppbui-team-preset-manager] > summary:focus-visible { outline:var(--ppbui-focus-width) solid var(--ppbui-focus); outline-offset:calc(-1 * var(--ppbui-focus-width)); }
     [data-ppbui-team-preset-manager-grid] { display:grid; box-sizing:border-box; width:100%; grid-template-columns:minmax(0,1fr); gap:0; margin-top:0; }
     [data-ppbui-team-preset-manager][data-empty="true"] [data-ppbui-team-preset-manager-grid] { margin-top:0; }
     [data-ppbui-team-preset-empty] { grid-column:1/-1; margin:0; padding:var(--ppbui-space-2) var(--ppbui-space-3); border-top:var(--ppbui-separator-width) solid var(--ppbui-border); color:var(--ppbui-text-muted); font-size:var(--ppbui-font-size-meta); line-height:var(--ppbui-line-height-meta); }
@@ -38,7 +44,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     [data-ppbui-team-preset-manager] :where(button,input,select,textarea) { border-radius:var(--ppbui-radius)!important; }
     [data-ppbui-team-preset-manager] > summary { border-radius:var(--ppbui-radius)!important; }
     [data-ppbui-team-preset-card-head], [data-ppbui-team-preset-card-foot], [data-ppbui-team-preset-card-meta] { display:flex; align-items:center; gap:var(--ppbui-space-2); min-width:0; }
-    [data-ppbui-team-preset-card-head] { align-items:end; flex-wrap:nowrap; padding:var(--ppbui-space-3); }
+    [data-ppbui-team-preset-card-head] { align-items:end; flex-wrap:wrap; padding:var(--ppbui-space-3); }
     [data-ppbui-team-preset-card-body][hidden] { display:none!important; }
     [data-ppbui-team-preset-name-field] { flex:1 1 auto; min-width:110px; }
     [data-ppbui-team-preset-name-field] > span { color:var(--ppbui-text-subtle); font:700 var(--ppbui-font-size-meta)/var(--ppbui-line-height-meta) var(--ppbui-font-data); }
@@ -54,6 +60,7 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     .pokeidle-team-panel [data-ppbui-team-preset-manager] [data-ppbui-team-preset-name-field] > input.game-window__search.ppbui-input,
     .pokeidle-team-panel [data-ppbui-team-preset-manager] [data-ppbui-team-preset-composer-name] > input.game-window__search.ppbui-input { border-color:var(--ppbui-accent)!important; }
     [data-ppbui-team-preset-card-actions] { flex:0 0 auto; flex-wrap:nowrap; gap:var(--ppbui-space-2); }
+    [data-ppbui-team-preset-card-head] > [data-ppbui-team-preset-card-actions] { max-width:100%; margin-left:auto; }
     [data-ppbui-team-preset-card-foot] > [data-ppbui-team-preset-card-actions] > button::before,
     [data-ppbui-team-preset-card-foot] > [data-ppbui-team-preset-card-actions] > button::after { display:none!important; content:none!important; }
     [data-ppbui-team-preset-card] .ppbui-team-preset-direction { position:relative; }
@@ -186,7 +193,16 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
   function ensureMounted() {
     if (details.isConnected && root.contains(details)) return;
     const profile = root.querySelector(config.selectors.teamProfile), roster = root.querySelector(config.selectors.teamRoster), body = root.querySelector(config.selectors.teamBody);
-    if (profile) profile.after(details); else if (roster) roster.after(details); else body?.append(details);
+    // Keep the native Details/Remove buttons in their original body parent.
+    // Saved Teams follows that row in DOM order as well as in the visual grid,
+    // so keyboard focus traverses Stats -> Details -> Remove -> Saved Teams.
+    // If the host hasn't rendered actions yet, the native append guard below
+    // keeps subsequent native children before the persistent manager island.
+    const actions = body?.querySelector(":scope > .team-actions:not([data-ppbui-module])");
+    if (actions) actions.after(details);
+    else if (profile) profile.after(details);
+    else if (roster) roster.after(details);
+    else body?.append(details);
   }
 
   const text = () => teamPresetsText(doc);
@@ -431,13 +447,16 @@ export function mountTeamPresetManager(root, { store, hudRoot, apply, capture, r
     ensureMounted(); syncNativeBodyGuard(); syncSummary(); render();
   }
 
-  function onToggle() { if (details.open) render(true, true); }
+  function onToggle() {
+    if (details.open) render(true, true);
+    win?.dispatchEvent(new win.Event("ppbui:team-presets-open-change"));
+  }
   details.addEventListener("toggle", onToggle);
   composer = mountTeamPresetComposer(details, { store, onChange: changed, setManagerStatus: setStatus });
   ensureMounted(); syncNativeBodyGuard(); syncSummary(); render(true);
   return {
     sync() { sync(); composer?.sync(); },
-    open() { if (disposed) return; ensureMounted(); details.open = true; details.scrollIntoView?.({ block: "nearest" }); },
+    open() { if (disposed) return; ensureMounted(); details.open = true; win?.dispatchEvent(new win.Event("ppbui:team-presets-open-change")); details.scrollIntoView?.({ block: "nearest" }); },
     cleanup() { disposed = true; details.removeEventListener("toggle", onToggle); releaseNativeBodyGuard(); composer?.cleanup(); composer = null; details.remove(); style.remove(); },
   };
 }

@@ -21,6 +21,45 @@ function teamRuntime(win) {
   return { runtime, creatures };
 }
 
+function nativeXpShareRecipients(win, runtime, creatures) {
+  const projection = runtime?._xpShare;
+  const ids = new Set(creatures.map(creatureId).filter(Boolean));
+  const recipients = new Map();
+  const region = String(projection?.region || "").trim().toLowerCase();
+  if (!Array.isArray(projection?.recipient_ids) || !/^[a-z0-9_-]{1,32}$/.test(region)) return recipients;
+  // The native Team HUD uses these same authoritative recipient_ids and the
+  // native XPSharing sprite. carrier_id is intentionally NOT an EXP recipient.
+  let sprite = "";
+  try { sprite = win?.PokeIdle?.XPSharing?.spriteFor?.(region) || ""; } catch {}
+  if (typeof sprite !== "string") sprite = "";
+  if (!sprite) {
+    // A cached/older host may omit the sprite API. Reuse the native HUD icon
+    // for this exact creature only; never fabricate a region's item artwork.
+    const root = runtime?.el;
+    if (root?.isConnected && root.matches?.(".pokeidle-team-hud")) {
+      const card = [...root.querySelectorAll(".pokeidle-team-card.is-xp-share-recipient[data-creature-id]")]
+        .find(node => projection.recipient_ids.some(value => String(value) === node.dataset.creatureId));
+      const badge = card?.querySelector(".pokeidle-team-card__xp-share.is-recipient:not([hidden])");
+      const title = badge?.getAttribute("title") || badge?.getAttribute("aria-label") || "";
+      if (title.toLowerCase().includes("(" + region + ")"))
+        sprite = badge.querySelector("img[src]")?.getAttribute("src") || "";
+    }
+  }
+  if (!sprite) return recipients;
+  const lang = String(win?.PokeIdle?.Localization?.get?.() || win?.document?.documentElement?.lang || "pt").split(/[-_]/)[0];
+  const status = ({pt:"Elegível para receber EXP compartilhada",en:"Eligible for shared EXP",
+    es:"Puede recibir EXP compartida",zh:"可获得共享经验值"})[lang] || "Eligible for shared EXP";
+  for (const value of projection.recipient_ids) {
+    const id = String(value ?? "").trim();
+    if (!ids.has(id) || recipients.has(id)) continue;
+    recipients.set(id, {
+      src:sprite,
+      label:status + " (" + region.toUpperCase() + ")",
+    });
+  }
+  return recipients;
+}
+
 export function analyzerSessionControlAvailable(win) {
   const api = win?.[config.analyzerControlGlobal];
   return Boolean(api?.protocol === config.analyzerProtocol && typeof api.act === "function");
@@ -34,6 +73,7 @@ export function explicitNativeLeaderId(win) {
 export function teamControlSnapshot(win) {
   const { runtime, creatures } = teamRuntime(win);
   const active = creatures.find(creature => creature?.is_leader) || creatures[0] || null;
+  const xpRecipients = nativeXpShareRecipients(win, runtime, creatures);
   return {
     available: Boolean(
       runtime
@@ -48,6 +88,7 @@ export function teamControlSnapshot(win) {
       fainted: creature?.fainted === true
         || creature?.is_fainted === true
         || (Number.isFinite(creature?.hp) && creature.hp <= 0),
+      xpShare: xpRecipients.get(creatureId(creature)) || null,
     })).filter(member => member.id),
   };
 }

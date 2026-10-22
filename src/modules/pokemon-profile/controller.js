@@ -772,7 +772,7 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   const style = doc.createElement("style"); style.dataset.ppbuiModule = PROFILE_ID; style.textContent = styleText(); doc.head.append(style);
   let menu = null, menuLabel = null;
 
-  const root = doc.createElement("section"); root.className = "ppbui-root ppbui-window"; root.dataset.ppbuiPokemonProfileWindow = ""; root.hidden = true; root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "false");
+  const root = doc.createElement("section"); root.className = "ppbui-root ppbui-window"; root.dataset.ppbuiPokemonProfileWindow = ""; root.dataset.ppbuiCardModeWindow = "profile"; root.hidden = true; root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "false");
   const titlebar = doc.createElement("header"); titlebar.dataset.ppbuiProfileTitlebar = "";
   const titleIdentity = doc.createElement("div"); titleIdentity.dataset.ppbuiProfileTitleIdentity = "";
   const titleIcon = profileIcon(); titleIcon.dataset.ppbuiProfileTitleIcon = "";
@@ -986,9 +986,16 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
 
   function syncPickerSelection(){for(const [id,node] of choiceNodes)setAttr(node,"aria-pressed",String(id===selectedId));}
 
-  function renderPicker({ preserveFocus=false }={}) {
-    const text=copy(),focused=preserveFocus&&doc.activeElement?.matches?.("[data-ppbui-profile-choice]")?doc.activeElement:null; sourceButtons.forEach((button,key)=>setAttr(button,"aria-pressed",String(key===source)));setProp(clearFilters,"disabled",!filters.rarity&&!filters.element&&!minLevelFilter.value&&!maxLevelFilter.value&&!filters.tags.length);const filtered=filteredOwned(),fragment=doc.createDocumentFragment();
-    for(const creature of filtered)fragment.append(ensureChoiceNode(creature));list.replaceChildren(fragment);if(focused?.isConnected)focused.focus({preventScroll:true});setText(pickerState,filtered.length ? "" : (owned.length ? text.none : pickerState.textContent));
+  function renderPicker({ preserveFocus=false, focusChoiceId="" }={}) {
+    const text=copy(),focused=doc.activeElement?.parentElement===list?doc.activeElement:null;
+    const focusId=focusChoiceId||(preserveFocus?focused?.dataset.creatureId:"");
+    sourceButtons.forEach((button,key)=>setAttr(button,"aria-pressed",String(key===source)));setProp(clearFilters,"disabled",!filters.rarity&&!filters.element&&!minLevelFilter.value&&!maxLevelFilter.value&&!filters.tags.length);const filtered=filteredOwned(),fragment=doc.createDocumentFragment();
+    for(const creature of filtered)fragment.append(ensureChoiceNode(creature));list.replaceChildren(fragment);
+    if(focusId&&opened&&!root.hidden&&(doc.activeElement===doc.body||doc.activeElement===doc.documentElement)){
+      const survivor=choiceNodes.get(focusId),target=survivor?.parentElement===list?survivor:search;
+      target.focus({preventScroll:true});
+    }
+    setText(pickerState,filtered.length ? "" : (owned.length ? text.none : pickerState.textContent));
   }
 
   function moveItem(move, index, { hover = false, slotSetting = null } = {}) {
@@ -1160,8 +1167,10 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     if(!verifyProfileOwner())return false;
     const capturedOwner=profileOwner;
     const epoch=++loadEpoch,text=copy();selectionEpoch++;detailCache.clear();movesCache.clear();pickerState.textContent=text.loading;pickerState.dataset.error="false";refresh.disabled=true;
-    try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return false;owned=next;reconcileChoiceNodes();pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker();main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker();if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
-    catch{if(!alive||epoch!==loadEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return;pickerState.textContent=text.loadError;pickerState.dataset.error="true";renderPicker();}
+    try{const raw=await loadOwnedPokemon(doc),next=await Promise.all(raw.map(enrichCreature));if(!alive||epoch!==loadEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return false;
+      const focusedChoiceId=doc.activeElement?.parentElement===list?doc.activeElement.dataset.creatureId:"";
+      owned=next;reconcileChoiceNodes();pickerState.textContent="";let wanted=String(preferredId||"");if(wanted&&!owned.some(creature=>String(creature.id)===wanted)&&strictPreferred){selectedId="";renderPicker({focusChoiceId:focusedChoiceId});main.replaceChildren(statusNode(text.none,true));return false;}if(!owned.some(creature=>String(creature.id)===wanted))wanted=String(owned[0]?.id||"");selectedId=wanted;renderPicker({focusChoiceId:focusedChoiceId});if(wanted)await renderSelected(wanted);else main.replaceChildren(statusNode(text.none));return Boolean(wanted);}
+    catch{if(!alive||epoch!==loadEpoch||!verifyProfileOwner()||profileOwner!==capturedOwner)return;pickerState.textContent=text.loadError;pickerState.dataset.error="true";renderPicker({preserveFocus:true});}
     finally{if(alive&&epoch===loadEpoch&&verifyProfileOwner()&&profileOwner===capturedOwner)refresh.disabled=false;}
   }
 
@@ -1672,7 +1681,9 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
 
   function clampWindowPosition(left,top,width,height){
     const gap=8,viewportWidth=win.innerWidth||doc.documentElement.clientWidth||width,viewportHeight=win.innerHeight||doc.documentElement.clientHeight||height;
-    const maxLeft=Math.max(gap,viewportWidth-width-gap),maxTop=Math.max(gap,viewportHeight-height-gap);
+    const inset=doc.documentElement.getAttribute("data-ppbui-card-mode")==="cards"
+      ?Math.max(0,parseFloat(win.getComputedStyle(doc.documentElement).getPropertyValue("--ppbui-card-mode-window-bottom-inset"))||0):0;
+    const maxLeft=Math.max(gap,viewportWidth-width-gap),maxTop=Math.max(gap,viewportHeight-inset-height-gap);
     return {left:Math.min(Math.max(left,gap),maxLeft),top:Math.min(Math.max(top,gap),maxTop)};
   }
   function setDraggedWindowPosition(left,top,width,height){
@@ -1702,15 +1713,68 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
     setDraggedWindowPosition(dragState.left+(event.clientX-dragState.startX),dragState.top+(event.clientY-dragState.startY),dragState.width,dragState.height);event.preventDefault();
   }
 
-  async function open(id="", origin=null) { if(!verifyProfileOwner())return false;const epoch=++openEpoch,requested=String(id||"").trim(),activeElement=doc.activeElement;if(origin?.isConnected)profileOrigin=origin;else if(activeElement&&activeElement!==doc.body&&!root.contains(activeElement))profileOrigin=activeElement;syncCopy();root.hidden=false;opened=true;if(dragPositioned)clampMovedWindow();const loaded=await refreshOwned(requested||selectedId,Boolean(requested));if(!alive||!opened||epoch!==openEpoch||!verifyProfileOwner())return false;const subject=main.querySelector("[data-ppbui-profile-name]");if(subject){subject.tabIndex=-1;subject.focus({preventScroll:true});}else refresh.focus({preventScroll:true});return loaded; }
-  function hide({ restoreFocus=true }={}){openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();root.hidden=true;opened=false;setProp(refresh,"disabled",false);if(!restoreFocus)return;const target=profileOrigin?.isConnected?profileOrigin:ensureMenu();profileOrigin=null;target?.focus?.({preventScroll:true});}
-  titlebar.addEventListener("pointerdown",onTitlebarPointerDown);titlebar.addEventListener("lostpointercapture",stopWindowDrag);doc.addEventListener("pointermove",onWindowDrag,true);doc.addEventListener("pointerup",stopWindowDrag,true);doc.addEventListener("pointercancel",stopWindowDrag,true);win.addEventListener("blur",stopWindowDrag);win.addEventListener("resize",clampMovedWindow);
+  async function open(id="", origin=null) {
+    if(!verifyProfileOwner())return false;
+    const epoch=++openEpoch,requested=String(id||"").trim(),activeElement=doc.activeElement;
+    if(origin?.isConnected)profileOrigin=origin;
+    else if(activeElement&&activeElement!==doc.body&&!root.contains(activeElement))profileOrigin=activeElement;
+    syncCopy();
+    if(root.parentElement===doc.body&&root.nextElementSibling)doc.body.append(root);
+    root.hidden=false;opened=true;
+    if(dragPositioned)clampMovedWindow();
+    // Native reads may stall. Focus must belong to the newly visible nonmodal
+    // Profile before awaiting, so Escape can close it over an active Inventory.
+    close.focus({preventScroll:true});
+    const initiallyFocused=doc.activeElement;
+    const loaded=await refreshOwned(requested||selectedId,Boolean(requested));
+    if(!alive||!opened||epoch!==openEpoch||!verifyProfileOwner())return false;
+    // A user may have moved focus deliberately while the requests were pending.
+    if(initiallyFocused!==close||doc.activeElement!==close)return loaded;
+    const subject=main.querySelector("[data-ppbui-profile-name]");
+    if(subject){subject.tabIndex=-1;subject.focus({preventScroll:true});}
+    else refresh.focus({preventScroll:true});
+    return loaded;
+  }
+  function visible(node){
+    if(!node?.isConnected||node.disabled)return false;
+    for(let current=node;current;current=current.parentElement){
+      if(current.hidden||current.inert||current.hasAttribute("inert")||current.getAttribute("aria-hidden")==="true")return false;
+      const css=win.getComputedStyle?.(current);
+      if(css?.display==="none"||css?.visibility==="hidden")return false;
+      if(current===doc.body)break;
+    }
+    return true;
+  }
+  function hide({ restoreFocus=true }={}){
+    openEpoch++;loadEpoch++;selectionEpoch++;stopWindowDrag();root.hidden=true;opened=false;setProp(refresh,"disabled",false);
+    if(!restoreFocus)return;
+    const launcher=ensureMenu(),toggle=doc.querySelector("[data-ppbui-card-mode-toggle]");
+    const candidates=[profileOrigin,launcher,toggle,doc.querySelector(".pokeidle-top-toolbar button:not([disabled])")];
+    profileOrigin=null;
+    const target=candidates.find(visible);
+    if(target){target.focus({preventScroll:true});return;}
+    const cards=doc.querySelector("[data-ppbui-card-mode-cards]");
+    if(visible(cards)){cards.tabIndex=-1;cards.focus({preventScroll:true});}
+  }
+  titlebar.addEventListener("pointerdown",onTitlebarPointerDown);titlebar.addEventListener("lostpointercapture",stopWindowDrag);doc.addEventListener("pointermove",onWindowDrag,true);doc.addEventListener("pointerup",stopWindowDrag,true);doc.addEventListener("pointercancel",stopWindowDrag,true);win.addEventListener("blur",stopWindowDrag);win.addEventListener("resize",clampMovedWindow);win.addEventListener("ppbui:card-mode-window-inset-change",clampMovedWindow);
   close.addEventListener("click",()=>hide());refresh.addEventListener("click",()=>refreshOwned());search.addEventListener("input",renderPicker);sourceButtons.forEach((button,key)=>button.addEventListener("click",()=>{source=key;renderPicker();}));list.addEventListener("click",event=>{const choice=event.target?.closest?.("[data-ppbui-profile-choice]");if(choice?.parentElement===list)select(choice.dataset.creatureId,true);});
   rarityFilter.addEventListener("change",()=>{filters.rarity=rarityFilter.value;renderPicker();});elementFilter.addEventListener("change",()=>{filters.element=elementFilter.value;renderPicker();});tagFilter.addEventListener("change",()=>{filters.tags=tagFilter.value?[tagFilter.value]:[];renderPicker();});
   for(const [key,input] of [["minLevel",minLevelFilter],["maxLevel",maxLevelFilter]])input.addEventListener("input",()=>{const valid=input.value===""||input.checkValidity();input.setAttribute("aria-invalid",String(!valid));setProp(filterErrors.get(key),"hidden",valid);filters[key]=valid?input.value:"";renderPicker();});
   clearFilters.addEventListener("click",()=>{filters=freshFilters();rarityFilter.value="";elementFilter.value="";minLevelFilter.value="";maxLevelFilter.value="";minLevelFilter.setAttribute("aria-invalid","false");maxLevelFilter.setAttribute("aria-invalid","false");for(const error of filterErrors.values())setProp(error,"hidden",true);tagFilter.value="";renderPicker();});
   const unsubscribeTags=tags.subscribe(()=>{if(opened)renderPicker();});
-  function onKey(event){if(event.key==="Escape"&&!root.hidden){event.preventDefault();hide();}}doc.addEventListener("keydown",onKey,true);
+  function onKey(event){
+    if(event.key!=="Escape"||root.hidden||event.defaultPrevented)return;
+    // Visible top-layer dialogs and the native Moveset editor own Escape ahead of
+    // the nonmodal Profile. Cached dialogs behind the hidden game scene do not.
+    if([...doc.querySelectorAll("dialog[open]")].some(visible))return;
+    if([...doc.body.children].some(node=>visible(node)&&node.matches(".pokeidle-panel-overlay")&&
+        node.querySelector(":scope > .pokeidle-panel.moveset-window")))return;
+    let nativeTop=null;
+    try{nativeTop=win.PokeIdle?.ReactiveWindows?.active?.();}catch{}
+    if(nativeTop&&nativeTop._panel?.isVisible?.()&&!root.contains(doc.activeElement)&&!root.contains(event.target))return;
+    event.preventDefault();hide();
+  }
+  doc.addEventListener("keydown",onKey,true);
   const nativeBus = createNativeBusBindings(() => win?.PokeIdle?.Bus);
   const bind = (name, handler) => nativeBus.bind(name, handler);
   bind("moveset.saved",data=>{const id=String(data?.creature_id||"");if(id){movesCache.delete(id);for(const card of doc.querySelectorAll(nativeCardSelector)){if(card.dataset.ppbuiProfileNativeCreatureId===id){const creature=nativeCardCreatures.get(card);if(creature)hydrateNativeCardMoves(card,creature,card.dataset.ppbuiProfileNativeToken);}}}if(opened&&id===selectedId)renderSelected(id);});
@@ -1732,5 +1796,5 @@ export function mountPokemonProfile(doc = document, { teamPresetStore, movesetSt
   win.addEventListener("storage", onMovesetStorage);
   const previousBridge=win.__PPBUI_POKEMON_PROFILE__;const bridge={open,refresh:()=>refreshOwned(selectedId),close:()=>hide()};win.__PPBUI_POKEMON_PROFILE__=bridge;
   nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();
-  return { sync(){verifyProfileOwner();nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;openEpoch++;loadEpoch++;selectionEpoch++;if(movesetStorageTimer!==null)win.clearTimeout(movesetStorageTimer);win.removeEventListener("storage",onMovesetStorage);stopWindowDrag();unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);titlebar.removeEventListener("lostpointercapture",stopWindowDrag);doc.removeEventListener("pointermove",onWindowDrag,true);doc.removeEventListener("pointerup",stopWindowDrag,true);doc.removeEventListener("pointercancel",stopWindowDrag,true);win.removeEventListener("blur",stopWindowDrag);win.removeEventListener("resize",clampMovedWindow);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };
+  return { sync(){verifyProfileOwner();nativeBus.reconcile();syncCopy();ensureNativeCardAugmenter();const nextSignature=opened?JSON.stringify(teamsStore.list().map(team=>[team.id,team.updatedAt,team.name,team.activeId,team.orderVerified,team.members.map(member=>member.id)])):"";if(opened&&nextSignature!==teamStoreSignature){teamStoreSignature=nextSignature;renderSelected(selectedId);}}, cleanup(){alive=false;openEpoch++;loadEpoch++;selectionEpoch++;if(movesetStorageTimer!==null)win.clearTimeout(movesetStorageTimer);win.removeEventListener("storage",onMovesetStorage);stopWindowDrag();unsubscribeTags();releaseNativeCardAugmenter();nativeBus.cleanup();doc.removeEventListener("keydown",onKey,true);titlebar.removeEventListener("lostpointercapture",stopWindowDrag);doc.removeEventListener("pointermove",onWindowDrag,true);doc.removeEventListener("pointerup",stopWindowDrag,true);doc.removeEventListener("pointercancel",stopWindowDrag,true);win.removeEventListener("blur",stopWindowDrag);win.removeEventListener("resize",clampMovedWindow);win.removeEventListener("ppbui:card-mode-window-inset-change",clampMovedWindow);if(win.__PPBUI_POKEMON_PROFILE__===bridge)previousBridge===undefined?delete win.__PPBUI_POKEMON_PROFILE__:win.__PPBUI_POKEMON_PROFILE__=previousBridge;root.remove();menu?.remove();style.remove();} };
 }

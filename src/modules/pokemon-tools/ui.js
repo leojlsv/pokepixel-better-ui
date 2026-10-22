@@ -1,4 +1,5 @@
 import {freshFilters,matchesPokemon,fixedTags,tagService,pokemonRarities,pokemonElements} from "./model.js";
+import {inventoryAvailableInCardMode} from "../inventory/dom.js";
 const labels={
  en:{filters:"Pokémon filters",tags:"Tags",more:"Poké Filters",clear:"Clear Pokémon filters",all:"All",untagged:"Untagged",any:"Match any selected tag",rarity:"Rarity",element:"Element",minLevel:"Min level",maxLevel:"Max level",iv:"Min total IV",quality:"Min Quality",shiny:"Shiny",locked:"Locked",team:"In team",nature:"Nature",gender:"Gender",yes:"Yes",no:"No",edit:"Edit tags",choose:"Choose Pokémon",newTag:"New tag",name:"Tag name",icon:"Symbol",save:"Save tag",remove:"Delete tag",confirm:"Delete this tag and its assignments?",local:"Personal tags · saved in this browser · do not protect against sale or trade",unavailable:"Tags unavailable until the character is identified.",unsaved:"Could not save tags. Changes apply only to this session.",limit:"Enter a name; up to 40 tags are supported.",none:"No Pokémon match these filters."},
  pt:{filters:"Filtros de Pokémon",tags:"Tags",more:"Mais filtros",clear:"Limpar filtros de Pokémon",all:"Todos",untagged:"Sem tag",any:"Qualquer uma das tags selecionadas",rarity:"Raridade",element:"Elemento",minLevel:"Nível mínimo",maxLevel:"Nível máximo",iv:"IV total mínimo",quality:"Qualidade mínima",shiny:"Shiny",locked:"Bloqueado",team:"Na equipe",nature:"Natureza",gender:"Gênero",yes:"Sim",no:"Não",edit:"Editar tags",choose:"Escolher Pokémon",newTag:"Nova tag",name:"Nome da tag",icon:"Símbolo",save:"Salvar tag",remove:"Excluir tag",confirm:"Excluir esta tag e suas associações?",local:"Tags pessoais · salvas neste navegador · não impedem venda ou troca",unavailable:"Tags indisponíveis até identificar o personagem.",unsaved:"Não foi possível salvar. Alterações válidas apenas nesta sessão.",limit:"Informe um nome; são permitidas até 40 tags.",none:"Nenhum Pokémon corresponde aos filtros."}
@@ -72,7 +73,10 @@ export function createPokemonTools(root,{getCreatures,refresh:refreshScene,basic
     for(const tag of fixedTags){const action=button("");action.dataset.ppbuiTagChoice=tag.id;action.disabled=!store;action.setAttribute("aria-pressed",String(tag.id===current));if(tag.id===current)action.classList.add("pokeidle-btn--primary");const symbol=node("span","ppbui-tag-symbol",tag.icon);symbol.style.color=tag.color;symbol.setAttribute("aria-hidden","true");action.append(symbol,node("span","",tag.name));action.onclick=()=>choose(tag.id);options.append(action);}
     const remove=button(copy.remove);remove.classList.add("ppbui-button--danger");remove.dataset.ppbuiTagChoice="remove";remove.disabled=!store || !current;remove.onclick=()=>choose(null);box.append(remove);
     close.onclick=()=>{closeDialog();focusOwner();};box.addEventListener("cancel",event=>{event.preventDefault();close.click();});
-    box.setAttribute("aria-label",`${copy.title}: ${name}`);doc.body.append(box);dialog=box;
+    box.setAttribute("aria-label",`${copy.title}: ${name}`);
+    // A modal must be admitted before showModal() moves focus to its top layer.
+    if(doc.documentElement?.getAttribute("data-ppbui-card-mode")==="cards" && inventoryAvailableInCardMode(root))box.dataset.ppbuiCardModeWindow="inventory-dialog";
+    doc.body.append(box);dialog=box;
     if(typeof box.showModal==="function")box.showModal();else box.setAttribute("open","");
     (options.querySelector('[aria-pressed="true"]')||options.firstElementChild||close).focus();
   };

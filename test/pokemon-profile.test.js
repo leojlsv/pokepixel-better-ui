@@ -849,6 +849,158 @@ test("Profile close and Escape restore contextual focus, with the dedicated laun
   assert.equal(root.hidden,true); assert.equal(s.doc.activeElement,s.doc.querySelector('button[data-menu-id="pokemon-profile"]'),"Escape falls back to the dedicated Profile launcher when the origin is gone");
 });
 
+test("Profile remains an accessible Cards window and its Escape defers to an active modal", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window,root=doc.querySelector("[data-ppbui-pokemon-profile-window]");
+  const stylesheet=doc.createElement("style");
+  stylesheet.textContent='html[data-ppbui-card-mode="cards"] body>:not([data-ppbui-card-mode-window]):not(.pokeidle-top-toolbar){display:none!important}';
+  doc.head.append(stylesheet);
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  assert.equal(root.dataset.ppbuiCardModeWindow,"profile");
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1",doc.querySelector("#external"));
+  assert.equal(root.hidden,false);
+  assert.notEqual(win.getComputedStyle(root).display,"none");
+  const modal=doc.createElement("dialog");modal.setAttribute("open","");modal.dataset.ppbuiCardModeWindow="inventory-dialog";doc.body.append(modal);
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,false,"the top-layer dialog keeps its Escape");
+  modal.remove();
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,true);
+  assert.equal(doc.activeElement,doc.querySelector('button[data-menu-id="pokemon-profile"]'),
+    "a hidden game-origin must return focus to the visible Profile launcher");
+});
+
+test("Profile Escape ignores hidden game-scene dialogs but defers to visible MovesetConfig editor", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window,root=doc.querySelector("[data-ppbui-pokemon-profile-window]");
+  const style=doc.createElement("style");
+  style.textContent='html[data-ppbui-card-mode="cards"] #native-scene{display:none!important}';
+  doc.head.append(style);doc.documentElement.dataset.ppbuiCardMode="cards";
+  const scene=doc.createElement("div");scene.id="native-scene";doc.body.append(scene);
+  const stale=doc.createElement("dialog");stale.setAttribute("open","");scene.append(stale);
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,true,"cached hidden native dialogs never block Escape");
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  const native=doc.createElement("div");native.className="pokeidle-panel-overlay";
+  const editor=doc.createElement("div");editor.className="pokeidle-panel moveset-window";native.append(editor);doc.body.append(native);
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,false,"MovesetConfig's visible native UIPanel owns Escape first");
+  native.remove();
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,true);
+});
+
+test("Profile focuses its close action before slow reads, allows Escape, and never steals focus after load", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window,root=doc.querySelector("[data-ppbui-pokemon-profile-window]");
+  const origin=doc.querySelector("#external"),oldGet=win.PokeIdle.Api.getCreatures;
+  let resume;
+  const delayed=new Promise(resolve=>resume=resolve);
+  win.PokeIdle.Api.getCreatures=async location=>{await delayed;return oldGet(location);};
+  const inventory={_panel:{isVisible:()=>true}};
+  win.PokeIdle.ReactiveWindows={active:()=>inventory};
+  origin.focus();
+  const opening=win.__PPBUI_POKEMON_PROFILE__.open("bag-1",origin);
+  assert.equal(root.hidden,false);
+  assert.equal(doc.activeElement,root.querySelector("[data-ppbui-profile-close]"),
+    "a visible Profile must own focus synchronously, before awaited API reads");
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,true,"Escape closes even while native Inventory remains open and reads are pending");
+  resume();
+  await opening;
+  assert.equal(root.hidden,true);
+  assert.equal(doc.activeElement,origin,"an aborted async Profile cannot steal restored focus");
+
+  let resumeAgain;
+  const waiting=new Promise(resolve=>resumeAgain=resolve);
+  win.PokeIdle.Api.getCreatures=async location=>{await waiting;return oldGet(location);};
+  const next=win.__PPBUI_POKEMON_PROFILE__.open("bag-1",origin);
+  const search=root.querySelector("[data-ppbui-profile-search]");
+  search.focus();
+  resumeAgain();
+  await next;
+  assert.equal(root.hidden,false);
+  assert.equal(doc.activeElement,search,
+    "a completed async load preserves focus moved intentionally while pending");
+});
+
+test("Profile refresh preserves a focused surviving choice and safely falls back when it disappears", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window,api=win.PokeIdle.Api,root=doc.querySelector("[data-ppbui-pokemon-profile-window]");
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  win.__PPBUI_POKEMON_PROFILE__.close();
+  const previous=api.getCreatures;
+  let resume;
+  let gate=new Promise(resolve=>resume=resolve);
+  api.getCreatures=async location=>{await gate;return previous(location);};
+  const opening=win.__PPBUI_POKEMON_PROFILE__.open();
+  const existing=root.querySelector('[data-ppbui-profile-choice][data-creature-id="bag-1"]');
+  assert.ok(existing,"a cached Profile choice remains present during the asynchronous refresh");
+  existing.focus();assert.equal(doc.activeElement,existing);
+  resume();await opening;
+  assert.equal(root.querySelector('[data-ppbui-profile-choice][data-creature-id="bag-1"]'),existing,
+    "reconciliation reuses the native Better UI choice node");
+  assert.equal(doc.activeElement,existing,
+    "moving a focused keyed choice through a fragment must restore its keyboard focus");
+
+  win.__PPBUI_POKEMON_PROFILE__.close();
+  gate=new Promise(resolve=>resume=resolve);
+  const reOpening=win.__PPBUI_POKEMON_PROFILE__.open();
+  const removed=root.querySelector('[data-ppbui-profile-choice][data-creature-id="bag-1"]');
+  removed.focus();assert.equal(doc.activeElement,removed);
+  s.inventory.splice(s.inventory.findIndex(c=>c.id==="bag-1"),1);
+  resume();await reOpening;
+  assert.equal(root.querySelector('[data-ppbui-profile-choice][data-creature-id="bag-1"]'),null);
+  assert.equal(doc.activeElement,root.querySelector('[data-ppbui-profile-search]'),
+    "a removed focused choice falls back to the stable Search control");
+});
+
+test("Profile re-clamps a dragged window when a horizontal dock expands without a viewport resize", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window,root=doc.querySelector("[data-ppbui-pokemon-profile-window]");
+  win.innerWidth=320;win.innerHeight=568;
+  doc.documentElement.dataset.ppbuiCardMode="cards";
+  doc.documentElement.style.setProperty("--ppbui-card-mode-window-bottom-inset","0px");
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  const left=8,width=304,height=280;
+  root.getBoundingClientRect=()=>{
+    const top=Number.parseFloat(root.style.top)||260;
+    return {left,top,width,height,right:left+width,bottom:top+height};
+  };
+  root.querySelector("[data-ppbui-profile-titlebar]").dispatchEvent(new win.MouseEvent("pointerdown",{bubbles:true,button:0,clientX:40,clientY:265}));
+  assert.equal(root.style.top,"260px","when the dock is collapsed the user may drag lower");
+  doc.documentElement.style.setProperty("--ppbui-card-mode-window-bottom-inset","83px");
+  win.dispatchEvent(new win.Event("ppbui:card-mode-window-inset-change"));
+  assert.equal(root.style.top,"197px","after the dock expands, the dragged Profile clears its reserved inset");
+  doc.documentElement.style.setProperty("--ppbui-card-mode-window-bottom-inset","0px");
+  win.dispatchEvent(new win.Event("ppbui:card-mode-window-inset-change"));
+  assert.equal(root.style.top,"197px","dock collapse never forces an unrequested downward jump");
+});
+
+test("Profile falls back to the visible Cards toggle when launcher and origin are hidden", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window;
+  const source=doc.querySelector("#external");
+  const launcher=doc.querySelector('[data-menu-id="pokemon-profile"]');
+  const toggle=doc.createElement("button");toggle.dataset.ppbuiCardModeToggle="";doc.body.append(toggle);
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1",source);
+  source.hidden=true;launcher.hidden=true;
+  doc.querySelector("[data-ppbui-profile-close]").click();
+  assert.equal(doc.activeElement,toggle);
+});
+
+test("Escape closes a focused Profile over a still-open Inventory, while Native Inventory retains unfocused Escape", async t => {
+  const s=setup(t),doc=s.doc,win=s.dom.window,root=doc.querySelector("[data-ppbui-pokemon-profile-window]");
+  const nativePanel=doc.createElement("div"),nativeButton=doc.createElement("button");
+  nativePanel.append(nativeButton);doc.body.append(nativePanel);
+  const inventory={_panel:{isVisible:()=>true}};
+  win.PokeIdle.ReactiveWindows={active:()=>inventory};
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  const focused=root.querySelector("[data-ppbui-profile-refresh]");focused.focus();
+  assert.equal(root.contains(doc.activeElement),true);
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,true,"foreground focused Profile receives Escape");
+  await win.__PPBUI_POKEMON_PROFILE__.open("bag-1");
+  nativeButton.focus();
+  doc.dispatchEvent(new win.KeyboardEvent("keydown",{key:"Escape",bubbles:true}));
+  assert.equal(root.hidden,false,"native Inventory retains Escape while its own control is focused");
+});
+
 test("Profile leaves native PokémonCard slot hover listeners untouched instead of suppressing them", t => {
   const s=setup(t),target=s.doc.querySelector("#external");target.__pokeIdleCardBound=true;let enters=0;
   target.addEventListener("pointerenter",()=>enters++);
