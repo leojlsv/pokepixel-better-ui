@@ -44,8 +44,8 @@ test("the app registry owns defaults, preference controls and mount order togeth
   assert.ok(controls.every(({ name, description }) => typeof name === "function" && typeof description === "function"));
   assert.ok(modules.every(module => typeof module.shouldMount === "function" && typeof module.mount === "function"));
   assert.deepEqual(modules.filter(module => module.runsInCardMode === true).map(module => module.id),
-    ["disable-pokemon-hover","pokemon-profile", "menu-bar", "hunt-controls", "card-mode", "wallet", "inventory", "storage", "hunts", "team", "team-presets", "evolution-center", "geneticist", "marks-shop", "auto-helper"],
-    "Card Mode reuses exact native ownership gates for Team presets, NPC shop services, and Auto Helper instead of stripping their enhancements");
+    ["disable-pokemon-hover","pokemon-profile", "menu-bar", "hunt-controls", "card-mode", "wallet", "inventory", "storage", "hunts", "team", "team-presets", "evolution-center", "geneticist", "professions-hud", "marks-shop", "auto-helper"],
+    "Card Mode reuses exact native ownership gates for Team presets, Professions, NPC shop services, and Auto Helper instead of stripping their enhancements");
 });
 
 test("persisted Buff Tracker choice overrides its new disabled default", t => {

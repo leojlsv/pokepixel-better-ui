@@ -70,6 +70,10 @@ function switchStyles() {
     html[${modeAttribute}="cards"]:has(body>[data-ppbui-card-mode-window="native-team"],body>[data-ppbui-card-mode-window="native-storage"],body>[data-ppbui-card-mode-window="native-professions"]) body:not([data-ppbui-pokemon-hover-disabled])>.pokemon-card--hover:not([hidden]):not([inert]):not([aria-hidden="true"]){display:block!important}
     html[${modeAttribute}="cards"] [${toolbarPathAttribute}]:not([${toolbarAttribute}])>:not([${toolbarPathAttribute}]):not([${toolbarAttribute}]){display:none!important}
     html[${modeAttribute}="cards"] body>[data-ppbui-card-mode-window]:not(.pokemon-card-shell){z-index:2147482500!important}
+    /* Geneticist/Awakening is a native dialog-like panel: its verified NPC
+       overlay must cover Cards, toolbar and native pinned PokemonCard shells;
+       blocking native dialogs retain their higher tier. */
+    html[${modeAttribute}="cards"] body>[data-ppbui-card-mode-window="native-action-city-geneticist"]{z-index:2147483400!important}
     /* ConnectionOverlay's original native busy/disconnected overlays are
        blocking top-layer surfaces. The native inline display value decides
        whether they are shown; Card Mode only admits proven singleton roots. */

@@ -187,3 +187,40 @@ test("native Details stopPropagation still completes exact pin on next task with
   assert.equal(pinned?.getAttribute("data-ppbui-card-mode-window"),"native-team-details");
   assert.equal(s.doc.documentElement.hasAttribute("data-ppbui-card-mode-team-details-opening"),false);
 });
+
+test("native pinned PokemonCard Awakening action opens its existing NPC panel above the source card",async t=>{
+  const s=fixture(t);
+  s.details().click();
+  const pinned=s.pins.get("one"),card=pinned.querySelector(".pokemon-card");
+  assert.equal(pinned.dataset.ppbuiCardModeWindow,"native-team-details");
+  let npcOpens=0;
+  s.win.PokeIdle.NPC={panel:null,open(){
+    npcOpens++;
+    const overlay=s.doc.createElement("div");
+    overlay.className="pokeidle-panel-overlay";
+    overlay.style.position="fixed";
+    const el=s.doc.createElement("section");
+    el.className="pokeidle-panel game-window npc-shop-window npc-iv-window is-opening";
+    const body=s.doc.createElement("div");
+    body.className="pokeidle-panel__body";
+    el.append(body);overlay.append(el);s.doc.body.append(overlay);
+    el.classList.remove("is-opening");
+    this.panel={overlay,el,body,isVisible:()=>!overlay.hidden};
+  }};
+  const button=s.doc.createElement("button");
+  button.className="pokemon-card__action is-awakening";
+  button.textContent="AWK";
+  button.addEventListener("click",()=>s.win.PokeIdle.NPC.open({kind:"iv"}));
+  card.append(button);
+
+  button.click();
+  await new Promise(resolve=>s.win.setTimeout(resolve,28));
+  const overlay=s.win.PokeIdle.NPC.panel.overlay;
+  assert.equal(npcOpens,1,"the original action executes once");
+  assert.equal(s.doc.documentElement.dataset.ppbuiCardMode,"cards");
+  assert.equal(overlay.dataset.ppbuiCardModeWindow,"native-action-city-geneticist");
+  assert.notEqual(s.win.getComputedStyle(overlay).display,"none");
+  assert.ok(Number(s.win.getComputedStyle(overlay).zIndex)>Number(pinned.style.zIndex),
+    "Awakening overlays the original pinned Card rather than rendering behind it");
+  assert.equal(s.win.getComputedStyle(s.doc.querySelector("#game-renderer")).display,"none");
+});
