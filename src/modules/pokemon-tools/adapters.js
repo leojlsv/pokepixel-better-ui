@@ -62,6 +62,9 @@ function adapt(scene){const saved=[];return {wrap(key,make){const descriptor=Obj
 export function mountInventoryPokemon(root){
   const scene=sceneFor(root);if(!scene || !["filteredItems","createSlot","refresh"].every(key=>typeof scene[key]==="function"))return null;
   const adapter=adapt(scene),tools=createPokemonTools(root,{clearControl:false,getCreatures:()=>scene._creatures||[],refresh:()=>scene.refresh()});
+  // A new injection may inherit panels left by an older instance. Scan once;
+  // subsequent native redraws release only the exact panel owned by this mount.
+  for(const stale of root.querySelectorAll(".ppbui-pokemon-tools[data-ppbui-inventory-pokemon-filters]"))stale.remove();
   let alive=true,paging=false,reschedule=false,creatureReads=0,awaitingQueryLoad=false,invalidFirstPageCursor=false,observedQuery=String(scene._query||""),observedCategory=scene._category,failedPage="",pagesLoaded=0,epoch=0,readToken=0,focusFrame=0,blockedNativeMore=null;
   const PAGE_LIMIT=100;
   const setPagingPhase=phase=>{
@@ -150,6 +153,11 @@ export function mountInventoryPokemon(root){
   });
   adapter.wrap("createSlot",original=>function(item){const slot=original.call(this,item);if(item._isPokemon)tools.decorate(slot,item.creature);return slot;});
   const more=root.ownerDocument.createElement("button");more.type="button";more.className="pokeidle-btn ppbui-button";more.dataset.ppbuiInventoryMoreFilters="";
+  let currentFilterPanel=null;
+  const releaseOldFilterPanels=keep=>{
+    if(currentFilterPanel && currentFilterPanel!==keep)currentFilterPanel.remove();
+    currentFilterPanel=keep||null;
+  };
   const activeCategory=()=>categoryValue(findParts(root).category);
   const syncMore=()=>{more.textContent=tools.label();more.setAttribute("aria-expanded",String(activeCategory()==="pokemon" && tools.isOpen()));};
   const placeMore=()=>{const search=findParts(root).search;if(search && search.nextElementSibling!==more)search.after(more);};
@@ -166,10 +174,10 @@ export function mountInventoryPokemon(root){
   const captureFocus=()=>{
     const node=doc.activeElement;
     if(!node || !root.contains(node))return null;
+    if(node.matches?.("[data-ppbui-pokemon-filter]"))return {kind:"field",key:node.dataset.ppbuiPokemonFilter};
     const nativeMore=node.matches?.("button.pokeidle-ui-button") && node.parentElement===scene._panel?.body;
     if(!paging && !awaitingQueryLoad && !creatureReads && root.dataset.ppbuiInventoryPagingState!=="error" && !nativeMore)return null;
     if(node===more)return {kind:"filters"};
-    if(node.matches?.("[data-ppbui-pokemon-filter]"))return {kind:"field",key:node.dataset.ppbuiPokemonFilter};
     if(node.matches?.("[data-ppbui-inventory-category-proxy]"))return {kind:"category"};
     if(node.matches?.("[data-ppbui-inventory-clear]"))return {kind:"clear"};
     if(node.matches?.(".inventory-slots-toolbar input.game-window__search"))return {kind:"search",start:node.selectionStart,end:node.selectionEnd};
@@ -224,18 +232,19 @@ export function mountInventoryPokemon(root){
     const focus=captureFocus();
     const body=this._panel?.body,scroll=body?.scrollTop,result=original.apply(this,args);
     if(this._category==="pokemon"){
-      const panel=tools.render({summary:false});panel.dataset.ppbuiInventoryPokemonFilters="";root.querySelector(toolsSelectors.toolbar)?.after(panel);
+      const panel=tools.render({summary:false});panel.dataset.ppbuiInventoryPokemonFilters="";
+      releaseOldFilterPanels(panel);root.querySelector(toolsSelectors.toolbar)?.after(panel);
       if(!this.filteredItems().length && !this._creatureCursor && !this._creaturePageLoading && !creatureReads && !awaitingQueryLoad && root.dataset.ppbuiInventoryPagingState!=="error"){
         const empty=root.ownerDocument.createElement("small");empty.className="ppbui-pokemon-empty";empty.textContent=pokemonToolsText(root.ownerDocument).none;panel.append(empty);
       }
-    }else tools.setOpen(false);
+    }else {releaseOldFilterPanels();tools.setOpen(false);}
     placeMore();syncMore();syncBlockedMore();if(body)body.scrollTop=scroll;
     if(this._creatureCursor==="" && this._creaturePageLoading===false && !creatureReads && !awaitingQueryLoad
       && root.dataset.ppbuiInventoryPagingState==="stopped")setPagingPhase("complete");
     restoreFocus(focus);expandPages();return result;
   });
   const clear=event=>{if(event.target.closest?.(toolsSelectors.clear))tools.reset();};root.addEventListener("click",clear,true);
-  scene.refresh();return {cleanup(){alive=false;root.removeAttribute("data-ppbui-inventory-pokemon-pending");setPagingPhase(null);releaseBlockedMore();if(focusFrame)win.cancelAnimationFrame?.(focusFrame);root.removeEventListener("click",clear,true);more.removeEventListener("click",toggleMore);more.remove();adapter.restore();tools.cleanup();if(root.isConnected && (root.ownerDocument.documentElement?.getAttribute("data-ppbui-card-mode")!=="cards" || inventoryAvailableInCardMode(root)))scene.refresh();}};
+  scene.refresh();return {cleanup(){alive=false;root.removeAttribute("data-ppbui-inventory-pokemon-pending");setPagingPhase(null);releaseBlockedMore();if(focusFrame)win.cancelAnimationFrame?.(focusFrame);root.removeEventListener("click",clear,true);more.removeEventListener("click",toggleMore);more.remove();adapter.restore();releaseOldFilterPanels();tools.cleanup();if(root.isConnected && (root.ownerDocument.documentElement?.getAttribute("data-ppbui-card-mode")!=="cards" || inventoryAvailableInCardMode(root)))scene.refresh();}};
 }
 export function mountTradePokemon(root,scene){
   // Native Trade already owns its Rarities selector. Do not render a second

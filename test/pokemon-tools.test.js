@@ -116,6 +116,48 @@ function pagedInventory(t,{size=205,pageSize=100,category='pokemon',pauseFirst=f
  return {s,scene,body,all,calls,clicked,requests,mounted,original,releasePage:()=>releasePage?.(),releaseRead:()=>releaseRead?.(),setFailureCursor:value=>failureCursor=value,failNextFirstPage:()=>failFirstPage=true,recoverFirstPage:()=>failFirstPage=false,rejectPendingPage:()=>rejectFirst=true,nativeClicks:()=>nativeClicks};
 }
 const settleInventory=async()=>{for(let i=0;i<8;i++)await new Promise(resolve=>setImmediate(resolve));};
+test('Inventory keeps one Pokémon filter panel when native refresh retains toolbar and replaces only the grid',t=>{
+ const s=setup(t),body=s.root.firstChild,doc=s.win.document;
+ body.innerHTML='<div class="inventory-slots-toolbar"><input class="game-window__search" type="search"></div><div class="inventory-slot-grid"></div>';
+ const leftover=doc.createElement('details');leftover.className='ppbui-pokemon-tools';leftover.dataset.ppbuiInventoryPokemonFilters='';body.append(leftover);
+ const creatures=[{id:'1',species_name:'Eevee',location:'inventory',quality:'rare'},{id:'2',species_name:'Pikachu',location:'inventory',quality:'epic'}];
+ const scene={_panel:{body},_creatures:creatures,_category:'pokemon',_query:'',_creatureCursor:'',_creaturePageLoading:false,
+  filteredItems(){return this._creatures.map(creature=>({_isPokemon:true,creature}));},
+  createSlot(item){const button=doc.createElement('button');button.className='inventory-slot inventory-slot--pokemon';button.dataset.creatureId=item.creature.id;return button;},
+  refresh(){const grid=body.querySelector('.inventory-slot-grid');grid.replaceChildren(...this.filteredItems().map(item=>this.createSlot(item)));},
+ };
+ s.win.SceneManager={_scene:scene};const original=scene.refresh,mounted=mountInventoryPokemon(s.root);
+ const panels=()=>[...body.querySelectorAll('[data-ppbui-inventory-pokemon-filters]')];
+ assert.equal(panels().length,1,'one panel on first mount');
+ assert.equal(leftover.isConnected,false,'mount clears any leftover Better UI filter panel from an earlier injection');
+ const toolbar=body.querySelector('.inventory-slots-toolbar');
+ const originalPanel=panels()[0];
+ for(let i=0;i<8;i++){
+  scene.refresh();
+  assert.equal(body.querySelector('.inventory-slots-toolbar'),toolbar,'native toolbar identity stays stable');
+  assert.equal(panels().length,1,`refresh ${i+1} cannot accumulate an extra filter panel`);
+ }
+ assert.equal(originalPanel.isConnected,false,'the previous panel is detached instead of accumulating');
+ let rarity=panels()[0].querySelector('[data-ppbui-pokemon-filter="rarity"]');
+ rarity.focus();scene.refresh();
+ assert.equal(doc.activeElement,panels()[0].querySelector('[data-ppbui-pokemon-filter="rarity"]'),
+  'a native refresh must retain keyboard focus even without paging or an explicit filter change');
+ rarity=panels()[0].querySelector('[data-ppbui-pokemon-filter="rarity"]');
+ rarity.focus();rarity.value='epic';rarity.dispatchEvent(new s.win.Event('change',{bubbles:true}));
+ assert.equal(panels().length,1,'filter interaction remains idempotent');
+ rarity=panels()[0].querySelector('[data-ppbui-pokemon-filter="rarity"]');
+ assert.equal(rarity.value,'epic','applied filter survives the native redraw');
+ assert.equal(doc.activeElement,rarity,'keyboard focus returns to the current filter control');
+ assert.deepEqual([...body.querySelectorAll('.inventory-slot--pokemon')].map(slot=>slot.dataset.creatureId),['2'],'filtering still affects native slots');
+ scene._category='healing';scene.refresh();
+ assert.equal(panels().length,0,'leaving Pokémon removes its controls even when the host retains the toolbar');
+ scene._category='pokemon';scene.refresh();
+ assert.equal(panels().length,1,'reopening Pokémon mounts a single panel');
+ assert.equal(panels()[0].querySelector('[data-ppbui-pokemon-filter="rarity"]').value,'epic');
+ mounted.cleanup();
+ assert.equal(panels().length,0,'cleanup releases the owned filter panel');
+ assert.equal(scene.refresh,original,'cleanup restores the original native refresh handler');
+});
 test('Inventory consumes all native server pages without clicking Load More or fabricating Pokémon slots',async t=>{
  const f=pagedInventory(t);await settleInventory();
  const nodes=[...f.body.querySelectorAll('button.inventory-slot--pokemon')];

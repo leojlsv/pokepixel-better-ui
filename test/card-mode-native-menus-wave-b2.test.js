@@ -4,6 +4,7 @@ import { JSDOM } from "jsdom";
 import { createBetterUI } from "../src/core/bootstrap.js";
 import { createCardModeModule } from "../src/modules/card-mode/index.js";
 import { createPokemonHoverModule } from "../src/modules/pokemon-hover/index.js";
+import { createProfessionsHudModule } from "../src/modules/professions-hud/index.js";
 import { cardModeConfig as config } from "../src/modules/card-mode/config.js";
 import { nativeMenuAvailableInCardMode } from "../src/modules/card-mode/native-menu-contracts.js";
 
@@ -11,7 +12,7 @@ const menus=config.windows.nativeMenusWaveB2;
 const marker=config.windows.marker;
 const tick=win=>new Promise(resolve=>win.setTimeout(resolve,15));
 
-function fixture(t,{disableHover=false}={}){
+function fixture(t,{disableHover=false,extraModules=[]}={}){
   const dom=new JSDOM(`<!doctype html><html><head></head><body>
     <main id="game-renderer"><canvas></canvas></main>
     <nav class="pokeidle-top-toolbar">${Object.keys(menus).map(id=>`<button data-menu-id="${id}">${id}</button>`).join("")}</nav>
@@ -68,7 +69,7 @@ function fixture(t,{disableHover=false}={}){
     }},
     HuntAnalyzerMini:{enabled:false,root:null},
   };
-  const app=createBetterUI({modules:[createCardModeModule(),...(disableHover?[createPokemonHoverModule(doc)]:[])]});
+  const app=createBetterUI({modules:[createCardModeModule(),...(disableHover?[createPokemonHoverModule(doc)]:[]),...extraModules]});
   app.start();
   const toggle=doc.querySelector("[data-ppbui-card-mode-toggle]");toggle.click();
   assert.equal(doc.documentElement.dataset.ppbuiCardMode,"cards");
@@ -121,6 +122,106 @@ test("all eight B2 native scenes show original UIPanels over Cards with exact ow
   assert.equal(s.creates.length,Object.keys(menus).length,"native cache retains original scene instead of cloning panel");
   assert.equal(s.active,s.cache.get(s.scenes.get("friends")));
   assert.equal(s.active._panel.overlay.getAttribute(marker),"native-friends");
+});
+
+test("Professions retains TROCAR and Top 3 in Cards only for the active admitted native workforce",async t=>{
+  const profession=createProfessionsHudModule();
+  const s=fixture(t,{extraModules:[profession]});
+  const worker=(name,id)=>`<article class="profession-worker" data-slot-index="1" data-creature-id="${id}">
+    <b data-role="worker-name">${name}</b>
+    <div class="profession-worker__actions"><button data-role="worker-collect">COLETAR</button><button>REMOVER POKÉMON</button></div>
+  </article>`;
+  const workforce=(name,id)=>`<section class="prof-work-stage miner"></section>
+    <section class="prof-work-manager"><div class="profession-workforce"><div class="profession-workforce__slots">
+      ${worker(name,id)}
+      <article class="profession-worker" data-slot-index="2" data-creature-id=""><div class="profession-worker__empty">
+        <select><option value="">Selecionar Pokémon...</option><option value="a">Machoke · Eficiência 92.0%</option>
+          <option value="b">Geodude · Eficiência 110.0%</option><option value="c">Onix · Eficiência 105.0%</option></select>
+      </div></article>
+      <article class="profession-worker is-locked" data-slot-index="3" data-creature-id=""></article>
+    </div></div></section>`;
+  const scene=s.open("professions");
+  scene._panel.body.innerHTML=workforce("Machoke","worker-1");
+  const apiCalls=[];
+  s.win.PokeIdle.Auth={isAuthenticated:()=>true,getTrainerSummary:()=>({id:"trainer-A"})};
+  s.win.PokeIdle.WorldPresence={getSelfTrainerId:()=>"trainer-A"};
+  s.win.PokeIdle.Api={
+    async getMiningWorkforce(){apiCalls.push("get");return {data:{max_slots:3,
+      workers:[{slot_index:1,creature_id:"worker-1",creature_name:"Machoke",efficiency:{total_basis:9000},rewards:{}}],
+      candidates:[{id:"candidate-2",name:"Rhydon",efficiency:{total_basis:11500}}]}};},
+    async collectMiningRewards(){throw new Error("no live writes in this test");},
+    async removeMiningWorker(){throw new Error("no live writes in this test");},
+    async assignMiningWorker(){throw new Error("no live writes in this test");},
+  };
+  s.app.reconcile();
+  const slot=scene._panel.body.querySelector('.profession-worker[data-slot-index="1"]');
+  assert.equal(s.doc.documentElement.dataset.ppbuiCardMode,"cards");
+  assert.equal(scene._panel.overlay.getAttribute(marker),"native-professions");
+  assert.equal(slot.querySelector('[data-ppbui-professions-swap]')?.textContent,"TROCAR",
+    "enhancement must not be unmounted merely because Cards is active");
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1);
+  assert.match(scene._panel.body.querySelector('.profession-worker__empty option[value="b"]').textContent,/^#1 ·/);
+  assert.equal(scene._panel.body.querySelector('.ppbui-professions-collect-all')?.textContent,"COLETAR TUDO");
+  assert.ok(scene._panel.body.querySelector('.ppbui-professions-animation-toggle'),
+    "the stage presentation preference should also be restored");
+  const swap=slot.querySelector('[data-ppbui-professions-swap]');
+  swap.click();await tick(s.win);
+  assert.equal(s.doc.documentElement.dataset.ppbuiCardMode,"cards",
+    "opening the Better UI swap chooser must not route a benign action to Game");
+  const chooser=slot.querySelector('[data-ppbui-professions-swap-panel]');
+  assert.ok(chooser,"the actionable selector must open on the admitted native panel");
+  assert.equal(chooser.querySelector('[data-ppbui-professions-swap-candidate]')?.value,"candidate-2");
+  chooser.querySelector('.ppbui-professions-swap-actions .ppbui-button--ghost').click();
+  assert.equal(slot.querySelector('[data-ppbui-professions-swap-panel]'),null);
+  assert.equal(s.doc.activeElement,swap,"cancelling the chooser must restore focus to TROCAR");
+  assert.deepEqual(apiCalls,["get"],"opening and cancelling cannot execute any profession writes");
+  s.app.reconcile();s.app.reconcile();
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1,
+    "reconcile must not duplicate worker actions");
+
+  // A partial native workforce redraw keeps the panel but replaces its cards.
+  scene._panel.body.querySelector('.profession-workforce__slots').innerHTML=worker("Rhydon","worker-2");
+  s.app.reconcile();
+  assert.equal(scene._panel.body.querySelector('[data-ppbui-professions-swap]')?.getAttribute("aria-label"),
+    "Trocar Rhydon, Slot 1");
+
+  // Both directions of the user's Cards/Game toggle must preserve the enhancement.
+  s.toggle.click();s.app.reconcile();
+  assert.equal(s.doc.documentElement.dataset.ppbuiCardMode,"game");
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1);
+  s.toggle.click();s.app.reconcile();
+  assert.equal(s.doc.documentElement.dataset.ppbuiCardMode,"cards");
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1);
+
+  // A lookalike with a copied marker must never receive an interactive action.
+  const spoof=s.doc.createElement("div");
+  spoof.className="pokeidle-panel-overlay";
+  spoof.setAttribute(marker,"native-professions");
+  spoof.innerHTML=`<section class="pokeidle-panel game-window prof-workforce"><div class="pokeidle-panel__body">
+    <div class="profession-workforce"><div class="profession-workforce__slots">${worker("Fake","fake")}</div></div>
+  </div></section>`;
+  s.doc.body.prepend(spoof);
+  s.app.reconcile();
+  assert.equal(spoof.querySelector('[data-ppbui-professions-swap]'),null,
+    "a copied native marker is not proof of panel ownership");
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1);
+  spoof.remove();
+
+  // Cached native panels are retained by the host but never receive enhancements.
+  s.open("friends");s.app.reconcile();
+  assert.equal(scene._panel.overlay.hidden,true);
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,0,
+    "inactive native cache must be cleaned up");
+  s.open("professions");s.app.reconcile();
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1,
+    "reopening the exact cached scene must restore one action");
+
+  scene._panel.overlay.hidden=true;s.app.reconcile();
+  assert.equal(scene._panel.body.querySelector('[data-ppbui-professions-swap]'),null,
+    "hidden active scene cannot keep the enhancement mounted");
+  scene._panel.overlay.hidden=false;s.app.reconcile();
+  assert.equal(scene._panel.body.querySelectorAll('[data-ppbui-professions-swap]').length,1);
+  assert.equal(profession.runsInCardMode,true);
 });
 
 test("Market, Guild, Promotion and Premium keep roots on Cards but sensitive native controls reveal Game before dispatch",async t=>{
